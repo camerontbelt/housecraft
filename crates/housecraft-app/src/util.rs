@@ -69,3 +69,30 @@ impl EditBuffers {
         self.text(ui, id, &shown, 80.0)?.trim().parse().ok()
     }
 }
+
+/// "6/12" style pitch text for an angle in degrees.
+pub fn fmt_pitch(deg: f64) -> String {
+    let rise = deg.to_radians().tan() * 12.0;
+    if (rise - rise.round()).abs() < 0.01 {
+        format!("{}/12", rise.round())
+    } else {
+        format!("{rise:.2}/12")
+    }
+}
+
+/// Parse a pitch: "6/12", "6" (rise in 12), or "30°" / "30deg" (degrees).
+pub fn parse_pitch(s: &str) -> Option<f64> {
+    let s = s.trim();
+    let deg = if let Some(d) = s.strip_suffix('°').or_else(|| s.strip_suffix("deg")) {
+        d.trim().parse::<f64>().ok()?
+    } else if let Some((rise, run)) = s.split_once('/') {
+        let (rise, run): (f64, f64) = (rise.trim().parse().ok()?, run.trim().parse().ok()?);
+        if run <= 0.0 {
+            return None;
+        }
+        (rise / run).atan().to_degrees()
+    } else {
+        (s.parse::<f64>().ok()? / 12.0).atan().to_degrees()
+    };
+    (deg > 0.0 && deg < 90.0).then_some(deg)
+}

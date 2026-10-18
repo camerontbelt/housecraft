@@ -80,6 +80,7 @@ pub(crate) fn add_wall(
         height,
         layer,
         footing: None,
+        roof: Default::default(),
     }))
 }
 
@@ -328,6 +329,15 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             geometry: t.apply_dimension(&d.geometry),
             ..d.clone()
         }),
+        Object::RoofPlane(r) => {
+            let mut r = r.clone();
+            for p in r.outline.iter_mut() {
+                let [x, y, z] = p.mm();
+                let q = t.apply(DVec2::new(x, y));
+                *p = housecraft_units::Point3::from_mm(q.x, q.y, z);
+            }
+            Object::RoofPlane(r)
+        }
         Object::Text(x) => {
             let mut x = x.clone();
             x.position = t.apply_point(x.position);
@@ -843,6 +853,7 @@ pub(crate) fn insert_objects(
                 Object::Cad(c) => c.floor = f,
                 Object::Dimension(d) => d.floor = f,
                 Object::Text(t) => t.floor = f,
+                Object::RoofPlane(r) => r.floor = f,
                 _ => {}
             }
         }
@@ -870,6 +881,7 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::Cad(c) => &mut c.floor,
             Object::Dimension(d) => &mut d.floor,
             Object::Text(t) => &mut t.floor,
+            Object::RoofPlane(r) => &mut r.floor,
             _ => continue,
         };
         let before = *floor;

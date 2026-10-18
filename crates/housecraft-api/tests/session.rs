@@ -359,6 +359,7 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_text", "position": [0,0], "text": "hi"}},
                 {{"op": "add_layer", "name": "Extra", "color": "#ff000080"}},
                 {{"op": "add_plan_view", "name": "Second"}},
+                {{"op": "build_roof"}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
             w = wall.0
         ),
@@ -491,4 +492,51 @@ fn crawlspace_is_not_living_area() {
         r#"[{"op": "build_foundation", "kind": "crawlspace"}]"#,
     );
     assert_eq!(query::summary(s.document()).living_area, before);
+}
+
+#[test]
+fn roof_builds_and_follows_walls() {
+    let mut s = boxed();
+    let out = apply(&mut s, r#"[{"op": "build_roof"}]"#);
+    let planes: Vec<RoofPlane> = s.document().iter::<RoofPlane>().cloned().collect();
+    assert_eq!(planes.len(), 4, "{out:?}");
+    assert!(planes.iter().all(|p| p.auto && !p.gable));
+    // Make the short walls gables: two sloped planes plus two gable infills.
+    let ids: Vec<(Id, bool)> = walls(&s)
+        .iter()
+        .map(|w| (w.id, (w.start.y().mm() - w.end.y().mm()).abs() < 1.0))
+        .collect();
+    let cmds: Vec<Command> = ids
+        .iter()
+        .filter(|(_, horizontal)| *horizontal)
+        .map(|(id, _)| Command::Update {
+            id: *id,
+            set: patch(serde_json::json!({"roof": {"gable": true}})),
+        })
+        .collect();
+    s.apply(&cmds).unwrap();
+    let planes: Vec<RoofPlane> = s.document().iter::<RoofPlane>().cloned().collect();
+    assert_eq!(planes.iter().filter(|p| p.gable).count(), 2);
+    assert_eq!(planes.iter().filter(|p| !p.gable).count(), 2);
+    // Removing it clears every plane and stops rebuilding.
+    apply(&mut s, r#"[{"op": "remove_roof"}]"#);
+    assert_eq!(s.document().count::<RoofPlane>(), 0);
+    apply(
+        &mut s,
+        r#"[{"op": "add_wall", "start": [0,"10'"], "end": ["20'","10'"], "interior": true}]"#,
+    );
+    assert_eq!(s.document().count::<RoofPlane>(), 0);
+}
+
+#[test]
+fn hand_drawn_roof_plane_rises_from_its_eave() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_roof_plane", "points": [[0,0],["10'",0],["10'","10'"],[0,"10'"]],
+             "eave_a": [0,0], "eave_b": ["10'",0], "eave_height": "8'", "pitch": 45}]"#,
+    );
+    let plane = s.document().get::<RoofPlane>(out.created[0]).unwrap();
+    let top = plane.outline.iter().map(|p| p.mm()[2]).fold(0.0, f64::max);
+    assert!((top - Length::from_feet(18.0).mm()).abs() < 1e-6, "{top}");
 }

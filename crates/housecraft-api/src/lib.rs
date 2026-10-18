@@ -8,6 +8,7 @@ mod command;
 mod foundation;
 mod ops;
 pub mod query;
+mod roofs;
 mod rooms;
 mod session;
 

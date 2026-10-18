@@ -119,6 +119,11 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 if let Some(h) = w.height {
                     c.positive(id, "height", h);
                 }
+                if let Some(p) = w.roof.pitch
+                    && !(p > 0.0 && p < 90.0)
+                {
+                    c.issue(id, "roof.pitch must be between 0 and 90 degrees");
+                }
                 if let Some(f) = w.footing {
                     c.positive(id, "footing.width", f.width);
                     c.positive(id, "footing.depth", f.depth);
@@ -199,6 +204,12 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
                 c.positive(id, "door.width", d.door.width);
                 c.positive(id, "door.height", d.door.height);
+                if !(d.roof.pitch > 0.0 && d.roof.pitch < 90.0) {
+                    c.issue(id, "roof.pitch must be between 0 and 90 degrees");
+                }
+                if let Some(l) = d.layers.roofs {
+                    c.reference(id, "layers.roofs", l, K::Layer);
+                }
                 c.positive(id, "window.width", d.window.width);
                 c.positive(id, "window.height", d.window.height);
                 if d.window.head_height.mm() < d.window.height.mm() {
@@ -308,6 +319,19 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 {
                     c.issue(id, "zoom.mm_per_point must be positive");
                 }
+            }
+            Object::RoofPlane(r) => {
+                c.reference(id, "floor", r.floor, K::Floor);
+                c.reference(id, "layer", r.layer, K::Layer);
+                if r.outline.len() < 3 {
+                    c.issue(id, "a roof plane needs at least three points");
+                }
+                let flat: Vec<f64> = r.outline.iter().flat_map(|p| p.mm()).collect();
+                c.finite(id, "outline", &flat);
+                if !(r.pitch > 0.0 && r.pitch <= 90.0) {
+                    c.issue(id, "pitch must be between 0 and 90 degrees");
+                }
+                c.non_negative(id, "thickness", r.thickness);
             }
             Object::Camera(cam) => {
                 c.reference(id, "layer_set", cam.layer_set, K::LayerSet);

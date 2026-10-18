@@ -1,8 +1,8 @@
 //! Foundations: a floor under the lowest storey whose concrete walls follow
 //! that storey's exterior outline, rebuilt automatically when it changes.
 
-use housecraft_geom::math::{cross, inset_polygon};
-use housecraft_geom::{DVec2, pt, rooms};
+use housecraft_geom::math::{inset_polygon, simplify_collinear};
+use housecraft_geom::{pt, rooms};
 use housecraft_model::*;
 use housecraft_units::{DisplayUnit, Length, Point2};
 
@@ -23,25 +23,12 @@ fn foundation_floor(doc: &Document) -> Option<Floor> {
         .cloned()
 }
 
-/// Drop vertices that sit on a straight run (T-junction nodes in the outline).
-fn simplify(poly: &[DVec2]) -> Vec<DVec2> {
-    let n = poly.len();
-    (0..n)
-        .filter(|&i| {
-            let (a, b, c) = (poly[(i + n - 1) % n], poly[i], poly[(i + 1) % n]);
-            let (u, v) = ((b - a).normalize_or_zero(), (c - b).normalize_or_zero());
-            cross(u, v).abs() > 1e-6 || u.dot(v) < 0.0
-        })
-        .map(|i| poly[i])
-        .collect()
-}
-
 /// Wall centrelines (start, end) for the foundation under `above`, drawn
 /// clockwise so the exterior face is on the left.
 fn desired_walls(doc: &Document, above: Id, spec: &Foundation) -> Vec<(Point2, Point2)> {
     let mut out = Vec::new();
     for footprint in rooms::detect(doc, above).footprints {
-        let outline = simplify(&footprint);
+        let outline = simplify_collinear(&footprint);
         if outline.len() < 3 {
             continue;
         }
@@ -139,6 +126,7 @@ fn rebuild_walls(
             height: None,
             layer,
             footing,
+            roof: Default::default(),
         }));
     }
     true
@@ -191,6 +179,7 @@ pub(crate) fn build(
                 ceiling_height: spec.wall_height,
                 floor_structure: Length::ZERO,
                 foundation: Some(spec.clone()),
+                auto_roof: false,
             });
             out.created.push(id);
             id

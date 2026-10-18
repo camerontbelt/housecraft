@@ -6,7 +6,9 @@
 
 pub mod math;
 pub mod mesh;
+pub mod roof;
 pub mod rooms;
+pub mod skeleton;
 pub mod transform;
 pub mod triangulate;
 pub mod walls;

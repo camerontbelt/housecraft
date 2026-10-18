@@ -634,6 +634,17 @@ impl App {
                         }
                     }
                 });
+                ui.menu_button("Roof", |ui| {
+                    if item(ui, "Build Roof", "Ctrl+R", true) {
+                        self.build_roof();
+                    }
+                    if item(ui, "Remove Roof", "", true) {
+                        self.run1(Command::RemoveRoof { floor: None });
+                    }
+                    if tool_item(ui, Tool::RoofPlane) {
+                        self.set_tool(Tool::RoofPlane);
+                    }
+                });
                 if item(ui, "Build Foundation...", "Ctrl+F", true) {
                     self.dialogs.foundation.open = true;
                 }
@@ -824,6 +835,18 @@ impl App {
         });
     }
 
+    pub fn build_roof(&mut self) {
+        if self
+            .run1(Command::BuildRoof {
+                floor: None,
+                auto_rebuild: true,
+            })
+            .is_some()
+        {
+            self.info("Roof built; it rebuilds as walls change. Set walls to Full Gable in their specification.");
+        }
+    }
+
     pub fn auto_exterior_dimensions(&mut self) {
         self.run1(Command::AddExteriorDimensions {
             floor: Some(self.plan.floor),
@@ -1008,6 +1031,17 @@ impl App {
                 .clicked()
         {
             self.auto_exterior_dimensions();
+        }
+        if self.palette == Family::Roofs {
+            if palette_row(ui, Icon::Roof, "Build Roof", false)
+                .on_hover_text("Build Roof (Ctrl+R)")
+                .clicked()
+            {
+                self.build_roof();
+            }
+            if palette_row(ui, Icon::Delete, "Remove Roof", false).clicked() {
+                self.run1(Command::RemoveRoof { floor: None });
+            }
         }
         if self.palette == Family::Walls
             && palette_row(ui, Icon::Defaults, "Wall Types…", false).clicked()
@@ -1405,6 +1439,9 @@ impl App {
         }
         if consume(ctrl, Key::A) {
             self.select_all();
+        }
+        if consume(ctrl, Key::R) {
+            self.build_roof();
         }
         if consume(ctrl, Key::F) {
             self.dialogs.foundation.open = true;

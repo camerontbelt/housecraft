@@ -244,6 +244,7 @@ mod tests {
             height: None,
             layer: d.layers.walls,
             footing: None,
+            roof: Default::default(),
         });
     }
 

@@ -265,6 +265,70 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 });
             }
             ed.pick::<Layer>(ui, "Layer", "layer", Some(w.layer), None);
+            let d = doc.active_defaults();
+            Ed::label(ui, "Roof");
+            let mut gable = w.roof.gable;
+            if ui.checkbox(&mut gable, "Full Gable Wall").changed() {
+                ed.out
+                    .push(patch(id, json!({ "roof": { "gable": gable } })));
+            }
+            ui.end_row();
+            Ed::label(ui, "Roof Pitch");
+            let key = ed.key("roof.pitch");
+            let shown = crate::util::fmt_pitch(w.roof.pitch.unwrap_or(d.roof.pitch));
+            if let Some(text) = ed.bufs.text(ui, key, &shown, 80.0) {
+                if text.trim().is_empty() {
+                    ed.out.push(patch(id, json!({ "roof": { "pitch": null } })));
+                } else if let Some(deg) = crate::util::parse_pitch(&text) {
+                    ed.out.push(patch(id, json!({ "roof": { "pitch": deg } })));
+                }
+            }
+            ui.end_row();
+            let default_overhang = if w.roof.gable {
+                d.roof.rake_overhang
+            } else {
+                d.roof.overhang
+            };
+            if let Some(l) = ed.length(
+                ui,
+                "Roof Overhang",
+                "roof.overhang",
+                w.roof.overhang.unwrap_or(default_overhang),
+            ) {
+                ed.out.push(patch(id, json!({ "roof": { "overhang": l } })));
+            }
+        }
+        Object::RoofPlane(r) => {
+            Ed::label(ui, "Type");
+            ui.label(if r.gable {
+                "Gable infill"
+            } else {
+                "Roof plane"
+            });
+            ui.end_row();
+            if !r.gable {
+                Ed::label(ui, "Pitch");
+                ui.label(format!(
+                    "{} ({:.1}°)",
+                    crate::util::fmt_pitch(r.pitch),
+                    r.pitch
+                ));
+                ui.end_row();
+                if let Some(l) = ed.length(ui, "Thickness", "thickness", r.thickness) {
+                    ed.out.push(patch(id, json!({ "thickness": l })));
+                }
+            }
+            if r.auto {
+                Ed::label(ui, "Automatic");
+                ui.vertical(|ui| {
+                    ui.weak("Rebuilt from the walls whenever they change. Edit the walls' roof settings, or stop rebuilding to edit planes by hand.");
+                    if ui.button("Stop automatic rebuilding").clicked() {
+                        ed.out.push(patch(r.floor, json!({ "auto_roof": false })));
+                    }
+                });
+                ui.end_row();
+            }
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(r.layer), None);
         }
         Object::Opening(o) => {
             Ed::label(ui, "Type");

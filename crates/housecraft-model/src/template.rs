@@ -20,6 +20,7 @@ pub(crate) fn new_document(name: String) -> Document {
         ceiling_height: ft(8.0),
         floor_structure: default_floor_structure(),
         foundation: None,
+        auto_roof: false,
     });
 
     let layer = |doc: &mut Document, name: &str, weight: f64, color: Option<Color>| {
@@ -45,6 +46,12 @@ pub(crate) fn new_document(name: String) -> Document {
         Some(Color::rgb(0x1f, 0x5f, 0xbf)),
     );
     let text = layer(&mut doc, "Text", 0.18, None);
+    let roofs = layer(
+        &mut doc,
+        "Roof Planes",
+        0.18,
+        Some(Color::rgb(0x9a, 0x4a, 0x1f)),
+    );
 
     let style = |doc: &mut Document, name: &str, height: Length, bold: bool| {
         doc.insert(TextStyle {
@@ -143,6 +150,7 @@ pub(crate) fn new_document(name: String) -> Document {
             cad,
             dimensions,
             text,
+            roofs: Some(roofs),
         },
         dimensions: DimensionDefaults {
             text_style: dim_text,
@@ -164,6 +172,7 @@ pub(crate) fn new_document(name: String) -> Document {
             height: inch(48.0),
             head_height: inch(80.0),
         },
+        roof: RoofDefaults::default(),
     });
     doc.settings.active_default_set = defaults;
 
@@ -175,13 +184,22 @@ pub(crate) fn new_document(name: String) -> Document {
     doc.insert(LayerSet {
         id: PLACEHOLDER,
         name: "Floor Plan".into(),
-        layers: BTreeMap::from([(
-            cad,
-            LayerDisplay {
-                visible: false,
-                ..LayerDisplay::default()
-            },
-        )]),
+        layers: BTreeMap::from([
+            (
+                cad,
+                LayerDisplay {
+                    visible: false,
+                    ..LayerDisplay::default()
+                },
+            ),
+            (
+                roofs,
+                LayerDisplay {
+                    visible: false,
+                    ..LayerDisplay::default()
+                },
+            ),
+        ]),
     });
 
     doc.insert(PlanView {

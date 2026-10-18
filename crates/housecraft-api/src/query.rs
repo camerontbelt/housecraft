@@ -197,6 +197,13 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
             DimensionGeometry::Angular { .. } => "angular dimension".to_string(),
         },
         Object::Text(t) => format!("text {:?}", t.text),
+        Object::RoofPlane(r) if r.gable => "gable infill".to_string(),
+        Object::RoofPlane(r) => format!(
+            "roof plane, {:.1}° ({:.1} in 12){}",
+            r.pitch,
+            r.pitch.to_radians().tan() * 12.0,
+            if r.auto { ", automatic" } else { "" }
+        ),
         Object::PlanView(v) => v.name.clone(),
         Object::Camera(c) => c.name.clone(),
     };

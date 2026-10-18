@@ -714,6 +714,61 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                 );
                             });
                     });
+                egui::CollapsingHeader::new("Roofs")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        egui::Grid::new("roof_defaults")
+                            .num_columns(2)
+                            .show(ui, |ui| {
+                                ui.label("Pitch");
+                                let mut text = crate::util::fmt_pitch(d.roof.pitch);
+                                if ui.text_edit_singleline(&mut text).lost_focus()
+                                    && let Some(deg) = crate::util::parse_pitch(&text)
+                                    && (deg - d.roof.pitch).abs() > 1e-9
+                                {
+                                    commands.push(p(json!({"roof": {"pitch": deg}})));
+                                }
+                                ui.end_row();
+                                len_row(
+                                    ui,
+                                    doc,
+                                    &mut app.bufs,
+                                    "Eave overhang",
+                                    ("roof", "overhang"),
+                                    d.roof.overhang,
+                                    |v| commands.push(p(json!({"roof": {"overhang": v}}))),
+                                );
+                                len_row(
+                                    ui,
+                                    doc,
+                                    &mut app.bufs,
+                                    "Rake overhang",
+                                    ("roof", "rake"),
+                                    d.roof.rake_overhang,
+                                    |v| commands.push(p(json!({"roof": {"rake_overhang": v}}))),
+                                );
+                                len_row(
+                                    ui,
+                                    doc,
+                                    &mut app.bufs,
+                                    "Roof thickness",
+                                    ("roof", "thick"),
+                                    d.roof.thickness,
+                                    |v| commands.push(p(json!({"roof": {"thickness": v}}))),
+                                );
+                                ui.label("Raised plate (heel)");
+                                if let Some(v) = app.bufs.length(
+                                    ui,
+                                    doc,
+                                    egui::Id::unique(("defaults", "roof", "heel")),
+                                    d.roof.heel,
+                                ) && v.mm() >= 0.0
+                                {
+                                    commands.push(p(json!({"roof": {"heel": v}})));
+                                }
+                                ui.end_row();
+                            });
+                    });
                 egui::CollapsingHeader::new("Rooms")
                     .default_open(true)
                     .show(ui, |ui| {

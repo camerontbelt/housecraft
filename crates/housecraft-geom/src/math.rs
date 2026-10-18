@@ -127,6 +127,19 @@ pub fn point_in_polygon(p: DVec2, poly: &[DVec2]) -> bool {
     inside
 }
 
+/// Drop vertices that sit on a straight run (e.g. T-junction nodes in an outline).
+pub fn simplify_collinear(poly: &[DVec2]) -> Vec<DVec2> {
+    let n = poly.len();
+    (0..n)
+        .filter(|&i| {
+            let (a, b, c) = (poly[(i + n - 1) % n], poly[i], poly[(i + 1) % n]);
+            let (u, v) = ((b - a).normalize_or_zero(), (c - b).normalize_or_zero());
+            cross(u, v).abs() > 1e-6 || u.dot(v) < 0.0
+        })
+        .map(|i| poly[i])
+        .collect()
+}
+
 /// Offset a counter-clockwise polygon inward by `d` (negative = outward),
 /// mitring corners. Keeps the vertex count; very acute corners are capped.
 pub fn inset_polygon(poly: &[DVec2], d: f64) -> Vec<DVec2> {

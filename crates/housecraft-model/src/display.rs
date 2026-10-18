@@ -220,6 +220,9 @@ pub struct KindLayers {
     pub cad: Id,
     pub dimensions: Id,
     pub text: Id,
+    /// Roof planes; falls back to the walls layer when unset (older files).
+    #[serde(default)]
+    pub roofs: Option<Id>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -267,4 +270,32 @@ pub struct DefaultSet {
     pub dimensions: DimensionDefaults,
     pub door: DoorDefaults,
     pub window: WindowDefaults,
+    #[serde(default)]
+    pub roof: RoofDefaults,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct RoofDefaults {
+    /// Degrees above horizontal (6 in 12 = 26.57°).
+    pub pitch: f64,
+    /// Eave overhang beyond the walls' outer faces.
+    pub overhang: Length,
+    /// Overhang past gable walls.
+    pub rake_overhang: Length,
+    /// Rafter + sheathing depth, drawn as the roof's thickness.
+    pub thickness: Length,
+    /// Raised plate (energy heel) above the ceiling.
+    pub heel: Length,
+}
+
+impl Default for RoofDefaults {
+    fn default() -> Self {
+        RoofDefaults {
+            pitch: (6.0f64 / 12.0).atan().to_degrees(),
+            overhang: Length::from_inches(16.0),
+            rake_overhang: Length::from_inches(12.0),
+            thickness: Length::from_inches(8.0),
+            heel: Length::ZERO,
+        }
+    }
 }

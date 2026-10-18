@@ -50,6 +50,8 @@ pub const GLASS_COLOR: [f32; 4] = [0.55, 0.75, 0.88, 1.0];
 pub const FRAME_COLOR: [f32; 4] = [0.97, 0.97, 0.97, 1.0];
 pub const CEILING_COLOR: [f32; 4] = [0.96, 0.96, 0.95, 1.0];
 pub const CONCRETE_COLOR: [f32; 4] = [0.68, 0.68, 0.66, 1.0];
+pub const ROOF_COLOR: [f32; 4] = [0.36, 0.34, 0.33, 1.0];
+pub const SOFFIT_COLOR: [f32; 4] = [0.9, 0.89, 0.86, 1.0];
 pub const PLATFORM_COLOR: [f32; 4] = [0.82, 0.74, 0.6, 1.0];
 
 impl Mesh {
@@ -148,7 +150,126 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         }
         build_floor(doc, floor, &mut mesh);
     }
+    for plane in doc.iter::<housecraft_model::RoofPlane>() {
+        if only_floor.is_some_and(|f| f != plane.floor) {
+            continue;
+        }
+        mesh.begin(plane.id, Category::Roof);
+        roof_plane_mesh(plane, &mut mesh);
+        mesh.end();
+    }
     mesh
+}
+
+fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, mesh: &mut Mesh) {
+    let top: Vec<DVec3> = plane
+        .outline
+        .iter()
+        .map(|p| {
+            let [x, y, z] = p.mm();
+            DVec3::new(x, y, z)
+        })
+        .collect();
+    if top.len() < 3 {
+        return;
+    }
+    if plane.gable {
+        mesh.polygon(&top, WALL_COLOR);
+        return;
+    }
+    // Underside: the same outline dropped by the vertical thickness.
+    let drop = plane.thickness.mm() / plane.pitch.to_radians().cos().max(0.05);
+    let bottom: Vec<DVec3> = top.iter().rev().map(|p| *p - DVec3::Z * drop).collect();
+    let mut up = top.clone();
+    if crate::roof::newell(&up).z < 0.0 {
+        up.reverse();
+    }
+    mesh.polygon(&up, ROOF_COLOR);
+    mesh.polygon(&bottom, SOFFIT_COLOR);
+    let n = top.len();
+    for i in 0..n {
+        let (a, b) = (top[i], top[(i + 1) % n]);
+        mesh.polygon(
+            &[a, b, b - DVec3::Z * drop, a - DVec3::Z * drop],
+            FRAME_COLOR,
+        );
+    }
+}
+
+/// Clip a polygon against a counter-clockwise convex polygon (Sutherland–Hodgman).
+fn clip_convex(subject: &[DVec2], clip: &[DVec2]) -> Vec<DVec2> {
+    let mut out = subject.to_vec();
+    let m = clip.len();
+    for i in 0..m {
+        if out.is_empty() {
+            break;
+        }
+        let (a, b) = (clip[i], clip[(i + 1) % m]);
+        let inside = |p: DVec2| crate::math::cross(b - a, p - a) >= -1e-9;
+        let input = std::mem::take(&mut out);
+        for j in 0..input.len() {
+            let (p, q) = (input[j], input[(j + 1) % input.len()]);
+            let (pi, qi) = (inside(p), inside(q));
+            if pi {
+                out.push(p);
+            }
+            if pi != qi
+                && let Some(x) = crate::math::line_intersection(p, q - p, a, b - a)
+            {
+                out.push(x);
+            }
+        }
+    }
+    out
+}
+
+/// Ceiling pieces under the sloped roof planes of `floor` covering `room_poly`.
+fn vaulted_ceiling(doc: &Document, floor: Id, room_poly: &[DVec2], mesh: &mut Mesh) -> bool {
+    let mut any = false;
+    for plane in doc
+        .iter::<housecraft_model::RoofPlane>()
+        .filter(|r| r.floor == floor && !r.gable)
+    {
+        let outline: Vec<DVec3> = plane
+            .outline
+            .iter()
+            .map(|p| {
+                let [x, y, z] = p.mm();
+                DVec3::new(x, y, z)
+            })
+            .collect();
+        let mut flat: Vec<DVec2> = outline.iter().map(|p| p.truncate()).collect();
+        if crate::math::signed_area(&flat) < 0.0 {
+            flat.reverse();
+        }
+        for t in triangulate(&flat) {
+            let tri = [flat[t[0]], flat[t[1]], flat[t[2]]];
+            let piece = clip_convex(room_poly, &tri);
+            if piece.len() < 3 || crate::math::signed_area(&piece).abs() < 1.0 {
+                continue;
+            }
+            let pts: Vec<DVec3> = piece
+                .iter()
+                .filter_map(|p| {
+                    crate::roof::underside_at(&outline, plane.thickness.mm(), plane.pitch, *p)
+                        .or_else(|| {
+                            crate::roof::underside_at(
+                                &outline,
+                                plane.thickness.mm(),
+                                plane.pitch,
+                                *p + (crate::math::centroid(&piece) - *p) * 1e-6,
+                            )
+                        })
+                        .map(|z| DVec3::new(p.x, p.y, z))
+                })
+                .collect();
+            if pts.len() == piece.len() {
+                mesh.polygon(&pts, CEILING_COLOR);
+                any = true;
+            }
+        }
+    }
+    any
 }
 
 fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
@@ -254,7 +375,12 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
         mesh.begin(owner, Category::Ceiling);
         match room.ceiling {
             CeilingStyle::None => {}
-            CeilingStyle::Flat | CeilingStyle::Vaulted => mesh.polygon(&at(zc), CEILING_COLOR),
+            CeilingStyle::Flat => mesh.polygon(&at(zc), CEILING_COLOR),
+            CeilingStyle::Vaulted => {
+                if !vaulted_ceiling(doc, floor.id, &region.polygon, mesh) {
+                    mesh.polygon(&at(zc), CEILING_COLOR);
+                }
+            }
             CeilingStyle::Tray { inset, rise } => {
                 let inner = crate::math::inset_polygon(&region.polygon, inset.mm());
                 let outer = &region.polygon;

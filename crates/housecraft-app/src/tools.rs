@@ -25,6 +25,7 @@ pub enum Tool {
     Ellipse,
     Spline,
     Point,
+    RoofPlane,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -133,10 +134,7 @@ impl Family {
 
     /// Families whose tools are not built yet are shown disabled.
     pub fn available(self) -> bool {
-        !matches!(
-            self,
-            Family::Cabinets | Family::Stairs | Family::Roofs | Family::Electrical
-        )
+        !matches!(self, Family::Cabinets | Family::Stairs | Family::Electrical)
     }
 
     pub fn tools(self) -> &'static [Tool] {
@@ -173,11 +171,8 @@ impl Family {
                 Tool::Spline,
                 Tool::Point,
             ],
-            Family::Cabinets
-            | Family::Stairs
-            | Family::Roofs
-            | Family::Electrical
-            | Family::Cameras => &[],
+            Family::Roofs => &[Tool::RoofPlane],
+            Family::Cabinets | Family::Stairs | Family::Electrical | Family::Cameras => &[],
         }
     }
 
@@ -196,6 +191,7 @@ impl Tool {
             Tool::Window(_) => Family::Windows,
             Tool::Dimension | Tool::AngularDimension => Family::Dimensions,
             Tool::Text => Family::Text,
+            Tool::RoofPlane => Family::Roofs,
             _ => Family::Cad,
         }
     }
@@ -230,6 +226,7 @@ impl Tool {
             Tool::Ellipse => "Ellipse",
             Tool::Spline => "Spline",
             Tool::Point => "Point",
+            Tool::RoofPlane => "Roof Plane",
         }
     }
 
@@ -258,6 +255,7 @@ impl Tool {
             Tool::Ellipse => Icon::Ellipse,
             Tool::Spline => Icon::Spline,
             Tool::Point => Icon::Point,
+            Tool::RoofPlane => Icon::Roof,
         }
     }
 
@@ -307,6 +305,9 @@ impl Tool {
             }
             Tool::Ellipse => "Click two opposite corners of the bounding box.",
             Tool::Point => "Click to place a point.",
+            Tool::RoofPlane => {
+                "Click the two ends of the eave, then the other corners; double-click or Enter to finish."
+            }
         }
     }
 }

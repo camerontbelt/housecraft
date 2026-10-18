@@ -60,6 +60,7 @@ impl Session {
             return Ok(outcome);
         }
         crate::foundation::sync(&mut scratch, &mut outcome)?;
+        crate::roofs::sync(&mut scratch, &mut outcome);
         crate::rooms::sync(&mut scratch, &mut outcome);
         let issues = scratch.validate();
         if !issues.is_empty() {

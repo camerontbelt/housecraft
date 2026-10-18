@@ -842,6 +842,7 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     pending.push(p);
                 }
             }
+            Tool::RoofPlane => pending.push(p),
             Tool::Polyline | Tool::Spline => {
                 let closes = pending.len() > 2 && pending[0].distance(p) < PICK_PX * view.mpp;
                 if closes {
@@ -979,6 +980,26 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
         }
     }
 
+    if finish && tool == Tool::RoofPlane {
+        let pending = std::mem::take(&mut app.plan.pending);
+        if pending.len() >= 3 {
+            let doc = app.session.document();
+            let d = doc.active_defaults();
+            let eave_height = doc
+                .get::<Floor>(app.plan.floor)
+                .map_or(Length::from_feet(8.0), |f| f.ceiling_height)
+                + d.roof.heel;
+            commands.push(Command::AddRoofPlane {
+                floor,
+                points: pending.iter().map(|p| pt(*p)).collect(),
+                eave_a: pt(pending[0]),
+                eave_b: pt(pending[1]),
+                eave_height,
+                pitch: d.roof.pitch,
+            });
+        }
+        return;
+    }
     if finish {
         let pending = std::mem::take(&mut app.plan.pending);
         if matches!(tool, Tool::Polyline | Tool::Spline) && pending.len() >= 2 {

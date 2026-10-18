@@ -134,6 +134,7 @@ objects! {
     Text => "text",
     PlanView => "plan_view",
     Camera => "camera",
+    RoofPlane => "roof_plane",
 }
 
 impl fmt::Display for ObjectKind {
@@ -152,6 +153,7 @@ impl ObjectKind {
                 | ObjectKind::Cad
                 | ObjectKind::Dimension
                 | ObjectKind::Text
+                | ObjectKind::RoofPlane
         )
     }
 }
@@ -290,6 +292,7 @@ impl Document {
             Object::Cad(c) => Some(c.floor),
             Object::Dimension(d) => Some(d.floor),
             Object::Text(t) => Some(t.floor),
+            Object::RoofPlane(r) => Some(r.floor),
             _ => None,
         }
     }
@@ -303,6 +306,7 @@ impl Document {
             Object::Cad(c) => Some(c.layer),
             Object::Dimension(d) => Some(d.layer),
             Object::Text(t) => Some(t.layer),
+            Object::RoofPlane(r) => Some(r.layer),
             _ => None,
         }
     }
@@ -394,6 +398,7 @@ mod tests {
             height: None,
             layer,
             footing: None,
+            roof: Default::default(),
         });
         assert_eq!(doc.validate().len(), 2, "{:?}", doc.validate());
     }
@@ -412,6 +417,7 @@ mod tests {
             height: None,
             layer: d.layers.walls,
             footing: None,
+            roof: Default::default(),
         });
         doc.insert(Opening {
             id: Id(0),

@@ -315,6 +315,56 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         }
     }
 
+    for plane in doc.iter::<RoofPlane>().filter(|r| r.floor == opts.floor) {
+        let look = ctx.look(plane.layer);
+        if !look.visible {
+            continue;
+        }
+        let points: Vec<DVec2> = plane
+            .outline
+            .iter()
+            .map(|p| {
+                let [x, y, _] = p.mm();
+                DVec2::new(x, y)
+            })
+            .collect();
+        if points.len() < 3 {
+            continue;
+        }
+        let area = housecraft_geom::math::signed_area(&points).abs();
+        if area < 1.0 {
+            continue; // vertical gable infill has no plan footprint
+        }
+        out.push(
+            Some(plane.id),
+            Prim::Polyline {
+                points: points.clone(),
+                closed: true,
+                stroke: look.stroke,
+            },
+        );
+        let rise = plane.pitch.to_radians().tan() * 12.0;
+        let label = if (rise - rise.round()).abs() < 0.05 {
+            format!("{}/12", rise.round())
+        } else {
+            format!("{rise:.1}/12")
+        };
+        let style = ctx.text_style(None, &look);
+        out.push(
+            Some(plane.id),
+            Prim::Text {
+                at: housecraft_geom::math::interior_point(&points),
+                text: label,
+                height: style.height.mm() * 0.8,
+                rotation: 0.0,
+                justify: Justify::Center,
+                middle: true,
+                bold: false,
+                ink: look.ink,
+            },
+        );
+    }
+
     for dim in doc.iter::<Dimension>().filter(|d| d.floor == opts.floor) {
         let look = ctx.look(dim.layer);
         if !look.visible {

@@ -48,6 +48,27 @@ pub enum Command {
         #[serde(default = "yes")]
         auto_rebuild: bool,
     },
+    /// Build a roof over a floor's exterior walls (default: the top storey).
+    /// Each wall's `roof` settings choose gable or hip, pitch and overhang.
+    /// With `auto_rebuild` the roof follows later wall changes.
+    BuildRoof {
+        floor: Option<Id>,
+        #[serde(default = "yes")]
+        auto_rebuild: bool,
+    },
+    /// Delete a floor's roof planes and stop rebuilding them.
+    RemoveRoof { floor: Option<Id> },
+    /// Add a hand-drawn roof plane: `points` outline it in plan; it rises at
+    /// `pitch` degrees from the line `eave_a`–`eave_b`, which sits
+    /// `eave_height` above the floor.
+    AddRoofPlane {
+        floor: Option<Id>,
+        points: Vec<Point2>,
+        eave_a: Point2,
+        eave_b: Point2,
+        eave_height: Length,
+        pitch: f64,
+    },
     /// Exchange everything drawn on two floors (walls, rooms, CAD, text...),
     /// keeping the floors' own heights.
     SwapFloors { a: Id, b: Id },
@@ -352,6 +373,9 @@ impl Command {
             Command::AddFloor { .. } => "add_floor",
             Command::SwapFloors { .. } => "swap_floors",
             Command::BuildFoundation { .. } => "build_foundation",
+            Command::BuildRoof { .. } => "build_roof",
+            Command::RemoveRoof { .. } => "remove_roof",
+            Command::AddRoofPlane { .. } => "add_roof_plane",
             Command::AddWallType { .. } => "add_wall_type",
             Command::AddLayer { .. } => "add_layer",
             Command::AddLayerSet { .. } => "add_layer_set",
@@ -437,6 +461,7 @@ impl Command {
                             ceiling_height,
                             floor_structure: structure,
                             foundation: None,
+                            auto_roof: false,
                         })
                     }
                     None => {
@@ -454,6 +479,7 @@ impl Command {
                             ceiling_height,
                             floor_structure: structure,
                             foundation: None,
+                            auto_roof: false,
                         })
                     }
                 };
@@ -490,6 +516,30 @@ impl Command {
                 };
                 crate::foundation::build(doc, spec, &mut out)?;
             }
+            Command::BuildRoof {
+                floor,
+                auto_rebuild,
+            } => {
+                crate::roofs::build(doc, *floor, *auto_rebuild, &mut out)?;
+            }
+            Command::RemoveRoof { floor } => crate::roofs::remove(doc, *floor, &mut out)?,
+            Command::AddRoofPlane {
+                floor,
+                points,
+                eave_a,
+                eave_b,
+                eave_height,
+                pitch,
+            } => crate::roofs::add_plane(
+                doc,
+                *floor,
+                points,
+                *eave_a,
+                *eave_b,
+                *eave_height,
+                *pitch,
+                &mut out,
+            )?,
             Command::SwapFloors { a, b } => {
                 expect::<Floor>(doc, *a)?;
                 expect::<Floor>(doc, *b)?;
