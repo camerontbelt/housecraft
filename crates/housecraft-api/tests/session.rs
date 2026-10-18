@@ -1222,3 +1222,62 @@ fn schedules_group_and_export() {
             .is_err()
     );
 }
+
+#[test]
+fn materials_list_takes_off_and_prices() {
+    use housecraft_api::materials::{MaterialsOptions, materials, price_key};
+    let mut s = boxed();
+    let wall = walls(&s)[0].id;
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_door", "wall": {w}, "position": "5'"}},
+                {{"op": "set_roof_style", "style": "gable"}},
+                {{"op": "build_foundation", "kind": "slab"}}]"#,
+            w = wall.0
+        ),
+    );
+    let list = materials(s.document(), &MaterialsOptions::default());
+    let find = |cat: &str, item: &str| {
+        list.lines
+            .iter()
+            .find(|l| l.category == cat && l.item.contains(item))
+            .unwrap_or_else(|| panic!("no {cat}: {item} in {:#?}", list.lines))
+    };
+    // 20' x 30' outside, 2x6 studs every 16" plus 2 per door.
+    let studs = find("Framing", "2x6 stud,");
+    assert!(
+        studs.quantity > 70.0 && studs.quantity < 85.0,
+        "{}",
+        studs.quantity
+    );
+    assert_eq!(find("Doors", "Hinged Door").quantity, 1.0);
+    let roof = find("Roofing", "Roofing");
+    assert_eq!(roof.unit, "sq ft");
+    assert!(
+        roof.quantity > 600.0,
+        "6/12 roof over 600 sq ft: {}",
+        roof.quantity
+    );
+    assert!(find("Foundation", "slab").quantity > 5.0, "cu yd of slab");
+    assert!(find("Trim", "Base molding").quantity > 90.0);
+
+    // Pricing and markup.
+    let key = price_key(&studs.category, &studs.item);
+    let qty = studs.quantity;
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "set_material_price", "item": {key:?}, "price": 4.5}}, {{"op": "set_markup", "percent": 10}}]"#
+        ),
+    );
+    let list = materials(s.document(), &MaterialsOptions::default());
+    assert!((list.subtotal - qty * 4.5).abs() < 1e-6);
+    assert!((list.total - qty * 4.5 * 1.1).abs() < 1e-6);
+    let table = list.table();
+    assert_eq!(table.rows.last().unwrap().cells[1], "Total");
+    assert!(
+        s.apply(&commands(r#"[{"op": "set_markup", "percent": -5}]"#))
+            .is_err()
+    );
+}

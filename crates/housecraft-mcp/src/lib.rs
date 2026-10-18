@@ -115,6 +115,14 @@ pub struct ScheduleArgs {
     pub format: Option<housecraft_api::schedule::TableFormat>,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct MaterialsArgs {
+    /// Only this floor (id); every floor when omitted.
+    pub floor: Option<Id>,
+    /// csv, txt, xml or html (default txt).
+    pub format: Option<housecraft_api::schedule::TableFormat>,
+}
+
 #[derive(Serialize)]
 struct Status<'a> {
     message: &'a str,
@@ -252,6 +260,26 @@ impl HouseCraftServer {
         })
     }
 
+    /// The materials list (quantities taken off walls, floors, ceilings, roofs, foundations,
+    /// doors, windows, stairs and fixtures, priced from the document's price list) as a table.
+    /// Set prices with the set_material_price command, keyed "Category: Item".
+    #[tool]
+    async fn materials_list(&self, Parameters(args): Parameters<MaterialsArgs>) -> ToolResult {
+        self.with_session(|s, _| {
+            let list = housecraft_api::materials::materials(
+                s.document(),
+                &housecraft_api::materials::MaterialsOptions {
+                    floor: args.floor,
+                    layer_set: None,
+                },
+            );
+            Ok(list.table().export(
+                args.format
+                    .unwrap_or(housecraft_api::schedule::TableFormat::Txt),
+            ))
+        })
+    }
+
     /// Apply edit commands as one atomic, undoable transaction. If any command fails, nothing changes.
     /// Returns the ids created, modified and deleted.
     #[tool]
@@ -386,6 +414,7 @@ mod tests {
             "view_plan",
             "export_plan",
             "schedule",
+            "materials_list",
         ] {
             assert!(
                 names.iter().any(|n| n == expected),

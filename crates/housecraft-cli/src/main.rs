@@ -138,6 +138,16 @@ enum Cmd {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+    /// Print or export the materials list.
+    Materials {
+        path: PathBuf,
+        /// Floor name or id (default: every floor).
+        #[arg(long)]
+        floor: Option<String>,
+        /// Write here; .csv, .txt, .xml or .html picks the format (default: text to stdout).
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
     /// Print the JSON Schema for command batches.
     Schema,
     /// Run the MCP server on stdin/stdout.
@@ -487,6 +497,40 @@ fn main() -> Result<()> {
                 None => None,
             };
             let table = schedule(&doc, kind, &ScheduleOptions { floor, columns });
+            match output {
+                Some(out) => {
+                    let ext = out.extension().and_then(|e| e.to_str()).unwrap_or("");
+                    let format = TableFormat::from_extension(ext)
+                        .ok_or_else(|| anyhow::anyhow!("use a .csv, .txt, .xml or .html output"))?;
+                    std::fs::write(&out, table.export(format))?;
+                    println!("wrote {}", out.display());
+                }
+                None => print!("{}", table.export(TableFormat::Txt)),
+            }
+        }
+        Cmd::Materials {
+            path,
+            floor,
+            output,
+        } => {
+            use housecraft_api::schedule::TableFormat;
+            let doc = load(&path)?;
+            let floor = match floor {
+                Some(f) => Some(
+                    PlanOptions::resolve(&doc, Some(&f), None)
+                        .map_err(anyhow::Error::msg)?
+                        .floor,
+                ),
+                None => None,
+            };
+            let table = housecraft_api::materials::materials(
+                &doc,
+                &housecraft_api::materials::MaterialsOptions {
+                    floor,
+                    layer_set: None,
+                },
+            )
+            .table();
             match output {
                 Some(out) => {
                     let ext = out.extension().and_then(|e| e.to_str()).unwrap_or("");

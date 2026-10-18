@@ -88,9 +88,9 @@ pub struct App {
     pub spec: Vec<Id>,
     /// Rooms being edited together (multi-room specification).
     pub room_multi: Option<Vec<Id>>,
-    /// The schedule shown in the schedule window, if open.
-    pub schedule_view: Option<ScheduleKind>,
-    pub schedule_this_floor: bool,
+    /// The schedule or materials list shown in the table window, if open.
+    pub table_view: Option<crate::schedules::TableSource>,
+    pub table_this_floor: bool,
     pub clipboard: Vec<serde_json::Value>,
     pub status: Option<(String, bool)>,
     pub pending: Option<Pending>,
@@ -122,8 +122,8 @@ impl App {
             bufs: EditBuffers::default(),
             spec: Vec::new(),
             room_multi: None,
-            schedule_view: None,
-            schedule_this_floor: false,
+            table_view: None,
+            table_this_floor: false,
             clipboard: Vec::new(),
             status: None,
             pending: None,
@@ -816,8 +816,11 @@ impl App {
                 ui.menu_button("Schedules", |ui| {
                     for kind in ScheduleKind::ALL {
                         if item(ui, &format!("{}…", kind.name()), "", true) {
-                            self.schedule_view = Some(kind);
+                            self.table_view = Some(crate::schedules::TableSource::Schedule(kind));
                         }
+                    }
+                    if item(ui, "Materials List…", "", true) {
+                        self.table_view = Some(crate::schedules::TableSource::Materials);
                     }
                     ui.separator();
                     ui.menu_button("Place in Plan", |ui| {
@@ -1860,7 +1863,7 @@ impl eframe::App for App {
             });
         crate::props::spec_windows(self, &ctx);
         crate::props::room_multi_window(self, &ctx);
-        crate::schedules::schedule_window(self, &ctx);
+        crate::schedules::table_window(self, &ctx);
         crate::dialogs::show(self, &ctx);
         self.confirm_discard(&ctx);
     }

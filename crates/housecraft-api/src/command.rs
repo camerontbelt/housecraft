@@ -150,6 +150,11 @@ pub enum Command {
         #[serde(default)]
         all_floors: bool,
     },
+    /// Set (or with `null`, clear) the unit price of a materials list item,
+    /// keyed "Category: Item" as the materials list shows them.
+    SetMaterialPrice { item: String, price: Option<f64> },
+    /// Markup percentage added to the materials list total.
+    SetMarkup { percent: f64 },
     /// Exchange everything drawn on two floors (walls, rooms, CAD, text...),
     /// keeping the floors' own heights.
     SwapFloors { a: Id, b: Id },
@@ -468,6 +473,8 @@ impl Command {
             Command::RemoveRoof { .. } => "remove_roof",
             Command::AddRoofPlane { .. } => "add_roof_plane",
             Command::AddStair { .. } => "add_stair",
+            Command::SetMaterialPrice { .. } => "set_material_price",
+            Command::SetMarkup { .. } => "set_markup",
             Command::AddSchedule { .. } => "add_schedule",
             Command::AddElectrical { .. } => "add_electrical",
             Command::ConnectSwitch { .. } => "connect_switch",
@@ -881,6 +888,23 @@ impl Command {
                     all_floors: *all_floors,
                     text_height: None,
                 }));
+            }
+            Command::SetMaterialPrice { item, price } => match price {
+                Some(p) if !p.is_finite() || *p < 0.0 => {
+                    return invalid("price must be a non-negative number");
+                }
+                Some(p) => {
+                    doc.settings.prices.insert(item.clone(), *p);
+                }
+                None => {
+                    doc.settings.prices.remove(item);
+                }
+            },
+            Command::SetMarkup { percent } => {
+                if !percent.is_finite() || *percent < 0.0 {
+                    return invalid("markup must be a non-negative percentage");
+                }
+                doc.settings.markup_percent = *percent;
             }
             Command::SwapFloors { a, b } => {
                 expect::<Floor>(doc, *a)?;

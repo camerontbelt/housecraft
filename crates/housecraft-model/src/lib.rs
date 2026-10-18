@@ -189,6 +189,12 @@ pub struct Settings {
     pub north_pointer: Option<housecraft_units::Point2>,
     #[serde(default)]
     pub sun: Sun,
+    /// Materials list unit prices, keyed "Category: Item".
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub prices: BTreeMap<String, f64>,
+    /// Markup applied to the materials list total, percent.
+    #[serde(default)]
+    pub markup_percent: f64,
 }
 
 fn north_up() -> f64 {
@@ -233,6 +239,8 @@ impl Document {
                 north: north_up(),
                 north_pointer: None,
                 sun: Sun::default(),
+                prices: BTreeMap::new(),
+                markup_percent: 0.0,
             },
             next_id: 1,
             objects: BTreeMap::new(),
