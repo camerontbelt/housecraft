@@ -171,7 +171,7 @@ The room's walls also carry a 16-byte id at +0x5b (different per wall; zero in t
 **[open]** how later walls reference their type; whether the +0x5b id is the wall's own or its room's; which side
 is exterior.
 
-### 3.2 Door and window records — hypotheses
+### 3.2 Door and window records — partly confirmed
 
 **[obs]** Both kinds share a run of five `f64`s:
 
@@ -180,10 +180,12 @@ is exterior.
 | door (snapshot 15) | 117.24 | 30 | 0.625 | 80 | 80 |
 | window (snapshot 16) | 56.707 | 32 | 0.625 | 48 | 80 |
 
+**[obs]** f64 1 is the **width**: Chief's specification dialogs show the door at 2'-6" (30") and the window at
+2'-8" (32"), matching f64 1 in both records.
 **[inf]** f64 0 is the position along the host wall (the door's 117.24 exceeds the horizontal wall's 116.89, so it is
-on the vertical wall); f64 4 is the header height (6'-8"); f64 3 is the height. f64 1 is the width, or for the
-window possibly the sill height (80 − 48 = 32). The string "BM11 - Base Molding" sits nearby (casing / molding
-settings). Needs the actual sizes from Chief's door and window specification dialogs to confirm.
+on the vertical wall); f64 4 is the header height (6'-8"); f64 3 is the height (80" door, 48" window, so the
+window's sill is 32"). The string "BM11 - Base Molding" sits nearby (casing / molding settings).
+**[open]** f64 2 (0.625 in both).
 
 ## 4. Next steps
 
