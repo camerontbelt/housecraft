@@ -56,6 +56,16 @@ pub enum Command {
         #[serde(default = "yes")]
         auto_rebuild: bool,
     },
+    /// Set every exterior wall's roof edge for a whole-roof style (gable ends
+    /// go on the short sides), then build the roof and keep it automatic.
+    /// `lower_pitch` and `break_height` shape mansards and gambrels.
+    SetRoofStyle {
+        floor: Option<Id>,
+        style: RoofStyle,
+        pitch: Option<f64>,
+        lower_pitch: Option<f64>,
+        break_height: Option<Length>,
+    },
     /// Delete a floor's roof planes and stop rebuilding them.
     RemoveRoof { floor: Option<Id> },
     /// Add a hand-drawn roof plane: `points` outline it in plan; it rises at
@@ -439,6 +449,7 @@ impl Command {
             Command::SwapFloors { .. } => "swap_floors",
             Command::BuildFoundation { .. } => "build_foundation",
             Command::BuildRoof { .. } => "build_roof",
+            Command::SetRoofStyle { .. } => "set_roof_style",
             Command::RemoveRoof { .. } => "remove_roof",
             Command::AddRoofPlane { .. } => "add_roof_plane",
             Command::AddStair { .. } => "add_stair",
@@ -596,6 +607,23 @@ impl Command {
                     auto_rebuild: *auto_rebuild,
                 };
                 crate::foundation::build(doc, spec, &mut out)?;
+            }
+            Command::SetRoofStyle {
+                floor,
+                style,
+                pitch,
+                lower_pitch,
+                break_height,
+            } => {
+                crate::roofs::set_style(
+                    doc,
+                    *floor,
+                    *style,
+                    *pitch,
+                    *lower_pitch,
+                    *break_height,
+                    &mut out,
+                )?;
             }
             Command::BuildRoof {
                 floor,

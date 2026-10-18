@@ -160,7 +160,7 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
             continue;
         }
         mesh.begin(plane.id, Category::Roof);
-        roof_plane_mesh(plane, &mut mesh);
+        roof_plane_mesh(plane, doc.active_defaults().roof.fascia.mm(), &mut mesh);
         mesh.end();
     }
     for stair in doc.iter::<housecraft_model::Stair>() {
@@ -406,7 +406,7 @@ fn stairwell_holes(doc: &Document, floor: Id) -> (Vec<Vec<DVec2>>, Vec<Vec<DVec2
     (platform, ceiling)
 }
 
-fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, mesh: &mut Mesh) {
+fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, mesh: &mut Mesh) {
     let top: Vec<DVec3> = plane
         .outline
         .iter()
@@ -438,6 +438,25 @@ fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, mesh: &mut Mesh) {
             &[a, b, b - DVec3::Z * drop, a - DVec3::Z * drop],
             FRAME_COLOR,
         );
+    }
+    // Fascia: a trim board on the level edge(s) at the bottom of the plane.
+    let low = top.iter().map(|p| p.z).fold(f64::MAX, f64::min);
+    if fascia > 0.0 {
+        let centre = top.iter().fold(DVec2::ZERO, |s, p| s + p.truncate()) / n as f64;
+        for i in 0..n {
+            let (a, b) = (top[i], top[(i + 1) % n]);
+            if (a.z - low).abs() > 1.0 || (b.z - low).abs() > 1.0 || a.distance(b) < 10.0 {
+                continue;
+            }
+            let (a2, b2) = (a.truncate(), b.truncate());
+            let mut out = crate::math::perp((b2 - a2).normalize());
+            if out.dot((a2 + b2) / 2.0 - centre) < 0.0 {
+                out = -out;
+            }
+            let board = vec![a2, b2, b2 + out * 25.0, a2 + out * 25.0];
+            let depth = fascia.max(drop);
+            mesh.prism(&ccw(board), low - depth, low + 10.0, FRAME_COLOR);
+        }
     }
 }
 

@@ -298,6 +298,47 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ) {
                 ed.out.push(patch(id, json!({ "roof": { "overhang": l } })));
             }
+            Ed::label(ui, "Upper Roof");
+            let mut has_upper = w.roof.upper.is_some();
+            if ui
+                .checkbox(&mut has_upper, "Pitch change above a break")
+                .on_hover_text("For mansard, gambrel and Dutch gable roofs")
+                .changed()
+            {
+                let v = if has_upper {
+                    json!({ "break_height": Length::from_feet(4.0), "pitch": d.roof.pitch, "gable": false })
+                } else {
+                    serde_json::Value::Null
+                };
+                ed.out.push(patch(id, json!({ "roof": { "upper": v } })));
+            }
+            ui.end_row();
+            if let Some(u) = w.roof.upper {
+                if let Some(l) = ed.length(ui, "Break Height", "roof.upper.break", u.break_height) {
+                    ed.out.push(patch(
+                        id,
+                        json!({ "roof": { "upper": { "break_height": l } } }),
+                    ));
+                }
+                Ed::label(ui, "Upper Pitch");
+                let key = ed.key("roof.upper.pitch");
+                if let Some(text) = ed
+                    .bufs
+                    .text(ui, key, &crate::util::fmt_pitch(u.pitch), 80.0)
+                    && let Some(deg) = crate::util::parse_pitch(&text)
+                {
+                    ed.out
+                        .push(patch(id, json!({ "roof": { "upper": { "pitch": deg } } })));
+                }
+                ui.end_row();
+                Ed::label(ui, "");
+                let mut g = u.gable;
+                if ui.checkbox(&mut g, "Gable above the break").changed() {
+                    ed.out
+                        .push(patch(id, json!({ "roof": { "upper": { "gable": g } } })));
+                }
+                ui.end_row();
+            }
         }
         Object::Electrical(e) => {
             Ed::label(ui, "Type");

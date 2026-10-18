@@ -200,3 +200,109 @@ pub(crate) fn sync(doc: &mut Document, out: &mut Outcome) {
         regenerate(doc, f, out);
     }
 }
+
+/// Apply a whole-roof style to a floor's exterior walls and build the roof.
+pub(crate) fn set_style(
+    doc: &mut Document,
+    floor: Option<Id>,
+    style: RoofStyle,
+    pitch: Option<f64>,
+    lower_pitch: Option<f64>,
+    break_height: Option<Length>,
+    out: &mut Outcome,
+) -> Result<(), ApiError> {
+    let floor = roof_floor(doc, floor)?;
+    let pitch = pitch.unwrap_or(doc.active_defaults().roof.pitch);
+    if !(1.0..=85.0).contains(&pitch) {
+        return Err(ApiError::Invalid(
+            "pitch must be between 1 and 85 degrees".into(),
+        ));
+    }
+    let footprints = housecraft_geom::rooms::detect(doc, floor).footprints;
+    let Some(fp) = footprints.iter().max_by(|a, b| {
+        housecraft_geom::math::signed_area(a)
+            .abs()
+            .total_cmp(&housecraft_geom::math::signed_area(b).abs())
+    }) else {
+        return Err(ApiError::Invalid(
+            "the floor needs exterior walls that enclose an area before a roof can be built".into(),
+        ));
+    };
+    // Sides run along the footprint's long axis; ends are the walls across it.
+    let axis = housecraft_geom::math::long_axis(fp);
+    let across = housecraft_geom::math::perp(axis);
+    let (lo, hi) = fp
+        .iter()
+        .map(|p| p.dot(across))
+        .fold((f64::MAX, f64::MIN), |(a, b), x| (a.min(x), b.max(x)));
+    let half_width = (hi - lo) / 2.0;
+    let steep = lower_pitch.unwrap_or(match style {
+        RoofStyle::Mansard => 70.0,
+        _ => 60.0,
+    });
+    let break_at = break_height.map(|b| b.mm()).unwrap_or(match style {
+        // Dutch gable: the little gable is half the end's width.
+        RoofStyle::DutchGable => half_width / 2.0 * pitch.to_radians().tan(),
+        // Mansard and gambrel: the steep part climbs 40% of the way in.
+        _ => (half_width * 0.4 * steep.to_radians().tan()).min(Length::from_feet(6.0).mm()),
+    });
+    let walls: Vec<Wall> = doc
+        .walls_on(floor)
+        .filter(|w| w.renovation != Renovation::Demolish)
+        .cloned()
+        .collect();
+    // The shed slopes up from the side wall facing most nearly south.
+    let shed_low = walls
+        .iter()
+        .filter(|w| ((v2(w.end) - v2(w.start)).normalize_or_zero().dot(axis)).abs() > 0.7)
+        .min_by(|a, b| {
+            ((v2(a.start) + v2(a.end)) / 2.0)
+                .y
+                .total_cmp(&((v2(b.start) + v2(b.end)) / 2.0).y)
+        })
+        .map(|w| w.id);
+    for w in walls {
+        let dir = (v2(w.end) - v2(w.start)).normalize_or_zero();
+        let mid = (v2(w.start) + v2(w.end)) / 2.0;
+        // Interior walls (well inside the footprint) don't carry roof edges.
+        if !footprint_edge(fp, mid) {
+            continue;
+        }
+        let is_side = dir.dot(axis).abs() > 0.7;
+        let upper = |p: f64, gable: bool| {
+            Some(UpperRoof {
+                break_height: Length::from_mm(break_at.max(1.0)),
+                pitch: p,
+                gable,
+            })
+        };
+        let (gable, edge_pitch, up) = match style {
+            RoofStyle::Hip => (false, pitch, None),
+            RoofStyle::Gable => (!is_side, pitch, None),
+            RoofStyle::Shed => (Some(w.id) != shed_low, pitch, None),
+            RoofStyle::Mansard => (false, steep, upper(pitch, false)),
+            RoofStyle::Gambrel if is_side => (false, steep, upper(pitch, false)),
+            RoofStyle::Gambrel => (true, pitch, None),
+            RoofStyle::DutchGable if is_side => (false, pitch, None),
+            RoofStyle::DutchGable => (false, pitch, upper(pitch, true)),
+        };
+        if let Some(wall) = doc.get_mut::<Wall>(w.id) {
+            wall.roof.gable = gable;
+            wall.roof.pitch = Some(edge_pitch);
+            wall.roof.upper = up;
+            // A steep lower slope carried out a full eave overhang would drop
+            // far below the plate; mansards and gambrels keep a short one.
+            wall.roof.overhang =
+                (up.is_some() && edge_pitch > 50.0).then(|| Length::from_inches(4.0));
+            out.modified.push(w.id);
+        }
+    }
+    build(doc, Some(floor), true, out)
+}
+
+/// Whether `p` lies on the footprint outline (within a wall's thickness).
+fn footprint_edge(fp: &[DVec2], p: DVec2) -> bool {
+    (0..fp.len()).any(|i| {
+        housecraft_geom::math::distance_to_segment(p, fp[i], fp[(i + 1) % fp.len()]) < 250.0
+    })
+}

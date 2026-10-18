@@ -1055,3 +1055,31 @@ fn layered_platforms_and_new_ceilings() {
         .is_err()
     );
 }
+
+#[test]
+fn roof_styles_set_every_wall_and_build() {
+    for (style, gables) in [
+        ("hip", 0),
+        ("gable", 2),
+        ("gambrel", 4),
+        ("dutch_gable", 2),
+        ("mansard", 0),
+        ("shed", 3),
+    ] {
+        let mut s = boxed();
+        apply(
+            &mut s,
+            &format!(r#"[{{"op": "set_roof_style", "style": "{style}"}}]"#),
+        );
+        let doc = s.document();
+        let planes: Vec<&RoofPlane> = doc.iter::<RoofPlane>().collect();
+        let g = planes.iter().filter(|p| p.gable).count();
+        assert!(!planes.is_empty(), "{style}");
+        assert!(
+            g >= gables && (gables > 0 || g == 0),
+            "{style}: {g} gable planes"
+        );
+        let floor = doc.floors_by_elevation()[0];
+        assert!(floor.auto_roof, "{style} keeps rebuilding");
+    }
+}

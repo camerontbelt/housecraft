@@ -336,6 +336,55 @@ pub struct RoofEdge {
     /// Eave overhang beyond the wall's outer face (rake overhang for gables).
     #[serde(default)]
     pub overhang: Option<Length>,
+    /// A second pitch above a break (mansard, gambrel, Dutch gable).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub upper: Option<UpperRoof>,
+}
+
+/// The upper part of a roof that changes pitch partway up.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct UpperRoof {
+    /// Height above the wall plate where the pitch changes.
+    pub break_height: Length,
+    /// Pitch above the break, degrees.
+    pub pitch: f64,
+    /// Above the break this edge becomes a gable (Dutch gable).
+    #[serde(default)]
+    pub gable: bool,
+}
+
+/// Whole-roof styles that set every exterior wall's roof edge.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RoofStyle {
+    Hip,
+    Gable,
+    Shed,
+    Mansard,
+    Gambrel,
+    DutchGable,
+}
+
+impl RoofStyle {
+    pub const ALL: [RoofStyle; 6] = [
+        RoofStyle::Hip,
+        RoofStyle::Gable,
+        RoofStyle::Shed,
+        RoofStyle::Mansard,
+        RoofStyle::Gambrel,
+        RoofStyle::DutchGable,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            RoofStyle::Hip => "Hip",
+            RoofStyle::Gable => "Gable",
+            RoofStyle::Shed => "Shed",
+            RoofStyle::Mansard => "Mansard",
+            RoofStyle::Gambrel => "Gambrel",
+            RoofStyle::DutchGable => "Dutch Gable",
+        }
+    }
 }
 
 /// One plane of a roof, or the vertical gable infill above a gable wall.

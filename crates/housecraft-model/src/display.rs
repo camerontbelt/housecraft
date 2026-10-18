@@ -375,6 +375,13 @@ pub struct RoofDefaults {
     pub thickness: Length,
     /// Raised plate (energy heel) above the ceiling.
     pub heel: Length,
+    /// Depth of the fascia board along eaves (0 for none).
+    #[serde(default = "fascia_depth")]
+    pub fascia: Length,
+}
+
+fn fascia_depth() -> Length {
+    Length::from_inches(7.25)
 }
 
 impl Default for RoofDefaults {
@@ -385,6 +392,7 @@ impl Default for RoofDefaults {
             rake_overhang: Length::from_inches(12.0),
             thickness: Length::from_inches(8.0),
             heel: Length::ZERO,
+            fascia: fascia_depth(),
         }
     }
 }

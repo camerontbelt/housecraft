@@ -640,6 +640,19 @@ impl App {
                     if item(ui, "Build Roof", "Ctrl+R", true) {
                         self.build_roof();
                     }
+                    ui.menu_button("Roof Style", |ui| {
+                        for style in RoofStyle::ALL {
+                            if item(ui, style.name(), "", true) {
+                                self.run1(Command::SetRoofStyle {
+                                    floor: None,
+                                    style,
+                                    pitch: None,
+                                    lower_pitch: None,
+                                    break_height: None,
+                                });
+                            }
+                        }
+                    });
                     if item(ui, "Remove Roof", "", true) {
                         self.run1(Command::RemoveRoof { floor: None });
                     }
