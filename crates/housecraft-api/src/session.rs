@@ -52,7 +52,7 @@ impl Session {
             let out = cmd.apply(&mut scratch).map_err(|e| ApiError::InCommand {
                 index,
                 op: cmd.op(),
-                source: Box::new(e),
+                error: Box::new(e),
             })?;
             outcome.merge(out);
         }

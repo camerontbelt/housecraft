@@ -26,12 +26,13 @@ pub enum ApiError {
     },
     #[error("{0}")]
     Invalid(String),
-    #[error("command {index} ({op}) failed: {source}")]
+    /// The message already includes `error`, so it is deliberately not an error
+    /// `source` (that would print it twice in error chains).
+    #[error("command {index} ({op}) failed: {error}")]
     InCommand {
         index: usize,
         op: &'static str,
-        #[source]
-        source: Box<ApiError>,
+        error: Box<ApiError>,
     },
 }
 

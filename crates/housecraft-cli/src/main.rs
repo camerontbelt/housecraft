@@ -175,8 +175,10 @@ fn read_commands(source: &Path) -> Result<Vec<Command>> {
     } else {
         std::fs::read_to_string(source).with_context(|| format!("reading {}", source.display()))?
     };
+    // Windows PowerShell pipes and Notepad add a UTF-8 BOM.
+    let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
     let value: serde_json::Value =
-        serde_json::from_str(&text).context("commands are not valid JSON")?;
+        serde_json::from_str(text).context("commands are not valid JSON")?;
     let commands = if value.is_array() {
         serde_json::from_value(value)
     } else {

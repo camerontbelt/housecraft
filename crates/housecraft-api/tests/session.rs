@@ -92,11 +92,11 @@ fn wrong_kind_is_reported() {
             end: None,
         }])
         .unwrap_err();
-    let ApiError::InCommand { source, .. } = err else {
+    let ApiError::InCommand { error, .. } = err else {
         panic!()
     };
     assert_eq!(
-        *source,
+        *error,
         ApiError::WrongKind {
             id: floor,
             expected: ObjectKind::Wall,
