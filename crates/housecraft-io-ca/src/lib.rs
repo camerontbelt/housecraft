@@ -12,4 +12,6 @@
 //! decompiled code (see `docs/formats/README.md`).
 
 pub mod diff;
+pub mod plan;
 pub mod probe;
+pub mod undo;

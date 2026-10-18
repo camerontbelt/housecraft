@@ -137,10 +137,44 @@ Near 29260 are the doubles 120.0 (the 10' length), 109.125 (Chief's default 9'-1
 per entry), and four 89-byte entries each holding a pair such as (-3.4737, 123.4737). **[inf]** These are
 corner or extent records of the wall's 3D faces; they are not yet tied to fields.
 
-## 3. Object records (walls, rooms, doors, windows, …) — open
+## 3. Object records (walls, rooms, doors, windows, …) — walls decoded
 
-Next: find the wall record around the changed coordinate (other end point, thickness, wall type reference) by
-diffing snapshots 1→2 (wall created) and 2→3 (moved with a dimension).
+Tooling: `housecraft probe-diff A B` now prints each changed `f64` (old → new), and
+`housecraft ca-walls FILE` lists wall records (`housecraft_io_ca::plan`).
+
+**[obs]** Every undo snapshot holds two copies of the plan: the state before its action, then the state after it.
+In snapshot 27 ("before Edge Move") the first copy has the rectangle's bottom wall at y 283.75 and the second at
+y 265.75. Coordinates that "lag" by one snapshot (section 2) are the before copy.
+
+### 3.1 Wall record
+
+Located by shape (the surrounding object framing isn't understood yet). Offsets are relative to the start point:
+
+| Offset | Type | Field | Evidence |
+|---|---|---|---|
+| +0x00, +0x08 | f64 ×2 | start x, y (inches) | point-to-point move took (2, −2.53) → (−116, 38.47) |
+| +0x10, +0x18 | f64 ×2 | unit direction | (1, 0) and (0, 1) / (0, −1) / (−1, 0) on the four rectangle sides |
+| +0x20 | f64 | length | 120 for the 10' wall; start + direction × length = the other wall's start where walls join |
+| +0x71, +0x79 | f64 ×2 | first layer entry: heights | 109.125 (9'-1 1/8") for default walls; 113.73 after a room formed; 0 in one joined wall |
+| +0x81, +0x89 | f64 ×2 | first layer entry: span along the wall | starts at −thickness/2: −3.474 (6.9475" exterior), −2.25 (4.5" interior) |
+
+**[obs]** Layer entries repeat with an 89-byte (0x59) stride, four for the default exterior wall, each repeating the
+span. Walls in a closed rectangle are stored clockwise around their interior (end of one = start of the next).
+**[open]** wall type reference, per-layer materials, which side is exterior, the record header/id.
+
+### 3.2 Door and window records — hypotheses
+
+**[obs]** Both kinds share a run of five `f64`s:
+
+| | f64 0 | f64 1 | f64 2 | f64 3 | f64 4 |
+|---|---|---|---|---|---|
+| door (snapshot 15) | 117.24 | 30 | 0.625 | 80 | 80 |
+| window (snapshot 16) | 56.707 | 32 | 0.625 | 48 | 80 |
+
+**[inf]** f64 0 is the position along the host wall (the door's 117.24 exceeds the horizontal wall's 116.89, so it is
+on the vertical wall); f64 4 is the header height (6'-8"); f64 3 is the height. f64 1 is the width, or for the
+window possibly the sill height (80 − 48 = 32). The string "BM11 - Base Molding" sits nearby (casing / molding
+settings). Needs the actual sizes from Chief's door and window specification dialogs to confirm.
 
 ## 4. Next steps
 

@@ -20,6 +20,52 @@ pub struct Hunk {
     pub b_bytes: String,
     /// If both sides are 4 or 8 bytes, the values read as little-endian numbers.
     pub as_numbers: Option<String>,
+    /// For same-length changes: the `f64` fields (at any alignment) that
+    /// cover the changed bytes and read as plausible lengths on both sides.
+    /// Chief stores lengths as unaligned little-endian `f64` inches.
+    pub doubles: Vec<ChangedDouble>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ChangedDouble {
+    pub a_offset: usize,
+    pub b_offset: usize,
+    pub old: f64,
+    pub new: f64,
+}
+
+/// A value that could be a length, angle or ratio rather than random bytes.
+pub fn plausible(v: f64) -> bool {
+    v == 0.0 || (v.is_finite() && (1e-4..1e7).contains(&v.abs()))
+}
+
+/// `f64` windows overlapping `a[ao..ao+len]` / `b[bo..bo+len]` that change
+/// and are plausible on both sides.
+fn changed_doubles(a: &[u8], b: &[u8], ao: usize, bo: usize, len: usize) -> Vec<ChangedDouble> {
+    let mut out = Vec::new();
+    let first = ao.saturating_sub(7).max(ao.saturating_sub(bo.min(7)));
+    for start in first..ao + len {
+        let shift = start as isize - ao as isize;
+        let bs = bo as isize + shift;
+        if bs < 0 {
+            continue;
+        }
+        let bs = bs as usize;
+        let (Some(wa), Some(wb)) = (a.get(start..start + 8), b.get(bs..bs + 8)) else {
+            continue;
+        };
+        let old = f64::from_le_bytes(wa.try_into().expect("8 bytes"));
+        let new = f64::from_le_bytes(wb.try_into().expect("8 bytes"));
+        if old != new && plausible(old) && plausible(new) && (old != 0.0 || new != 0.0) {
+            out.push(ChangedDouble {
+                a_offset: start,
+                b_offset: bs,
+                old,
+                new,
+            });
+        }
+    }
+    out
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -127,6 +173,11 @@ pub fn diff(a: &[u8], b: &[u8], merge_gap: usize) -> DiffReport {
                     a_bytes: hex(&sa[..sa.len().min(64)]),
                     b_bytes: hex(&sb[..sb.len().min(64)]),
                     as_numbers: numbers(sa, sb),
+                    doubles: if al == bl {
+                        changed_doubles(a, b, ao, bo, al)
+                    } else {
+                        Vec::new()
+                    },
                 }
             })
             .collect(),
@@ -150,5 +201,11 @@ mod tests {
         assert_eq!(r.hunks.len(), 1);
         assert!(r.hunks[0].a_offset >= 4 && r.hunks[0].a_offset < 12);
         assert!(diff(&a, &a, 0).identical);
+        let d = &r.hunks[0].doubles;
+        assert!(
+            d.iter()
+                .any(|c| c.a_offset == 4 && c.old == 120.0 && c.new == 121.0),
+            "{d:?}"
+        );
     }
 }

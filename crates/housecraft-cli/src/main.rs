@@ -113,6 +113,16 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// List the walls found in a Chief Architect .plan or undo snapshot
+    /// (experimental: records are matched by shape while the format is decoded).
+    CaWalls {
+        path: PathBuf,
+        /// Undo snapshots: show every copy, not just the state after the action.
+        #[arg(long)]
+        all: bool,
+        #[arg(long)]
+        json: bool,
+    },
     /// Print the JSON Schema for command batches.
     Schema,
     /// Run the MCP server on stdin/stdout.
@@ -343,6 +353,16 @@ fn main() -> Result<()> {
         }
         Cmd::ProbeDiff { a, b, gap, json } => {
             let (da, db) = (std::fs::read(&a)?, std::fs::read(&b)?);
+            for (path, data) in [(&a, &da), (&b, &db)] {
+                if let Some(h) = housecraft_io_ca::undo::header(data) {
+                    eprintln!(
+                        "{}: undo snapshot v{:#06x}, before \"{}\"",
+                        path.display(),
+                        h.version,
+                        h.action
+                    );
+                }
+            }
             let (pa, pb) = (
                 housecraft_io_ca::probe::payloads(&da),
                 housecraft_io_ca::probe::payloads(&db),
@@ -389,7 +409,45 @@ fn main() -> Result<()> {
                         if let Some(n) = &h.as_numbers {
                             println!("    {n}");
                         }
+                        for c in &h.doubles {
+                            println!(
+                                "    f64 @{:#010x}: {} -> {} (Δ {})",
+                                c.a_offset,
+                                c.old,
+                                c.new,
+                                c.new - c.old
+                            );
+                        }
                     }
+                }
+            }
+        }
+        Cmd::CaWalls { path, all, json } => {
+            let data = std::fs::read(&path)?;
+            if let Some(h) = housecraft_io_ca::undo::header(&data) {
+                eprintln!("undo snapshot v{:#06x}, before \"{}\"", h.version, h.action);
+            }
+            let walls = if all {
+                housecraft_io_ca::plan::scan_walls(&data)
+            } else {
+                housecraft_io_ca::plan::latest_walls(&data)
+            };
+            if json {
+                print_json(&walls)?;
+            } else {
+                println!("{} wall(s)", walls.len());
+                for w in &walls {
+                    println!(
+                        "  @{:#08x}  ({:.3}, {:.3}) -> ({:.3}, {:.3})  len {:.3}\"  thick {:.4}\"  height {}",
+                        w.offset,
+                        w.start[0],
+                        w.start[1],
+                        w.end[0],
+                        w.end[1],
+                        w.length,
+                        w.thickness,
+                        w.height.map_or("?".to_string(), |h| format!("{h:.3}\""))
+                    );
                 }
             }
         }
