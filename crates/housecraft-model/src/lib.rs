@@ -455,6 +455,7 @@ mod tests {
             sill: Length::ZERO,
             hinge: Hinge::Left,
             swing_in: true,
+            open_percent: 0.0,
             layer: d.layers.doors,
         });
         assert_eq!(doc.validate().len(), 1, "{:?}", doc.validate());

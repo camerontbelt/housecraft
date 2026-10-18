@@ -157,6 +157,8 @@ impl Family {
                 Tool::Door(D::Sliding),
                 Tool::Door(D::Pocket),
                 Tool::Door(D::Bifold),
+                Tool::Door(D::Barn),
+                Tool::Door(D::Garage),
                 Tool::Door(D::Doorway),
             ],
             Family::Windows => &[
@@ -164,6 +166,8 @@ impl Family {
                 Tool::Window(W::SingleHung),
                 Tool::Window(W::Casement),
                 Tool::Window(W::Sliding),
+                Tool::Window(W::Awning),
+                Tool::Window(W::Hopper),
                 Tool::Window(W::Fixed),
             ],
             Family::Dimensions => &[Tool::Dimension, Tool::AngularDimension],
@@ -211,23 +215,12 @@ impl Tool {
     }
 
     pub fn name(self) -> &'static str {
-        use DoorStyle as D;
-        use WindowStyle as W;
         match self {
             Tool::Select => "Select Objects",
             Tool::ExteriorWall => "Straight Exterior Wall",
             Tool::InteriorWall => "Straight Interior Wall",
-            Tool::Door(D::Hinged) => "Hinged Door",
-            Tool::Door(D::Double) => "Double Door",
-            Tool::Door(D::Sliding) => "Sliding Door",
-            Tool::Door(D::Pocket) => "Pocket Door",
-            Tool::Door(D::Bifold) => "Bifold Door",
-            Tool::Door(D::Doorway) => "Doorway",
-            Tool::Window(W::DoubleHung) => "Double Hung Window",
-            Tool::Window(W::SingleHung) => "Single Hung Window",
-            Tool::Window(W::Casement) => "Casement Window",
-            Tool::Window(W::Sliding) => "Sliding Window",
-            Tool::Window(W::Fixed) => "Fixed Glass Window",
+            Tool::Door(d) => d.name(),
+            Tool::Window(w) => w.name(),
             Tool::Dimension => "Manual Dimension",
             Tool::AngularDimension => "Angular Dimension",
             Tool::Text => "Text",
@@ -259,6 +252,7 @@ impl Tool {
             Tool::Door(D::Pocket) => Icon::PocketDoor,
             Tool::Door(D::Bifold) => Icon::BifoldDoor,
             Tool::Door(D::Doorway) => Icon::Doorway,
+            Tool::Door(D::Garage | D::Barn) => Icon::SlidingDoor,
             Tool::Window(_) => Icon::Window,
             Tool::Dimension => Icon::Dimension,
             Tool::AngularDimension => Icon::AngularDimension,

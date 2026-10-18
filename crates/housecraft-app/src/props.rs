@@ -447,27 +447,10 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             egui::ComboBox::from_id_salt(ed.key("opening_kind"))
                 .selected_text(opening_name(kind))
                 .show_ui(ui, |ui| {
-                    let all = if kind.is_door() {
-                        [
-                            DoorStyle::Hinged,
-                            DoorStyle::Double,
-                            DoorStyle::Sliding,
-                            DoorStyle::Pocket,
-                            DoorStyle::Bifold,
-                            DoorStyle::Doorway,
-                        ]
-                        .map(OpeningKind::Door)
-                        .to_vec()
+                    let all: Vec<OpeningKind> = if kind.is_door() {
+                        DoorStyle::ALL.map(OpeningKind::Door).to_vec()
                     } else {
-                        [
-                            WindowStyle::DoubleHung,
-                            WindowStyle::SingleHung,
-                            WindowStyle::Casement,
-                            WindowStyle::Sliding,
-                            WindowStyle::Fixed,
-                        ]
-                        .map(OpeningKind::Window)
-                        .to_vec()
+                        WindowStyle::ALL.map(OpeningKind::Window).to_vec()
                     };
                     for k in all {
                         ui.selectable_value(&mut kind, k, opening_name(k));
@@ -513,6 +496,17 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     ed.out.push(patch(id, json!({ "swing_in": swing_in })));
                 }
                 ui.end_row();
+                if o.opening_kind != OpeningKind::Door(DoorStyle::Doorway) {
+                    Ed::label(ui, "Open in 3D");
+                    let mut pct = o.open_percent;
+                    let r = ui.add(egui::Slider::new(&mut pct, 0.0..=100.0).suffix("%"));
+                    // Commit once per drag (or per click/keyboard change), not every frame.
+                    if r.drag_stopped() || (r.changed() && !r.dragged()) {
+                        ed.out
+                            .push(patch(id, json!({ "open_percent": pct.round() })));
+                    }
+                    ui.end_row();
+                }
             }
             ed.pick::<Layer>(ui, "Layer", "layer", Some(o.layer), None);
         }
@@ -971,11 +965,8 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
 
 pub fn opening_name(k: OpeningKind) -> String {
     match k {
-        OpeningKind::Door(DoorStyle::Doorway) => "Doorway".into(),
-        OpeningKind::Door(s) => format!("{s:?} Door"),
-        OpeningKind::Window(WindowStyle::DoubleHung) => "Double Hung Window".into(),
-        OpeningKind::Window(WindowStyle::SingleHung) => "Single Hung Window".into(),
-        OpeningKind::Window(s) => format!("{s:?} Window"),
+        OpeningKind::Door(s) => s.name().into(),
+        OpeningKind::Window(s) => s.name().into(),
     }
 }
 

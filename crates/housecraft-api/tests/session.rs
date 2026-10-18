@@ -666,3 +666,53 @@ fn mirroring_an_l_stair_flips_its_turn_and_railings() {
     assert!(st.railing_left && !st.railing_right);
     assert!((st.direction.rem_euclid(360.0) - 90.0).abs() < 1e-9);
 }
+
+#[test]
+fn garage_doors_get_their_own_size_and_doors_open_in_3d() {
+    let mut s = boxed();
+    let wall = walls(&s)[0].id;
+    let out = apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_door", "wall": {w}, "position": "10'", "style": "garage"}},
+                {{"op": "add_door", "wall": {w}, "position": "22'"}}]"#,
+            w = wall.0
+        ),
+    );
+    let (garage, door) = (out.created[0], out.created[1]);
+    let g = s.document().get::<Opening>(garage).unwrap();
+    assert_eq!(g.width, Length::from_feet(16.0));
+    assert_eq!(g.height, Length::from_feet(7.0));
+    let d = s.document().get::<Opening>(door).unwrap().clone();
+
+    // How far the door's 3D geometry reaches from the wall centre line (x = 0).
+    let reach = |s: &Session| {
+        let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+        let part = mesh.parts.iter().find(|p| p.object == door).unwrap();
+        let idx = &mesh.indices
+            [part.first_index as usize..(part.first_index + part.index_count) as usize];
+        idx.iter()
+            .map(|i| mesh.positions[*i as usize][0].abs() as f64 * 1000.0)
+            .fold(0.0, f64::max)
+    };
+    let closed = reach(&s);
+    assert!(closed < 120.0, "closed door stays in the wall: {closed}");
+    s.apply(&[Command::Update {
+        id: door,
+        set: patch(serde_json::json!({ "open_percent": 100 })),
+    }])
+    .unwrap();
+    let open = reach(&s);
+    assert!(
+        (open - d.width.mm()).abs() < 150.0,
+        "fully open leaf sticks out about its width: {open}"
+    );
+    // Out-of-range values are rejected.
+    assert!(
+        s.apply(&[Command::Update {
+            id: door,
+            set: patch(serde_json::json!({ "open_percent": 150 })),
+        }])
+        .is_err()
+    );
+}

@@ -623,17 +623,10 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                 ui.label("Style");
                                 let mut s = d.door.style;
                                 egui::ComboBox::from_id_salt("door_style")
-                                    .selected_text(format!("{s:?}"))
+                                    .selected_text(s.name())
                                     .show_ui(ui, |ui| {
-                                        for v in [
-                                            DoorStyle::Hinged,
-                                            DoorStyle::Double,
-                                            DoorStyle::Sliding,
-                                            DoorStyle::Pocket,
-                                            DoorStyle::Bifold,
-                                            DoorStyle::Doorway,
-                                        ] {
-                                            ui.selectable_value(&mut s, v, format!("{v:?}"));
+                                        for v in DoorStyle::ALL {
+                                            ui.selectable_value(&mut s, v, v.name());
                                         }
                                     });
                                 if s != d.door.style {
@@ -669,16 +662,10 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                 ui.label("Style");
                                 let mut s = d.window.style;
                                 egui::ComboBox::from_id_salt("window_style")
-                                    .selected_text(format!("{s:?}"))
+                                    .selected_text(s.name())
                                     .show_ui(ui, |ui| {
-                                        for v in [
-                                            WindowStyle::DoubleHung,
-                                            WindowStyle::SingleHung,
-                                            WindowStyle::Casement,
-                                            WindowStyle::Sliding,
-                                            WindowStyle::Fixed,
-                                        ] {
-                                            ui.selectable_value(&mut s, v, format!("{v:?}"));
+                                        for v in WindowStyle::ALL {
+                                            ui.selectable_value(&mut s, v, v.name());
                                         }
                                     });
                                 if s != d.window.style {

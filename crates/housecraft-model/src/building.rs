@@ -226,6 +226,46 @@ pub enum DoorStyle {
     Bifold,
     /// A cased opening with no door leaf.
     Doorway,
+    /// Sectional overhead garage door.
+    Garage,
+    /// A surface-mounted sliding barn door, hung on the swing side.
+    Barn,
+}
+
+impl DoorStyle {
+    pub const ALL: [DoorStyle; 8] = [
+        DoorStyle::Hinged,
+        DoorStyle::Double,
+        DoorStyle::Sliding,
+        DoorStyle::Pocket,
+        DoorStyle::Bifold,
+        DoorStyle::Barn,
+        DoorStyle::Garage,
+        DoorStyle::Doorway,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            DoorStyle::Hinged => "Hinged Door",
+            DoorStyle::Double => "Double Door",
+            DoorStyle::Sliding => "Sliding Door",
+            DoorStyle::Pocket => "Pocket Door",
+            DoorStyle::Bifold => "Bifold Door",
+            DoorStyle::Doorway => "Doorway",
+            DoorStyle::Garage => "Garage Door",
+            DoorStyle::Barn => "Barn Door",
+        }
+    }
+
+    /// Typical width and height for styles that differ from a single door;
+    /// `None` uses the default set's door size.
+    pub fn typical_size(self) -> Option<(Length, Length)> {
+        match self {
+            DoorStyle::Double => Some((Length::from_inches(60.0), Length::from_inches(80.0))),
+            DoorStyle::Garage => Some((Length::from_feet(16.0), Length::from_feet(7.0))),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -236,6 +276,34 @@ pub enum WindowStyle {
     SingleHung,
     DoubleHung,
     Sliding,
+    /// Hinged at the top, opening outward.
+    Awning,
+    /// Hinged at the bottom, opening inward.
+    Hopper,
+}
+
+impl WindowStyle {
+    pub const ALL: [WindowStyle; 7] = [
+        WindowStyle::DoubleHung,
+        WindowStyle::SingleHung,
+        WindowStyle::Casement,
+        WindowStyle::Sliding,
+        WindowStyle::Awning,
+        WindowStyle::Hopper,
+        WindowStyle::Fixed,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            WindowStyle::Fixed => "Fixed Glass Window",
+            WindowStyle::Casement => "Casement Window",
+            WindowStyle::SingleHung => "Single Hung Window",
+            WindowStyle::DoubleHung => "Double Hung Window",
+            WindowStyle::Sliding => "Sliding Window",
+            WindowStyle::Awning => "Awning Window",
+            WindowStyle::Hopper => "Hopper Window",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -275,6 +343,9 @@ pub struct Opening {
     pub hinge: Hinge,
     /// Door swings toward the wall's right (interior) side.
     pub swing_in: bool,
+    /// How far the door is open in 3D, 0 (closed) to 100 (fully open).
+    #[serde(default)]
+    pub open_percent: f64,
     pub layer: Id,
 }
 

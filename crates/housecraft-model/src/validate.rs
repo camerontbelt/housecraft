@@ -134,6 +134,9 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
             }
             Object::Opening(o) => {
+                if !(0.0..=100.0).contains(&o.open_percent) {
+                    c.issue(id, "open_percent must be between 0 and 100");
+                }
                 c.reference(id, "wall", o.wall, K::Wall);
                 c.reference(id, "layer", o.layer, K::Layer);
                 c.positive(id, "width", o.width);

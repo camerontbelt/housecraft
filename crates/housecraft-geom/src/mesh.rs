@@ -8,7 +8,7 @@ use housecraft_model::{
 use crate::math::v2;
 use crate::rooms;
 use crate::triangulate::triangulate;
-use crate::walls::{WallGeom, opening_spans, wall_geoms};
+use crate::walls::{DoorSwing, WallGeom, opening_spans, wall_geoms};
 
 /// Flat-shaded triangles with per-vertex colour. Coordinates are metres,
 /// z up, so the viewer works with comfortable magnitudes.
@@ -566,6 +566,182 @@ fn span_of(g: &WallGeom, o: &Opening) -> (f64, f64) {
     spans.first().copied().unwrap_or((0.0, 0.0))
 }
 
+const DOOR_THICKNESS: f64 = 44.0;
+
+/// A flat leaf hinged at `pivot`, closed along `closed` (unit), swung `angle`
+/// radians toward `side`.
+#[allow(clippy::too_many_arguments)]
+fn swung_leaf(
+    pivot: DVec2,
+    closed: DVec2,
+    side: DVec2,
+    width: f64,
+    angle: f64,
+    z: (f64, f64),
+    mesh: &mut Mesh,
+) {
+    let d = closed * angle.cos() + side * angle.sin();
+    // Thickness goes back into the opening (away from the swing side) when closed.
+    let n = -side * angle.cos() + closed * angle.sin();
+    let quad = vec![
+        pivot,
+        pivot + d * width,
+        pivot + d * width + n * DOOR_THICKNESS,
+        pivot + n * DOOR_THICKNESS,
+    ];
+    mesh.prism(&ccw(quad), z.0, z.1, DOOR_COLOR);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn door_mesh(
+    g: &WallGeom,
+    o: &Opening,
+    style: housecraft_model::DoorStyle,
+    a: f64,
+    b: f64,
+    bottom: f64,
+    top: f64,
+    mesh: &mut Mesh,
+) {
+    use housecraft_model::DoorStyle as D;
+    let open = (o.open_percent / 100.0).clamp(0.0, 1.0);
+    let swing = DoorSwing::new(g, o, a, b);
+    let along = |from: f64, to: f64| if to > from { g.dir } else { -g.dir };
+    // A panel lying in the wall between u0..u1, offset `off` toward the left face.
+    let panel = |mesh: &mut Mesh, u0: f64, u1: f64, off: f64, z0: f64, z1: f64| {
+        let t = g.left * (DOOR_THICKNESS / 2.0);
+        let o = g.left * off;
+        let (c0, c1) = (g.center_at(u0) + o, g.center_at(u1) + o);
+        mesh.prism(
+            &ccw(vec![c0 - t, c1 - t, c1 + t, c0 + t]),
+            z0,
+            z1,
+            DOOR_COLOR,
+        );
+    };
+    let angle = open * std::f64::consts::FRAC_PI_2;
+    let inset = |u: f64| swing.face(g, u) - swing.side * DOOR_THICKNESS;
+    match style {
+        D::Doorway => {}
+        D::Hinged => {
+            let w = (swing.free_u - swing.hinge_u).abs();
+            let closed = along(swing.hinge_u, swing.free_u);
+            swung_leaf(
+                inset(swing.hinge_u),
+                closed,
+                swing.side,
+                w,
+                angle,
+                (bottom, top),
+                mesh,
+            );
+        }
+        D::Double => {
+            let mid = (a + b) / 2.0;
+            for (h, f) in [(a, mid), (b, mid)] {
+                swung_leaf(
+                    inset(h),
+                    along(h, f),
+                    swing.side,
+                    (f - h).abs(),
+                    angle,
+                    (bottom, top),
+                    mesh,
+                );
+            }
+        }
+        D::Sliding => {
+            let (lo, hi) = (a.min(b), a.max(b));
+            let half = (hi - lo) / 2.0;
+            let lap = (hi - lo) * 0.05;
+            let off = g.half * 0.3;
+            panel(mesh, lo, lo + half + lap, off, bottom, top);
+            // The operable panel slides behind the fixed one.
+            let shift = open * half;
+            panel(mesh, lo + half - lap - shift, hi - shift, -off, bottom, top);
+        }
+        D::Pocket => {
+            let (lo, hi) = (a.min(b), a.max(b));
+            let shift = open * (hi - lo);
+            panel(mesh, lo - shift, hi - shift, 0.0, bottom, top);
+        }
+        D::Bifold => {
+            // Two leaves per side; opening folds them back against each jamb.
+            let (lo, hi) = (a.min(b), a.max(b));
+            let w = (hi - lo) / 4.0;
+            for (hinge, dir) in [(lo, g.dir), (hi, -g.dir)] {
+                let p0 = inset(hinge);
+                let d1 = dir * angle.cos() + swing.side * angle.sin();
+                let p1 = p0 + d1 * w;
+                let d2 = dir * angle.cos() - swing.side * angle.sin();
+                for (p, d) in [(p0, d1), (p1, d2)] {
+                    let n = perp_of(d) * DOOR_THICKNESS;
+                    mesh.prism(
+                        &ccw(vec![p, p + d * w, p + d * w + n, p + n]),
+                        bottom,
+                        top,
+                        DOOR_COLOR,
+                    );
+                }
+            }
+        }
+        D::Garage => {
+            // Four sections that roll up the jambs and onto overhead tracks.
+            let height = top - bottom;
+            let sections = 4;
+            let h = height / sections as f64;
+            let lift = open * height;
+            let off = swing.side.dot(g.left) * (g.half - DOOR_THICKNESS / 2.0);
+            let gap = 5.0;
+            for i in 0..sections {
+                let s0 = i as f64 * h + lift;
+                if s0 + h <= height + 1e-6 {
+                    panel(mesh, a, b, off, bottom + s0 + gap, bottom + s0 + h - gap);
+                } else {
+                    // Horizontal, running into the room under the ceiling.
+                    let d = s0 - height;
+                    let (f0, f1) = (swing.face(g, a), swing.face(g, b));
+                    let side = swing.side;
+                    let quad = vec![
+                        f0 + side * (d + gap),
+                        f1 + side * (d + gap),
+                        f1 + side * (d + h - gap),
+                        f0 + side * (d + h - gap),
+                    ];
+                    mesh.prism(&ccw(quad), top, top + DOOR_THICKNESS, DOOR_COLOR);
+                }
+            }
+        }
+        D::Barn => {
+            let lap = 50.0;
+            let dir = if b > a { 1.0 } else { -1.0 };
+            let shift = open * (b - a);
+            let s = swing.side;
+            let (u0, u1) = (a - lap * dir + shift, b + lap * dir + shift);
+            let quad = vec![
+                swing.face(g, u0) + s * 15.0,
+                swing.face(g, u1) + s * 15.0,
+                swing.face(g, u1) + s * (15.0 + DOOR_THICKNESS),
+                swing.face(g, u0) + s * (15.0 + DOOR_THICKNESS),
+            ];
+            mesh.prism(&ccw(quad), bottom, top + 30.0, DOOR_COLOR);
+            // Track above the opening.
+            let t_end = b + (b - a) + lap * dir;
+            let track = vec![
+                swing.face(g, a - lap * dir) + s * 5.0,
+                swing.face(g, t_end) + s * 5.0,
+                swing.face(g, t_end) + s * 40.0,
+                swing.face(g, a - lap * dir) + s * 40.0,
+            ];
+            mesh.prism(&ccw(track), top + 30.0, top + 70.0, FRAME_COLOR);
+        }
+    }
+}
+
+fn perp_of(d: DVec2) -> DVec2 {
+    DVec2::new(-d.y, d.x)
+}
+
 fn opening_mesh(g: &WallGeom, o: &Opening, z0: f64, mesh: &mut Mesh) {
     let (a, b) = span_of(g, o);
     let bottom = z0 + o.sill.mm();
@@ -578,8 +754,7 @@ fn opening_mesh(g: &WallGeom, o: &Opening, z0: f64, mesh: &mut Mesh) {
         mesh.prism(&quad, z_lo, z_hi, color);
     };
     match o.opening_kind {
-        OpeningKind::Door(housecraft_model::DoorStyle::Doorway) => {}
-        OpeningKind::Door(_) => slab(mesh, 44.0, a, b, bottom, top, DOOR_COLOR),
+        OpeningKind::Door(style) => door_mesh(g, o, style, a, b, bottom, top, mesh),
         OpeningKind::Window(_) => {
             let frame = 50.0;
             slab(

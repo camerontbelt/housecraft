@@ -336,3 +336,32 @@ mod tests {
         assert!((signed_area(&g.outline()) - 1000.0 * 2.0 * g.half).abs() < 1e-6);
     }
 }
+
+/// How a door leaf hangs in its opening `a..b` (distances along the wall).
+#[derive(Debug, Clone, Copy)]
+pub struct DoorSwing {
+    /// Unit normal pointing to the side the door swings toward.
+    pub side: DVec2,
+    pub hinge_u: f64,
+    pub free_u: f64,
+}
+
+impl DoorSwing {
+    pub fn new(g: &WallGeom, o: &Opening, a: f64, b: f64) -> Self {
+        let side = if o.swing_in { -g.left } else { g.left };
+        // Seen from the swing side, "left" is perp(-side).
+        let viewer_left_is_plus_u = perp(-side).dot(g.dir) > 0.0;
+        let hinge_at_b = matches!(o.hinge, housecraft_model::Hinge::Left) == viewer_left_is_plus_u;
+        let (hinge_u, free_u) = if hinge_at_b { (b, a) } else { (a, b) };
+        DoorSwing {
+            side,
+            hinge_u,
+            free_u,
+        }
+    }
+
+    /// The point on the swing-side wall face at distance `u`.
+    pub fn face(&self, g: &WallGeom, u: f64) -> DVec2 {
+        g.center_at(u) + self.side * g.half
+    }
+}

@@ -1,7 +1,7 @@
 //! Floor plan drawing.
 
 use housecraft_geom::math::{arc_points, perp, shape_polylines};
-use housecraft_geom::walls::{WallGeom, opening_spans, wall_geoms};
+use housecraft_geom::walls::{DoorSwing, WallGeom, opening_spans, wall_geoms};
 use housecraft_geom::{DVec2, rooms, v2};
 use housecraft_model::*;
 use housecraft_units::format_area;
@@ -572,13 +572,10 @@ fn opening_symbol(g: &WallGeom, o: &Opening, stroke: Stroke, out: &mut Drawing) 
             line(g.center_at(a) - off, g.center_at(b) - off, stroke);
         }
         OpeningKind::Door(style) => {
-            // Swing side normal and the face the leaf hinges on.
-            let s = if o.swing_in { -g.left } else { g.left };
-            let face = |u: f64| g.center_at(u) + s * g.half;
-            // Seen from the swing side, "left" is perp(-s).
-            let viewer_left_is_plus_u = perp(-s).dot(g.dir) > 0.0;
-            let hinge_at_b = matches!(o.hinge, Hinge::Left) == viewer_left_is_plus_u;
-            let (hinge_u, free_u) = if hinge_at_b { (b, a) } else { (a, b) };
+            let swing = DoorSwing::new(g, o, a, b);
+            let s = swing.side;
+            let face = |u: f64| swing.face(g, u);
+            let (hinge_u, free_u) = (swing.hinge_u, swing.free_u);
             let leaf = |out_line: &mut dyn FnMut(DVec2, DVec2, Stroke), hu: f64, fu: f64| {
                 let h = face(hu);
                 let width = (fu - hu).abs();
@@ -640,6 +637,37 @@ fn opening_symbol(g: &WallGeom, o: &Opening, stroke: Stroke, out: &mut Drawing) 
                     for p in pts.windows(2) {
                         line(p[0], p[1], stroke);
                     }
+                }
+                DoorStyle::Garage => {
+                    // Closed sections across the opening, and the open door's
+                    // overhead track shown dashed inside.
+                    let t = g.left * (g.half * 0.2);
+                    line(g.center_at(a) + t, g.center_at(b) + t, stroke);
+                    line(g.center_at(a) - t, g.center_at(b) - t, stroke);
+                    let dashed = Stroke {
+                        dash: &[1.5, 1.0],
+                        ..thin
+                    };
+                    let depth = o.height.mm();
+                    line(face(a), face(a) + s * depth, dashed);
+                    line(face(b), face(b) + s * depth, dashed);
+                }
+                DoorStyle::Barn => {
+                    // A slab hung on the face, overlapping the jambs, plus the track.
+                    let lap = 50.0;
+                    let dir = if b > a { 1.0 } else { -1.0 };
+                    let (u0, u1) = (a - lap * dir, b + lap * dir);
+                    let p = [
+                        face(u0) + s * 15.0,
+                        face(u1) + s * 15.0,
+                        face(u1) + s * 55.0,
+                        face(u0) + s * 55.0,
+                    ];
+                    for i in 0..4 {
+                        line(p[i], p[(i + 1) % 4], stroke);
+                    }
+                    let track_end = b + (b - a) + lap * dir;
+                    line(face(u0) + s * 5.0, face(track_end) + s * 5.0, thin);
                 }
                 DoorStyle::Doorway => {}
             }
