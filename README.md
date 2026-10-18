@@ -3,7 +3,8 @@
 Residential design and construction documents in Rust: Windows, macOS, Linux and web,
 with a headless CLI and an MCP server so LLMs can design alongside you.
 
-See [docs/PLAN.md](docs/PLAN.md) for the feature inventory, architecture and roadmap.
+See [docs/PLAN.md](docs/PLAN.md) for architecture and roadmap, and [docs/FEATURES.md](docs/FEATURES.md) for the
+full feature backlog (parity target: Chief Architect Premier X18).
 This is milestone **M0**: the document model, command API, native file format, CLI and MCP server.
 There is no GUI or geometry yet.
 

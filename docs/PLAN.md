@@ -29,6 +29,10 @@ Those two interfaces are where we can beat the incumbent early.
 
 ## 2. Feature inventory (from the Premier product page and the X17 changelog)
 
+> **Superseded by [FEATURES.md](FEATURES.md)**, a 434-item backlog built from the X18 detailed feature list.
+> Its §1 lists architecture implications (default sets, layer sets, saved views, auto-rebuild with manual
+> override, scoping, object info fields) that M1 must design for. The summary below is kept for orientation.
+
 Priority tags: **P0** = MVP, **P1** = credible v1, **P2** = parity, **P3** = later.
 
 ### 2.1 Core modeling (BIM-lite object model)
