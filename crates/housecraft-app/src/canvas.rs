@@ -1098,10 +1098,65 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 }
             }
             Tool::Text => app.plan.text_prompt = Some((p, String::new())),
+            Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => {
+                if let Some(a) = pending.pop() {
+                    if a.distance(p) > 1.0 {
+                        let (a, b) = (pt(a), pt(p));
+                        let width =
+                            Length::from_inches(if tool == Tool::Insulation { 3.5 } else { 5.5 });
+                        commands.push(cad(
+                            floor,
+                            match tool {
+                                Tool::CrossBox => Shape::CrossBox { a, b, width },
+                                Tool::BlockingBox => Shape::BlockingBox { a, b, width },
+                                _ => Shape::Insulation { a, b, width },
+                            },
+                        ));
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
+            Tool::Callout => {
+                if let Some(target) = pending.pop() {
+                    commands.push(Command::AddCallout {
+                        floor,
+                        text: "Note".into(),
+                        at: pt(p),
+                        target: Some(pt(target)),
+                        marker: None,
+                    });
+                } else {
+                    pending.push(p);
+                }
+            }
+            Tool::Marker => {
+                let n = doc.iter::<Callout>().filter(|c| c.marker.is_some()).count() + 1;
+                commands.push(Command::AddCallout {
+                    floor,
+                    text: n.to_string(),
+                    at: pt(p),
+                    target: None,
+                    marker: Some(MarkerShape::Hexagon),
+                });
+            }
+            Tool::RevisionCloud => pending.push(p),
             Tool::Select => {}
         }
     }
 
+    if finish && tool == Tool::RevisionCloud {
+        let pending = std::mem::take(&mut app.plan.pending);
+        if pending.len() >= 3 {
+            commands.push(Command::AddRevisionCloud {
+                floor,
+                points: pending.iter().map(|p| pt(*p)).collect(),
+                arc: None,
+                label: None,
+            });
+        }
+        return;
+    }
     if finish && tool == Tool::RoofPlane {
         let pending = std::mem::take(&mut app.plan.pending);
         if pending.len() >= 3 {

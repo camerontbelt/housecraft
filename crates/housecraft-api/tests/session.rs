@@ -365,6 +365,8 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_schedule", "schedule_kind": "rooms", "position": [0,0]}},
                 {{"op": "add_section_view", "a": [0,"-5'"], "b": ["20'","-5'"]}},
                 {{"op": "add_layout", "name": "Sheets"}},
+                {{"op": "add_callout", "text": "note", "at": [0,0]}},
+                {{"op": "add_revision_cloud", "points": [[0,0],[1000,0],[0,1000]]}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
             w = wall.0
         ),

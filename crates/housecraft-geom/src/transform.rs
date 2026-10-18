@@ -130,6 +130,21 @@ impl Transform2 {
                 center: p(center),
                 radius: self.apply_length(*radius),
             },
+            Shape::CrossBox { a, b, width } => Shape::CrossBox {
+                a: p(a),
+                b: p(b),
+                width: self.apply_length(*width),
+            },
+            Shape::BlockingBox { a, b, width } => Shape::BlockingBox {
+                a: p(a),
+                b: p(b),
+                width: self.apply_length(*width),
+            },
+            Shape::Insulation { a, b, width } => Shape::Insulation {
+                a: p(a),
+                b: p(b),
+                width: self.apply_length(*width),
+            },
             Shape::Ellipse {
                 center,
                 rx,

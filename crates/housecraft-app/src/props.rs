@@ -473,6 +473,61 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             let caption = b.label.clone().unwrap_or_default();
             ed.text(ui, "Caption", "label", &caption);
         }
+        Object::Callout(c) => {
+            Ed::label(ui, "Text");
+            let key = ed.key("callout_text");
+            if let Some(t) = ed.bufs.multiline(ui, key, &c.text, 220.0) {
+                ed.out.push(patch(id, json!({ "text": t })));
+            }
+            ui.end_row();
+            Ed::label(ui, "Marker");
+            let names = ["None", "Circle", "Hexagon", "Square", "Diamond"];
+            let shapes = [
+                None,
+                Some(MarkerShape::Circle),
+                Some(MarkerShape::Hexagon),
+                Some(MarkerShape::Square),
+                Some(MarkerShape::Diamond),
+            ];
+            let current = shapes.iter().position(|m| *m == c.marker).unwrap_or(0);
+            let mut chosen = current;
+            egui::ComboBox::from_id_salt(ed.key("marker"))
+                .selected_text(names[current])
+                .show_ui(ui, |ui| {
+                    for (i, n) in names.iter().enumerate() {
+                        ui.selectable_value(&mut chosen, i, *n);
+                    }
+                });
+            if chosen != current {
+                ed.out.push(patch(id, json!({ "marker": shapes[chosen] })));
+            }
+            ui.end_row();
+            Ed::label(ui, "Leader");
+            let mut has = c.target.is_some();
+            if ui.checkbox(&mut has, "Arrow to a point").changed() {
+                let v = if has {
+                    json!(Point2(
+                        c.at.x() - Length::from_feet(3.0),
+                        c.at.y() - Length::from_feet(2.0)
+                    ))
+                } else {
+                    Value::Null
+                };
+                ed.out.push(patch(id, json!({ "target": v })));
+            }
+            ui.end_row();
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(c.layer), None);
+        }
+        Object::RevisionCloud(rc) => {
+            let label = rc.label.clone().unwrap_or_default();
+            ed.text(ui, "Revision", "label", &label);
+            if let Some(a) = ed.length(ui, "Scallop Size", "arc", rc.arc)
+                && a.mm() > 0.0
+            {
+                ed.out.push(patch(id, json!({ "arc": a })));
+            }
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(rc.layer), None);
+        }
         Object::Schedule(s) => {
             Ed::label(ui, "Schedule");
             ui.label(s.schedule_kind.name());
@@ -980,6 +1035,25 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                         }
                     }
                     if r.is_some() || s.is_some() || w.is_some() {
+                        ed.out.push(patch(id, json!({ "shape": shape })));
+                    }
+                }
+                Shape::CrossBox { a, b, width }
+                | Shape::BlockingBox { a, b, width }
+                | Shape::Insulation { a, b, width } => {
+                    Ed::label(ui, "Length");
+                    ui.label(fmt(doc, a.distance(*b)));
+                    ui.end_row();
+                    if let Some(w) = ed.length(ui, "Depth", "width", *width)
+                        && w.mm() > 0.0
+                    {
+                        let mut shape = c.shape.clone();
+                        if let Shape::CrossBox { width, .. }
+                        | Shape::BlockingBox { width, .. }
+                        | Shape::Insulation { width, .. } = &mut shape
+                        {
+                            *width = w;
+                        }
                         ed.out.push(patch(id, json!({ "shape": shape })));
                     }
                 }

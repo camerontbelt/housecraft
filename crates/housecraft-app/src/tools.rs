@@ -26,6 +26,12 @@ pub enum Tool {
     Spline,
     Point,
     RoofPlane,
+    CrossBox,
+    BlockingBox,
+    Insulation,
+    Callout,
+    Marker,
+    RevisionCloud,
     /// Draw an elevation or cross-section camera: click where you stand, then the direction to look.
     SectionLine(SectionKind),
     Stair(StairKind),
@@ -179,7 +185,7 @@ impl Family {
                 Tool::Window(W::Fixed),
             ],
             Family::Dimensions => &[Tool::Dimension, Tool::AngularDimension],
-            Family::Text => &[Tool::Text],
+            Family::Text => &[Tool::Text, Tool::Callout, Tool::Marker, Tool::RevisionCloud],
             Family::Cad => &[
                 Tool::Line,
                 Tool::Arrow,
@@ -190,6 +196,9 @@ impl Family {
                 Tool::Ellipse,
                 Tool::Spline,
                 Tool::Point,
+                Tool::CrossBox,
+                Tool::BlockingBox,
+                Tool::Insulation,
             ],
             Family::Roofs => &[Tool::RoofPlane],
             Family::Stairs => &[
@@ -236,7 +245,7 @@ impl Tool {
             Tool::Door(_) => Family::Doors,
             Tool::Window(_) => Family::Windows,
             Tool::Dimension | Tool::AngularDimension => Family::Dimensions,
-            Tool::Text => Family::Text,
+            Tool::Text | Tool::Callout | Tool::Marker | Tool::RevisionCloud => Family::Text,
             Tool::RoofPlane => Family::Roofs,
             Tool::SectionLine(_) => Family::Cameras,
             Tool::Stair(_) => Family::Stairs,
@@ -264,6 +273,12 @@ impl Tool {
             Tool::Ellipse => "Ellipse",
             Tool::Spline => "Spline",
             Tool::Point => "Point",
+            Tool::CrossBox => "Cross Box",
+            Tool::BlockingBox => "Blocking Box",
+            Tool::Insulation => "Batt Insulation",
+            Tool::Callout => "Callout",
+            Tool::Marker => "Marker",
+            Tool::RevisionCloud => "Revision Cloud",
             Tool::RoofPlane => "Roof Plane",
             Tool::SectionLine(SectionKind::Section) => "Cross Section / Elevation",
             Tool::SectionLine(SectionKind::Elevation) => "Elevation",
@@ -303,6 +318,8 @@ impl Tool {
             Tool::Ellipse => Icon::Ellipse,
             Tool::Spline => Icon::Spline,
             Tool::Point => Icon::Point,
+            Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => Icon::Box,
+            Tool::Callout | Tool::Marker | Tool::RevisionCloud => Icon::Text,
             Tool::RoofPlane => Icon::Roof,
             Tool::SectionLine(_) => Icon::Camera,
             Tool::Stair(_) => Icon::Stairs,
@@ -356,6 +373,14 @@ impl Tool {
             }
             Tool::Ellipse => "Click two opposite corners of the bounding box.",
             Tool::Point => "Click to place a point.",
+            Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => {
+                "Click the two ends along the member; set its depth in its specification."
+            }
+            Tool::Callout => "Click what the arrow points at, then where the note goes.",
+            Tool::Marker => "Click to place a numbered marker.",
+            Tool::RevisionCloud => {
+                "Click around the changed area; double-click or Enter to close the cloud."
+            }
             Tool::Stair(_) => {
                 "Click the bottom of the stair, then click in the direction it climbs."
             }

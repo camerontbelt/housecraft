@@ -551,6 +551,25 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         north_pointer(v2(at), doc.settings.north, &mut out);
     }
 
+    for c in doc.iter::<Callout>().filter(|c| c.floor == opts.floor) {
+        let look = ctx.look(c.layer);
+        if look.visible {
+            let style = ctx.text_style(None, &look);
+            let h = c.height.unwrap_or(style.height).mm();
+            callout(doc, c, h, look.stroke, &mut out);
+        }
+    }
+    for rc in doc
+        .iter::<RevisionCloud>()
+        .filter(|c| c.floor == opts.floor)
+    {
+        let look = ctx.look(rc.layer);
+        if look.visible {
+            let style = ctx.text_style(None, &look);
+            revision_cloud(rc, style.height.mm(), look.stroke, &mut out);
+        }
+    }
+
     for v in doc.iter::<SectionView>().filter(|v| v.floor == opts.floor) {
         let look = ctx.look(v.layer);
         if look.visible {
@@ -600,7 +619,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             Some(text.id),
             Prim::Text {
                 at: v2(text.position),
-                text: text.text.clone(),
+                text: crate::macros::expand(doc, &text.text),
                 height: text.height.unwrap_or(style.height).mm(),
                 rotation: text.rotation,
                 justify: text.justify,
@@ -866,6 +885,183 @@ fn section_callout(v: &SectionView, stroke: Stroke, text: f64, out: &mut Drawing
             ink: stroke.ink,
         },
     );
+}
+
+/// A callout: text, optionally inside a marker shape, with an optional
+/// leader arrow from the text to its target.
+fn callout(doc: &Document, c: &Callout, h: f64, stroke: Stroke, out: &mut Drawing) {
+    let id = Some(c.id);
+    let at = v2(c.at);
+    let text = crate::macros::expand(doc, &c.text);
+    let lines: Vec<&str> = text.lines().collect();
+    let w = lines
+        .iter()
+        .map(|l| crate::approx_text_width(l, h))
+        .fold(0.0, f64::max);
+    let line_h = h * 1.5;
+    let total_h = line_h * lines.len().max(1) as f64;
+    // Text reads away from the target so the leader meets its near edge.
+    let toward_left = c.target.is_some_and(|t| v2(t).x < at.x);
+    let justify = match (c.marker, toward_left) {
+        (Some(_), _) => Justify::Center,
+        (None, true) => Justify::Left,
+        (None, false) if c.target.is_some() => Justify::Right,
+        _ => Justify::Left,
+    };
+    for (i, l) in lines.iter().enumerate() {
+        out.push(
+            id,
+            Prim::Text {
+                at: at - DVec2::Y * (i as f64 * line_h - (total_h - line_h) / 2.0),
+                text: l.to_string(),
+                height: h,
+                rotation: 0.0,
+                justify,
+                middle: true,
+                bold: false,
+                ink: stroke.ink,
+            },
+        );
+    }
+    // Marker outline around the text.
+    let r = (w / 2.0).max(total_h / 2.0) + h * 0.6;
+    let outline: Option<Vec<DVec2>> = c.marker.map(|m| match m {
+        MarkerShape::Circle => arc_points(at, r, 0.0, 360.0),
+        MarkerShape::Hexagon => (0..6)
+            .map(|k| at + DVec2::from_angle((k as f64 * 60.0).to_radians()) * r * 1.1)
+            .collect(),
+        MarkerShape::Square => vec![
+            at + DVec2::new(-r, -r),
+            at + DVec2::new(r, -r),
+            at + DVec2::new(r, r),
+            at + DVec2::new(-r, r),
+        ],
+        MarkerShape::Diamond => vec![
+            at + DVec2::new(0.0, -r * 1.3),
+            at + DVec2::new(r * 1.3, 0.0),
+            at + DVec2::new(0.0, r * 1.3),
+            at + DVec2::new(-r * 1.3, 0.0),
+        ],
+    });
+    if let Some(points) = &outline {
+        out.push(
+            id,
+            Prim::Polyline {
+                points: points.clone(),
+                closed: true,
+                stroke,
+            },
+        );
+    }
+    if let Some(t) = c.target {
+        let t = v2(t);
+        // Leave from the marker's edge, or the text's near side.
+        let start = match c.marker {
+            Some(_) => at + (t - at).normalize_or_zero() * r,
+            None if toward_left => at - DVec2::X * h * 0.4,
+            None if c.target.is_some() => at + DVec2::X * h * 0.4,
+            None => at,
+        };
+        out.push(
+            id,
+            Prim::Polyline {
+                points: vec![start, t],
+                closed: false,
+                stroke,
+            },
+        );
+        let dir = (start - t).normalize_or_zero();
+        let back = t + dir * h * 1.2;
+        let side = perp(dir) * h * 0.35;
+        out.push(
+            id,
+            Prim::Polygon {
+                points: vec![t, back + side, back - side],
+                fill: Fill::Ink(stroke.ink),
+            },
+        );
+    }
+}
+
+/// A revision cloud: outward scallops along a closed outline, with the
+/// revision label in a triangle at its first corner.
+fn revision_cloud(rc: &RevisionCloud, h: f64, stroke: Stroke, out: &mut Drawing) {
+    let id = Some(rc.id);
+    let mut pts: Vec<DVec2> = rc.points.iter().map(|p| v2(*p)).collect();
+    if housecraft_geom::math::signed_area(&pts) < 0.0 {
+        pts.reverse();
+    }
+    let arc = rc.arc.mm().max(10.0);
+    let mut path = Vec::new();
+    for i in 0..pts.len() {
+        let (a, b) = (pts[i], pts[(i + 1) % pts.len()]);
+        let len = a.distance(b);
+        let n = (len / arc).round().max(1.0) as usize;
+        // Counter-clockwise outline: outward is to the right of each edge.
+        let outward = -perp((b - a).normalize_or_zero());
+        for k in 0..n {
+            let (p, q) = (
+                a.lerp(b, k as f64 / n as f64),
+                a.lerp(b, (k + 1) as f64 / n as f64),
+            );
+            let mid = (p + q) / 2.0;
+            let half = p.distance(q) / 2.0;
+            // A semicircle bulging outward from p to q.
+            let start = (p - mid).to_angle().to_degrees();
+            let mut sweep = -180.0;
+            if outward.dot(DVec2::from_angle((start + sweep / 2.0).to_radians())) < 0.0 {
+                sweep = 180.0;
+            }
+            let seg = arc_points(mid, half, start, sweep);
+            path.extend(seg);
+        }
+    }
+    if path.len() > 2 {
+        out.push(
+            id,
+            Prim::Polyline {
+                points: path,
+                closed: true,
+                stroke,
+            },
+        );
+    }
+    if let (Some(label), Some(&corner)) = (&rc.label, pts.first()) {
+        let s = h * 1.4;
+        let tri = vec![
+            corner + DVec2::new(-s, -s * 0.6),
+            corner + DVec2::new(s, -s * 0.6),
+            corner + DVec2::new(0.0, s * 1.1),
+        ];
+        out.push(
+            id,
+            Prim::Polygon {
+                points: tri.clone(),
+                fill: Fill::Paper,
+            },
+        );
+        out.push(
+            id,
+            Prim::Polyline {
+                points: tri,
+                closed: true,
+                stroke,
+            },
+        );
+        out.push(
+            id,
+            Prim::Text {
+                at: corner,
+                text: label.clone(),
+                height: h * 0.8,
+                rotation: 0.0,
+                justify: Justify::Center,
+                middle: true,
+                bold: true,
+                ink: stroke.ink,
+            },
+        );
+    }
 }
 
 /// A north pointer: a circle with a half-filled arrow and an "N" past its tip.

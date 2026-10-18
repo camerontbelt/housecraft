@@ -187,6 +187,13 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
                 Shape::Circle { radius, .. } => format!("circle r {}", fmt(*radius)),
                 Shape::Ellipse { .. } => "ellipse".to_string(),
                 Shape::Spline { points, .. } => format!("spline, {} points", points.len()),
+                Shape::CrossBox { a, b, .. } => format!("cross box {} long", fmt(a.distance(*b))),
+                Shape::BlockingBox { a, b, .. } => {
+                    format!("blocking box {} long", fmt(a.distance(*b)))
+                }
+                Shape::Insulation { a, b, .. } => {
+                    format!("insulation {} long", fmt(a.distance(*b)))
+                }
             };
             format!("{shape} on {}", name_of(c.layer))
         }
@@ -226,6 +233,11 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
             crate::layouts::source_name(doc, &b.source),
             doc.get::<Layout>(b.layout).map_or("?", |l| l.name.as_str()),
             b.page + 1
+        ),
+        Object::Callout(c) => format!("callout {:?}", c.text),
+        Object::RevisionCloud(c) => format!(
+            "revision cloud{}",
+            c.label.as_ref().map_or(String::new(), |l| format!(" {l}"))
         ),
         Object::Stair(s) => {
             let shape = match s.shape {

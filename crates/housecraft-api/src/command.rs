@@ -197,6 +197,23 @@ pub enum Command {
         scale: Option<f64>,
         label: Option<String>,
     },
+    /// Add a note with an optional leader arrow to `target`, or a marker
+    /// (the text inside a circle, hexagon, square or diamond).
+    AddCallout {
+        floor: Option<Id>,
+        text: String,
+        at: Point2,
+        target: Option<Point2>,
+        marker: Option<MarkerShape>,
+    },
+    /// Add a revision cloud around `points`; `label` defaults to the next
+    /// revision number.
+    AddRevisionCloud {
+        floor: Option<Id>,
+        points: Vec<Point2>,
+        arc: Option<Length>,
+        label: Option<String>,
+    },
     /// Exchange everything drawn on two floors (walls, rooms, CAD, text...),
     /// keeping the floors' own heights.
     SwapFloors { a: Id, b: Id },
@@ -519,6 +536,8 @@ impl Command {
             Command::RemoveRoof { .. } => "remove_roof",
             Command::AddRoofPlane { .. } => "add_roof_plane",
             Command::AddStair { .. } => "add_stair",
+            Command::AddCallout { .. } => "add_callout",
+            Command::AddRevisionCloud { .. } => "add_revision_cloud",
             Command::AddLayout { .. } => "add_layout",
             Command::AddLayoutPage { .. } => "add_layout_page",
             Command::SendToLayout { .. } => "send_to_layout",
@@ -1037,6 +1056,45 @@ impl Command {
                     label.clone(),
                 )?;
                 out.created.push(b);
+            }
+            Command::AddCallout {
+                floor,
+                text,
+                at,
+                target,
+                marker,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                out.created.push(doc.insert(Callout {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.text,
+                    text: text.clone(),
+                    at: *at,
+                    target: *target,
+                    marker: *marker,
+                    height: None,
+                }));
+            }
+            Command::AddRevisionCloud {
+                floor,
+                points,
+                arc,
+                label,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                if points.len() < 3 {
+                    return invalid("a revision cloud needs at least three points");
+                }
+                let next = doc.count::<RevisionCloud>() + 1;
+                out.created.push(doc.insert(RevisionCloud {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.text,
+                    points: points.clone(),
+                    arc: arc.unwrap_or(Length::from_inches(18.0)),
+                    label: Some(label.clone().unwrap_or_else(|| next.to_string())),
+                }));
             }
             Command::SwapFloors { a, b } => {
                 expect::<Floor>(doc, *a)?;

@@ -290,6 +290,15 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                         c.positive(id, "radius", *radius);
                         c.finite(id, "center", &center.mm());
                     }
+                    Shape::CrossBox { a, b, width }
+                    | Shape::BlockingBox { a, b, width }
+                    | Shape::Insulation { a, b, width } => {
+                        c.positive(id, "width", *width);
+                        c.finite(id, "a/b", &[a.mm()[0], a.mm()[1], b.mm()[0], b.mm()[1]]);
+                        if a.distance(*b).mm() < 1.0 {
+                            c.issue(id, "a detail shape needs two distinct points");
+                        }
+                    }
                     Shape::Ellipse {
                         center,
                         rx,
@@ -487,6 +496,27 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     }
                     _ => {}
                 }
+            }
+            Object::Callout(co) => {
+                c.reference(id, "floor", co.floor, K::Floor);
+                c.reference(id, "layer", co.layer, K::Layer);
+                c.finite(id, "at", &co.at.mm());
+                if let Some(t) = co.target {
+                    c.finite(id, "target", &t.mm());
+                }
+                if let Some(h) = co.height {
+                    c.positive(id, "height", h);
+                }
+            }
+            Object::RevisionCloud(rc) => {
+                c.reference(id, "floor", rc.floor, K::Floor);
+                c.reference(id, "layer", rc.layer, K::Layer);
+                c.positive(id, "arc", rc.arc);
+                if rc.points.len() < 3 {
+                    c.issue(id, "a revision cloud needs at least three points");
+                }
+                let flat: Vec<f64> = rc.points.iter().flat_map(|p| p.mm()).collect();
+                c.finite(id, "points", &flat);
             }
             Object::Camera(cam) => {
                 c.reference(id, "layer_set", cam.layer_set, K::LayerSet);

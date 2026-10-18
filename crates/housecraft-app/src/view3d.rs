@@ -34,6 +34,28 @@ struct Uniforms {
     light: [f32; 4],
     /// x: shadows on (1/0); y: sun strength (0 below the horizon).
     params: [f32; 4],
+    /// Cutaway plane: fragments with dot(xyz, p) > w are discarded (when params.z is 1).
+    clip: [f32; 4],
+}
+
+/// Live cross-section cutaway in the 3D view.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Cutaway {
+    Off,
+    FrontToBack,
+    SideToSide,
+    TopDown,
+}
+
+impl Cutaway {
+    fn name(self) -> &'static str {
+        match self {
+            Cutaway::Off => "No cutaway",
+            Cutaway::FrontToBack => "Cut front to back",
+            Cutaway::SideToSide => "Cut side to side",
+            Cutaway::TopDown => "Cut from the top",
+        }
+    }
 }
 
 /// Shadow map resolution (square).
@@ -41,7 +63,7 @@ const SHADOW_SIZE: u32 = 2048;
 const SHADOW_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
 const SHADER: &str = r#"
-struct U { view_proj: mat4x4<f32>, light_vp: mat4x4<f32>, light: vec4<f32>, params: vec4<f32> };
+struct U { view_proj: mat4x4<f32>, light_vp: mat4x4<f32>, light: vec4<f32>, params: vec4<f32>, clip: vec4<f32> };
 @group(0) @binding(0) var<uniform> u: U;
 @group(1) @binding(0) var shadow_map: texture_depth_2d;
 @group(1) @binding(1) var shadow_sampler: sampler_comparison;
@@ -85,6 +107,10 @@ fn sunlit(world: vec3<f32>) -> f32 {
     return sum / 9.0;
 }
 @fragment fn fs(i: VOut) -> @location(0) vec4<f32> {
+    // Ground vertices carry alpha 0: the cutaway never removes the ground.
+    if (u.params.z > 0.5 && i.color.a > 0.5 && dot(u.clip.xyz, i.world) > u.clip.w) {
+        discard;
+    }
     let n = normalize(i.normal);
     let l = normalize(u.light.xyz);
     let diffuse = abs(dot(n, l)) * sunlit(i.world) * u.params.y;
@@ -426,6 +452,9 @@ pub struct View3d {
     pub fit_requested: bool,
     /// Mesh categories not drawn (ceilings are hidden in overviews so rooms stay visible).
     pub hidden: Vec<Category>,
+    pub cutaway: Cutaway,
+    /// How far the cutaway has sliced through, 0 to 1.
+    pub cut: f32,
     mesh: Option<(u64, Mesh)>,
     gpu: Option<GpuMesh>,
     gpu_key: u64,
@@ -443,6 +472,8 @@ impl Default for View3d {
             walk: false,
             fit_requested: true,
             hidden: vec![Category::Ceiling],
+            cutaway: Cutaway::Off,
+            cut: 0.5,
             mesh: None,
             gpu: None,
             gpu_key: 0,
@@ -620,7 +651,8 @@ fn to_gpu(
         let pad = ((hi - lo).length() * 0.6).max(10.0);
         let z = grade_z.unwrap_or(lo.z - 0.02);
         let base = vertices.len() as u32;
-        let g = [0.62, 0.68, 0.55, 1.0];
+        // Alpha 0 marks the ground for the shader (it is drawn opaque).
+        let g = [0.62, 0.68, 0.55, 0.0];
         for (x, y) in [
             (lo.x - pad, lo.y - pad),
             (hi.x + pad, lo.y - pad),
@@ -843,6 +875,16 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     let bounds = v.mesh.as_ref().and_then(|(_, m)| mesh_bounds(m));
     let shadows = doc.settings.sun.shadows && strength > 0.0 && bounds.is_some();
     let light_vp = bounds.map_or(Mat4::IDENTITY, |(lo, hi)| light_view_proj(light, lo, hi));
+    // Cutaway: slice the model away from one side as the slider moves.
+    let clip = bounds.and_then(|(lo, hi)| {
+        let t = v.cut.clamp(0.0, 1.0);
+        match v.cutaway {
+            Cutaway::Off => None,
+            Cutaway::FrontToBack => Some([0.0, -1.0, 0.0, -(lo.y + t * (hi.y - lo.y))]),
+            Cutaway::SideToSide => Some([-1.0, 0.0, 0.0, -(lo.x + t * (hi.x - lo.x))]),
+            Cutaway::TopDown => Some([0.0, 0.0, 1.0, hi.z - t * (hi.z - lo.z)]),
+        }
+    });
     painter.add(egui_wgpu::Callback::new_paint_callback(
         rect,
         Paint3d {
@@ -853,7 +895,13 @@ pub fn show(app: &mut App, ui: &mut Ui) {
                 view_proj: vp.to_cols_array_2d(),
                 light_vp: light_vp.to_cols_array_2d(),
                 light: [light.x, light.y, light.z, 0.0],
-                params: [if shadows { 1.0 } else { 0.0 }, strength, 0.0, 0.0],
+                params: [
+                    if shadows { 1.0 } else { 0.0 },
+                    strength,
+                    if clip.is_some() { 1.0 } else { 0.0 },
+                    0.0,
+                ],
+                clip: clip.unwrap_or([0.0; 4]),
             },
         },
     ));
@@ -872,6 +920,23 @@ fn overlay(app: &mut App, ui: &mut Ui, rect: Rect) {
             ui.horizontal(|ui| {
                 ui.selectable_value(&mut v.ortho, false, "Perspective");
                 ui.selectable_value(&mut v.ortho, true, "Orthographic");
+                ui.separator();
+                egui::ComboBox::from_id_salt("cutaway")
+                    .selected_text(v.cutaway.name())
+                    .width(110.0)
+                    .show_ui(ui, |ui| {
+                        for c in [
+                            Cutaway::Off,
+                            Cutaway::FrontToBack,
+                            Cutaway::SideToSide,
+                            Cutaway::TopDown,
+                        ] {
+                            ui.selectable_value(&mut v.cutaway, c, c.name());
+                        }
+                    });
+                if v.cutaway != Cutaway::Off {
+                    ui.add(egui::Slider::new(&mut v.cut, 0.0..=1.0).show_value(false));
+                }
                 ui.separator();
                 if ui
                     .selectable_label(v.walk, "Walk")

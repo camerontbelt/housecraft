@@ -143,6 +143,8 @@ objects! {
     SectionView => "section_view",
     Layout => "layout",
     LayoutBox => "layout_box",
+    Callout => "callout",
+    RevisionCloud => "revision_cloud",
 }
 
 impl fmt::Display for ObjectKind {
@@ -165,6 +167,8 @@ impl ObjectKind {
                 | ObjectKind::Stair
                 | ObjectKind::Electrical
                 | ObjectKind::Schedule
+                | ObjectKind::Callout
+                | ObjectKind::RevisionCloud
         )
     }
 }
@@ -358,6 +362,8 @@ impl Document {
             Object::Electrical(e) => Some(e.floor),
             Object::Schedule(s) => Some(s.floor),
             Object::SectionView(v) => Some(v.floor),
+            Object::Callout(c) => Some(c.floor),
+            Object::RevisionCloud(c) => Some(c.floor),
             _ => None,
         }
     }
@@ -376,6 +382,8 @@ impl Document {
             Object::Electrical(e) => Some(e.layer),
             Object::Schedule(s) => Some(s.layer),
             Object::SectionView(v) => Some(v.layer),
+            Object::Callout(c) => Some(c.layer),
+            Object::RevisionCloud(c) => Some(c.layer),
             _ => None,
         }
     }

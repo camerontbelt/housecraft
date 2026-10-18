@@ -337,3 +337,64 @@ fn layouts_place_live_views_on_pages() {
     s.apply(&[Command::Delete { ids: vec![layout] }]).unwrap();
     assert_eq!(s.document().iter::<LayoutBox>().count(), 0);
 }
+
+#[test]
+fn annotations_and_detailing() {
+    let mut s = house();
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "add_callout", "text": "Verify in field", "at": ["50'","20'"], "target": ["40'","15'"]},
+            {"op": "add_callout", "text": "3", "at": ["45'","5'"], "marker": "hexagon"},
+            {"op": "add_revision_cloud", "points": [["2'","2'"],["14'","2'"],["14'","10'"],["2'","10'"]]},
+            {"op": "add_cad", "shape": {"shape": "cross_box", "a": [0,"-3'"], "b": ["10'","-3'"], "width": "5.5\""}},
+            {"op": "add_cad", "shape": {"shape": "insulation", "a": [0,"-5'"], "b": ["10'","-5'"], "width": "3.5\""}},
+            {"op": "add_text", "position": ["2'","-8'"], "text": "{project} plan"}]"#,
+    )
+    .unwrap();
+    let out = s.apply(&cmds).unwrap();
+    let doc = s.document();
+    let d = plan(doc, &PlanOptions::first(doc).unwrap());
+    let texts: Vec<&str> = d
+        .items
+        .iter()
+        .filter_map(|i| match &i.prim {
+            Prim::Text { text, .. } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert!(texts.contains(&"Verify in field"));
+    assert!(
+        texts.contains(&"Test House plan"),
+        "macros expand in plan text"
+    );
+    assert!(
+        texts.contains(&"1"),
+        "first revision cloud is numbered 1: {texts:?}"
+    );
+    // The callout's arrowhead sits at its target.
+    let callout = out.created[0];
+    let target = housecraft_api::geom::DVec2::new(40.0 * 304.8, 15.0 * 304.8);
+    assert!(d.items.iter().any(|i| i.object == Some(callout)
+        && matches!(&i.prim, Prim::Polygon { points, .. } if points[0].distance(target) < 1e-6)));
+    // The cloud is scalloped: many more points than its four corners.
+    let cloud = out.created[2];
+    let scallops = d
+        .items
+        .iter()
+        .filter(|i| i.object == Some(cloud))
+        .filter_map(|i| match &i.prim {
+            Prim::Polyline { points, .. } => Some(points.len()),
+            _ => None,
+        })
+        .max()
+        .unwrap();
+    assert!(scallops > 40, "{scallops}");
+    // A cross box draws its outline and both diagonals.
+    let cross = out.created[3];
+    assert_eq!(
+        d.items
+            .iter()
+            .filter(|i| i.object == Some(cross) && matches!(i.prim, Prim::Polyline { .. }))
+            .count(),
+        3
+    );
+}

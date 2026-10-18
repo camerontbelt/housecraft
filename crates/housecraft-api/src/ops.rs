@@ -371,6 +371,17 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             }
             Object::SectionView(v)
         }
+        Object::Callout(c) => {
+            let mut c = c.clone();
+            c.at = t.apply_point(c.at);
+            c.target = c.target.map(|p| t.apply_point(p));
+            Object::Callout(c)
+        }
+        Object::RevisionCloud(c) => {
+            let mut c = c.clone();
+            c.points = c.points.iter().map(|p| t.apply_point(*p)).collect();
+            Object::RevisionCloud(c)
+        }
         Object::RoofPlane(r) => {
             let mut r = r.clone();
             for p in r.outline.iter_mut() {
@@ -915,6 +926,8 @@ pub(crate) fn insert_objects(
                 Object::Stair(s) => s.floor = f,
                 Object::Electrical(e) => e.floor = f,
                 Object::SectionView(v) => v.floor = f,
+                Object::Callout(c) => c.floor = f,
+                Object::RevisionCloud(c) => c.floor = f,
                 Object::Schedule(s) => s.floor = f,
                 _ => {}
             }
@@ -958,6 +971,8 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::Stair(s) => &mut s.floor,
             Object::Electrical(e) => &mut e.floor,
             Object::SectionView(v) => &mut v.floor,
+            Object::Callout(c) => &mut c.floor,
+            Object::RevisionCloud(c) => &mut c.floor,
             Object::Schedule(s) => &mut s.floor,
             _ => continue,
         };

@@ -51,6 +51,25 @@ pub enum Shape {
         #[serde(default)]
         closed: bool,
     },
+    /// Detailing: a box along `a`→`b`, `width` across, with both diagonals
+    /// (a continuous framing member in section).
+    CrossBox {
+        a: Point2,
+        b: Point2,
+        width: Length,
+    },
+    /// Detailing: a box with one diagonal (blocking / a discontinuous member).
+    BlockingBox {
+        a: Point2,
+        b: Point2,
+        width: Length,
+    },
+    /// Detailing: batt insulation symbol along `a`→`b`, `width` deep.
+    Insulation {
+        a: Point2,
+        b: Point2,
+        width: Length,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -192,4 +211,48 @@ pub struct Schedule {
     /// Text height; `None` uses the layer's or default text style.
     #[serde(default)]
     pub text_height: Option<Length>,
+}
+
+/// Shape drawn around a marker's text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MarkerShape {
+    Circle,
+    Hexagon,
+    Square,
+    Diamond,
+}
+
+/// A note with an optional leader arrow to what it points at, or a marker
+/// (text inside a shape, e.g. a keyed note or detail number).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Callout {
+    pub id: Id,
+    pub floor: Id,
+    pub layer: Id,
+    pub text: String,
+    /// Where the text sits.
+    pub at: Point2,
+    /// Where the leader arrow points; no leader when `None`.
+    #[serde(default)]
+    pub target: Option<Point2>,
+    #[serde(default)]
+    pub marker: Option<MarkerShape>,
+    #[serde(default)]
+    pub height: Option<Length>,
+}
+
+/// A revision cloud: a scalloped outline around changed work, tagged with
+/// the revision number in a triangle.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct RevisionCloud {
+    pub id: Id,
+    pub floor: Id,
+    pub layer: Id,
+    /// Closed outline.
+    pub points: Vec<Point2>,
+    /// Length of each scallop.
+    pub arc: Length,
+    #[serde(default)]
+    pub label: Option<String>,
 }

@@ -279,7 +279,47 @@ pub fn shape_polylines(shape: &Shape) -> Vec<(Vec<DVec2>, bool)> {
             let pts: Vec<DVec2> = points.iter().map(|p| v2(*p)).collect();
             vec![(spline_points(&pts, *closed), *closed)]
         }
+        Shape::CrossBox { a, b, width } | Shape::BlockingBox { a, b, width } => {
+            let c = detail_box(v2(*a), v2(*b), width.mm());
+            let mut out = vec![(c.to_vec(), true), (vec![c[0], c[2]], false)];
+            if matches!(shape, Shape::CrossBox { .. }) {
+                out.push((vec![c[1], c[3]], false));
+            }
+            out
+        }
+        Shape::Insulation { a, b, width } => {
+            let (a, b, w) = (v2(*a), v2(*b), width.mm());
+            vec![
+                (detail_box(a, b, w).to_vec(), true),
+                (batt_points(a, b, w), false),
+            ]
+        }
     }
+}
+
+/// Corners of a box along `a`→`b`, `w` wide, centred on the line.
+pub fn detail_box(a: DVec2, b: DVec2, w: f64) -> [DVec2; 4] {
+    let n = perp((b - a).normalize_or_zero()) * (w / 2.0);
+    [a - n, b - n, b + n, a + n]
+}
+
+/// The batt insulation squiggle: loops across the depth `w` every `w / 2`.
+pub fn batt_points(a: DVec2, b: DVec2, w: f64) -> Vec<DVec2> {
+    let len = a.distance(b);
+    if len < 1e-6 || w <= 0.0 {
+        return vec![a, b];
+    }
+    let d = (b - a) / len;
+    let n = perp(d);
+    let steps = ((len / w) * 24.0).ceil().max(8.0) as usize;
+    (0..=steps)
+        .map(|i| {
+            let t = len * i as f64 / steps as f64;
+            // A sine wave whose period is the depth reads as the batt symbol.
+            let y = (w / 2.0) * 0.9 * (std::f64::consts::TAU * t / w).sin();
+            a + d * t + n * y
+        })
+        .collect()
 }
 
 /// Characteristic points of a shape for snapping: (point, is_center).
@@ -305,6 +345,11 @@ pub fn shape_snap_points(shape: &Shape) -> Vec<(DVec2, bool)> {
         }
         Shape::Circle { center, .. } | Shape::Ellipse { center, .. } => {
             vec![(v2(*center), true)]
+        }
+        Shape::CrossBox { a, b, .. }
+        | Shape::BlockingBox { a, b, .. }
+        | Shape::Insulation { a, b, .. } => {
+            vec![(v2(*a), false), (v2(*b), false)]
         }
     }
 }
