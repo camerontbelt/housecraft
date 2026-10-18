@@ -11,6 +11,11 @@ ceilings (flat, vaulted, tray, coffered, barrel), layered platforms, stairs and 
 electrical/plumbing/HVAC symbols, remodel phases, reference floors, north and sun with 3D and plan shadows are in.
 Of the M3 P1 items, 13 are done (✓) and 11 partial (◐); what each partial one lacks is noted in its row, and
 several wait on later milestones (library styles in M5, terrain and framing in M6). The M3 P2/P3 items are not started.
+**M4 status (2026-10-18):** schedules with export, materials list with prices, elevations and cross sections
+(auto exterior and room elevations, plan callouts), layouts with live views and a title block exported to
+multi-page PDF, callouts, markers, revision clouds, detailing shapes, text macros and a 3D cutaway are in.
+Of the M4 P1 items, 11 are done (✓), 14 partial (◐) and 4 not started (camera default sets,
+drafting inside elevation views, CAD details and blocks).
 
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
@@ -56,7 +61,7 @@ These come from reading the whole list and change the architecture, not just the
 | VIS-02 | XYZ axes indicator and project-origin marker in 2D/3D | P1 | M1 |
 | VIS-03 | Navigation: orbit, pan, dolly, tilt, walk; standard view-direction presets | P0 | M1 ✓ (orbit, pan, dolly, walk, presets) |
 | VIS-04 | Auto-hide camera-facing exterior walls while navigating small rooms | P2 | M7 |
-| VIS-05 | Cross-section slider: interactive cutaway from any side, live | P1 | M4 |
+| VIS-05 | Cross-section slider: interactive cutaway from any side, live | P1 | M4 ✓ |
 | VIS-06 | Poché (solid fill) for walls/roofs/platforms in plan and camera views | P1 | M1 |
 | VIS-07 | Walkthrough recording along spline paths; per-keyframe direction/speed; multi-floor; per-path lighting | P2 | M7 |
 | VIS-08 | Walkthrough editing: keyframe editing, join/break segments, pauses, multi-select | P2 | M7 |
@@ -85,7 +90,7 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| SEC-01 | Cross-section, elevation, and back-clipped section views; side clipping | P1 | M4 |
+| SEC-01 | Cross-section, elevation, and back-clipped section views; side clipping | P1 | M4 ◐ elevations, cross sections, depth (back) clipping and side clipping; cut poché fill later |
 | SEC-02 | Convert wall elevations to section views; expand/crop extents | P2 | M4 |
 | SEC-03 | Vaulted ceilings shown in wall elevations; "ignore walls above" crop | P2 | M4 |
 | SEC-04 | Stepped (jogged) cutting planes | P2 | M4 |
@@ -93,10 +98,10 @@ These come from reading the whole list and change the architecture, not just the
 | SEC-06 | Full drafting/dimensioning in section & elevation views; auto-detail tool | P1 | M4 |
 | SEC-07 | Center CAD objects in elevation | P3 | M4 |
 | SEC-08 | Copying a section camera copies its annotations | P2 | M4 |
-| SEC-09 | Cameras shown as callouts in plan (labels, descriptions; survive to layout) | P1 | M4 |
+| SEC-09 | Cameras shown as callouts in plan (labels, descriptions; survive to layout) | P1 | M4 ◐ elevation/section callouts in plan; 3D camera callouts later |
 | SEC-10 | Callouts auto-filled with layout page/label info | P2 | M4 |
 | SEC-11 | Automatic schedule labels in camera views | P2 | M4 |
-| SEC-12 | Auto-generate exterior and interior room elevations | P1 | M4 |
+| SEC-12 | Auto-generate exterior and interior room elevations | P1 | M4 ✓ |
 
 ## 4. Plans, layouts & project management
 
@@ -110,7 +115,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-06 | Zoom to selection | P0 | M1 ✓ |
 | PRJ-07 | Free viewer app for clients (read-only) | P1 | web build |
 | PRJ-08 | Managed projects (auto-organized storage, no broken links) | P2 | M8 |
-| PRJ-09 | Project Browser: tree of layouts, floors, views, cameras, schedules, details; multi-select; folders; thumbnails | P1 | M4 |
+| PRJ-09 | Project Browser: tree of layouts, floors, views, cameras, schedules, details; multi-select; folders; thumbnails | P1 | M4 ◐ floors, plan views, cameras, layouts and pages, elevations, rooms; folders, thumbnails, multi-select later |
 | PRJ-10 | Pin items in Project Browser (X18+) | P3 | M8 |
 | PRJ-11 | Saved Plan Views (layer set + default set + active defaults; zoom/floor optional); tabs/windows | P0 | M1 ✓ (multiple view tabs: later) |
 | PRJ-12 | Duplicate saved view copies its active layer set (X18+) | P2 | M1 |
@@ -124,12 +129,12 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-20 | Plan database / portfolio | P3 | M8 |
 | PRJ-21 | R-values for walls, roofs, ceilings, platforms | P2 | M3 |
 | PRJ-22 | Client & designer info with macros and custom fields | P2 | M4 |
-| PRJ-23 | Layout files: sheets with scaled, live-linked views; title-block templates; reorder pages | P1 | M4 |
-| PRJ-24 | Layout viewports: polyline cropping with breaks/curves; pan/zoom; rotate | P1 | M4 |
-| PRJ-25 | Layout box spec: defaults, multi-line labels, relink, rescale, change layer set; multi-edit | P1 | M4 |
+| PRJ-23 | Layout files: sheets with scaled, live-linked views; title-block templates; reorder pages | P1 | M4 ◐ sheets in the plan file with live scaled views, title block, several pages; separate .layout files, title-block templates, page reordering later |
+| PRJ-24 | Layout viewports: polyline cropping with breaks/curves; pan/zoom; rotate | P1 | M4 ◐ rectangular crop with a set centre; polyline crops, in-box pan/zoom, rotation later |
+| PRJ-25 | Layout box spec: defaults, multi-line labels, relink, rescale, change layer set; multi-edit | P1 | M4 ◐ position, size, scale, caption, notes text; relink, change layer set and multi-edit later |
 | PRJ-26 | Multiple layout files open at once; copy between them | P2 | M4 |
 | PRJ-27 | Edit line views on layout; rescale; relink | P2 | M4 |
-| PRJ-28 | Multiple pages per layout | P1 | M4 |
+| PRJ-28 | Multiple pages per layout | P1 | M4 ✓ |
 | PRJ-29 | Per-page template pages | P2 | M4 |
 | PRJ-30 | Revision tracking and revision tables | P2 | M4 |
 | PRJ-31 | Sheet index / table of contents from page attributes | P2 | M4 |
@@ -329,7 +334,7 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-03 | Object snaps (end, center, tangent…), grid snap, reference-floor snap | P0 | M1 ◐ end/mid/center/on-object/angle/grid/reference floor; tangent, intersection, quadrant later |
 | CAD-04 | Paste in place across layers/plans/floors | P1 | M1 |
 | CAD-05 | Point-to-point move/copy/resize | P0 | M1 ✓ |
-| CAD-06 | Detailing primitives: cross box, blocking box, insulation | P1 | M4 |
+| CAD-06 | Detailing primitives: cross box, blocking box, insulation | P1 | M4 ✓ |
 | CAD-07 | Convert 2D CAD into smart objects (solids, moldings, counters, slabs, roads, terrain, …) | P2 | M4 |
 | CAD-08 | Multiple copy at preset increments | P1 | M1 |
 | CAD-09 | 3D solids and faces; extrude/revolve; polyline boolean ops | P2 | M5 |
@@ -490,26 +495,26 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| EST-01 | Auto materials list (equipment, unit cost, markup, labor); plan / room / area scope; live update | P1 | M4 |
+| EST-01 | Auto materials list (equipment, unit cost, markup, labor); plan / room / area scope; live update | P1 | M4 ◐ take-off with unit prices and markup, whole plan or floor; labor and room/area scope later |
 | EST-02 | Master materials list (pricing master data) | P2 | M4 |
-| EST-03 | Find in plan from materials list | P1 | M4 |
+| EST-03 | Find in plan from materials list | P1 | M4 ✓ |
 | EST-04 | Per-object code/comment/description/manufacturer fields | P1 | M1 |
 | EST-05 | Object components panel (calculation methods) | P2 | M4 |
-| EST-06 | Layer-based inclusion | P1 | M4 |
+| EST-06 | Layer-based inclusion | P1 | M4 ✓ |
 | EST-07 | Scripted formulas (Rhai/Lua; CA uses Ruby) | P2 | M8 |
 | EST-08 | Materials-list layer sets | P2 | M4 |
-| EST-09 | Schedules: doors, windows, cabinets, fixtures, appliances, furniture, electrical, HVAC, notes, plumbing, plants, room finish, walls, moldings, roof/ceiling planes, skylights, millwork, sprinklers, shapes; floor/room filters | P1 | M4 |
-| EST-10 | Schedule formatting: styles, transpose, sort, wrapping | P1 | M4 |
-| EST-11 | Custom columns from object info fields | P1 | M4 |
+| EST-09 | Schedules: doors, windows, cabinets, fixtures, appliances, furniture, electrical, HVAC, notes, plumbing, plants, room finish, walls, moldings, roof/ceiling planes, skylights, millwork, sprinklers, shapes; floor/room filters | P1 | M4 ◐ doors, windows, room finish, walls, electrical/plumbing/HVAC, stairs, roof planes; cabinets, appliances, furniture, moldings (M5) later |
+| EST-10 | Schedule formatting: styles, transpose, sort, wrapping | P1 | M4 ◐ choose and order columns; styles, transpose, sort and wrap options later |
+| EST-11 | Custom columns from object info fields | P1 | M4 ◐ any of a schedule's built-in columns; user-defined object fields later |
 | EST-12 | Callout label shapes | P2 | M4 |
 | EST-13 | Custom mixed-type schedules; existing/new splits | P2 | M4 |
 | EST-14 | Schedules in library | P3 | M5 |
 | EST-15 | Polyline objects in schedules | P2 | M4 |
-| EST-16 | Find in plan from schedule | P1 | M4 |
-| EST-17 | Open object spec from schedule row | P1 | M4 |
+| EST-16 | Find in plan from schedule | P1 | M4 ✓ |
+| EST-17 | Open object spec from schedule row | P1 | M4 ✓ |
 | EST-18 | Schedule thumbnails | P3 | M4 |
 | EST-19 | Schedule starting number | P3 | M4 |
-| EST-20 | Export schedules: CSV, TXT, XML | P1 | M4 |
+| EST-20 | Export schedules: CSV, TXT, XML | P1 | M4 ✓ |
 | EST-21 | BuilderTREND export with NAHB accounting codes | P3 | M8 |
 | EST-22 | Cut list and buy list (structural lumber) | P2 | M6 |
 | EST-23 | Pricing in framing buy lists | P3 | M6 |
@@ -524,7 +529,7 @@ These come from reading the whole list and change the architecture, not just the
 | TXT-04 | Replace fonts | P3 | M4 |
 | TXT-05 | Text arrows / leaders with auto orientation | P1 | M1 |
 | TXT-06 | Custom arrowheads from CAD blocks | P2 | M4 |
-| TXT-07 | Callouts & markers (styles, own layers) | P1 | M4 |
+| TXT-07 | Callouts & markers (styles, own layers) | P1 | M4 ✓ |
 | TXT-08 | Linked callouts that navigate between views | P2 | M4 |
 | TXT-09 | Object labels with macros | P1 | M1 |
 | TXT-10 | Label formatting (justify, border, wrap) | P1 | M1 |
@@ -536,10 +541,10 @@ These come from reading the whole list and change the architecture, not just the
 | TXT-16 | Numbered notes with schedule; note markers in 3D | P2 | M4 |
 | TXT-17 | Spell check | P3 | GUI |
 | TXT-18 | Hyperlinks | P2 | M1 |
-| TXT-19 | Text macros incl. user-defined (contact, file, plan info, dates) | P1 | M4 |
+| TXT-19 | Text macros incl. user-defined (contact, file, plan info, dates) | P1 | M4 ◐ {project}, {date}, {year}, {living_area}, {floors}, {rooms} in plan text and layout notes; user-defined macros later |
 | TXT-20 | Macro management (create, test) | P2 | M4 |
 | TXT-21 | Scripting console (CA: Ruby → ours: Rhai/Lua over the command API) | P2 | M8 |
-| TXT-22 | Revision clouds with defaults | P1 | M4 |
+| TXT-22 | Revision clouds with defaults | P1 | M4 ✓ |
 
 ## 22. Printing
 
@@ -547,14 +552,14 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | PRN-01 | Print to PDF | P0 | M1 ✓ |
 | PRN-02 | Watermarks (text/image; also on walkthroughs) | P3 | M4 |
-| PRN-03 | Print preview with line weights | P1 | M4 |
-| PRN-04 | Drawing sheet setup and paper scaling | P1 | M4 |
+| PRN-03 | Print preview with line weights | P1 | M4 ◐ the layout page view previews sheets with line weights; a plan print preview later |
+| PRN-04 | Drawing sheet setup and paper scaling | P1 | M4 ◐ layout sheet size and per-box scales; plan PDF paper and scale options |
 
 ## 23. Import / export
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| IO-01 | Export materials list: Excel, CSV, TXT, HTML | P1 | M4 |
+| IO-01 | Export materials list: Excel, CSV, TXT, HTML | P1 | M4 ◐ CSV, text, XML and HTML; native Excel (.xlsx) later |
 | IO-02 | Import PDF into plans/layouts/details (vector + raster) | P2 | M4 |
 | IO-03 | DXF/DWG import & export (2D) | P1 | M1 (DXF) / M8 (DWG) |
 | IO-04 | 3D import: DXF, DWG, OBJ, 3DS, SKP, STL, DAE; 3D export: DXF, DWG, 3DS, STL, DAE (+ glTF/OBJ/IFC for us) | P1→P3 | M5/M8 |
