@@ -16,7 +16,7 @@ saved views and cameras, PDF/SVG/PNG output, the CLI and the MCP server.
 | `housecraft-units` | Lengths stored in mm. Parses `12'-6 1/2"`, `3.5 m`, `150mm`, etc. Formats feet-inches or metric |
 | `housecraft-model` | `Document`: floors, layered wall types, walls; validation |
 | `housecraft-api` | Serializable `Command`s, atomic transactions, undo/redo, queries, JSON Schema |
-| `housecraft-io-native` | `.hcraft` files (zip of `manifest.json` + `document.json`, versioned) |
+| `housecraft-io-native` | `.housecraft` files (zip of `manifest.json` + `document.json`, versioned) |
 | `housecraft-geom` | Wall joins, room detection, opening cuts, triangulation, 3D meshes, transforms |
 | `housecraft-draft` | Plan drawings as primitives; SVG, vector PDF and PNG output |
 | `housecraft-app` | Desktop/web GUI (egui + wgpu): plan view, 3D view, tools, dialogs |
@@ -29,7 +29,7 @@ will do the same way.
 ## Desktop app
 
 ```sh
-cargo run -p housecraft-app --release -- path/to/plan.hcraft
+cargo run -p housecraft-app --release -- path/to/plan.housecraft
 ```
 
 The layout mirrors Chief Architect so users can switch without relearning. That covers the menu order, the
@@ -38,19 +38,24 @@ side windows, Open Object specification dialogs, and the familiar hotkeys (Space
 Shift+E, Shift+W, F6, F9...). Help > Keyboard Shortcuts lists them all. The icons are original artwork in
 the same visual vocabulary.
 
+Plans are saved as `.housecraft` files ([format](docs/formats/housecraft.md)). To make double-clicking them
+open HouseCraft, use Edit > Preferences > File Types, or run `housecraft-app --register-file-type` (Windows
+and Linux; per user, no admin rights). Installers built with cargo-packager register the type themselves,
+which is the only way on macOS. You can also drag a plan onto the window.
+
 Web: `trunk serve crates/housecraft-app/web/index.html` (needs [trunk](https://trunkrs.dev)). File
 dialogs are desktop-only for now.
 
 ## CLI
 
 ```sh
-housecraft new house.hcraft
-housecraft apply house.hcraft ops.json     # or `-` for stdin
-housecraft info house.hcraft
-housecraft objects house.hcraft --kind wall
-housecraft get house.hcraft 5
-housecraft export house.hcraft -o plan.pdf --paper tabloid --scale 48
-housecraft export house.hcraft -o plan.png  # or .svg
+housecraft new house.housecraft
+housecraft apply house.housecraft ops.json     # or `-` for stdin
+housecraft info house.housecraft
+housecraft objects house.housecraft --kind wall
+housecraft get house.housecraft 5
+housecraft export house.housecraft -o plan.pdf --paper tabloid --scale 48
+housecraft export house.housecraft -o plan.png  # or .svg
 housecraft schema                          # JSON Schema for command batches
 housecraft mcp                             # MCP server on stdin/stdout
 ```

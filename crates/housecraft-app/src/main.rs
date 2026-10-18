@@ -3,6 +3,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app;
+mod associate;
 mod canvas;
 mod dialogs;
 mod icons;
@@ -20,7 +21,23 @@ pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
-    let path = std::env::args().nth(1).map(std::path::PathBuf::from);
+    let arg = std::env::args().nth(1);
+    // Installer hooks: `housecraft-app --register-file-type` / `--unregister-file-type`.
+    match arg.as_deref() {
+        Some("--register-file-type") => {
+            match associate::register() {
+                Ok(()) => println!(".{} files now open in HouseCraft", associate::EXTENSION),
+                Err(e) => eprintln!("could not register: {e}"),
+            }
+            return Ok(());
+        }
+        Some("--unregister-file-type") => {
+            let _ = associate::unregister();
+            return Ok(());
+        }
+        _ => {}
+    }
+    let path = arg.map(std::path::PathBuf::from);
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("HouseCraft")

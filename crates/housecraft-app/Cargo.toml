@@ -27,7 +27,27 @@ log.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rfd.workspace = true
 
+[target.'cfg(windows)'.dependencies]
+winreg = "0.56"
+windows-sys = { version = "0.61", features = ["Win32_UI_Shell"] }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlCanvasElement"] }
+
+# Installers and app bundles (cargo-packager). File associations here are what
+# macOS uses (Info.plist); on Windows and Linux the app can also register itself.
+[package.metadata.packager]
+product-name = "HouseCraft"
+identifier = "app.housecraft.desktop"
+category = "GraphicsAndDesign"
+description = "Residential design and construction documents"
+formats = ["nsis", "app", "dmg", "deb", "appimage"]
+
+[[package.metadata.packager.file-associations]]
+name = "HouseCraft Plan"
+description = "HouseCraft plan"
+extensions = ["housecraft", "hcraft"]
+mime-type = "application/x-housecraft"
+role = "editor"

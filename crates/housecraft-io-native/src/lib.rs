@@ -1,10 +1,11 @@
-//! The native `.hcraft` format: a zip archive holding
+//! The native `.housecraft` format (see `docs/formats/housecraft.md`): a zip archive holding
 //!
 //! - `manifest.json`: format marker, format version, generator
 //! - `document.json`: the [`Document`]
 //!
-//! Assets (textures, imported symbols) will live alongside these entries later.
+//! Assets (textures, imported symbols) will live under `assets/` later.
 //! Older format versions are upgraded in [`migrate`] before deserializing.
+//! Files from early builds used the `.hcraft` extension; they are identical inside.
 
 use std::io::{Read, Seek, Write};
 use std::path::Path;
@@ -14,7 +15,11 @@ use serde::{Deserialize, Serialize};
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
-pub const EXTENSION: &str = "hcraft";
+pub const EXTENSION: &str = "housecraft";
+/// Extension used by early builds; still opened.
+pub const LEGACY_EXTENSION: &str = "hcraft";
+/// MIME type registered with desktop environments.
+pub const MIME_TYPE: &str = "application/x-housecraft";
 pub const FORMAT: &str = "housecraft";
 pub const FORMAT_VERSION: u32 = 1;
 
@@ -170,13 +175,13 @@ mod tests {
 
     #[test]
     fn save_path_writes_atomically() {
-        let dir = std::env::temp_dir().join(format!("hcraft-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("housecraft-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("plan.hcraft");
+        let path = dir.join("plan.housecraft");
         let doc = Document::new("On disk");
         save_path(&doc, &path).unwrap();
         assert_eq!(load_path(&path).unwrap(), doc);
-        assert!(!path.with_extension("hcraft.tmp").exists());
+        assert!(!path.with_extension("housecraft.tmp").exists());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

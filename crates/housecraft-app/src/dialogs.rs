@@ -414,6 +414,7 @@ fn prefs_dialog(app: &mut App, ctx: &Context) {
     let mut open = app.dialogs.prefs;
     let mut unit_cmd = None;
     let mut theme_changed = false;
+    let mut file_type_result: Option<std::io::Result<String>> = None;
     egui::Window::new("Preferences")
         .open(&mut open)
         .resizable(false)
@@ -463,6 +464,40 @@ fn prefs_dialog(app: &mut App, ctx: &Context) {
                 ui.end_row();
             });
             ui.separator();
+            ui.heading("File Types");
+            let ext = crate::associate::EXTENSION;
+            match crate::associate::status() {
+                crate::associate::Status::Registered => {
+                    ui.label(format!(".{ext} files open in this copy of HouseCraft."));
+                    if ui.button("Remove association").clicked() {
+                        file_type_result = Some(
+                            crate::associate::unregister()
+                                .map(|()| "File association removed".to_string()),
+                        );
+                    }
+                }
+                crate::associate::Status::ByPackage => {
+                    ui.label(format!(
+                        ".{ext} files are associated by the installed HouseCraft app."
+                    ));
+                }
+                status => {
+                    ui.label(if status == crate::associate::Status::OtherExecutable {
+                        format!(".{ext} files open in a different HouseCraft build.")
+                    } else {
+                        format!(".{ext} files are not associated with HouseCraft yet.")
+                    });
+                    if ui
+                        .button(format!("Open .{ext} files with HouseCraft"))
+                        .clicked()
+                    {
+                        file_type_result = Some(crate::associate::register().map(|()| {
+                            format!("Double-clicking a .{ext} file now opens HouseCraft")
+                        }));
+                    }
+                }
+            }
+            ui.separator();
             ui.heading("Units (saved with the plan)");
             let current = doc.settings.display_unit;
             let options = [
@@ -491,6 +526,11 @@ fn prefs_dialog(app: &mut App, ctx: &Context) {
     app.dialogs.prefs = open;
     if theme_changed {
         app.apply_theme(ctx);
+    }
+    match file_type_result {
+        Some(Ok(msg)) => app.info(msg),
+        Some(Err(e)) => app.error(format!("File association failed: {e}")),
+        None => {}
     }
     if let Some(c) = unit_cmd {
         app.run1(c);

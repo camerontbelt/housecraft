@@ -57,7 +57,7 @@ pub struct NewDocumentArgs {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct PathArgs {
-    /// Path to a .hcraft file.
+    /// Path to a .housecraft file.
     pub path: String,
 }
 
@@ -170,7 +170,7 @@ impl HouseCraftServer {
         self.with_session(|s, _| json(&query::summary(s.document())))
     }
 
-    /// Open a .hcraft file, replacing any open document. Returns its summary.
+    /// Open a .housecraft file, replacing any open document. Returns its summary.
     #[tool]
     async fn open_document(&self, Parameters(args): Parameters<PathArgs>) -> ToolResult {
         let path = PathBuf::from(args.path);
@@ -179,7 +179,7 @@ impl HouseCraftServer {
         self.with_session(|s, _| json(&query::summary(s.document())))
     }
 
-    /// Save the open document as a .hcraft file.
+    /// Save the open document as a .housecraft file.
     #[tool]
     async fn save_document(&self, Parameters(args): Parameters<SaveArgs>) -> ToolResult {
         self.with_session(|s, path| {

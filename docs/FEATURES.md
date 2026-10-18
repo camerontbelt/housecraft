@@ -32,7 +32,7 @@ These come from reading the whole list and change the architecture, not just the
    scope. → A generic `Scope` selector belongs in the command API.
 6. **Library = catalogs of parametric + symbol objects.** Everything can be saved to and loaded from the library,
    including walls, stairs, schedules, notes, and architectural blocks. → The library is a document store of serialized
-   model fragments. That fits the `.hcraft` and `Command` design well.
+   model fragments. That fits the `.housecraft` and `Command` design well.
 7. **Object Information Panel.** Custom fields on every object feed schedules and the materials list.
    → Generic `attributes: Map<String, Value>` on all objects.
 8. **Ruby scripting and text macros** (materials-list formulas, labels). We use **Rhai or Lua** with the same

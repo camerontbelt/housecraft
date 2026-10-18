@@ -176,7 +176,7 @@ applied to a **Document** through a transaction. That gives us:
 | `housecraft-build` | Generators: rooms from walls, auto roofs, framing, stairs, cabinets, foundations | geom, model |
 | `housecraft-draft` | 2D view generation (plan, elevation, section), dimensions, annotations, layouts, hidden-line removal | geom |
 | `housecraft-api` | Commands, queries, transactions, undo, events, JSON schema for every command | `schemars` |
-| `housecraft-io-native` | `.hcraft` format: zip of CBOR/JSON plus assets, versioned migrations | `zip`, `ciborium` |
+| `housecraft-io-native` | `.housecraft` format: zip of CBOR/JSON plus assets, versioned migrations | `zip`, `ciborium` |
 | `housecraft-io-ca` | Chief Architect `.plan`/`.layout`/`.calib(z)` readers (written from the clean-room spec) | `binrw` |
 | `housecraft-io-cad` | DXF in/out, DWG in (see note), PDF out (vector), PDF import | `dxf`, `krilla` or `printpdf`, `pdfium-render` |
 | `housecraft-io-mesh` | glTF/GLB, OBJ, STL, Collada; IFC later | `gltf` |
@@ -204,12 +204,12 @@ we pick for HouseCraft.
 ### 3.5 CLI (first cut)
 ```
 housecraft info house.plan                      # floors, rooms, areas
-housecraft convert house.plan house.hcraft
-housecraft export house.hcraft --format pdf --layout A1 -o set.pdf
-housecraft export house.hcraft --format gltf -o house.glb
-housecraft apply house.hcraft ops.json             # batch commands
-housecraft render house.hcraft --camera front --spp 256 -o front.png
-housecraft materials house.hcraft --format csv
+housecraft convert house.plan house.housecraft
+housecraft export house.housecraft --format pdf --layout A1 -o set.pdf
+housecraft export house.housecraft --format gltf -o house.glb
+housecraft apply house.housecraft ops.json             # batch commands
+housecraft render house.housecraft --camera front --spp 256 -o front.png
+housecraft materials house.housecraft --format csv
 housecraft mcp --stdio                          # run as MCP server
 ```
 

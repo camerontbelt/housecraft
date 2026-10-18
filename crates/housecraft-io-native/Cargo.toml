@@ -1,6 +1,6 @@
 [package]
 name = "housecraft-io-native"
-description = "The native HouseCraft .hcraft file format"
+description = "The native HouseCraft .housecraft file format"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

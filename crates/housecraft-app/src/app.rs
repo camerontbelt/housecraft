@@ -396,7 +396,7 @@ impl App {
     pub fn save(&mut self, save_as: bool) -> bool {
         let path = match (&self.path, save_as) {
             (Some(p), false) => Some(p.clone()),
-            _ => pick_save_path(&self.doc().name, "hcraft"),
+            _ => pick_save_path(&self.doc().name, housecraft_io_native::EXTENSION),
         };
         let Some(path) = path else {
             return false;
@@ -1607,6 +1607,20 @@ impl eframe::App for App {
         ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
 
         self.shortcuts(&ctx);
+        // Open plans dropped onto the window.
+        let dropped: Option<PathBuf> = ctx.input(|i| {
+            i.raw.dropped_files.iter().find_map(|f| {
+                Some(f.path().to_path_buf()).filter(|p| {
+                    p.extension().is_some_and(|e| {
+                        e.eq_ignore_ascii_case(housecraft_io_native::EXTENSION)
+                            || e.eq_ignore_ascii_case(housecraft_io_native::LEGACY_EXTENSION)
+                    })
+                })
+            })
+        });
+        if let Some(p) = dropped {
+            self.guarded(Pending::OpenPath(p));
+        }
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(ui));
         egui::Panel::top("toolbar_main").show(ui, |ui| self.toolbar_main(ui));
         egui::Panel::top("toolbar_build").show(ui, |ui| self.toolbar_build(ui));
@@ -1645,7 +1659,10 @@ impl eframe::App for App {
 #[cfg(not(target_arch = "wasm32"))]
 fn pick_open_path() -> Option<PathBuf> {
     rfd::FileDialog::new()
-        .add_filter("HouseCraft plan", &["hcraft"])
+        .add_filter(
+            "HouseCraft plan",
+            &[housecraft_io_native::EXTENSION, "hcraft"],
+        )
         .pick_file()
 }
 
