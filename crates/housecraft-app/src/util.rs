@@ -51,6 +51,31 @@ impl EditBuffers {
         None
     }
 
+    /// A multi-line field; commits when the user leaves it after changing it.
+    pub fn multiline(
+        &mut self,
+        ui: &mut Ui,
+        id: egui::Id,
+        current: &str,
+        width: f32,
+    ) -> Option<String> {
+        let buf = self.0.entry(id).or_insert_with(|| current.to_string());
+        let resp = ui.add(
+            egui::TextEdit::multiline(buf)
+                .id(id)
+                .desired_rows(4)
+                .desired_width(width),
+        );
+        if resp.lost_focus() {
+            let value = self.0.remove(&id).unwrap_or_default();
+            return (value != current).then_some(value);
+        }
+        if !resp.has_focus() {
+            self.0.remove(&id);
+        }
+        None
+    }
+
     /// A length field; accepts arithmetic like `12'6" + 3"`.
     pub fn length(
         &mut self,

@@ -185,7 +185,12 @@ pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> S
         }
         ScheduleKind::Rooms => {
             for floor in doc.floors_by_elevation() {
-                if !on_floor(floor.id) {
+                // Crawlspaces, slabs and piers enclose no rooms worth listing.
+                let unfinished = floor
+                    .foundation
+                    .as_ref()
+                    .is_some_and(|f| f.kind != FoundationKind::Basement);
+                if !on_floor(floor.id) || unfinished {
                     continue;
                 }
                 let areas: BTreeMap<Id, f64> = crate::query::room_areas(doc, floor.id)

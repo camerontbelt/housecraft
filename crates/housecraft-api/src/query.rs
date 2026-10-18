@@ -215,6 +215,18 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         Object::Electrical(e) => e.electrical_kind.name().to_string(),
         Object::Schedule(s) => format!("{} on {}", s.schedule_kind.name(), name_of(s.floor)),
         Object::SectionView(v) => v.name.clone(),
+        Object::Layout(l) => format!(
+            "{} ({} page{})",
+            l.name,
+            l.pages.len(),
+            if l.pages.len() == 1 { "" } else { "s" }
+        ),
+        Object::LayoutBox(b) => format!(
+            "{} on {} page {}",
+            crate::layouts::source_name(doc, &b.source),
+            doc.get::<Layout>(b.layout).map_or("?", |l| l.name.as_str()),
+            b.page + 1
+        ),
         Object::Stair(s) => {
             let shape = match s.shape {
                 StairShape::Straight => "straight",

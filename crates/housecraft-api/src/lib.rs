@@ -6,6 +6,7 @@
 
 mod command;
 mod foundation;
+pub mod layouts;
 pub mod materials;
 mod ops;
 pub mod query;

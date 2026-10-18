@@ -822,6 +822,20 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
             _ => {}
         }
     }
+    // Layout boxes go with their layout and with whatever they show.
+    for b in doc.iter::<LayoutBox>() {
+        let shows_doomed = match &b.source {
+            LayoutSource::Plan {
+                floor, layer_set, ..
+            } => doomed.contains(floor) || layer_set.is_some_and(|s| doomed.contains(&s)),
+            LayoutSource::View { view } => doomed.contains(view),
+            LayoutSource::Schedule { floor, .. } => floor.is_some_and(|f| doomed.contains(&f)),
+            _ => false,
+        };
+        if doomed.contains(&b.layout) || shows_doomed {
+            doomed.insert(b.id);
+        }
+    }
     if doc.count::<Floor>()
         == doomed
             .iter()

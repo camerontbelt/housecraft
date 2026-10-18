@@ -51,8 +51,8 @@ impl Default for Prefs {
 pub enum Mode {
     Plan,
     ThreeD,
-    /// A 2D elevation or cross-section view.
-    Drawing(Id),
+    /// A 2D elevation, cross section or layout page.
+    Drawing(crate::drawing_view::DrawingSource),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -536,6 +536,77 @@ impl App {
                     self.save(true);
                 }
                 ui.separator();
+                ui.menu_button("Layout", |ui| {
+                    if item(ui, "New Layout", "", true) {
+                        self.new_layout();
+                    }
+                    let layouts: Vec<(Id, String, usize)> = self
+                        .doc()
+                        .iter::<Layout>()
+                        .map(|l| (l.id, l.name.clone(), l.pages.len()))
+                        .collect();
+                    ui.separator();
+                    ui.menu_button("Send to Layout", |ui| {
+                        let what = self.current_layout_source();
+                        if what.is_none() {
+                            ui.weak("Open a floor plan or an elevation first.");
+                        }
+                        if let Some(source) = what {
+                            if layouts.is_empty() && item(ui, "New Layout", "", true) {
+                                let id = self.new_layout();
+                                self.send_to_layout(id, 0, source.clone());
+                            }
+                            for (id, name, pages) in &layouts {
+                                for p in 0..*pages {
+                                    if item(ui, &format!("{name}, page {}", p + 1), "", true) {
+                                        self.send_to_layout(*id, p as u32, source.clone());
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    ui.menu_button("Send Schedule to Layout", |ui| {
+                        for kind in ScheduleKind::ALL {
+                            ui.menu_button(kind.name(), |ui| {
+                                for (id, name, pages) in &layouts {
+                                    for p in 0..*pages {
+                                        if item(ui, &format!("{name}, page {}", p + 1), "", true) {
+                                            self.send_to_layout(
+                                                *id,
+                                                p as u32,
+                                                LayoutSource::Schedule {
+                                                    schedule_kind: kind,
+                                                    floor: None,
+                                                },
+                                            );
+                                        }
+                                    }
+                                }
+                                if layouts.is_empty() {
+                                    ui.weak("Create a layout first.");
+                                }
+                            });
+                        }
+                    });
+                    if let Mode::Drawing(crate::drawing_view::DrawingSource::Layout(id, page)) =
+                        self.mode
+                        && item(ui, "Add Notes Box", "", true)
+                    {
+                        self.send_to_layout(
+                            id,
+                            page as u32,
+                            LayoutSource::Text {
+                                text: "{project}\n{date}\nLiving area: {living_area}".into(),
+                            },
+                        );
+                    }
+                    if let Mode::Drawing(crate::drawing_view::DrawingSource::Layout(id, _)) =
+                        self.mode
+                        && item(ui, "Export Layout as PDF…", "", true)
+                    {
+                        self.export_layout_pdf(id);
+                    }
+                });
                 ui.menu_button("Export", |ui| {
                     if item(ui, "Export Floor Plan as PDF…", "", true) {
                         self.dialogs.print.open = true;
@@ -820,7 +891,7 @@ impl App {
                         && let Some(out) = self.run1(Command::RoomElevations { room })
                         && let Some(first) = out.created.first()
                     {
-                        self.mode = Mode::Drawing(*first);
+                        self.mode = Mode::Drawing(crate::drawing_view::DrawingSource::View(*first));
                     }
                 });
                 if item(ui, "Back to Plan View", "F2", self.mode != Mode::Plan) {
@@ -1460,6 +1531,51 @@ impl App {
                     });
                 }
             });
+        egui::CollapsingHeader::new("Layouts")
+            .default_open(true)
+            .show(ui, |ui| {
+                let layouts: Vec<Layout> = self.doc().iter::<Layout>().cloned().collect();
+                if layouts.is_empty() {
+                    ui.weak("File > Layout > New Layout");
+                }
+                for l in layouts {
+                    let header = egui::CollapsingHeader::new(&l.name)
+                        .id_salt(("layout", l.id))
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            for (i, page) in l.pages.iter().enumerate() {
+                                let src = crate::drawing_view::DrawingSource::Layout(l.id, i);
+                                if ui
+                                    .selectable_label(self.mode == Mode::Drawing(src), page)
+                                    .clicked()
+                                {
+                                    self.mode = Mode::Drawing(src);
+                                }
+                            }
+                        });
+                    header.header_response.context_menu(|ui| {
+                        if ui.button("Open Object").clicked() {
+                            self.spec.push(l.id);
+                            ui.close();
+                        }
+                        if ui.button("Add Page").clicked() {
+                            self.run1(Command::AddLayoutPage {
+                                layout: l.id,
+                                name: None,
+                            });
+                            ui.close();
+                        }
+                        if ui.button("Export PDF…").clicked() {
+                            self.export_layout_pdf(l.id);
+                            ui.close();
+                        }
+                        if ui.button("Delete").clicked() {
+                            self.run1(Command::Delete { ids: vec![l.id] });
+                            ui.close();
+                        }
+                    });
+                }
+            });
         egui::CollapsingHeader::new("Elevations and Sections")
             .default_open(true)
             .show(ui, |ui| {
@@ -1472,9 +1588,12 @@ impl App {
                     ui.weak("3D > Elevations and Sections");
                 }
                 for (id, name) in views {
-                    let resp = ui.selectable_label(self.mode == Mode::Drawing(id), &name);
+                    let resp = ui.selectable_label(
+                        self.mode == Mode::Drawing(crate::drawing_view::DrawingSource::View(id)),
+                        &name,
+                    );
                     if resp.clicked() {
-                        self.mode = Mode::Drawing(id);
+                        self.mode = Mode::Drawing(crate::drawing_view::DrawingSource::View(id));
                     }
                     resp.context_menu(|ui| {
                         if ui.button("Open Object").clicked() {
@@ -1579,6 +1698,77 @@ impl App {
                 )
             })
             .collect()
+    }
+
+    /// Create a layout and open its first page.
+    pub fn new_layout(&mut self) -> Id {
+        let n = self.doc().count::<Layout>() + 1;
+        let Some(out) = self.run1(Command::AddLayout {
+            name: format!("Layout {n}"),
+            paper_width: None,
+            paper_height: None,
+            pages: 1,
+        }) else {
+            return Id(0);
+        };
+        let id = out.created[0];
+        self.mode = Mode::Drawing(crate::drawing_view::DrawingSource::Layout(id, 0));
+        id
+    }
+
+    /// What "Send to Layout" sends from the current view.
+    fn current_layout_source(&self) -> Option<LayoutSource> {
+        match self.mode {
+            Mode::Plan => Some(LayoutSource::Plan {
+                floor: self.plan.floor,
+                layer_set: Some(self.plan.layer_set),
+                phase: self.plan.phase,
+            }),
+            Mode::Drawing(crate::drawing_view::DrawingSource::View(view)) => {
+                Some(LayoutSource::View { view })
+            }
+            _ => None,
+        }
+    }
+
+    pub fn send_to_layout(&mut self, layout: Id, page: u32, source: LayoutSource) {
+        if self
+            .run1(Command::SendToLayout {
+                layout,
+                page,
+                source,
+                x: None,
+                y: None,
+                width: None,
+                height: None,
+                scale: None,
+                label: None,
+            })
+            .is_some()
+        {
+            self.mode = Mode::Drawing(crate::drawing_view::DrawingSource::Layout(
+                layout,
+                page as usize,
+            ));
+            self.info("Sent to layout");
+        }
+    }
+
+    pub fn export_layout_pdf(&mut self, layout: Id) {
+        let doc = self.doc();
+        let Some(l) = doc.get::<Layout>(layout).cloned() else {
+            return;
+        };
+        let Some(path) = pick_save_path(&l.name, "pdf") else {
+            return;
+        };
+        let pages = housecraft_draft::layout::layout_pages(doc, &l);
+        let bytes =
+            housecraft_draft::pdf::pages_to_pdf(&pages, l.paper_width.mm(), l.paper_height.mm());
+        match std::fs::write(&path, bytes) {
+            Ok(()) => self.info(format!("Exported {}", path.display())),
+            Err(e) => self.status = Some((format!("Export failed: {e}"), true)),
+        }
     }
 
     pub fn apply_plan_view(&mut self, v: &PlanView) {
@@ -1936,7 +2126,7 @@ impl eframe::App for App {
                 match self.mode {
                     Mode::Plan => crate::canvas::show(self, ui),
                     Mode::ThreeD => crate::view3d::show(self, ui),
-                    Mode::Drawing(id) => crate::drawing_view::show(self, ui, id),
+                    Mode::Drawing(source) => crate::drawing_view::show(self, ui, source),
                 }
             });
         crate::props::spec_windows(self, &ctx);

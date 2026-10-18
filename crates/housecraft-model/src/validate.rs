@@ -443,6 +443,51 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     c.positive(id, "depth", d);
                 }
             }
+            Object::Layout(l) => {
+                c.positive(id, "paper_width", l.paper_width);
+                c.positive(id, "paper_height", l.paper_height);
+                if l.pages.is_empty() {
+                    c.issue(id, "a layout needs at least one page");
+                }
+            }
+            Object::LayoutBox(b) => {
+                c.reference(id, "layout", b.layout, K::Layout);
+                if let Some(l) = c.doc.get::<Layout>(b.layout)
+                    && b.page as usize >= l.pages.len()
+                {
+                    c.issue(
+                        id,
+                        format!(
+                            "page {} is past the layout's {} pages",
+                            b.page + 1,
+                            l.pages.len()
+                        ),
+                    );
+                }
+                c.positive(id, "width", b.width);
+                c.positive(id, "height", b.height);
+                c.finite(id, "x/y/scale", &[b.x.mm(), b.y.mm(), b.scale]);
+                if b.scale < 0.0 {
+                    c.issue(id, "scale must not be negative");
+                }
+                match &b.source {
+                    LayoutSource::Plan {
+                        floor, layer_set, ..
+                    } => {
+                        c.reference(id, "source.floor", *floor, K::Floor);
+                        if let Some(s) = layer_set {
+                            c.reference(id, "source.layer_set", *s, K::LayerSet);
+                        }
+                    }
+                    LayoutSource::View { view } => {
+                        c.reference(id, "source.view", *view, K::SectionView)
+                    }
+                    LayoutSource::Schedule { floor: Some(f), .. } => {
+                        c.reference(id, "source.floor", *f, K::Floor)
+                    }
+                    _ => {}
+                }
+            }
             Object::Camera(cam) => {
                 c.reference(id, "layer_set", cam.layer_set, K::LayerSet);
                 match cam.projection {

@@ -364,8 +364,17 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_electrical", "electrical_kind": "outlet", "at": [0,"5'"]}},
                 {{"op": "add_schedule", "schedule_kind": "rooms", "position": [0,0]}},
                 {{"op": "add_section_view", "a": [0,"-5'"], "b": ["20'","-5'"]}},
+                {{"op": "add_layout", "name": "Sheets"}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
             w = wall.0
+        ),
+    );
+    let layout = s.document().iter::<Layout>().next().unwrap().id;
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "send_to_layout", "layout": {}, "source": {{"type": "text", "text": "notes"}}}}]"#,
+            layout.0
         ),
     );
     let doc = s.document();

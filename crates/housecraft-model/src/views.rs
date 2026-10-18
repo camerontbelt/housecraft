@@ -132,3 +132,74 @@ pub struct SectionView {
     #[serde(default)]
     pub clip_sides: bool,
 }
+
+/// A layout: sheets of paper holding scaled, live views of the model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Layout {
+    pub id: Id,
+    pub name: String,
+    /// Sheet size (paper millimetres as lengths).
+    pub paper_width: Length,
+    pub paper_height: Length,
+    /// Page names, in order.
+    pub pages: Vec<String>,
+    /// Draw a border and title block on every page.
+    #[serde(default = "yes")]
+    pub title_block: bool,
+}
+
+fn yes() -> bool {
+    true
+}
+
+/// What a layout box shows.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum LayoutSource {
+    /// A floor plan as a layer set shows it.
+    Plan {
+        floor: Id,
+        layer_set: Option<Id>,
+        #[serde(default)]
+        phase: Phase,
+    },
+    /// An elevation or cross section.
+    View {
+        view: Id,
+    },
+    /// A schedule table.
+    Schedule {
+        schedule_kind: crate::ScheduleKind,
+        #[serde(default)]
+        floor: Option<Id>,
+    },
+    MaterialsList,
+    /// Free text (notes); `{macros}` are filled in.
+    Text {
+        text: String,
+    },
+}
+
+/// A view placed on a layout page. Paper positions are lengths in paper
+/// millimetres from the sheet's bottom-left corner.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct LayoutBox {
+    pub id: Id,
+    pub layout: Id,
+    /// Page index (0-based).
+    pub page: u32,
+    pub source: LayoutSource,
+    pub x: Length,
+    pub y: Length,
+    pub width: Length,
+    pub height: Length,
+    /// Model millimetres per paper millimetre (48 = 1/4" = 1'-0"); 0 fits a standard scale.
+    #[serde(default)]
+    pub scale: f64,
+    /// Model point at the box centre; the drawing's centre when `None`.
+    #[serde(default)]
+    pub center: Option<Point2>,
+    /// Caption under the box; the source's name when `None`.
+    #[serde(default)]
+    pub label: Option<String>,
+}

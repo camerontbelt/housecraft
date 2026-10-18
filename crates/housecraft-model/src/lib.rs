@@ -141,6 +141,8 @@ objects! {
     Electrical => "electrical",
     Schedule => "schedule",
     SectionView => "section_view",
+    Layout => "layout",
+    LayoutBox => "layout_box",
 }
 
 impl fmt::Display for ObjectKind {

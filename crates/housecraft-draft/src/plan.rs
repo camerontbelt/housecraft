@@ -693,7 +693,19 @@ fn schedule_table(
             columns: s.columns.clone(),
         },
     );
-    let id = Some(s.id);
+    table_drawing(&table, v2(s.position), h, stroke, ink, Some(s.id), out);
+}
+
+/// Draw `table` as a ruled table hanging down-right from `o` (its top-left).
+pub(crate) fn table_drawing(
+    table: &housecraft_api::schedule::ScheduleTable,
+    o: DVec2,
+    h: f64,
+    stroke: Stroke,
+    ink: Ink,
+    id: Option<Id>,
+    out: &mut Drawing,
+) {
     let pad = h * 0.6;
     let row_h = h * 2.0;
     // The shared width estimate is tuned for labels; table text, and the bold
@@ -717,7 +729,6 @@ fn schedule_table(
         .max(crate::approx_text_width(&table.title, h * 1.3) + 2.0 * pad);
     let rows = table.rows.len() + 2; // title and header
     let height = rows as f64 * row_h;
-    let o = v2(s.position);
     let at = |x: f64, y: f64| o + DVec2::new(x, -y);
     let line = |out: &mut Drawing, a: DVec2, b: DVec2, stroke: Stroke| {
         out.push(

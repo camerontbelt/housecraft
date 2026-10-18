@@ -260,3 +260,80 @@ fn elevation_and_section_drawings() {
             .any(|i| matches!(&i.prim, Prim::Text { text, .. } if text == "Cut"))
     );
 }
+
+#[test]
+fn layouts_place_live_views_on_pages() {
+    use housecraft_api::model::{Layout, LayoutBox};
+    let mut s = house();
+    let floor = s.document().floors_by_elevation()[0].id;
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "add_layout", "name": "Permit Set", "pages": 2},
+            {"op": "add_section_view", "name": "South", "a": ["-10'","-10'"], "b": ["50'","-10'"]}]"#,
+    )
+    .unwrap();
+    let out = s.apply(&cmds).unwrap();
+    let (layout, view) = (out.created[0], out.created[1]);
+    let cmds: Vec<Command> = serde_json::from_str(&format!(
+        r#"[{{"op": "send_to_layout", "layout": {l}, "source": {{"type": "plan", "floor": {f}}}, "scale": 48}},
+            {{"op": "send_to_layout", "layout": {l}, "source": {{"type": "view", "view": {v}}}}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 1, "source": {{"type": "schedule", "schedule_kind": "doors"}}}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 1, "source": {{"type": "text", "text": "{{project}} notes"}}}}]"#,
+        l = layout.0,
+        f = floor.0,
+        v = view.0
+    ))
+    .unwrap();
+    s.apply(&cmds).unwrap();
+    let doc = s.document();
+    let l = doc.get::<Layout>(layout).unwrap();
+    assert_eq!(l.pages.len(), 2);
+    // Boxes fill quarters without overlapping.
+    let boxes: Vec<&LayoutBox> = doc.iter::<LayoutBox>().filter(|b| b.page == 0).collect();
+    assert_eq!(boxes.len(), 2);
+    assert!(boxes[0].x.mm() + boxes[0].width.mm() <= boxes[1].x.mm() + 1e-6);
+
+    let pages = housecraft_draft::layout::layout_pages(doc, l);
+    let (w, h) = (l.paper_width.mm(), l.paper_height.mm());
+    for p in &pages {
+        let (lo, hi) = p.bounds().unwrap();
+        assert!(
+            lo.x >= -1e-6 && lo.y >= -1e-6 && hi.x <= w + 1e-6 && hi.y <= h + 1e-6,
+            "on the sheet"
+        );
+    }
+    let texts = |p: &housecraft_draft::Drawing| -> Vec<String> {
+        p.items
+            .iter()
+            .filter_map(|i| match &i.prim {
+                Prim::Text { text, .. } => Some(text.clone()),
+                _ => None,
+            })
+            .collect()
+    };
+    let p1 = texts(&pages[0]);
+    assert!(p1.iter().any(|t| t == "Scale: 1/4\" = 1'-0\""), "{p1:?}");
+    assert!(p1.iter().any(|t| t == "SOUTH"), "caption: {p1:?}");
+    assert!(
+        p1.iter().any(|t| t.starts_with("Sheet 1 of 2")),
+        "title block: {p1:?}"
+    );
+    let p2 = texts(&pages[1]);
+    assert!(p2.iter().any(|t| t == "Door Schedule"));
+    assert!(
+        p2.iter().any(|t| t == "Test House notes"),
+        "macros expand: {p2:?}"
+    );
+
+    let pdf = housecraft_draft::pdf::pages_to_pdf(&pages, w, h);
+    assert!(pdf.starts_with(b"%PDF"));
+    assert!(
+        String::from_utf8_lossy(&pdf).contains("/Count 2"),
+        "two pages"
+    );
+
+    // Deleting the view removes its box; deleting the layout removes the rest.
+    s.apply(&[Command::Delete { ids: vec![view] }]).unwrap();
+    assert_eq!(s.document().iter::<LayoutBox>().count(), 3);
+    s.apply(&[Command::Delete { ids: vec![layout] }]).unwrap();
+    assert_eq!(s.document().iter::<LayoutBox>().count(), 0);
+}

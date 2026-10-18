@@ -326,7 +326,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
                     .iter()
                     .find(|id| app.doc().kind_of(**id) == Some(ObjectKind::SectionView))
             {
-                app.mode = crate::app::Mode::Drawing(*id);
+                app.mode = crate::app::Mode::Drawing(crate::drawing_view::DrawingSource::View(*id));
             }
         }
     }

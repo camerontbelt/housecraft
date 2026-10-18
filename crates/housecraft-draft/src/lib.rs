@@ -6,6 +6,8 @@
 
 mod dims;
 pub mod elevation;
+pub mod layout;
+pub mod macros;
 pub mod pdf;
 mod plan;
 pub mod svg;

@@ -370,6 +370,109 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.end_row();
             ed.pick::<Layer>(ui, "Callout Layer", "layer", Some(v.layer), None);
         }
+        Object::Layout(l) => {
+            ed.text(ui, "Name", "name", &l.name);
+            if let Some(v) = ed.length(ui, "Sheet Width", "paper_width", l.paper_width) {
+                ed.out.push(patch(id, json!({ "paper_width": v })));
+            }
+            if let Some(v) = ed.length(ui, "Sheet Height", "paper_height", l.paper_height) {
+                ed.out.push(patch(id, json!({ "paper_height": v })));
+            }
+            Ed::label(ui, "Title Block");
+            let mut t = l.title_block;
+            if ui.checkbox(&mut t, "Border and title strip").changed() {
+                ed.out.push(patch(id, json!({ "title_block": t })));
+            }
+            ui.end_row();
+            Ed::label(ui, "Pages");
+            ui.vertical(|ui| {
+                for (i, name) in l.pages.iter().enumerate() {
+                    let key = ed.key(&format!("page_{i}"));
+                    if let Some(t) = ed.bufs.text(ui, key, name, 140.0) {
+                        let mut pages = l.pages.clone();
+                        pages[i] = t;
+                        ed.out.push(patch(id, json!({ "pages": pages })));
+                    }
+                }
+                if ui.button("Add Page").clicked() {
+                    ed.out.push(Command::AddLayoutPage {
+                        layout: id,
+                        name: None,
+                    });
+                }
+            });
+            ui.end_row();
+        }
+        Object::LayoutBox(b) => {
+            Ed::label(ui, "Shows");
+            ui.label(housecraft_api::layouts::source_name(doc, &b.source));
+            ui.end_row();
+            for (label, field, value) in [
+                ("Left (paper)", "x", b.x),
+                ("Bottom (paper)", "y", b.y),
+                ("Width (paper)", "width", b.width),
+                ("Height (paper)", "height", b.height),
+            ] {
+                if let Some(v) = ed.length(ui, label, field, value) {
+                    ed.out.push(patch(id, json!({ field: v })));
+                }
+            }
+            if !matches!(
+                b.source,
+                LayoutSource::Schedule { .. }
+                    | LayoutSource::MaterialsList
+                    | LayoutSource::Text { .. }
+            ) {
+                Ed::label(ui, "Scale");
+                let imperial =
+                    crate::util::input_unit(doc) == housecraft_api::units::LengthUnit::Inches;
+                let scales: &[f64] = if imperial {
+                    &[12.0, 16.0, 24.0, 32.0, 48.0, 64.0, 96.0, 128.0, 192.0]
+                } else {
+                    &[10.0, 20.0, 25.0, 50.0, 75.0, 100.0, 200.0, 250.0, 500.0]
+                };
+                let label = |s: f64| {
+                    if s <= 0.0 {
+                        "Fit (standard scale)".to_string()
+                    } else {
+                        housecraft_draft::pdf::scale_label(s, imperial)
+                    }
+                };
+                let mut chosen = b.scale;
+                egui::ComboBox::from_id_salt(ed.key("scale"))
+                    .selected_text(label(b.scale))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut chosen, 0.0, label(0.0));
+                        for s in scales {
+                            ui.selectable_value(&mut chosen, *s, label(*s));
+                        }
+                    });
+                if chosen != b.scale {
+                    ed.out.push(patch(id, json!({ "scale": chosen })));
+                }
+                ui.end_row();
+            }
+            if let LayoutSource::Text { text } = &b.source {
+                Ed::label(ui, "Text");
+                let key = ed.key("notes");
+                if let Some(t) = ed.bufs.multiline(ui, key, text, 240.0) {
+                    ed.out.push(patch(id, json!({ "source": { "text": t } })));
+                }
+                ui.end_row();
+                Ed::label(ui, "");
+                ui.weak(format!(
+                    "Macros: {}",
+                    housecraft_draft::macros::MACROS
+                        .iter()
+                        .map(|(m, _)| format!("{{{m}}}"))
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                ));
+                ui.end_row();
+            }
+            let caption = b.label.clone().unwrap_or_default();
+            ed.text(ui, "Caption", "label", &caption);
+        }
         Object::Schedule(s) => {
             Ed::label(ui, "Schedule");
             ui.label(s.schedule_kind.name());

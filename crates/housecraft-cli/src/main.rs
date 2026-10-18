@@ -151,6 +151,20 @@ enum Cmd {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+    /// Export a layout: all pages to PDF, or one page to SVG / PNG.
+    ExportLayout {
+        path: PathBuf,
+        /// Layout name or id.
+        layout: String,
+        #[arg(short, long)]
+        output: PathBuf,
+        /// Page number (from 1) for SVG / PNG.
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        /// PNG size in pixels (longest side).
+        #[arg(long, default_value_t = 2000)]
+        pixels: u32,
+    },
     /// Print the JSON Schema for command batches.
     Schema,
     /// Run the MCP server on stdin/stdout.
@@ -564,6 +578,80 @@ fn main() -> Result<()> {
                 }
                 None => print!("{}", table.export(TableFormat::Txt)),
             }
+        }
+        Cmd::ExportLayout {
+            path,
+            layout,
+            output,
+            page,
+            pixels,
+        } => {
+            let doc = load(&path)?;
+            let found = layout
+                .trim_start_matches('#')
+                .parse::<u64>()
+                .ok()
+                .and_then(|n| doc.get::<housecraft_api::model::Layout>(Id(n)))
+                .or_else(|| {
+                    doc.iter::<housecraft_api::model::Layout>()
+                        .find(|l| l.name.eq_ignore_ascii_case(&layout))
+                });
+            let Some(l) = found else {
+                let names: Vec<&str> = doc
+                    .iter::<housecraft_api::model::Layout>()
+                    .map(|l| l.name.as_str())
+                    .collect();
+                bail!("no layout {layout:?} (have: {})", names.join(", "));
+            };
+            let (w, h) = (l.paper_width.mm(), l.paper_height.mm());
+            let ext = output
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_ascii_lowercase();
+            if ext == "pdf" {
+                let pages = housecraft_draft::layout::layout_pages(&doc, l);
+                std::fs::write(&output, housecraft_draft::pdf::pages_to_pdf(&pages, w, h))?;
+            } else {
+                if page == 0 || page > l.pages.len() {
+                    bail!("{} has pages 1 to {}", l.name, l.pages.len());
+                }
+                let mut d = housecraft_draft::layout::layout_page(&doc, l, page - 1);
+                // A sheet-sized white frame so the image is the whole sheet.
+                d.items.insert(
+                    0,
+                    housecraft_draft::Item {
+                        object: None,
+                        prim: housecraft_draft::Prim::Polygon {
+                            points: vec![
+                                housecraft_api::geom::DVec2::ZERO,
+                                housecraft_api::geom::DVec2::new(w, 0.0),
+                                housecraft_api::geom::DVec2::new(w, h),
+                                housecraft_api::geom::DVec2::new(0.0, h),
+                            ],
+                            fill: housecraft_draft::Fill::Paper,
+                        },
+                    },
+                );
+                let svg = housecraft_draft::svg::to_svg(
+                    &d,
+                    &SvgOptions {
+                        scale: 1.0,
+                        margin: 0.0,
+                        ..SvgOptions::default()
+                    },
+                );
+                match ext.as_str() {
+                    "svg" => std::fs::write(&output, svg)?,
+                    "png" => std::fs::write(
+                        &output,
+                        housecraft_draft::svg::svg_to_png(&svg, pixels)
+                            .map_err(anyhow::Error::msg)?,
+                    )?,
+                    _ => bail!("use a .pdf, .svg or .png output"),
+                }
+            }
+            println!("wrote {}", output.display());
         }
         Cmd::Schema => print_json(&housecraft_api::command_schema())?,
         Cmd::Mcp => tokio::runtime::Runtime::new()?.block_on(housecraft_mcp::serve_stdio())?,

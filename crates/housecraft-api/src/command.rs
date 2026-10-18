@@ -172,6 +172,31 @@ pub enum Command {
     AutoElevations { floor: Option<Id> },
     /// Add four interior elevations of a room, one looking at each side.
     RoomElevations { room: Id },
+    /// Create a layout (default 36" x 24" sheets, one page).
+    AddLayout {
+        name: String,
+        paper_width: Option<Length>,
+        paper_height: Option<Length>,
+        #[serde(default = "one")]
+        pages: u32,
+    },
+    /// Add a page to a layout.
+    AddLayoutPage { layout: Id, name: Option<String> },
+    /// Place a view on a layout page. Position and size are paper
+    /// millimetres from the sheet's bottom-left; omitted ones fill the next
+    /// free quarter of the page. `scale` 0 or omitted fits a standard scale.
+    SendToLayout {
+        layout: Id,
+        #[serde(default)]
+        page: u32,
+        source: LayoutSource,
+        x: Option<Length>,
+        y: Option<Length>,
+        width: Option<Length>,
+        height: Option<Length>,
+        scale: Option<f64>,
+        label: Option<String>,
+    },
     /// Exchange everything drawn on two floors (walls, rooms, CAD, text...),
     /// keeping the floors' own heights.
     SwapFloors { a: Id, b: Id },
@@ -394,6 +419,10 @@ pub enum Command {
     Delete { ids: Vec<Id> },
 }
 
+fn one() -> u32 {
+    1
+}
+
 fn yes() -> bool {
     true
 }
@@ -490,6 +519,9 @@ impl Command {
             Command::RemoveRoof { .. } => "remove_roof",
             Command::AddRoofPlane { .. } => "add_roof_plane",
             Command::AddStair { .. } => "add_stair",
+            Command::AddLayout { .. } => "add_layout",
+            Command::AddLayoutPage { .. } => "add_layout_page",
+            Command::SendToLayout { .. } => "send_to_layout",
             Command::AddSectionView { .. } => "add_section_view",
             Command::AutoElevations { .. } => "auto_elevations",
             Command::RoomElevations { .. } => "room_elevations",
@@ -958,6 +990,53 @@ impl Command {
             }
             Command::RoomElevations { room } => {
                 crate::views::room_elevations(doc, *room, &d, &mut out)?;
+            }
+            Command::AddLayout {
+                name,
+                paper_width,
+                paper_height,
+                pages,
+            } => {
+                let pages = (*pages).max(1);
+                out.created.push(doc.insert(Layout {
+                    id: Id(0),
+                    name: name.clone(),
+                    paper_width: paper_width.unwrap_or(Length::from_inches(36.0)),
+                    paper_height: paper_height.unwrap_or(Length::from_inches(24.0)),
+                    pages: (1..=pages).map(|n| format!("A-{n}")).collect(),
+                    title_block: true,
+                }));
+            }
+            Command::AddLayoutPage { layout, name } => {
+                let l = doc
+                    .get_mut::<Layout>(*layout)
+                    .ok_or(ApiError::NotFound(*layout))?;
+                let n = l.pages.len() + 1;
+                l.pages
+                    .push(name.clone().unwrap_or_else(|| format!("A-{n}")));
+                out.modified.push(*layout);
+            }
+            Command::SendToLayout {
+                layout,
+                page,
+                source,
+                x,
+                y,
+                width,
+                height,
+                scale,
+                label,
+            } => {
+                let b = crate::layouts::send(
+                    doc,
+                    *layout,
+                    *page,
+                    source.clone(),
+                    [*x, *y, *width, *height],
+                    *scale,
+                    label.clone(),
+                )?;
+                out.created.push(b);
             }
             Command::SwapFloors { a, b } => {
                 expect::<Floor>(doc, *a)?;
