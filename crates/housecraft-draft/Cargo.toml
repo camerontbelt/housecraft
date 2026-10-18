@@ -1,0 +1,23 @@
+[package]
+name = "housecraft-draft"
+description = "2D drawings of HouseCraft documents: plan views, SVG and PDF output"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+housecraft-units.workspace = true
+housecraft-model.workspace = true
+housecraft-geom.workspace = true
+pdf-writer.workspace = true
+glam.workspace = true
+resvg = { workspace = true, optional = true }
+
+[features]
+# Rasterize drawings to PNG (native only: loads system fonts).
+png = ["dep:resvg"]
+
+[dev-dependencies]
+housecraft-api.workspace = true
+serde_json.workspace = true

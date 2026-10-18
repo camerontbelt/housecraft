@@ -595,7 +595,7 @@ impl Command {
                 out.created.push(doc.insert(Opening {
                     id: Id(0),
                     wall: *wall,
-                    kind: OpeningKind::Door(style.unwrap_or(d.door.style)),
+                    opening_kind: OpeningKind::Door(style.unwrap_or(d.door.style)),
                     position,
                     width,
                     height: height.unwrap_or(d.door.height),
@@ -622,7 +622,7 @@ impl Command {
                 out.created.push(doc.insert(Opening {
                     id: Id(0),
                     wall: *wall,
-                    kind: OpeningKind::Window(style.unwrap_or(d.window.style)),
+                    opening_kind: OpeningKind::Window(style.unwrap_or(d.window.style)),
                     position,
                     width,
                     height,

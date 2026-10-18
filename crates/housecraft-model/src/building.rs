@@ -107,7 +107,8 @@ pub enum Hinge {
 pub struct Opening {
     pub id: Id,
     pub wall: Id,
-    pub kind: OpeningKind,
+    /// Door or window, and its style. (Not `kind`: that tags every object.)
+    pub opening_kind: OpeningKind,
     /// Distance along the wall from its start to the centre of the opening.
     pub position: Length,
     pub width: Length,

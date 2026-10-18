@@ -341,3 +341,34 @@ fn schema_lists_every_op() {
         assert!(schema.contains(op), "schema missing {op}");
     }
 }
+
+#[test]
+fn every_object_kind_round_trips_through_json() {
+    let mut s = boxed();
+    let wall = walls(&s)[0].id;
+    apply(
+        &mut s,
+        &format!(
+            r##"[{{"op": "add_door", "wall": {w}}},
+                {{"op": "add_window", "wall": {w}, "position": "5'"}},
+                {{"op": "add_cad", "shape": {{"shape": "arc", "center": [0,0], "radius": 500, "start_angle": 0, "sweep": 90}}}},
+                {{"op": "add_dimension", "geometry": {{"type": "linear", "points": [[0,0],[1000,0]], "offset": 300}}}},
+                {{"op": "add_dimension", "geometry": {{"type": "angular", "center": [0,0], "start": [1000,0], "end": [0,1000], "radius": 500}}}},
+                {{"op": "add_text", "position": [0,0], "text": "hi"}},
+                {{"op": "add_layer", "name": "Extra", "color": "#ff000080"}},
+                {{"op": "add_plan_view", "name": "Second"}},
+                {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
+            w = wall.0
+        ),
+    );
+    let doc = s.document();
+    for kind in ObjectKind::ALL {
+        assert!(
+            doc.objects.values().any(|o| o.kind() == *kind),
+            "test document lacks a {kind}"
+        );
+    }
+    let json = serde_json::to_string(doc).unwrap();
+    let back: Document = serde_json::from_str(&json).unwrap();
+    assert_eq!(&back, doc);
+}

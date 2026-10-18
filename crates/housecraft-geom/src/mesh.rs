@@ -196,7 +196,7 @@ fn opening_mesh(g: &WallGeom, o: &Opening, z0: f64, mesh: &mut Mesh) {
         let quad = vec![c0 - t, c1 - t, c1 + t, c0 + t];
         mesh.prism(&quad, z_lo, z_hi, color);
     };
-    match o.kind {
+    match o.opening_kind {
         OpeningKind::Door(housecraft_model::DoorStyle::Doorway) => {}
         OpeningKind::Door(_) => slab(mesh, 44.0, a, b, bottom, top, DOOR_COLOR),
         OpeningKind::Window(_) => {

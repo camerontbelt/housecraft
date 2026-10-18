@@ -7,11 +7,13 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use base64::Engine;
 use housecraft_api::model::{Document, Id, ObjectKind};
 use housecraft_api::{Command, Session, query};
+use housecraft_draft::{PlanOptions, plan};
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::{Implementation, ServerCapabilities, ServerConfig};
+use rmcp::model::{CallToolResult, ContentBlock, Implementation, ServerCapabilities, ServerConfig};
 use rmcp::{ServerHandler, ServiceExt, tool, tool_handler, tool_router};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -21,7 +23,11 @@ HouseCraft is a residential architectural design tool. One document is open at a
 Start with new_document or open_document, edit with apply_commands, and save with save_document.
 Coordinates are plan coordinates: x points east, y points north. Points are [x, y].
 Lengths are numbers in millimetres, or strings with units such as \"12'6\\\"\", \"12'-6 1/2\\\"\", \"30 1/2\\\"\", \"3.5 m\".
-Walls are drawn along their centreline. Each apply_commands call is atomic and is one undo step.";
+Walls are drawn along their centreline; wall-type layers run exterior to interior with the exterior on the
+left looking from start to end, so draw exterior walls clockwise around the building.
+Rooms are created automatically for every area enclosed by walls; change a room's name or type with
+an `update` command. Each apply_commands call is atomic and is one undo step.
+Use view_plan to look at the result as an image after making changes.";
 
 type ToolResult = Result<String, String>;
 
@@ -76,6 +82,24 @@ pub struct GetObjectArgs {
 pub struct ApplyArgs {
     /// Commands applied in order as one atomic transaction.
     pub commands: Vec<Command>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ViewPlanArgs {
+    /// Floor name or id (default: lowest floor).
+    pub floor: Option<String>,
+    /// Layer set name or id (default: the first).
+    pub layer_set: Option<String>,
+    /// Longest side of the image in pixels (default 1200).
+    pub pixels: Option<u32>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ExportPlanArgs {
+    /// Output file; .svg, .pdf or .png chooses the format.
+    pub path: String,
+    pub floor: Option<String>,
+    pub layer_set: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -204,6 +228,71 @@ impl HouseCraftServer {
         })
     }
 
+    /// Render a floor plan as a PNG image so you can see the design.
+    #[tool]
+    async fn view_plan(
+        &self,
+        Parameters(args): Parameters<ViewPlanArgs>,
+    ) -> Result<CallToolResult, String> {
+        let svg = self.with_session(|s, _| {
+            let doc = s.document();
+            let opts = PlanOptions::resolve(doc, args.floor.as_deref(), args.layer_set.as_deref())?;
+            Ok(housecraft_draft::svg::to_svg(
+                &plan(doc, &opts),
+                &housecraft_draft::svg::SvgOptions::default(),
+            ))
+        })?;
+        let png =
+            housecraft_draft::svg::svg_to_png(&svg, args.pixels.unwrap_or(1200).clamp(200, 4000))?;
+        let data = base64::engine::general_purpose::STANDARD.encode(png);
+        Ok(CallToolResult::success(vec![ContentBlock::image(
+            data,
+            "image/png",
+        )]))
+    }
+
+    /// Write a floor plan to an SVG, PDF (fit to a letter sheet) or PNG file.
+    #[tool]
+    async fn export_plan(&self, Parameters(args): Parameters<ExportPlanArgs>) -> ToolResult {
+        let bytes = self.with_session(|s, _| {
+            let doc = s.document();
+            let opts = PlanOptions::resolve(doc, args.floor.as_deref(), args.layer_set.as_deref())?;
+            let drawing = plan(doc, &opts);
+            let svg_opts = housecraft_draft::svg::SvgOptions::default();
+            let lower = args.path.to_ascii_lowercase();
+            if lower.ends_with(".svg") {
+                Ok(housecraft_draft::svg::to_svg(&drawing, &svg_opts).into_bytes())
+            } else if lower.ends_with(".png") {
+                housecraft_draft::svg::svg_to_png(
+                    &housecraft_draft::svg::to_svg(&drawing, &svg_opts),
+                    2000,
+                )
+            } else if lower.ends_with(".pdf") {
+                let title = format!(
+                    "{} - {}",
+                    doc.name,
+                    doc.get::<housecraft_api::model::Floor>(opts.floor)
+                        .map_or("", |f| f.name.as_str())
+                );
+                Ok(housecraft_draft::pdf::to_pdf(
+                    &drawing,
+                    &housecraft_draft::pdf::PdfOptions {
+                        paper: housecraft_draft::pdf::Paper::Letter,
+                        landscape: true,
+                        scale: housecraft_draft::pdf::Scale::Fit,
+                        title,
+                        imperial: true,
+                    },
+                )
+                .0)
+            } else {
+                Err("path must end in .svg, .pdf or .png".to_string())
+            }
+        })?;
+        std::fs::write(&args.path, bytes).map_err(|e| e.to_string())?;
+        Ok(format!("wrote {}", args.path))
+    }
+
     /// Undo the last apply_commands transaction.
     #[tool]
     async fn undo(&self) -> ToolResult {
@@ -260,6 +349,8 @@ mod tests {
             "apply_commands",
             "undo",
             "redo",
+            "view_plan",
+            "export_plan",
         ] {
             assert!(
                 names.iter().any(|n| n == expected),

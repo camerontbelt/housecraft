@@ -9,6 +9,8 @@ publish.workspace = true
 [dependencies]
 housecraft-api.workspace = true
 housecraft-io-native.workspace = true
+housecraft-draft = { workspace = true, features = ["png"] }
+base64 = "0.22"
 serde.workspace = true
 serde_json.workspace = true
 schemars.workspace = true

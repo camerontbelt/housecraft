@@ -414,7 +414,7 @@ mod tests {
         doc.insert(Opening {
             id: Id(0),
             wall,
-            kind: OpeningKind::Door(DoorStyle::Hinged),
+            opening_kind: OpeningKind::Door(DoorStyle::Hinged),
             position: Length::from_mm(500.0),
             width: Length::from_mm(1200.0),
             height: Length::from_mm(2000.0),

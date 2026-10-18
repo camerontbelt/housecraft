@@ -20,6 +20,8 @@ pub struct WallGeom {
     pub length: f64,
     /// Outline corners after joins: start-left, end-left, end-right, start-right.
     pub corners: [DVec2; 4],
+    /// Whether the start / end is joined to another wall (no end cap drawn).
+    pub joined: [bool; 2],
 }
 
 impl WallGeom {
@@ -69,6 +71,36 @@ impl WallGeom {
             pieces.push(ccw(last));
         }
         pieces
+    }
+}
+
+impl WallGeom {
+    /// Line segments that outline the wall in plan: both faces broken at
+    /// openings, jambs at each opening, and caps on ends not joined to a wall.
+    pub fn outline_segments(&self, openings: &[&Opening]) -> Vec<[DVec2; 2]> {
+        let [sl, el, er, sr] = self.corners;
+        let spans = opening_spans(self, openings);
+        let mut segs = Vec::new();
+        let mut l0 = sl;
+        let mut r0 = sr;
+        for (a, b) in &spans {
+            segs.push([l0, self.left_at(*a)]);
+            segs.push([r0, self.right_at(*a)]);
+            segs.push([self.left_at(*a), self.right_at(*a)]);
+            segs.push([self.left_at(*b), self.right_at(*b)]);
+            l0 = self.left_at(*b);
+            r0 = self.right_at(*b);
+        }
+        segs.push([l0, el]);
+        segs.push([r0, er]);
+        if !self.joined[0] {
+            segs.push([sl, sr]);
+        }
+        if !self.joined[1] {
+            segs.push([el, er]);
+        }
+        segs.retain(|[a, b]| a.distance(*b) > 0.01);
+        segs
     }
 }
 
@@ -146,6 +178,7 @@ pub fn wall_geoms(doc: &Document, floor: Id) -> Vec<WallGeom> {
                     e - left * half,
                     s - left * half,
                 ],
+                joined: [false, false],
             }
         })
         .collect();
@@ -225,10 +258,12 @@ pub fn wall_geoms(doc: &Document, floor: Id) -> Vec<WallGeom> {
             let right = corners[(i + count - 1) % count].unwrap_or(square_right);
             let g = &mut geoms[inc.wall];
             if at_start {
+                g.joined[0] = true;
                 g.corners[0] = left;
                 g.corners[3] = right;
             } else {
                 // Seen from the end, the incident's left is the wall's right.
+                g.joined[1] = true;
                 g.corners[2] = left;
                 g.corners[1] = right;
             }
