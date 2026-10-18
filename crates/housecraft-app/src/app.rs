@@ -459,7 +459,7 @@ impl App {
             floor: self.plan.floor,
             layer_set: self.plan.layer_set,
             reference_floor: self.plan.reference_floor,
-            reference: self.plan.reference,
+            references: self.plan.references.clone(),
             phase: self.plan.phase,
             default_set: None,
         };
@@ -831,14 +831,13 @@ impl App {
                     &mut self.plan.reference_floor,
                     "Reference Floor Display (F9)",
                 );
-                ui.menu_button("Reference Floor", |ui| {
+                ui.menu_button("Reference Floors", |ui| {
                     if ui
-                        .radio(self.plan.reference.is_none(), "Floor Below")
+                        .radio(self.plan.references.is_empty(), "Floor Below")
                         .clicked()
                     {
-                        self.plan.reference = None;
+                        self.plan.references.clear();
                         self.plan.reference_floor = true;
-                        ui.close();
                     }
                     let floors: Vec<(Id, String)> = self
                         .doc()
@@ -848,10 +847,14 @@ impl App {
                         .map(|f| (f.id, f.name.clone()))
                         .collect();
                     for (id, name) in floors {
-                        if ui.radio(self.plan.reference == Some(id), name).clicked() {
-                            self.plan.reference = Some(id);
+                        let mut on = self.plan.references.contains(&id);
+                        if ui.checkbox(&mut on, name).changed() {
+                            if on {
+                                self.plan.references.push(id);
+                            } else {
+                                self.plan.references.retain(|f| *f != id);
+                            }
                             self.plan.reference_floor = true;
-                            ui.close();
                         }
                     }
                 });
@@ -1473,7 +1476,7 @@ impl App {
         }
         self.plan.layer_set = v.layer_set;
         self.plan.reference_floor = v.reference_floor;
-        self.plan.reference = v.reference;
+        self.plan.references = v.references.clone();
         self.plan.phase = v.phase;
         if let Some(z) = &v.zoom {
             self.plan.center = housecraft_api::geom::v2(z.center);

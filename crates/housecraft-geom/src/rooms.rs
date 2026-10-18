@@ -48,8 +48,11 @@ struct Edge {
 }
 
 pub fn detect(doc: &Document, floor: Id) -> FloorRegions {
+    // Rooms, footprints, roofs and foundations follow the finished design,
+    // so walls marked for demolition don't divide them.
     let segs: Vec<(DVec2, DVec2, Id, f64)> = doc
         .walls_on(floor)
+        .filter(|w| w.renovation != housecraft_model::Renovation::Demolish)
         .map(|w| {
             let half = doc
                 .get::<WallType>(w.wall_type)

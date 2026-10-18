@@ -865,3 +865,29 @@ fn demolished_walls_leave_the_3d_model() {
         .is_err()
     );
 }
+
+#[test]
+fn demolished_walls_no_longer_divide_rooms() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_wall", "start": [0,"15'"], "end": ["20'","15'"], "interior": true}]"#,
+    );
+    let wall = *out
+        .created
+        .iter()
+        .find(|id| s.document().get::<Wall>(**id).is_some())
+        .unwrap();
+    let floor = s.document().floors_by_elevation()[0].id;
+    assert_eq!(s.document().rooms_on(floor).count(), 2);
+    s.apply(&[Command::SetRenovation {
+        ids: vec![wall],
+        status: Renovation::Demolish,
+    }])
+    .unwrap();
+    assert_eq!(
+        s.document().rooms_on(floor).count(),
+        1,
+        "rooms follow the finished design"
+    );
+}

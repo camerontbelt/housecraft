@@ -28,9 +28,9 @@ pub struct PlanView {
     /// Show the floor below, faded, and snap to it.
     #[serde(default)]
     pub reference_floor: bool,
-    /// Show this floor as the reference instead of the one below.
-    #[serde(default)]
-    pub reference: Option<Id>,
+    /// Floors shown as references; empty = the floor below.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub references: Vec<Id>,
     /// Which remodel phase the plan shows.
     #[serde(default)]
     pub phase: Phase,

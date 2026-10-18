@@ -80,9 +80,9 @@ enum Cmd {
         /// Show the floor below, faded.
         #[arg(long)]
         reference: bool,
-        /// Show this floor (name or id) faded instead of the floor below.
+        /// Show this floor (name or id) faded instead of the floor below; repeatable.
         #[arg(long)]
-        reference_floor: Option<String>,
+        reference_floor: Vec<String>,
         /// Remodel phase: all, as-built, demolition or proposed.
         #[arg(long, default_value = "all")]
         phase: String,
@@ -233,9 +233,9 @@ fn main() -> Result<()> {
             let doc = load(&path)?;
             let mut opts = PlanOptions::resolve(&doc, floor.as_deref(), layer_set.as_deref())
                 .map_err(anyhow::Error::msg)?;
-            opts.reference_floor = reference || reference_floor.is_some();
-            if let Some(r) = &reference_floor {
-                opts.reference = Some(
+            opts.reference_floor = reference || !reference_floor.is_empty();
+            for r in &reference_floor {
+                opts.references.push(
                     PlanOptions::resolve(&doc, Some(r), None)
                         .map_err(anyhow::Error::msg)?
                         .floor,

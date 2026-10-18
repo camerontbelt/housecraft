@@ -21,7 +21,7 @@ use crate::tools::{StairKind, Tool};
 const PICK_PX: f64 = 7.0;
 
 struct Cache {
-    key: (u64, Id, Id, bool, Option<Id>, Phase),
+    key: (u64, Id, Id, bool, Vec<Id>, Phase),
     drawing: Drawing,
     fills: Vec<(Vec<DVec2>, Vec<[usize; 3]>, Fill)>,
     regions: FloorRegions,
@@ -51,8 +51,8 @@ pub struct PlanState {
     pub layer_set: Id,
     pub view: Option<Id>,
     pub reference_floor: bool,
-    /// A chosen reference floor; `None` = the floor below.
-    pub reference: Option<Id>,
+    /// Chosen reference floors; empty = the floor below.
+    pub references: Vec<Id>,
     pub phase: Phase,
     pub center: DVec2,
     pub mm_per_pt: f64,
@@ -89,7 +89,7 @@ impl PlanState {
                 .unwrap_or(Id(0)),
             view: view.map(|v| v.id),
             reference_floor: false,
-            reference: None,
+            references: Vec::new(),
             phase: Phase::All,
             center: DVec2::new(6000.0, 4500.0),
             mm_per_pt: 20.0,
@@ -138,7 +138,7 @@ impl PlanState {
             self.floor,
             self.layer_set,
             self.reference_floor,
-            self.reference,
+            self.references.clone(),
             self.phase,
         );
         if self.cache.as_ref().is_some_and(|c| c.key == key) {
@@ -148,7 +148,7 @@ impl PlanState {
             floor: self.floor,
             layer_set: self.layer_set,
             reference_floor: self.reference_floor,
-            reference: self.reference,
+            references: self.references.clone(),
             phase: self.phase,
             default_set: None,
         };
@@ -164,9 +164,7 @@ impl PlanState {
             })
             .collect();
         let mut floors = vec![self.floor];
-        if let Some(reference) = opts.reference_floor_id(doc) {
-            floors.push(reference);
-        }
+        floors.extend(opts.reference_floor_ids(doc));
         self.cache = Some(Cache {
             key,
             fills,

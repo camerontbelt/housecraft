@@ -827,6 +827,7 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
                 if v.floor.is_some_and(|f| doomed.contains(&f)) {
                     v.floor = None;
                 }
+                v.references.retain(|f| !doomed.contains(f));
             }
             Object::Layer(l) => {
                 if l.text_style.is_some_and(|s| doomed.contains(&s)) {

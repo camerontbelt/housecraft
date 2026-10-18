@@ -326,6 +326,9 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     c.reference(id, "floor", f, K::Floor);
                 }
                 c.reference(id, "layer_set", v.layer_set, K::LayerSet);
+                for f in &v.references {
+                    c.reference(id, "references", *f, K::Floor);
+                }
                 c.reference(id, "default_set", v.default_set, K::DefaultSet);
                 if let Some(z) = &v.zoom
                     && !(z.mm_per_point.is_finite() && z.mm_per_point > 0.0)

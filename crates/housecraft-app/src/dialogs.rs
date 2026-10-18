@@ -1305,7 +1305,7 @@ fn save_view_dialog(app: &mut App, ctx: &Context) {
                 mm_per_point: app.plan.mm_per_pt,
             }),
             reference_floor: app.plan.reference_floor,
-            reference: app.plan.reference,
+            references: app.plan.references.clone(),
             phase: app.plan.phase,
         };
         if let Some(out) = app.run1(cmd) {

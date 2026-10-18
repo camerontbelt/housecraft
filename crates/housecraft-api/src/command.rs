@@ -285,9 +285,9 @@ pub enum Command {
         zoom: Option<ViewRect>,
         #[serde(default)]
         reference_floor: bool,
-        /// A specific reference floor (instead of the one below).
+        /// Reference floors to show (instead of the one below).
         #[serde(default)]
-        reference: Option<Id>,
+        references: Vec<Id>,
         #[serde(default)]
         phase: Phase,
     },
@@ -1112,7 +1112,7 @@ impl Command {
                 default_set,
                 zoom,
                 reference_floor,
-                reference,
+                references,
                 phase,
             } => {
                 let layer_set = first_layer_set(doc, *layer_set)?;
@@ -1124,7 +1124,7 @@ impl Command {
                     default_set: default_set.unwrap_or(d.id),
                     zoom: zoom.clone(),
                     reference_floor: *reference_floor,
-                    reference: *reference,
+                    references: references.clone(),
                     phase: *phase,
                 }));
             }

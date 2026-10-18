@@ -13,9 +13,9 @@ use crate::{Drawing, Fill, Ink, Prim, Stroke};
 pub struct PlanOptions {
     pub floor: Id,
     pub layer_set: Id,
-    /// Draw a reference floor, faded: `reference`, or else the floor below.
+    /// Draw reference floors, faded: `references`, or else the floor below.
     pub reference_floor: bool,
-    pub reference: Option<Id>,
+    pub references: Vec<Id>,
     /// Remodel phase to show.
     pub phase: Phase,
     /// Default set used for dimension and text defaults; `None` = active.
@@ -63,20 +63,31 @@ impl PlanOptions {
             floor: doc.floors_by_elevation().first()?.id,
             layer_set: doc.iter::<LayerSet>().next()?.id,
             reference_floor: false,
-            reference: None,
+            references: Vec::new(),
             phase: Phase::All,
             default_set: None,
         })
     }
 
-    /// The reference floor to draw, if any.
-    pub fn reference_floor_id(&self, doc: &Document) -> Option<Id> {
+    /// The reference floors to draw (none when reference display is off).
+    pub fn reference_floor_ids(&self, doc: &Document) -> Vec<Id> {
         if !self.reference_floor {
-            return None;
+            return Vec::new();
         }
-        self.reference
+        let chosen: Vec<Id> = self
+            .references
+            .iter()
+            .copied()
             .filter(|r| *r != self.floor && doc.get::<Floor>(*r).is_some())
-            .or_else(|| doc.floor_below(self.floor).map(|f| f.id))
+            .collect();
+        if chosen.is_empty() {
+            doc.floor_below(self.floor)
+                .map(|f| f.id)
+                .into_iter()
+                .collect()
+        } else {
+            chosen
+        }
     }
 }
 
@@ -146,7 +157,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
     };
     let mut out = Drawing::default();
 
-    if let Some(reference) = opts.reference_floor_id(doc) {
+    for reference in opts.reference_floor_ids(doc) {
         for g in wall_geoms(doc, reference) {
             out.push(
                 None,

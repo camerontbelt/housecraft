@@ -228,7 +228,7 @@ pub(crate) fn new_document(name: String) -> Document {
         default_set: defaults,
         zoom: None,
         reference_floor: false,
-        reference: None,
+        references: Vec::new(),
         phase: Phase::All,
     });
     doc.insert(Camera {
