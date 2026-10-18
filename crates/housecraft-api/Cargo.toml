@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 housecraft-units.workspace = true
 housecraft-model.workspace = true
+housecraft-geom.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 schemars.workspace = true

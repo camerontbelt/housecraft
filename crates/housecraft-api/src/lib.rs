@@ -1,13 +1,17 @@
 //! The one API every HouseCraft front-end (GUI, CLI, MCP, scripts) goes through.
 //!
 //! Edits are serializable [`Command`]s applied atomically by a [`Session`],
-//! which also owns undo/redo. Read access goes through [`query`].
+//! which also owns undo/redo, keeps rooms in sync with walls and validates
+//! the document after every transaction. Read access goes through [`query`].
 
 mod command;
+mod ops;
 pub mod query;
+mod rooms;
 mod session;
 
-pub use command::{Command, Outcome};
+pub use command::{Command, LengthAnchor, Outcome, TransformOp};
+pub use housecraft_geom as geom;
 pub use housecraft_model as model;
 pub use housecraft_units as units;
 pub use session::Session;
@@ -18,10 +22,10 @@ use housecraft_model::{Id, ObjectKind};
 pub enum ApiError {
     #[error("{0} not found")]
     NotFound(Id),
-    #[error("{id} is a {actual}, expected a {expected}")]
+    #[error("{id} is a {actual}, expected {expected}")]
     WrongKind {
         id: Id,
-        expected: ObjectKind,
+        expected: String,
         actual: ObjectKind,
     },
     #[error("{0}")]

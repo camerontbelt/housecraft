@@ -59,6 +59,16 @@ impl Session {
         if commands.is_empty() {
             return Ok(outcome);
         }
+        crate::rooms::sync(&mut scratch, &mut outcome);
+        let issues = scratch.validate();
+        if !issues.is_empty() {
+            let list: Vec<String> = issues.iter().map(ToString::to_string).collect();
+            return Err(ApiError::Invalid(format!(
+                "the result would be inconsistent: {}",
+                list.join("; ")
+            )));
+        }
+        outcome.dedup();
         let previous = std::mem::replace(&mut self.doc, scratch);
         self.undo.push(previous);
         if self.undo.len() > UNDO_LIMIT {

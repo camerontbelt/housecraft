@@ -1,0 +1,151 @@
+//! Architectural objects: floors, walls, openings, rooms.
+
+use housecraft_units::{Length, Point2};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+use crate::Id;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Floor {
+    pub id: Id,
+    pub name: String,
+    /// Elevation of the finished floor surface above the project datum.
+    pub elevation: Length,
+    /// Finished floor to finished ceiling.
+    pub ceiling_height: Length,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct WallType {
+    pub id: Id,
+    pub name: String,
+    /// Layers listed exterior to interior.
+    pub layers: Vec<WallLayer>,
+}
+
+impl WallType {
+    pub fn thickness(&self) -> Length {
+        self.layers.iter().map(|l| l.thickness).sum()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct WallLayer {
+    pub name: String,
+    pub thickness: Length,
+    #[serde(default)]
+    pub material: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Wall {
+    pub id: Id,
+    pub floor: Id,
+    /// Wall centreline start, in plan coordinates.
+    pub start: Point2,
+    /// Wall centreline end. With layers listed exterior→interior, the exterior
+    /// face is on the left when looking from start to end.
+    pub end: Point2,
+    pub wall_type: Id,
+    /// Overrides the floor's ceiling height when set.
+    pub height: Option<Length>,
+    pub layer: Id,
+}
+
+impl Wall {
+    pub fn length(&self) -> Length {
+        self.start.distance(self.end)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DoorStyle {
+    Hinged,
+    Double,
+    Sliding,
+    Pocket,
+    Bifold,
+    /// A cased opening with no door leaf.
+    Doorway,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum WindowStyle {
+    Fixed,
+    Casement,
+    SingleHung,
+    DoubleHung,
+    Sliding,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case", tag = "type", content = "style")]
+pub enum OpeningKind {
+    Door(DoorStyle),
+    Window(WindowStyle),
+}
+
+impl OpeningKind {
+    pub fn is_door(self) -> bool {
+        matches!(self, OpeningKind::Door(_))
+    }
+}
+
+/// Which jamb a door is hinged on, seen from the side it swings toward.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Hinge {
+    Left,
+    Right,
+}
+
+/// A door or window placed in a wall.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Opening {
+    pub id: Id,
+    pub wall: Id,
+    pub kind: OpeningKind,
+    /// Distance along the wall from its start to the centre of the opening.
+    pub position: Length,
+    pub width: Length,
+    pub height: Length,
+    /// Height of the bottom of the opening above the floor (0 for doors).
+    pub sill: Length,
+    pub hinge: Hinge,
+    /// Door swings toward the wall's right (interior) side.
+    pub swing_in: bool,
+    pub layer: Id,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct RoomType {
+    pub id: Id,
+    pub name: String,
+    /// Default ceiling height for rooms of this type; `None` uses the floor's.
+    pub ceiling_height: Option<Length>,
+    #[serde(default)]
+    pub floor_finish: String,
+    #[serde(default)]
+    pub wall_finish: String,
+    /// Counted in the living-area total.
+    pub living_area: bool,
+}
+
+/// A room is an enclosed region of walls. Rooms are created and removed
+/// automatically as walls change; their properties are user-editable.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Room {
+    pub id: Id,
+    pub floor: Id,
+    /// A point inside the room; identifies which wall-enclosed region it is.
+    pub anchor: Point2,
+    /// Overrides the room type's name as the label.
+    pub name: Option<String>,
+    pub room_type: Id,
+    pub ceiling_height: Option<Length>,
+    pub floor_finish: Option<String>,
+    pub layer: Id,
+}

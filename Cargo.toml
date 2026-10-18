@@ -14,6 +14,8 @@ housecraft-model = { path = "crates/housecraft-model" }
 housecraft-api = { path = "crates/housecraft-api" }
 housecraft-io-native = { path = "crates/housecraft-io-native" }
 housecraft-mcp = { path = "crates/housecraft-mcp" }
+housecraft-geom = { path = "crates/housecraft-geom" }
+housecraft-draft = { path = "crates/housecraft-draft" }
 
 serde = { version = "1.0.229", features = ["derive"] }
 # float_roundtrip: lengths must survive save/load bit-for-bit.
@@ -24,6 +26,15 @@ anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
 zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 rmcp = { version = "3.5.1", features = ["server", "transport-io", "macros"] }
+glam = { version = "0.34.1", features = ["serde"] }
+pdf-writer = "0.15.0"
+eframe = { version = "0.37.0", default-features = false, features = ["wgpu", "default_fonts", "persistence", "wayland", "x11"] }
+egui = "0.37.0"
+egui-wgpu = "0.37.0"
+wgpu = "30.0.1"
+rfd = "0.17.2"
+bytemuck = { version = "1.25.2", features = ["derive"] }
+log = "0.4"
 tokio = { version = "1.53.3", features = ["macros", "rt-multi-thread", "io-std"] }
 
 [profile.dev.package."*"]

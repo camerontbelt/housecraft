@@ -1,12 +1,19 @@
-use housecraft_model::{Document, Floor, Id, ObjectKind, ObjectRef, Wall, WallLayer, WallType};
-use housecraft_units::{DisplayUnit, Length, Point2};
+use std::collections::BTreeMap;
+
+use housecraft_model::*;
+use housecraft_units::{DisplayUnit, Length, Point2, Point3};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::ApiError;
+use crate::ops::{self, expect, invalid, positive};
 
 /// A single edit to a document. Serialized with an `"op"` tag, e.g.
 /// `{"op": "add_wall", "start": [0, 0], "end": ["20'", 0]}`.
+///
+/// Objects created by `add_*` commands take their style, size and layer from
+/// the active default set unless the command says otherwise. Any property of
+/// any object can be changed with `update`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum Command {
@@ -21,29 +28,69 @@ pub enum Command {
         /// Defaults to the highest floor's ceiling height, or 8'.
         ceiling_height: Option<Length>,
     },
-    /// Change properties of a floor; omitted fields are left alone.
-    UpdateFloor {
-        id: Id,
-        name: Option<String>,
-        elevation: Option<Length>,
-        ceiling_height: Option<Length>,
-    },
     /// Add a layered wall type.
     AddWallType {
         name: String,
         /// Layers listed exterior to interior.
         layers: Vec<WallLayer>,
     },
-    /// Set the wall type used when commands do not specify one.
-    SetDefaultWallType { id: Id },
-    /// Add one straight wall along a centreline.
+    /// Add a drawing layer.
+    AddLayer {
+        name: String,
+        color: Option<Color>,
+        /// Pen width on paper in mm (default 0.25).
+        line_weight: Option<f64>,
+        #[serde(default)]
+        line_style: LineStyle,
+    },
+    /// Add a layer set, optionally copying another.
+    AddLayerSet { name: String, copy_from: Option<Id> },
+    /// Change how a layer looks in one layer set; omitted fields are left alone.
+    SetLayerDisplay {
+        layer_set: Id,
+        layer: Id,
+        visible: Option<bool>,
+        color: Option<Color>,
+        line_weight: Option<f64>,
+        line_style: Option<LineStyle>,
+    },
+    /// Add a default set, copying `copy_from` or the active set.
+    AddDefaultSet { name: String, copy_from: Option<Id> },
+    /// Choose the default set used by commands.
+    SetActiveDefaultSet { id: Id },
+    /// Add a text style.
+    AddTextStyle {
+        name: String,
+        height: Length,
+        font: Option<String>,
+        #[serde(default)]
+        bold: bool,
+        #[serde(default)]
+        italic: bool,
+        color: Option<Color>,
+    },
+    /// Add a room type.
+    AddRoomType {
+        name: String,
+        ceiling_height: Option<Length>,
+        #[serde(default)]
+        floor_finish: String,
+        #[serde(default = "yes")]
+        living_area: bool,
+    },
+    /// Add one straight wall along a centreline. Wall-type layers run exterior
+    /// to interior with the exterior on the left looking from start to end, so
+    /// draw exterior walls clockwise around the building.
     AddWall {
         /// Defaults to the lowest floor.
         floor: Option<Id>,
         start: Point2,
         end: Point2,
-        /// Defaults to the document's default wall type.
+        /// Defaults to the default set's exterior (or interior) wall type.
         wall_type: Option<Id>,
+        /// Use the default interior wall type instead of the exterior one.
+        #[serde(default)]
+        interior: bool,
         /// Defaults to the floor's ceiling height.
         height: Option<Length>,
     },
@@ -54,24 +101,169 @@ pub enum Command {
         #[serde(default)]
         closed: bool,
         wall_type: Option<Id>,
+        #[serde(default)]
+        interior: bool,
         height: Option<Length>,
     },
-    /// Move one or both wall endpoints.
+    /// Move one or both wall endpoints. Walls joined at a moved endpoint follow
+    /// unless `detach` is set.
     MoveWall {
         id: Id,
         start: Option<Point2>,
         end: Option<Point2>,
-    },
-    /// Change a wall's type or height override. `clear_height` removes the override.
-    UpdateWall {
-        id: Id,
-        wall_type: Option<Id>,
-        height: Option<Length>,
         #[serde(default)]
-        clear_height: bool,
+        detach: bool,
     },
-    /// Delete an object. Deleting a floor deletes its walls; a wall type in use cannot be deleted.
-    Delete { id: Id },
+    /// Set a wall's length, keeping `anchor` fixed. Joined walls follow.
+    SetWallLength {
+        id: Id,
+        length: Length,
+        #[serde(default)]
+        anchor: LengthAnchor,
+    },
+    /// Add a door to a wall. Place it with `position` (distance from the wall
+    /// start to the door centre) or `at` (a point projected onto the wall);
+    /// default is the wall's midpoint.
+    AddDoor {
+        wall: Id,
+        position: Option<Length>,
+        at: Option<Point2>,
+        style: Option<DoorStyle>,
+        width: Option<Length>,
+        height: Option<Length>,
+        hinge: Option<Hinge>,
+        /// Swing toward the wall's right (interior) side. Default true.
+        swing_in: Option<bool>,
+    },
+    /// Add a window to a wall; placement as for `add_door`.
+    AddWindow {
+        wall: Id,
+        position: Option<Length>,
+        at: Option<Point2>,
+        style: Option<WindowStyle>,
+        width: Option<Length>,
+        height: Option<Length>,
+        /// Height of the window bottom above the floor; default from head height.
+        sill: Option<Length>,
+    },
+    /// Add a CAD shape (line, polyline/box, arc, circle, ellipse, spline, point).
+    AddCad {
+        floor: Option<Id>,
+        layer: Option<Id>,
+        shape: Shape,
+        color: Option<Color>,
+        fill: Option<Color>,
+    },
+    /// Add a dimension.
+    AddDimension {
+        floor: Option<Id>,
+        layer: Option<Id>,
+        geometry: DimensionGeometry,
+        text_override: Option<String>,
+    },
+    /// Add overall and per-jog dimensions around the outside of the building.
+    AddExteriorDimensions { floor: Option<Id> },
+    /// Add a text note.
+    AddText {
+        floor: Option<Id>,
+        layer: Option<Id>,
+        position: Point2,
+        text: String,
+        style: Option<Id>,
+        #[serde(default)]
+        rotation: f64,
+        #[serde(default)]
+        justify: Justify,
+        height: Option<Length>,
+    },
+    /// Save a plan view (floor, layer set, default set).
+    AddPlanView {
+        name: String,
+        floor: Option<Id>,
+        layer_set: Option<Id>,
+        default_set: Option<Id>,
+        zoom: Option<ViewRect>,
+        #[serde(default)]
+        reference_floor: bool,
+    },
+    /// Save a 3D camera.
+    AddCamera {
+        name: String,
+        projection: Projection,
+        eye: Point3,
+        target: Point3,
+        layer_set: Option<Id>,
+    },
+    /// Change any properties of any object with a JSON merge patch over its
+    /// JSON form (see `get_object`); `null` clears an optional field.
+    Update {
+        id: Id,
+        set: serde_json::Map<String, serde_json::Value>,
+    },
+    /// Move, rotate, mirror or scale objects. With `copies` > 0 the originals
+    /// stay and that many copies are made, each transformed once more than the
+    /// last (replicate at intervals). Openings alone slide along their wall.
+    Transform {
+        ids: Vec<Id>,
+        transform: TransformOp,
+        #[serde(default)]
+        copies: u32,
+    },
+    /// Copy a CAD line/polyline/circle/arc or a wall parallel to itself;
+    /// positive distance is to the left (outward for circles and arcs).
+    Offset { id: Id, distance: Length },
+    /// Trim or extend a CAD line or wall so its nearer end meets the line
+    /// through `boundary` (a CAD line or wall).
+    ExtendTo { id: Id, boundary: Id },
+    /// Join two CAD lines (or two walls with radius 0) at their intersection,
+    /// rounding the corner with an arc of `radius`.
+    Fillet {
+        a: Id,
+        b: Id,
+        #[serde(default)]
+        radius: Length,
+    },
+    /// Cut the corner between two CAD lines with a straight segment.
+    Chamfer { a: Id, b: Id, distance: Length },
+    /// Delete objects. Floors take their contents with them; walls take their
+    /// doors and windows. Objects still referenced elsewhere cannot be deleted.
+    Delete { ids: Vec<Id> },
+}
+
+fn yes() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum LengthAnchor {
+    #[default]
+    Start,
+    End,
+    Center,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum TransformOp {
+    Translate {
+        dx: Length,
+        dy: Length,
+    },
+    /// Degrees counter-clockwise about `center`.
+    Rotate {
+        center: Point2,
+        angle: f64,
+    },
+    /// Reflect across the line through `a` and `b`.
+    Mirror {
+        a: Point2,
+        b: Point2,
+    },
+    Scale {
+        center: Point2,
+        factor: f64,
+    },
 }
 
 /// What a command or batch changed.
@@ -88,6 +280,32 @@ impl Outcome {
         self.modified.extend(other.modified);
         self.deleted.extend(other.deleted);
     }
+
+    /// Remove duplicates; objects created or deleted are not also "modified".
+    pub(crate) fn dedup(&mut self) {
+        for v in [&mut self.created, &mut self.modified, &mut self.deleted] {
+            let mut seen = std::collections::BTreeSet::new();
+            v.retain(|id| seen.insert(*id));
+        }
+        let created: std::collections::BTreeSet<Id> = self.created.iter().copied().collect();
+        let deleted: std::collections::BTreeSet<Id> = self.deleted.iter().copied().collect();
+        self.modified
+            .retain(|id| !created.contains(id) && !deleted.contains(id));
+        // Created then deleted within one transaction never existed.
+        self.created.retain(|id| !deleted.contains(id));
+        self.deleted.retain(|id| !created.contains(id));
+    }
+}
+
+fn first_layer_set(doc: &Document, given: Option<Id>) -> Result<Id, ApiError> {
+    match given {
+        Some(s) => Ok(s),
+        None => doc
+            .iter::<LayerSet>()
+            .next()
+            .map(|s| s.id)
+            .ok_or_else(|| ApiError::Invalid("the document has no layer sets".into())),
+    }
 }
 
 impl Command {
@@ -97,13 +315,32 @@ impl Command {
             Command::SetDocumentName { .. } => "set_document_name",
             Command::SetDisplayUnit { .. } => "set_display_unit",
             Command::AddFloor { .. } => "add_floor",
-            Command::UpdateFloor { .. } => "update_floor",
             Command::AddWallType { .. } => "add_wall_type",
-            Command::SetDefaultWallType { .. } => "set_default_wall_type",
+            Command::AddLayer { .. } => "add_layer",
+            Command::AddLayerSet { .. } => "add_layer_set",
+            Command::SetLayerDisplay { .. } => "set_layer_display",
+            Command::AddDefaultSet { .. } => "add_default_set",
+            Command::SetActiveDefaultSet { .. } => "set_active_default_set",
+            Command::AddTextStyle { .. } => "add_text_style",
+            Command::AddRoomType { .. } => "add_room_type",
             Command::AddWall { .. } => "add_wall",
             Command::AddWalls { .. } => "add_walls",
             Command::MoveWall { .. } => "move_wall",
-            Command::UpdateWall { .. } => "update_wall",
+            Command::SetWallLength { .. } => "set_wall_length",
+            Command::AddDoor { .. } => "add_door",
+            Command::AddWindow { .. } => "add_window",
+            Command::AddCad { .. } => "add_cad",
+            Command::AddDimension { .. } => "add_dimension",
+            Command::AddExteriorDimensions { .. } => "add_exterior_dimensions",
+            Command::AddText { .. } => "add_text",
+            Command::AddPlanView { .. } => "add_plan_view",
+            Command::AddCamera { .. } => "add_camera",
+            Command::Update { .. } => "update",
+            Command::Transform { .. } => "transform",
+            Command::Offset { .. } => "offset",
+            Command::ExtendTo { .. } => "extend_to",
+            Command::Fillet { .. } => "fillet",
+            Command::Chamfer { .. } => "chamfer",
             Command::Delete { .. } => "delete",
         }
     }
@@ -112,6 +349,7 @@ impl Command {
     /// callers apply to a scratch copy (see [`crate::Session::apply`]).
     pub(crate) fn apply(&self, doc: &mut Document) -> Result<Outcome, ApiError> {
         let mut out = Outcome::default();
+        let d = doc.active_defaults().clone();
         match self {
             Command::SetDocumentName { name } => doc.name = name.clone(),
             Command::SetDisplayUnit { unit } => {
@@ -132,255 +370,380 @@ impl Command {
                 let ceiling_height = ceiling_height
                     .or(top.as_ref().map(|f| f.ceiling_height))
                     .unwrap_or(Length::from_feet(8.0));
-                positive(ceiling_height, "ceiling_height")?;
                 let elevation = elevation
                     .or(top.as_ref().map(|f| f.elevation + f.ceiling_height))
                     .unwrap_or(Length::ZERO);
-                let id = doc.alloc_id();
                 let name = name
                     .clone()
-                    .unwrap_or_else(|| format!("Floor {}", doc.floors.len() + 1));
-                doc.floors.insert(
-                    id,
-                    Floor {
-                        id,
-                        name,
-                        elevation,
-                        ceiling_height,
-                    },
-                );
-                out.created.push(id);
-            }
-            Command::UpdateFloor {
-                id,
-                name,
-                elevation,
-                ceiling_height,
-            } => {
-                expect_kind(doc, *id, ObjectKind::Floor)?;
-                if let Some(h) = ceiling_height {
-                    positive(*h, "ceiling_height")?;
-                }
-                let floor = doc.floors.get_mut(id).expect("checked");
-                if let Some(n) = name {
-                    floor.name = n.clone();
-                }
-                if let Some(e) = elevation {
-                    floor.elevation = *e;
-                }
-                if let Some(h) = ceiling_height {
-                    floor.ceiling_height = *h;
-                }
-                out.modified.push(*id);
+                    .unwrap_or_else(|| format!("Floor {}", doc.count::<Floor>() + 1));
+                out.created.push(doc.insert(Floor {
+                    id: Id(0),
+                    name,
+                    elevation,
+                    ceiling_height,
+                }));
             }
             Command::AddWallType { name, layers } => {
-                if layers.is_empty() {
-                    return invalid("a wall type needs at least one layer");
-                }
-                for l in layers {
-                    positive(l.thickness, "layer thickness")?;
-                }
-                let id = doc.alloc_id();
-                doc.wall_types.insert(
-                    id,
-                    WallType {
-                        id,
-                        name: name.clone(),
-                        layers: layers.clone(),
-                    },
-                );
-                out.created.push(id);
+                out.created.push(doc.insert(WallType {
+                    id: Id(0),
+                    name: name.clone(),
+                    layers: layers.clone(),
+                }));
             }
-            Command::SetDefaultWallType { id } => {
-                expect_kind(doc, *id, ObjectKind::WallType)?;
-                doc.settings.default_wall_type = Some(*id);
+            Command::AddLayer {
+                name,
+                color,
+                line_weight,
+                line_style,
+            } => {
+                out.created.push(doc.insert(Layer {
+                    id: Id(0),
+                    name: name.clone(),
+                    color: *color,
+                    line_weight: line_weight.unwrap_or(0.25),
+                    line_style: *line_style,
+                    text_style: None,
+                    in_materials_list: true,
+                }));
+            }
+            Command::AddLayerSet { name, copy_from } => {
+                let layers = match copy_from {
+                    Some(src) => expect::<LayerSet>(doc, *src)?.layers.clone(),
+                    None => BTreeMap::new(),
+                };
+                out.created.push(doc.insert(LayerSet {
+                    id: Id(0),
+                    name: name.clone(),
+                    layers,
+                }));
+            }
+            Command::SetLayerDisplay {
+                layer_set,
+                layer,
+                visible,
+                color,
+                line_weight,
+                line_style,
+            } => {
+                expect::<Layer>(doc, *layer)?;
+                expect::<LayerSet>(doc, *layer_set)?;
+                let set = doc.get_mut::<LayerSet>(*layer_set).expect("checked");
+                let entry = set.layers.entry(*layer).or_default();
+                if let Some(v) = visible {
+                    entry.visible = *v;
+                }
+                if color.is_some() {
+                    entry.color = *color;
+                }
+                if line_weight.is_some() {
+                    entry.line_weight = *line_weight;
+                }
+                if line_style.is_some() {
+                    entry.line_style = *line_style;
+                }
+                out.modified.push(*layer_set);
+            }
+            Command::AddDefaultSet { name, copy_from } => {
+                let mut set = match copy_from {
+                    Some(src) => expect::<DefaultSet>(doc, *src)?.clone(),
+                    None => d.clone(),
+                };
+                set.name = name.clone();
+                out.created.push(doc.insert(set));
+            }
+            Command::SetActiveDefaultSet { id } => {
+                expect::<DefaultSet>(doc, *id)?;
+                doc.settings.active_default_set = *id;
+            }
+            Command::AddTextStyle {
+                name,
+                height,
+                font,
+                bold,
+                italic,
+                color,
+            } => {
+                out.created.push(doc.insert(TextStyle {
+                    id: Id(0),
+                    name: name.clone(),
+                    height: *height,
+                    font: font.clone().unwrap_or_else(|| "Sans".into()),
+                    bold: *bold,
+                    italic: *italic,
+                    color: *color,
+                }));
+            }
+            Command::AddRoomType {
+                name,
+                ceiling_height,
+                floor_finish,
+                living_area,
+            } => {
+                out.created.push(doc.insert(RoomType {
+                    id: Id(0),
+                    name: name.clone(),
+                    ceiling_height: *ceiling_height,
+                    floor_finish: floor_finish.clone(),
+                    wall_finish: String::new(),
+                    living_area: *living_area,
+                }));
             }
             Command::AddWall {
                 floor,
                 start,
                 end,
                 wall_type,
+                interior,
                 height,
             } => {
-                let (floor, wall_type) = wall_context(doc, *floor, *wall_type, *height)?;
-                out.created
-                    .push(add_wall(doc, floor, *start, *end, wall_type, *height)?);
+                let floor = ops::resolve_floor(doc, *floor)?;
+                let wt = ops::resolve_wall_type(doc, &d, *wall_type, *interior)?;
+                out.created.push(ops::add_wall(
+                    doc,
+                    floor,
+                    *start,
+                    *end,
+                    wt,
+                    *height,
+                    d.layers.walls,
+                )?);
             }
             Command::AddWalls {
                 floor,
                 points,
                 closed,
                 wall_type,
+                interior,
                 height,
             } => {
                 if points.len() < 2 {
                     return invalid("add_walls needs at least two points");
                 }
-                let (floor, wall_type) = wall_context(doc, *floor, *wall_type, *height)?;
+                if *closed && points.len() < 3 {
+                    return invalid("a closed run needs at least three points");
+                }
+                let floor = ops::resolve_floor(doc, *floor)?;
+                let wt = ops::resolve_wall_type(doc, &d, *wall_type, *interior)?;
                 let mut segments: Vec<_> = points.windows(2).map(|w| (w[0], w[1])).collect();
                 if *closed {
-                    if points.len() < 3 {
-                        return invalid("a closed run needs at least three points");
-                    }
                     segments.push((*points.last().expect("len >= 3"), points[0]));
                 }
                 for (a, b) in segments {
-                    out.created
-                        .push(add_wall(doc, floor, a, b, wall_type, *height)?);
+                    out.created.push(ops::add_wall(
+                        doc,
+                        floor,
+                        a,
+                        b,
+                        wt,
+                        *height,
+                        d.layers.walls,
+                    )?);
                 }
             }
-            Command::MoveWall { id, start, end } => {
-                expect_kind(doc, *id, ObjectKind::Wall)?;
-                let wall = doc.walls.get_mut(id).expect("checked");
-                if let Some(s) = start {
-                    wall.start = *s;
-                }
-                if let Some(e) = end {
-                    wall.end = *e;
-                }
-                check_wall_length(wall.start, wall.end)?;
-                out.modified.push(*id);
-            }
-            Command::UpdateWall {
+            Command::MoveWall {
                 id,
-                wall_type,
-                height,
-                clear_height,
+                start,
+                end,
+                detach,
             } => {
-                expect_kind(doc, *id, ObjectKind::Wall)?;
-                if let Some(t) = wall_type {
-                    expect_kind(doc, *t, ObjectKind::WallType)?;
-                }
-                if let Some(h) = height {
-                    positive(*h, "height")?;
-                }
-                if *clear_height && height.is_some() {
-                    return invalid("give either height or clear_height, not both");
-                }
-                let wall = doc.walls.get_mut(id).expect("checked");
-                if let Some(t) = wall_type {
-                    wall.wall_type = *t;
-                }
-                if let Some(h) = height {
-                    wall.height = Some(*h);
-                }
-                if *clear_height {
-                    wall.height = None;
-                }
-                out.modified.push(*id);
+                let w = expect::<Wall>(doc, *id)?.clone();
+                ops::move_wall_ends(
+                    doc,
+                    &w,
+                    start.unwrap_or(w.start),
+                    end.unwrap_or(w.end),
+                    !*detach,
+                    &mut out,
+                );
             }
-            Command::Delete { id } => match doc.object(*id).ok_or(ApiError::NotFound(*id))? {
-                ObjectRef::Floor(_) => {
-                    let walls: Vec<Id> = doc.walls_on(*id).map(|w| w.id).collect();
-                    for w in &walls {
-                        doc.walls.remove(w);
+            Command::SetWallLength { id, length, anchor } => {
+                positive(*length, "length")?;
+                let w = expect::<Wall>(doc, *id)?.clone();
+                let (s, e) = (housecraft_geom::v2(w.start), housecraft_geom::v2(w.end));
+                let dir = (e - s).normalize_or_zero();
+                let l = length.mm();
+                let (ns, ne) = match anchor {
+                    LengthAnchor::Start => (s, s + dir * l),
+                    LengthAnchor::End => (e - dir * l, e),
+                    LengthAnchor::Center => {
+                        let c = (s + e) / 2.0;
+                        (c - dir * l / 2.0, c + dir * l / 2.0)
                     }
-                    doc.floors.remove(id);
-                    out.deleted.extend(walls);
-                    out.deleted.push(*id);
-                }
-                ObjectRef::WallType(_) => {
-                    if let Some(w) = doc.walls.values().find(|w| w.wall_type == *id) {
-                        return invalid(format!("wall type {id} is used by wall {}", w.id));
-                    }
-                    if doc.settings.default_wall_type == Some(*id) {
-                        doc.settings.default_wall_type = None;
-                    }
-                    doc.wall_types.remove(id);
-                    out.deleted.push(*id);
-                }
-                ObjectRef::Wall(_) => {
-                    doc.walls.remove(id);
-                    out.deleted.push(*id);
-                }
-            },
+                };
+                ops::move_wall_ends(
+                    doc,
+                    &w,
+                    housecraft_geom::pt(ns),
+                    housecraft_geom::pt(ne),
+                    true,
+                    &mut out,
+                );
+            }
+            Command::AddDoor {
+                wall,
+                position,
+                at,
+                style,
+                width,
+                height,
+                hinge,
+                swing_in,
+            } => {
+                let w = expect::<Wall>(doc, *wall)?.clone();
+                let width = width.unwrap_or(d.door.width);
+                let position = ops::opening_position(&w, *position, *at, width)?;
+                out.created.push(doc.insert(Opening {
+                    id: Id(0),
+                    wall: *wall,
+                    kind: OpeningKind::Door(style.unwrap_or(d.door.style)),
+                    position,
+                    width,
+                    height: height.unwrap_or(d.door.height),
+                    sill: Length::ZERO,
+                    hinge: hinge.unwrap_or(d.door.hinge),
+                    swing_in: swing_in.unwrap_or(true),
+                    layer: d.layers.doors,
+                }));
+            }
+            Command::AddWindow {
+                wall,
+                position,
+                at,
+                style,
+                width,
+                height,
+                sill,
+            } => {
+                let w = expect::<Wall>(doc, *wall)?.clone();
+                let width = width.unwrap_or(d.window.width);
+                let height = height.unwrap_or(d.window.height);
+                let position = ops::opening_position(&w, *position, *at, width)?;
+                let sill = sill.unwrap_or(d.window.head_height - height);
+                out.created.push(doc.insert(Opening {
+                    id: Id(0),
+                    wall: *wall,
+                    kind: OpeningKind::Window(style.unwrap_or(d.window.style)),
+                    position,
+                    width,
+                    height,
+                    sill,
+                    hinge: Hinge::Left,
+                    swing_in: true,
+                    layer: d.layers.windows,
+                }));
+            }
+            Command::AddCad {
+                floor,
+                layer,
+                shape,
+                color,
+                fill,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                out.created.push(doc.insert(Cad {
+                    id: Id(0),
+                    floor,
+                    layer: layer.unwrap_or(d.layers.cad),
+                    shape: shape.clone(),
+                    color: *color,
+                    fill: *fill,
+                }));
+            }
+            Command::AddDimension {
+                floor,
+                layer,
+                geometry,
+                text_override,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                out.created.push(doc.insert(Dimension {
+                    id: Id(0),
+                    floor,
+                    layer: layer.unwrap_or(d.layers.dimensions),
+                    geometry: geometry.clone(),
+                    text_override: text_override.clone(),
+                }));
+            }
+            Command::AddExteriorDimensions { floor } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                ops::exterior_dimensions(doc, floor, &d, &mut out)?;
+            }
+            Command::AddText {
+                floor,
+                layer,
+                position,
+                text,
+                style,
+                rotation,
+                justify,
+                height,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                out.created.push(doc.insert(Text {
+                    id: Id(0),
+                    floor,
+                    layer: layer.unwrap_or(d.layers.text),
+                    position: *position,
+                    text: text.clone(),
+                    style: *style,
+                    rotation: *rotation,
+                    justify: *justify,
+                    height: *height,
+                    bold: None,
+                    color: None,
+                }));
+            }
+            Command::AddPlanView {
+                name,
+                floor,
+                layer_set,
+                default_set,
+                zoom,
+                reference_floor,
+            } => {
+                let layer_set = first_layer_set(doc, *layer_set)?;
+                out.created.push(doc.insert(PlanView {
+                    id: Id(0),
+                    name: name.clone(),
+                    floor: *floor,
+                    layer_set,
+                    default_set: default_set.unwrap_or(d.id),
+                    zoom: zoom.clone(),
+                    reference_floor: *reference_floor,
+                }));
+            }
+            Command::AddCamera {
+                name,
+                projection,
+                eye,
+                target,
+                layer_set,
+            } => {
+                let layer_set = first_layer_set(doc, *layer_set)?;
+                out.created.push(doc.insert(Camera {
+                    id: Id(0),
+                    name: name.clone(),
+                    projection: projection.clone(),
+                    eye: *eye,
+                    target: *target,
+                    layer_set,
+                }));
+            }
+            Command::Update { id, set } => ops::update(doc, *id, set, &mut out)?,
+            Command::Transform {
+                ids,
+                transform,
+                copies,
+            } => ops::transform(doc, ids, transform, *copies, &mut out)?,
+            Command::Offset { id, distance } => ops::offset(doc, *id, *distance, &mut out)?,
+            Command::ExtendTo { id, boundary } => ops::extend_to(doc, *id, *boundary, &mut out)?,
+            Command::Fillet { a, b, radius } => ops::fillet(doc, *a, *b, *radius, &mut out)?,
+            Command::Chamfer { a, b, distance } => {
+                positive(*distance, "distance")?;
+                ops::chamfer(doc, *a, *b, *distance, &mut out)?
+            }
+            Command::Delete { ids } => ops::delete(doc, ids, &mut out)?,
         }
         Ok(out)
     }
-}
-
-fn invalid<T>(msg: impl Into<String>) -> Result<T, ApiError> {
-    Err(ApiError::Invalid(msg.into()))
-}
-
-fn positive(len: Length, what: &str) -> Result<(), ApiError> {
-    if len.is_finite() && len.mm() > 0.0 {
-        Ok(())
-    } else {
-        invalid(format!("{what} must be positive"))
-    }
-}
-
-fn expect_kind(doc: &Document, id: Id, expected: ObjectKind) -> Result<(), ApiError> {
-    match doc.kind_of(id) {
-        None => Err(ApiError::NotFound(id)),
-        Some(actual) if actual != expected => Err(ApiError::WrongKind {
-            id,
-            expected,
-            actual,
-        }),
-        Some(_) => Ok(()),
-    }
-}
-
-/// Resolve the floor and wall type for new walls, applying document defaults.
-fn wall_context(
-    doc: &Document,
-    floor: Option<Id>,
-    wall_type: Option<Id>,
-    height: Option<Length>,
-) -> Result<(Id, Id), ApiError> {
-    let floor = match floor {
-        Some(f) => {
-            expect_kind(doc, f, ObjectKind::Floor)?;
-            f
-        }
-        None => match doc.floors_by_elevation().first() {
-            Some(f) => f.id,
-            None => return invalid("the document has no floors; add one first"),
-        },
-    };
-    let wall_type = match wall_type.or(doc.settings.default_wall_type) {
-        Some(t) => {
-            expect_kind(doc, t, ObjectKind::WallType)?;
-            t
-        }
-        None => return invalid("no wall_type given and the document has no default wall type"),
-    };
-    if let Some(h) = height {
-        positive(h, "height")?;
-    }
-    Ok((floor, wall_type))
-}
-
-fn check_wall_length(start: Point2, end: Point2) -> Result<(), ApiError> {
-    let len = start.distance(end);
-    if !len.is_finite() || len.mm() < 1.0 {
-        return invalid("wall is shorter than 1 mm");
-    }
-    Ok(())
-}
-
-fn add_wall(
-    doc: &mut Document,
-    floor: Id,
-    start: Point2,
-    end: Point2,
-    wall_type: Id,
-    height: Option<Length>,
-) -> Result<Id, ApiError> {
-    check_wall_length(start, end)?;
-    let id = doc.alloc_id();
-    doc.walls.insert(
-        id,
-        Wall {
-            id,
-            floor,
-            start,
-            end,
-            wall_type,
-            height,
-        },
-    );
-    Ok(id)
 }

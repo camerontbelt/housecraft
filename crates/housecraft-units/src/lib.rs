@@ -181,6 +181,92 @@ impl Point2 {
     pub fn distance(self, other: Point2) -> Length {
         Length((other.0.0 - self.0.0).hypot(other.1.0 - self.1.0))
     }
+    /// Millimetre coordinates.
+    pub fn mm(self) -> [f64; 2] {
+        [self.0.0, self.1.0]
+    }
+}
+
+/// A 3D point (x east, y north, z up). Serialized as `[x, y, z]`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Point3(pub Length, pub Length, pub Length);
+
+impl Point3 {
+    pub fn from_mm(x: f64, y: f64, z: f64) -> Self {
+        Point3(Length(x), Length(y), Length(z))
+    }
+    pub fn mm(self) -> [f64; 3] {
+        [self.0.0, self.1.0, self.2.0]
+    }
+}
+
+/// Format an area given in mm² as square feet (imperial display units) or m².
+pub fn format_area(mm2: f64, unit: DisplayUnit) -> String {
+    match unit {
+        DisplayUnit::FeetInches { .. } | DisplayUnit::Inches { .. } => {
+            format!("{:.0} sq ft", mm2 / (MM_PER_FOOT * MM_PER_FOOT))
+        }
+        DisplayUnit::Millimeters | DisplayUnit::Meters { .. } => {
+            format!("{:.2} m²", mm2 / 1_000_000.0)
+        }
+    }
+}
+
+impl Length {
+    /// Parse simple arithmetic over lengths: `120 + 12`, `12'6" - 3 1/2"`,
+    /// `36" * 3`, `10' / 4`. `+`/`-` combine lengths; `*` and ` / ` (with spaces)
+    /// take a plain number on the right. A `-` right after a foot mark is the
+    /// feet-inches separator (`12'-6"`), not subtraction.
+    pub fn parse_expr(input: &str, default_unit: LengthUnit) -> Result<Length, ParseLengthError> {
+        let err = |reason| ParseLengthError {
+            input: input.to_string(),
+            reason,
+        };
+        let chars: Vec<char> = input.chars().collect();
+        let mut terms: Vec<(f64, String)> = Vec::new();
+        let mut sign = 1.0;
+        let mut current = String::new();
+        for (i, &c) in chars.iter().enumerate() {
+            let prev_sig = chars[..i].iter().rev().find(|c| !c.is_whitespace());
+            let feet_separator = c == '-' && i > 0 && chars[i - 1] == '\'';
+            let is_operator = (c == '+' || c == '-')
+                && !feet_separator
+                && !current.trim().is_empty()
+                && prev_sig != Some(&'+')
+                && prev_sig != Some(&'-');
+            if is_operator {
+                terms.push((sign, std::mem::take(&mut current)));
+                sign = if c == '-' { -1.0 } else { 1.0 };
+            } else {
+                current.push(c);
+            }
+        }
+        terms.push((sign, current));
+
+        let mut total = Length::ZERO;
+        for (sign, term) in terms {
+            let term = term.trim();
+            if term.is_empty() {
+                return Err(err("empty term"));
+            }
+            let (base, factor) = if let Some((l, r)) = term.split_once('*') {
+                (
+                    l.trim(),
+                    parse_number(r.trim()).ok_or_else(|| err("bad multiplier"))?,
+                )
+            } else if let Some((l, r)) = term.split_once(" / ") {
+                let d = parse_number(r.trim()).ok_or_else(|| err("bad divisor"))?;
+                if d == 0.0 {
+                    return Err(err("division by zero"));
+                }
+                (l.trim(), 1.0 / d)
+            } else {
+                (term, 1.0)
+            };
+            total += Length::parse(base, default_unit)? * (sign * factor);
+        }
+        Ok(total)
+    }
 }
 
 /// Units used to interpret bare numbers during parsing.
@@ -443,6 +529,19 @@ mod tests {
             Length::from_mm(3810.0).format(DisplayUnit::Meters { decimals: 3 }),
             "3.810 m"
         );
+    }
+
+    #[test]
+    fn parses_expressions() {
+        let e = |s| Length::parse_expr(s, LengthUnit::Inches).unwrap().inches();
+        assert!(close(e("120 + 12"), 132.0));
+        assert!(close(e("12'-6\" - 6\""), 144.0));
+        assert!(close(e("12'-6 1/2\""), 150.5));
+        assert!(close(e("36\" * 3"), 108.0));
+        assert!(close(e("10' / 4"), 30.0));
+        assert!(close(e("-3' + 1'"), -24.0));
+        assert!(close(e("1/2\" + 1/4\""), 0.75));
+        assert!(Length::parse_expr("3' +", LengthUnit::Inches).is_err());
     }
 
     #[test]
