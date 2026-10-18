@@ -117,6 +117,27 @@ pub enum StairShape {
     },
 }
 
+/// Remodel status: what is there now, what is being added, what comes out.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Renovation {
+    Existing,
+    #[default]
+    New,
+    Demolish,
+}
+
+impl Renovation {
+    pub const ALL: [Renovation; 3] = [Renovation::Existing, Renovation::New, Renovation::Demolish];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Renovation::Existing => "Existing",
+            Renovation::New => "New",
+            Renovation::Demolish => "Demolish",
+        }
+    }
+}
 /// Electrical devices and fixtures.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -214,6 +235,8 @@ pub struct Electrical {
     /// Fixtures this switch controls (switches only).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub controls: Vec<Id>,
+    #[serde(default)]
+    pub renovation: Renovation,
     pub layer: Id,
 }
 /// A stair from its floor up to the floor above.
@@ -273,6 +296,8 @@ pub struct Wall {
     /// How the roof meets this wall when roofs are built automatically.
     #[serde(default)]
     pub roof: RoofEdge,
+    #[serde(default)]
+    pub renovation: Renovation,
 }
 
 /// Per-wall roof settings; `None` values come from the default set.
@@ -445,6 +470,8 @@ pub struct Opening {
     /// How far the door is open in 3D, 0 (closed) to 100 (fully open).
     #[serde(default)]
     pub open_percent: f64,
+    #[serde(default)]
+    pub renovation: Renovation,
     pub layer: Id,
 }
 

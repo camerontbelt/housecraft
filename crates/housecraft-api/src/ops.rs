@@ -81,6 +81,7 @@ pub(crate) fn add_wall(
         layer,
         footing: None,
         roof: Default::default(),
+        renovation: Default::default(),
     }))
 }
 

@@ -130,3 +130,74 @@ fn png_renders() {
     let png = housecraft_draft::svg::svg_to_png(&to_svg(&d, &SvgOptions::default()), 800).unwrap();
     assert_eq!(&png[1..4], b"PNG");
 }
+
+#[test]
+fn renovation_phases_show_the_right_walls() {
+    use housecraft_api::model::{Phase, Renovation, Wall};
+    let mut s = house();
+    let walls: Vec<_> = s.document().iter::<Wall>().map(|w| w.id).collect();
+    let interior = *walls.last().unwrap();
+    // Everything existing, then the interior wall comes out and a new one goes in.
+    s.apply(&[
+        Command::SetRenovation {
+            ids: walls.clone(),
+            status: Renovation::Existing,
+        },
+        Command::SetRenovation {
+            ids: vec![interior],
+            status: Renovation::Demolish,
+        },
+    ])
+    .unwrap();
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "add_wall", "start": ["28'",0], "end": ["28'","30'"], "interior": true}]"#,
+    )
+    .unwrap();
+    let new = s.apply(&cmds).unwrap().created[0];
+    let doc = s.document();
+    let draw = |phase: Phase| {
+        let mut opts = PlanOptions::first(doc).unwrap();
+        opts.phase = phase;
+        plan(doc, &opts)
+    };
+    let has = |d: &housecraft_draft::Drawing, id| d.items.iter().any(|i| i.object == Some(id));
+    let filled = |d: &housecraft_draft::Drawing, id| {
+        d.items.iter().find_map(|i| match &i.prim {
+            Prim::Polygon { fill, .. } if i.object == Some(id) => Some(*fill),
+            _ => None,
+        })
+    };
+    let all = draw(Phase::All);
+    assert!(has(&all, interior) && has(&all, new));
+    // Demolished walls are outlines only (dashed), never filled.
+    assert_eq!(filled(&all, interior), None);
+    let demo = draw(Phase::Demolition);
+    assert!(has(&demo, interior) && !has(&demo, new));
+    let proposed = draw(Phase::Proposed);
+    assert!(!has(&proposed, interior) && has(&proposed, new));
+    // Proposed plans keep existing walls grey and fill new walls solid.
+    assert_eq!(
+        filled(&proposed, walls[0]),
+        Some(housecraft_draft::Fill::Poche)
+    );
+    assert!(matches!(
+        filled(&proposed, new),
+        Some(housecraft_draft::Fill::Ink(_))
+    ));
+}
+
+#[test]
+fn north_pointer_is_drawn_where_placed() {
+    let mut s = house();
+    let cmds: Vec<Command> =
+        serde_json::from_str(r#"[{"op": "set_north", "angle": 60, "pointer": ["50'","20'"]}]"#)
+            .unwrap();
+    s.apply(&cmds).unwrap();
+    let doc = s.document();
+    let d = plan(doc, &PlanOptions::first(doc).unwrap());
+    assert!(
+        d.items
+            .iter()
+            .any(|i| matches!(&i.prim, Prim::Text { text, .. } if text == "N"))
+    );
+}

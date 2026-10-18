@@ -28,25 +28,66 @@ struct Vertex {
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Uniforms {
     view_proj: [[f32; 4]; 4],
+    /// Sun's view-projection, for the shadow map.
+    light_vp: [[f32; 4]; 4],
+    /// Direction toward the sun.
     light: [f32; 4],
+    /// x: shadows on (1/0); y: sun strength (0 below the horizon).
+    params: [f32; 4],
 }
 
+/// Shadow map resolution (square).
+const SHADOW_SIZE: u32 = 2048;
+const SHADOW_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+
 const SHADER: &str = r#"
-struct U { view_proj: mat4x4<f32>, light: vec4<f32> };
+struct U { view_proj: mat4x4<f32>, light_vp: mat4x4<f32>, light: vec4<f32>, params: vec4<f32> };
 @group(0) @binding(0) var<uniform> u: U;
+@group(1) @binding(0) var shadow_map: texture_depth_2d;
+@group(1) @binding(1) var shadow_sampler: sampler_comparison;
 struct VIn { @location(0) pos: vec3<f32>, @location(1) normal: vec3<f32>, @location(2) color: vec4<f32> };
-struct VOut { @builtin(position) clip: vec4<f32>, @location(0) normal: vec3<f32>, @location(1) color: vec4<f32> };
+struct VOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) normal: vec3<f32>,
+    @location(1) color: vec4<f32>,
+    @location(2) world: vec3<f32>,
+};
 @vertex fn vs(v: VIn) -> VOut {
     var o: VOut;
     o.clip = u.view_proj * vec4<f32>(v.pos, 1.0);
     o.normal = v.normal;
     o.color = v.color;
+    o.world = v.pos;
     return o;
+}
+@vertex fn vs_shadow(v: VIn) -> @builtin(position) vec4<f32> {
+    return u.light_vp * vec4<f32>(v.pos, 1.0);
+}
+fn sunlit(world: vec3<f32>) -> f32 {
+    if (u.params.x < 0.5) {
+        return 1.0;
+    }
+    let p = u.light_vp * vec4<f32>(world, 1.0);
+    let ndc = p.xyz / p.w;
+    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
+    if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0)) || ndc.z > 1.0) {
+        return 1.0;
+    }
+    // 3x3 percentage-closer filtering softens the shadow edge.
+    let texel = 1.0 / f32(textureDimensions(shadow_map).x);
+    var sum = 0.0;
+    for (var x = -1; x <= 1; x++) {
+        for (var y = -1; y <= 1; y++) {
+            let o = vec2<f32>(f32(x), f32(y)) * texel;
+            sum += textureSampleCompareLevel(shadow_map, shadow_sampler, uv + o, ndc.z - 0.0015);
+        }
+    }
+    return sum / 9.0;
 }
 @fragment fn fs(i: VOut) -> @location(0) vec4<f32> {
     let n = normalize(i.normal);
     let l = normalize(u.light.xyz);
-    let diffuse = abs(dot(n, l));
+    let diffuse = abs(dot(n, l)) * sunlit(i.world) * u.params.y;
     let sky = 0.5 + 0.5 * n.z;
     let shade = 0.35 + 0.5 * diffuse + 0.15 * sky;
     return vec4<f32>(i.color.rgb * shade, 1.0);
@@ -55,8 +96,11 @@ struct VOut { @builtin(position) clip: vec4<f32>, @location(0) normal: vec3<f32>
 
 struct Renderer3d {
     pipeline: wgpu::RenderPipeline,
+    shadow_pipeline: wgpu::RenderPipeline,
     uniforms: wgpu::Buffer,
     bind: wgpu::BindGroup,
+    shadow_bind: wgpu::BindGroup,
+    shadow_view: wgpu::TextureView,
     vbuf: Option<wgpu::Buffer>,
     ibuf: Option<wgpu::Buffer>,
     count: u32,
@@ -82,8 +126,34 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
             count: None,
         }],
     });
+    let shadow_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("housecraft shadow map"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Depth,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+                count: None,
+            },
+        ],
+    });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("housecraft 3d"),
+        bind_group_layouts: &[Some(&bgl), Some(&shadow_bgl)],
+        immediate_size: 0,
+    });
+    let shadow_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("housecraft shadow"),
         bind_group_layouts: &[Some(&bgl)],
         immediate_size: 0,
     });
@@ -127,6 +197,73 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
         multiview_mask: None,
         cache: None,
     });
+    let shadow_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("housecraft shadow"),
+        layout: Some(&shadow_layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: Some("vs_shadow"),
+            compilation_options: Default::default(),
+            buffers: &[Some(wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<Vertex>() as u64,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &attributes,
+            })],
+        },
+        primitive: wgpu::PrimitiveState::default(),
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: SHADOW_FORMAT,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(wgpu::CompareFunction::Less),
+            stencil: Default::default(),
+            // Push depths back a little so lit faces don't shadow themselves.
+            bias: wgpu::DepthBiasState {
+                constant: 2,
+                slope_scale: 2.0,
+                clamp: 0.0,
+            },
+        }),
+        multisample: wgpu::MultisampleState::default(),
+        fragment: None,
+        multiview_mask: None,
+        cache: None,
+    });
+    let shadow_texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("housecraft shadow map"),
+        size: wgpu::Extent3d {
+            width: SHADOW_SIZE,
+            height: SHADOW_SIZE,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: SHADOW_FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    });
+    let shadow_view = shadow_texture.create_view(&Default::default());
+    let shadow_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("housecraft shadow sampler"),
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        compare: Some(wgpu::CompareFunction::LessEqual),
+        ..Default::default()
+    });
+    let shadow_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("housecraft shadow map"),
+        layout: &shadow_bgl,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&shadow_view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&shadow_sampler),
+            },
+        ],
+    });
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("housecraft 3d uniforms"),
         size: std::mem::size_of::<Uniforms>() as u64,
@@ -143,8 +280,11 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
     });
     rs.renderer.write().callback_resources.insert(Renderer3d {
         pipeline,
+        shadow_pipeline,
         uniforms,
         bind,
+        shadow_bind,
+        shadow_view,
         vbuf: None,
         ibuf: None,
         count: 0,
@@ -165,7 +305,7 @@ impl egui_wgpu::CallbackTrait for Paint3d {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         _screen: &egui_wgpu::ScreenDescriptor,
-        _encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut wgpu::CommandEncoder,
         resources: &mut egui_wgpu::CallbackResources,
     ) -> Vec<wgpu::CommandBuffer> {
         let Some(r) = resources.get_mut::<Renderer3d>() else {
@@ -190,6 +330,31 @@ impl egui_wgpu::CallbackTrait for Paint3d {
             r.count = self.indices.len() as u32;
             r.key = self.key;
         }
+        // Render the scene's depth from the sun into the shadow map.
+        if let (Some(v), Some(i)) = (&r.vbuf, &r.ibuf) {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("housecraft shadow"),
+                color_attachments: &[],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &r.shadow_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            if self.uniforms.params[0] > 0.5 {
+                pass.set_pipeline(&r.shadow_pipeline);
+                pass.set_bind_group(0, &r.bind, &[]);
+                pass.set_vertex_buffer(0, v.slice(..));
+                pass.set_index_buffer(i.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..r.count, 0, 0..1);
+            }
+        }
         Vec::new()
     }
 
@@ -207,10 +372,39 @@ impl egui_wgpu::CallbackTrait for Paint3d {
         };
         pass.set_pipeline(&r.pipeline);
         pass.set_bind_group(0, &r.bind, &[]);
+        pass.set_bind_group(1, &r.shadow_bind, &[]);
         pass.set_vertex_buffer(0, v.slice(..));
         pass.set_index_buffer(i.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..r.count, 0, 0..1);
     }
+}
+
+/// Direction toward the sun (z up) from the document's north and sun settings.
+fn sun_direction(doc: &housecraft_api::model::Document) -> Vec3 {
+    let sun = doc.settings.sun;
+    // Azimuth is clockwise from north; plan angles are counter-clockwise.
+    let bearing = (doc.settings.north - sun.azimuth).to_radians() as f32;
+    let alt = (sun.altitude as f32).to_radians();
+    Vec3::new(
+        alt.cos() * bearing.cos(),
+        alt.cos() * bearing.sin(),
+        alt.sin(),
+    )
+}
+
+/// An orthographic view-projection looking down `light` that covers `lo..hi`
+/// (padded so long low-sun shadows still land on the map).
+fn light_view_proj(light: Vec3, lo: Vec3, hi: Vec3) -> Mat4 {
+    let center = (lo + hi) / 2.0;
+    let r = ((hi - lo).length() / 2.0).max(1.0) * 1.6;
+    let up = if light.cross(Vec3::Z).length() < 1e-3 {
+        Vec3::Y
+    } else {
+        Vec3::Z
+    };
+    let view = glam::camera::rh::view::look_at_mat4(center + light * r * 2.0, center, up);
+    let proj = glam::camera::rh::proj::directx::orthographic(-r, r, -r, r, 0.01, r * 4.0);
+    proj * view
 }
 
 /// Distinct values mixed into the upload key for each hidden category.
@@ -660,7 +854,13 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             egui::Color32::from_rgb(196, 214, 232)
         },
     );
-    let light = (Vec3::new(0.4, -0.6, 0.8)).normalize();
+    let doc = app.session.document();
+    let light = sun_direction(doc);
+    // Below the horizon the sun stops lighting and casting.
+    let strength = (light.z / 0.1).clamp(0.0, 1.0);
+    let bounds = v.mesh.as_ref().and_then(|(_, m)| mesh_bounds(m));
+    let shadows = doc.settings.sun.shadows && strength > 0.0 && bounds.is_some();
+    let light_vp = bounds.map_or(Mat4::IDENTITY, |(lo, hi)| light_view_proj(light, lo, hi));
     painter.add(egui_wgpu::Callback::new_paint_callback(
         rect,
         Paint3d {
@@ -669,7 +869,9 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             key: v.gpu_key,
             uniforms: Uniforms {
                 view_proj: vp.to_cols_array_2d(),
+                light_vp: light_vp.to_cols_array_2d(),
                 light: [light.x, light.y, light.z, 0.0],
+                params: [if shadows { 1.0 } else { 0.0 }, strength, 0.0, 0.0],
             },
         },
     ));

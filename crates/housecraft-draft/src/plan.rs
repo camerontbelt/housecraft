@@ -13,8 +13,11 @@ use crate::{Drawing, Fill, Ink, Prim, Stroke};
 pub struct PlanOptions {
     pub floor: Id,
     pub layer_set: Id,
-    /// Draw the floor below, faded.
+    /// Draw a reference floor, faded: `reference`, or else the floor below.
     pub reference_floor: bool,
+    pub reference: Option<Id>,
+    /// Remodel phase to show.
+    pub phase: Phase,
     /// Default set used for dimension and text defaults; `None` = active.
     pub default_set: Option<Id>,
 }
@@ -60,8 +63,20 @@ impl PlanOptions {
             floor: doc.floors_by_elevation().first()?.id,
             layer_set: doc.iter::<LayerSet>().next()?.id,
             reference_floor: false,
+            reference: None,
+            phase: Phase::All,
             default_set: None,
         })
+    }
+
+    /// The reference floor to draw, if any.
+    pub fn reference_floor_id(&self, doc: &Document) -> Option<Id> {
+        if !self.reference_floor {
+            return None;
+        }
+        self.reference
+            .filter(|r| *r != self.floor && doc.get::<Floor>(*r).is_some())
+            .or_else(|| doc.floor_below(self.floor).map(|f| f.id))
     }
 }
 
@@ -131,10 +146,8 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
     };
     let mut out = Drawing::default();
 
-    if opts.reference_floor
-        && let Some(below) = doc.floor_below(opts.floor)
-    {
-        for g in wall_geoms(doc, below.id) {
+    if let Some(reference) = opts.reference_floor_id(doc) {
+        for g in wall_geoms(doc, reference) {
             out.push(
                 None,
                 Prim::Polyline {
@@ -156,10 +169,35 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             continue;
         };
         let look = ctx.look(wall.layer);
-        if !look.visible {
+        if !look.visible || !opts.phase.shows(wall.renovation) {
             continue;
         }
-        let openings: Vec<&Opening> = doc.openings_in(g.id).collect();
+        // Openings outside the phase are filled in with wall.
+        let openings: Vec<&Opening> = doc
+            .openings_in(g.id)
+            .filter(|o| opts.phase.shows(o.renovation))
+            .collect();
+        let demolish = wall.renovation == Renovation::Demolish;
+        let look = if demolish {
+            Look {
+                stroke: Stroke {
+                    dash: &[1.5, 1.0],
+                    ..look.stroke
+                },
+                ..look
+            }
+        } else {
+            look
+        };
+        // Proposed plans fill new walls solid so new work stands out from
+        // the existing (grey) walls, as remodel drawings do.
+        let fill = if demolish {
+            None
+        } else if opts.phase == Phase::Proposed && wall.renovation == Renovation::New {
+            Some(Fill::Ink(look.ink))
+        } else {
+            Some(Fill::Poche)
+        };
         let railing = doc.get::<WallType>(wall.wall_type).and_then(|t| t.railing);
         if let Some(r) = railing {
             // Railings: outline only, with a dot at each baluster.
@@ -178,18 +216,16 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
                 );
             }
         }
-        for piece in g
-            .pieces(&openings)
-            .into_iter()
-            .filter(|_| railing.is_none())
-        {
-            out.push(
-                Some(g.id),
-                Prim::Polygon {
-                    points: piece,
-                    fill: Fill::Poche,
-                },
-            );
+        if let (None, Some(fill)) = (railing, fill) {
+            for piece in g.pieces(&openings) {
+                out.push(
+                    Some(g.id),
+                    Prim::Polygon {
+                        points: piece,
+                        fill,
+                    },
+                );
+            }
         }
         if let Some(f) = wall.footing {
             let hw = f.width.mm() / 2.0;
@@ -221,10 +257,21 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
     }
 
     for g in &geoms {
+        let wall_shown = doc
+            .get::<Wall>(g.id)
+            .is_some_and(|w| opts.phase.shows(w.renovation));
         for o in doc.openings_in(g.id) {
             let look = ctx.look(o.layer);
-            if look.visible {
-                opening_symbol(g, o, look.stroke, &mut out);
+            if look.visible && wall_shown && opts.phase.shows(o.renovation) {
+                let stroke = if o.renovation == Renovation::Demolish {
+                    Stroke {
+                        dash: &[1.5, 1.0],
+                        ..look.stroke
+                    }
+                } else {
+                    look.stroke
+                };
+                opening_symbol(g, o, stroke, &mut out);
             }
         }
     }
@@ -404,7 +451,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
     let switch_labels = doc.switch_labels();
     for e in doc.iter::<Electrical>().filter(|e| e.floor == opts.floor) {
         let look = ctx.look(e.layer);
-        if !look.visible {
+        if !look.visible || !opts.phase.shows(e.renovation) {
             continue;
         }
         let label = switch_labels.get(&e.id).map(String::as_str);
@@ -436,6 +483,10 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             );
         }
     }
+    if let Some(at) = doc.settings.north_pointer {
+        north_pointer(v2(at), doc.settings.north, &mut out);
+    }
+
     for dim in doc.iter::<Dimension>().filter(|d| d.floor == opts.floor) {
         let look = ctx.look(dim.layer);
         if !look.visible {
@@ -480,6 +531,54 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
     out
 }
 
+/// A north pointer: a circle with a half-filled arrow and an "N" past its tip.
+fn north_pointer(c: DVec2, north: f64, out: &mut Drawing) {
+    let r = 450.0;
+    let stroke = Stroke {
+        ink: Ink::Default,
+        width: 0.25,
+        dash: &[],
+    };
+    let d = DVec2::from_angle(north.to_radians());
+    let s = perp(d);
+    let (tip, tail) = (c + d * r * 1.15, c - d * r * 0.8);
+    out.push(
+        None,
+        Prim::Polyline {
+            points: arc_points(c, r, 0.0, 360.0),
+            closed: true,
+            stroke,
+        },
+    );
+    out.push(
+        None,
+        Prim::Polygon {
+            points: vec![tip, tail, tail + s * r * 0.45],
+            fill: Fill::Ink(Ink::Default),
+        },
+    );
+    out.push(
+        None,
+        Prim::Polyline {
+            points: vec![tip, tail - s * r * 0.45, tail, tail + s * r * 0.45, tip],
+            closed: true,
+            stroke,
+        },
+    );
+    out.push(
+        None,
+        Prim::Text {
+            at: c + d * r * 1.55,
+            text: "N".into(),
+            height: r * 0.5,
+            rotation: 0.0,
+            justify: Justify::Center,
+            middle: true,
+            bold: true,
+            ink: Ink::Default,
+        },
+    );
+}
 /// Plan symbol for an electrical device, drawn about its position. Wall
 /// devices are drawn just inside the room, facing `rotation`.
 fn electrical_symbol(

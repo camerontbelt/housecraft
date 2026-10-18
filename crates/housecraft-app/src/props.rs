@@ -264,6 +264,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     detach: false,
                 });
             }
+            renovation_row(ui, ed, w.renovation);
             ed.pick::<Layer>(ui, "Layer", "layer", Some(w.layer), None);
             let d = doc.active_defaults();
             Ed::label(ui, "Roof");
@@ -356,6 +357,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 });
                 ui.end_row();
             }
+            renovation_row(ui, ed, e.renovation);
             ed.pick::<Layer>(ui, "Layer", "layer", Some(e.layer), None);
         }
         Object::Stair(s) => {
@@ -568,6 +570,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     ui.end_row();
                 }
             }
+            renovation_row(ui, ed, o.renovation);
             ed.pick::<Layer>(ui, "Layer", "layer", Some(o.layer), None);
         }
         Object::Room(r) => {
@@ -1021,6 +1024,23 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.end_row();
         }
     }
+}
+
+fn renovation_row(ui: &mut Ui, ed: &mut Ed<'_>, current: Renovation) {
+    Ed::label(ui, "Renovation");
+    let mut r = current;
+    ui.horizontal(|ui| {
+        for v in Renovation::ALL {
+            ui.radio_value(&mut r, v, v.name());
+        }
+    });
+    if r != current {
+        ed.out.push(Command::SetRenovation {
+            ids: vec![ed.id],
+            status: r,
+        });
+    }
+    ui.end_row();
 }
 
 pub fn opening_name(k: OpeningKind) -> String {

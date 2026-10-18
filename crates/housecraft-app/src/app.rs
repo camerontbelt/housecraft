@@ -458,7 +458,9 @@ impl App {
         let opts = housecraft_draft::PlanOptions {
             floor: self.plan.floor,
             layer_set: self.plan.layer_set,
-            reference_floor: false,
+            reference_floor: self.plan.reference_floor,
+            reference: self.plan.reference,
+            phase: self.plan.phase,
             default_set: None,
         };
         let drawing = housecraft_draft::plan(doc, &opts);
@@ -652,6 +654,34 @@ impl App {
                         }
                     }
                 });
+                ui.menu_button("Renovation", |ui| {
+                    let has_sel = !self.selection.is_empty();
+                    for status in Renovation::ALL {
+                        if item(
+                            ui,
+                            &format!("Mark Selected as {}", status.name()),
+                            "",
+                            has_sel,
+                        ) {
+                            let ids = self.renovatable(&self.selection.clone());
+                            self.run1(Command::SetRenovation { ids, status });
+                        }
+                    }
+                    ui.separator();
+                    if item(ui, "Mark Everything Existing", "", true) {
+                        let all: Vec<Id> = self.doc().objects.keys().copied().collect();
+                        let ids = self.renovatable(&all);
+                        if self
+                            .run1(Command::SetRenovation {
+                                ids,
+                                status: Renovation::Existing,
+                            })
+                            .is_some()
+                        {
+                            self.info("Walls, doors, windows and electrical marked existing");
+                        }
+                    }
+                });
                 ui.menu_button("Stairs", |ui| {
                     for tool in Family::Stairs.tools() {
                         if tool_item(ui, *tool) {
@@ -727,6 +757,9 @@ impl App {
                         }
                     }
                 });
+                if item(ui, "Sun Angle and North...", "", true) {
+                    self.dialogs.sun.open = true;
+                }
                 if item(ui, "Save Current 3D View as Camera", "", true) {
                     let n = self.doc().count::<Camera>() + 1;
                     let cmd = self
@@ -798,6 +831,38 @@ impl App {
                     &mut self.plan.reference_floor,
                     "Reference Floor Display (F9)",
                 );
+                ui.menu_button("Reference Floor", |ui| {
+                    if ui
+                        .radio(self.plan.reference.is_none(), "Floor Below")
+                        .clicked()
+                    {
+                        self.plan.reference = None;
+                        self.plan.reference_floor = true;
+                        ui.close();
+                    }
+                    let floors: Vec<(Id, String)> = self
+                        .doc()
+                        .floors_by_elevation()
+                        .iter()
+                        .filter(|f| f.id != self.plan.floor)
+                        .map(|f| (f.id, f.name.clone()))
+                        .collect();
+                    for (id, name) in floors {
+                        if ui.radio(self.plan.reference == Some(id), name).clicked() {
+                            self.plan.reference = Some(id);
+                            self.plan.reference_floor = true;
+                            ui.close();
+                        }
+                    }
+                });
+                ui.menu_button("Renovation Phase", |ui| {
+                    for p in Phase::ALL {
+                        if ui.radio(self.plan.phase == p, p.name()).clicked() {
+                            self.plan.phase = p;
+                            ui.close();
+                        }
+                    }
+                });
                 ui.separator();
                 ui.menu_button("Color Scheme", |ui| {
                     for (t, name) in [
@@ -1387,6 +1452,20 @@ impl App {
         }
     }
 
+    /// The ids among `ids` that carry a renovation status.
+    fn renovatable(&self, ids: &[Id]) -> Vec<Id> {
+        let doc = self.doc();
+        ids.iter()
+            .copied()
+            .filter(|id| {
+                matches!(
+                    doc.kind_of(*id),
+                    Some(ObjectKind::Wall | ObjectKind::Opening | ObjectKind::Electrical)
+                )
+            })
+            .collect()
+    }
+
     pub fn apply_plan_view(&mut self, v: &PlanView) {
         self.plan.view = Some(v.id);
         if let Some(f) = v.floor {
@@ -1394,6 +1473,8 @@ impl App {
         }
         self.plan.layer_set = v.layer_set;
         self.plan.reference_floor = v.reference_floor;
+        self.plan.reference = v.reference;
+        self.plan.phase = v.phase;
         if let Some(z) = &v.zoom {
             self.plan.center = housecraft_api::geom::v2(z.center);
             self.plan.mm_per_pt = z.mm_per_point;

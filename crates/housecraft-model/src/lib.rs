@@ -178,6 +178,45 @@ pub struct Settings {
     pub display_unit: DisplayUnit,
     /// The default set used by commands that do not name one.
     pub active_default_set: Id,
+    /// Direction of true north in plan, degrees counter-clockwise from +x
+    /// (90 = up the screen).
+    #[serde(default = "north_up")]
+    pub north: f64,
+    /// Where the north pointer is drawn on the first floor's plan, if shown.
+    #[serde(default)]
+    pub north_pointer: Option<housecraft_units::Point2>,
+    #[serde(default)]
+    pub sun: Sun,
+}
+
+fn north_up() -> f64 {
+    90.0
+}
+
+/// Sun position for 3D lighting and shadows.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Sun {
+    /// Compass bearing to the sun, degrees clockwise from true north.
+    pub azimuth: f64,
+    /// Height above the horizon, degrees.
+    pub altitude: f64,
+    #[serde(default = "shadows_on")]
+    pub shadows: bool,
+}
+
+fn shadows_on() -> bool {
+    true
+}
+
+impl Default for Sun {
+    fn default() -> Self {
+        // Mid-morning, south-east: lights the front-left of a south-facing plan.
+        Sun {
+            azimuth: 135.0,
+            altitude: 45.0,
+            shadows: true,
+        }
+    }
 }
 
 impl Document {
@@ -189,6 +228,9 @@ impl Document {
             settings: Settings {
                 display_unit: DisplayUnit::default(),
                 active_default_set: Id(0),
+                north: north_up(),
+                north_pointer: None,
+                sun: Sun::default(),
             },
             next_id: 1,
             objects: BTreeMap::new(),
@@ -479,6 +521,7 @@ mod tests {
             layer,
             footing: None,
             roof: Default::default(),
+            renovation: Default::default(),
         });
         assert_eq!(doc.validate().len(), 2, "{:?}", doc.validate());
     }
@@ -498,6 +541,7 @@ mod tests {
             layer: d.layers.walls,
             footing: None,
             roof: Default::default(),
+            renovation: Default::default(),
         });
         doc.insert(Opening {
             id: Id(0),
@@ -510,6 +554,7 @@ mod tests {
             hinge: Hinge::Left,
             swing_in: true,
             open_percent: 0.0,
+            renovation: Default::default(),
             layer: d.layers.doors,
         });
         assert_eq!(doc.validate().len(), 1, "{:?}", doc.validate());

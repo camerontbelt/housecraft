@@ -291,6 +291,7 @@ mod tests {
             layer: d.layers.walls,
             footing: None,
             roof: Default::default(),
+            renovation: Default::default(),
         })
     }
 

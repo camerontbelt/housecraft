@@ -28,6 +28,55 @@ pub struct PlanView {
     /// Show the floor below, faded, and snap to it.
     #[serde(default)]
     pub reference_floor: bool,
+    /// Show this floor as the reference instead of the one below.
+    #[serde(default)]
+    pub reference: Option<Id>,
+    /// Which remodel phase the plan shows.
+    #[serde(default)]
+    pub phase: Phase,
+}
+
+/// Remodel phase a plan view shows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Phase {
+    /// Everything; demolished objects dashed.
+    #[default]
+    All,
+    /// The building as it stands: existing and to-be-demolished objects.
+    AsBuilt,
+    /// Existing objects with demolition dashed; new work hidden.
+    Demolition,
+    /// The finished design: existing (lighter) and new; demolition hidden.
+    Proposed,
+}
+
+impl Phase {
+    pub const ALL: [Phase; 4] = [
+        Phase::All,
+        Phase::AsBuilt,
+        Phase::Demolition,
+        Phase::Proposed,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Phase::All => "All",
+            Phase::AsBuilt => "As-Built",
+            Phase::Demolition => "Demolition Plan",
+            Phase::Proposed => "Proposed",
+        }
+    }
+
+    /// Whether an object with this status appears in the phase.
+    pub fn shows(self, r: crate::Renovation) -> bool {
+        use crate::Renovation as R;
+        match self {
+            Phase::All => true,
+            Phase::AsBuilt | Phase::Demolition => r != R::New,
+            Phase::Proposed => r != R::Demolish,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

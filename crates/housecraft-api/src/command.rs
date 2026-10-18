@@ -109,6 +109,22 @@ pub enum Command {
         #[serde(default)]
         disconnect: bool,
     },
+    /// Mark walls, doors, windows and electrical as existing, new or to be
+    /// demolished. Other kinds in `ids` are rejected.
+    SetRenovation { ids: Vec<Id>, status: Renovation },
+    /// Orient the plan: true north as an angle counter-clockwise from +x
+    /// (90 = up), and where to draw the north pointer (`null` hides it).
+    SetNorth { angle: f64, pointer: Option<Point2> },
+    /// Position the sun for 3D: give `azimuth` / `altitude` directly, or
+    /// `latitude`, `day_of_year` and solar `hour` to compute them.
+    SetSun {
+        azimuth: Option<f64>,
+        altitude: Option<f64>,
+        latitude: Option<f64>,
+        day_of_year: Option<u32>,
+        hour: Option<f64>,
+        shadows: Option<bool>,
+    },
     /// Exchange everything drawn on two floors (walls, rooms, CAD, text...),
     /// keeping the floors' own heights.
     SwapFloors { a: Id, b: Id },
@@ -269,6 +285,11 @@ pub enum Command {
         zoom: Option<ViewRect>,
         #[serde(default)]
         reference_floor: bool,
+        /// A specific reference floor (instead of the one below).
+        #[serde(default)]
+        reference: Option<Id>,
+        #[serde(default)]
+        phase: Phase,
     },
     /// Save a 3D camera.
     AddCamera {
@@ -423,6 +444,9 @@ impl Command {
             Command::AddStair { .. } => "add_stair",
             Command::AddElectrical { .. } => "add_electrical",
             Command::ConnectSwitch { .. } => "connect_switch",
+            Command::SetRenovation { .. } => "set_renovation",
+            Command::SetNorth { .. } => "set_north",
+            Command::SetSun { .. } => "set_sun",
             Command::AddWallType { .. } => "add_wall_type",
             Command::AddLayer { .. } => "add_layer",
             Command::AddLayerSet { .. } => "add_layer_set",
@@ -666,6 +690,7 @@ impl Command {
                     rotation: angle,
                     height: *height,
                     controls: controls.clone(),
+                    renovation: Default::default(),
                     layer: d.layers.electrical.unwrap_or(d.layers.cad),
                 }));
             }
@@ -696,6 +721,64 @@ impl Command {
                     }
                 }
                 out.modified.push(*switch);
+            }
+            Command::SetRenovation { ids, status } => {
+                for id in ids {
+                    let slot = match doc.object_mut(*id).ok_or(ApiError::NotFound(*id))? {
+                        Object::Wall(w) => &mut w.renovation,
+                        Object::Opening(o) => &mut o.renovation,
+                        Object::Electrical(e) => &mut e.renovation,
+                        other => {
+                            return invalid(format!("a {} has no renovation status", other.kind()));
+                        }
+                    };
+                    *slot = *status;
+                    out.modified.push(*id);
+                }
+            }
+            Command::SetNorth { angle, pointer } => {
+                if !angle.is_finite() {
+                    return invalid("north angle must be a number of degrees");
+                }
+                doc.settings.north = angle.rem_euclid(360.0);
+                doc.settings.north_pointer = *pointer;
+            }
+            Command::SetSun {
+                azimuth,
+                altitude,
+                latitude,
+                day_of_year,
+                hour,
+                shadows,
+            } => {
+                let sun = &mut doc.settings.sun;
+                match (latitude, day_of_year, hour) {
+                    (Some(lat), Some(day), Some(h)) => {
+                        if !(-90.0..=90.0).contains(lat)
+                            || !(1..=366).contains(day)
+                            || !(0.0..=24.0).contains(h)
+                        {
+                            return invalid("latitude -90..90, day_of_year 1..366, hour 0..24");
+                        }
+                        let (az, alt) = housecraft_geom::sun::position(*lat, *day, *h);
+                        sun.azimuth = az;
+                        sun.altitude = alt;
+                    }
+                    (None, None, None) => {}
+                    _ => return invalid("give latitude, day_of_year and hour together"),
+                }
+                if let Some(a) = azimuth {
+                    sun.azimuth = a.rem_euclid(360.0);
+                }
+                if let Some(a) = altitude {
+                    if !(-90.0..=90.0).contains(a) {
+                        return invalid("altitude must be between -90 and 90 degrees");
+                    }
+                    sun.altitude = *a;
+                }
+                if let Some(s) = shadows {
+                    sun.shadows = *s;
+                }
             }
             Command::SwapFloors { a, b } => {
                 expect::<Floor>(doc, *a)?;
@@ -928,6 +1011,7 @@ impl Command {
                     hinge: hinge.unwrap_or(d.door.hinge),
                     swing_in: swing_in.unwrap_or(true),
                     open_percent: 0.0,
+                    renovation: Default::default(),
                     layer: d.layers.doors,
                 }));
             }
@@ -956,6 +1040,7 @@ impl Command {
                     hinge: Hinge::Left,
                     swing_in: true,
                     open_percent: 0.0,
+                    renovation: Default::default(),
                     layer: d.layers.windows,
                 }));
             }
@@ -1027,6 +1112,8 @@ impl Command {
                 default_set,
                 zoom,
                 reference_floor,
+                reference,
+                phase,
             } => {
                 let layer_set = first_layer_set(doc, *layer_set)?;
                 out.created.push(doc.insert(PlanView {
@@ -1037,6 +1124,8 @@ impl Command {
                     default_set: default_set.unwrap_or(d.id),
                     zoom: zoom.clone(),
                     reference_floor: *reference_floor,
+                    reference: *reference,
+                    phase: *phase,
                 }));
             }
             Command::AddCamera {

@@ -128,6 +128,7 @@ fn rebuild_walls(
             layer,
             footing,
             roof: Default::default(),
+            renovation: Default::default(),
         }));
     }
     true

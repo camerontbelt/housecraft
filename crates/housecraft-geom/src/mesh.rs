@@ -2,7 +2,7 @@
 
 use glam::{DVec2, DVec3, Vec3};
 use housecraft_model::{
-    CeilingStyle, Document, Floor, FoundationKind, Id, Opening, OpeningKind, Room,
+    CeilingStyle, Document, Floor, FoundationKind, Id, Opening, OpeningKind, Renovation, Room,
 };
 
 use crate::math::v2;
@@ -171,7 +171,7 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         mesh.end();
     }
     for e in doc.iter::<housecraft_model::Electrical>() {
-        if only_floor.is_some_and(|f| f != e.floor) {
+        if only_floor.is_some_and(|f| f != e.floor) || e.renovation == Renovation::Demolish {
             continue;
         }
         mesh.begin(e.id, Category::Fixture);
@@ -488,8 +488,16 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
         let Some(wall) = doc.get::<housecraft_model::Wall>(g.id) else {
             continue;
         };
+        // 3D shows the finished design: demolished work is gone and
+        // demolished openings are filled in.
+        if wall.renovation == Renovation::Demolish {
+            continue;
+        }
         let height = doc.wall_height(wall).map_or(2438.4, |h| h.mm());
-        let openings: Vec<&Opening> = doc.openings_in(g.id).collect();
+        let openings: Vec<&Opening> = doc
+            .openings_in(g.id)
+            .filter(|o| o.renovation != Renovation::Demolish)
+            .collect();
         mesh.begin(g.id, wall_category);
         let railing = doc
             .get::<housecraft_model::WallType>(wall.wall_type)

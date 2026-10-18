@@ -224,6 +224,7 @@ mod tests {
                     pitch: Some(45.0),
                     overhang: Some(housecraft_units::Length::ZERO),
                 },
+                renovation: Default::default(),
             });
         }
         (doc, floor)

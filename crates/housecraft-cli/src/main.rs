@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
-use housecraft_api::model::{Document, Id, ObjectKind};
+use housecraft_api::model::{Document, Id, ObjectKind, Phase};
 use housecraft_api::{Command, Session, query};
 use housecraft_draft::pdf::{Paper, PdfOptions, Scale};
 use housecraft_draft::svg::SvgOptions;
@@ -80,6 +80,12 @@ enum Cmd {
         /// Show the floor below, faded.
         #[arg(long)]
         reference: bool,
+        /// Show this floor (name or id) faded instead of the floor below.
+        #[arg(long)]
+        reference_floor: Option<String>,
+        /// Remodel phase: all, as-built, demolition or proposed.
+        #[arg(long, default_value = "all")]
+        phase: String,
         /// PNG size in pixels (longest side).
         #[arg(long, default_value_t = 1600)]
         pixels: u32,
@@ -220,12 +226,28 @@ fn main() -> Result<()> {
             paper,
             portrait,
             reference,
+            reference_floor,
+            phase,
             pixels,
         } => {
             let doc = load(&path)?;
             let mut opts = PlanOptions::resolve(&doc, floor.as_deref(), layer_set.as_deref())
                 .map_err(anyhow::Error::msg)?;
-            opts.reference_floor = reference;
+            opts.reference_floor = reference || reference_floor.is_some();
+            if let Some(r) = &reference_floor {
+                opts.reference = Some(
+                    PlanOptions::resolve(&doc, Some(r), None)
+                        .map_err(anyhow::Error::msg)?
+                        .floor,
+                );
+            }
+            opts.phase = match phase.as_str() {
+                "all" => Phase::All,
+                "as-built" | "as_built" => Phase::AsBuilt,
+                "demolition" => Phase::Demolition,
+                "proposed" => Phase::Proposed,
+                other => bail!("unknown phase {other:?} (all, as-built, demolition, proposed)"),
+            };
             let drawing = plan(&doc, &opts);
             let imperial = matches!(
                 doc.settings.display_unit,

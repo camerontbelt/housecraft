@@ -11,6 +11,7 @@ pub mod roof;
 pub mod rooms;
 pub mod skeleton;
 pub mod stairs;
+pub mod sun;
 pub mod transform;
 pub mod triangulate;
 pub mod walls;

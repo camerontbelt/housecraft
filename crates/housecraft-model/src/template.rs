@@ -228,6 +228,8 @@ pub(crate) fn new_document(name: String) -> Document {
         default_set: defaults,
         zoom: None,
         reference_floor: false,
+        reference: None,
+        phase: Phase::All,
     });
     doc.insert(Camera {
         id: PLACEHOLDER,

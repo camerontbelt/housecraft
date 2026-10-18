@@ -156,8 +156,8 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         ),
         Object::Opening(o) => {
             let what = match o.opening_kind {
-                OpeningKind::Door(s) => format!("{s:?} door"),
-                OpeningKind::Window(s) => format!("{s:?} window"),
+                OpeningKind::Door(s) => s.name(),
+                OpeningKind::Window(s) => s.name(),
             };
             format!(
                 "{what} {} x {} in wall {}",

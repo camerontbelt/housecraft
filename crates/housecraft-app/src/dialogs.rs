@@ -139,9 +139,46 @@ impl Default for FoundationDialog {
     }
 }
 
+/// 3D > Sun Angle: sun position (direct or from place and time) and north.
+pub struct SunDialog {
+    pub open: bool,
+    latitude: f64,
+    month: usize,
+    day: u32,
+    hour: f64,
+}
+
+impl Default for SunDialog {
+    fn default() -> Self {
+        SunDialog {
+            open: false,
+            latitude: 40.0,
+            month: 6,
+            day: 21,
+            hour: 15.0,
+        }
+    }
+}
+
+const MONTHS: [(&str, u32); 12] = [
+    ("January", 31),
+    ("February", 28),
+    ("March", 31),
+    ("April", 30),
+    ("May", 31),
+    ("June", 30),
+    ("July", 31),
+    ("August", 31),
+    ("September", 30),
+    ("October", 31),
+    ("November", 30),
+    ("December", 31),
+];
+
 #[derive(Default)]
 pub struct Dialogs {
     pub foundation: FoundationDialog,
+    pub sun: SunDialog,
     pub print: PrintDialog,
     pub transform: TransformDialog,
     pub cad_op: CadOpDialog,
@@ -182,6 +219,7 @@ fn selection_center(doc: &Document, ids: &[Id]) -> DVec2 {
 
 pub fn show(app: &mut App, ctx: &Context) {
     foundation_dialog(app, ctx);
+    sun_dialog(app, ctx);
     print_dialog(app, ctx);
     transform_dialog(app, ctx);
     cad_op_dialog(app, ctx);
@@ -1267,6 +1305,8 @@ fn save_view_dialog(app: &mut App, ctx: &Context) {
                 mm_per_point: app.plan.mm_per_pt,
             }),
             reference_floor: app.plan.reference_floor,
+            reference: app.plan.reference,
+            phase: app.plan.phase,
         };
         if let Some(out) = app.run1(cmd) {
             app.plan.view = out.created.first().copied();
@@ -1340,6 +1380,113 @@ fn about_dialog(app: &mut App, ctx: &Context) {
             ui.label("Residential design and construction documents.");
             ui.label("Built in Rust with egui and wgpu. Also usable headless (housecraft CLI) and by AI assistants (housecraft mcp).");
         });
+}
+
+/// True once per edit of a drag value: when a drag ends, or on a typed or
+/// clicked change (so undo gets one step, not one per frame).
+fn committed(r: &egui::Response) -> bool {
+    r.drag_stopped() || (r.changed() && !r.dragged())
+}
+
+fn sun_dialog(app: &mut App, ctx: &Context) {
+    let mut open = app.dialogs.sun.open;
+    if !open {
+        return;
+    }
+    let mut commands = Vec::new();
+    egui::Window::new("Sun Angle and North")
+        .open(&mut open)
+        .resizable(false)
+        .show(ctx, |ui| {
+            let settings = app.session.document().settings.clone();
+            let d = &mut app.dialogs.sun;
+            let sun = settings.sun;
+            ui.heading("Sun");
+            egui::Grid::new("sun_direct").num_columns(2).show(ui, |ui| {
+                ui.label("Bearing (° from north, clockwise)");
+                let mut az = sun.azimuth;
+                if committed(&ui.add(egui::DragValue::new(&mut az).fixed_decimals(1).range(0.0..=360.0).speed(1.0).suffix("°"))) {
+                    commands.push(Command::SetSun { azimuth: Some(az), altitude: None, latitude: None, day_of_year: None, hour: None, shadows: None });
+                }
+                ui.end_row();
+                ui.label("Altitude above horizon");
+                let mut alt = sun.altitude;
+                if committed(&ui.add(egui::DragValue::new(&mut alt).fixed_decimals(1).range(-10.0..=90.0).speed(0.5).suffix("°"))) {
+                    commands.push(Command::SetSun { azimuth: None, altitude: Some(alt), latitude: None, day_of_year: None, hour: None, shadows: None });
+                }
+                ui.end_row();
+                ui.label("Shadows");
+                let mut sh = sun.shadows;
+                if ui.checkbox(&mut sh, "Cast shadows in 3D").changed() {
+                    commands.push(Command::SetSun { azimuth: None, altitude: None, latitude: None, day_of_year: None, hour: None, shadows: Some(sh) });
+                }
+                ui.end_row();
+            });
+            ui.separator();
+            ui.label("Or from location and time:");
+            egui::Grid::new("sun_place").num_columns(2).show(ui, |ui| {
+                ui.label("Latitude");
+                ui.add(egui::DragValue::new(&mut d.latitude).range(-90.0..=90.0).speed(0.1).suffix("°"));
+                ui.end_row();
+                ui.label("Date");
+                ui.horizontal(|ui| {
+                    egui::ComboBox::from_id_salt("sun_month")
+                        .selected_text(MONTHS[d.month - 1].0)
+                        .show_ui(ui, |ui| {
+                            for (i, (name, _)) in MONTHS.iter().enumerate() {
+                                ui.selectable_value(&mut d.month, i + 1, *name);
+                            }
+                        });
+                    let days = MONTHS[d.month - 1].1;
+                    d.day = d.day.min(days);
+                    ui.add(egui::DragValue::new(&mut d.day).range(1..=days));
+                });
+                ui.end_row();
+                ui.label("Solar time");
+                ui.add(egui::Slider::new(&mut d.hour, 4.0..=20.0).step_by(0.25).custom_formatter(|h, _| {
+                    format!("{:02}:{:02}", h.floor() as u32, ((h.fract() * 60.0).round()) as u32)
+                }));
+                ui.end_row();
+            });
+            if ui.button("Set sun from location and time").clicked() {
+                let day: u32 = MONTHS[..d.month - 1].iter().map(|m| m.1).sum::<u32>() + d.day;
+                commands.push(Command::SetSun {
+                    azimuth: None,
+                    altitude: None,
+                    latitude: Some(d.latitude),
+                    day_of_year: Some(day),
+                    hour: Some(d.hour),
+                    shadows: None,
+                });
+            }
+            ui.separator();
+            ui.heading("North");
+            egui::Grid::new("north").num_columns(2).show(ui, |ui| {
+                ui.label("North points (° clockwise from up)");
+                let mut cw = (90.0 - settings.north).rem_euclid(360.0);
+                if committed(&ui.add(egui::DragValue::new(&mut cw).fixed_decimals(1).range(0.0..=360.0).speed(1.0).suffix("°"))) {
+                    commands.push(Command::SetNorth {
+                        angle: (90.0 - cw).rem_euclid(360.0),
+                        pointer: settings.north_pointer,
+                    });
+                }
+                ui.end_row();
+                ui.label("North pointer");
+                let mut show = settings.north_pointer.is_some();
+                if ui.checkbox(&mut show, "Show in plan views").changed() {
+                    commands.push(Command::SetNorth {
+                        angle: settings.north,
+                        pointer: show.then(|| housecraft_api::geom::pt(app.plan.center)),
+                    });
+                }
+                ui.end_row();
+            });
+            ui.weak("The pointer is placed at the centre of the current plan view. Turn it off and on again to move it.");
+        });
+    app.dialogs.sun.open = open;
+    for c in commands {
+        app.run1(c);
+    }
 }
 
 fn foundation_dialog(app: &mut App, ctx: &Context) {

@@ -791,3 +791,77 @@ fn switches_sharing_a_light_become_three_and_four_way() {
     );
     assert_eq!(s.document().switch_labels()[&b], "S");
 }
+
+#[test]
+fn sun_and_north_settings() {
+    let mut s = boxed();
+    apply(
+        &mut s,
+        r#"[{"op": "set_sun", "latitude": 40, "day_of_year": 80, "hour": 12},
+            {"op": "set_north", "angle": -30, "pointer": null}]"#,
+    );
+    let st = &s.document().settings;
+    assert!((st.sun.azimuth - 180.0).abs() < 1.0);
+    assert!((st.sun.altitude - 50.0).abs() < 1.5);
+    assert_eq!(st.north, 330.0);
+    // Location needs all three parts; altitude is bounded.
+    assert!(
+        s.apply(&commands(r#"[{"op": "set_sun", "latitude": 40}]"#))
+            .is_err()
+    );
+    assert!(
+        s.apply(&commands(r#"[{"op": "set_sun", "altitude": 120}]"#))
+            .is_err()
+    );
+    // Older files without these settings load with north up and a default sun.
+    let mut v = serde_json::to_value(s.document()).unwrap();
+    let settings = v["settings"].as_object_mut().unwrap();
+    settings.remove("north");
+    settings.remove("sun");
+    let doc: Document = serde_json::from_value(v).unwrap();
+    assert_eq!(doc.settings.north, 90.0);
+    assert!(doc.settings.sun.shadows);
+}
+
+#[test]
+fn demolished_walls_leave_the_3d_model() {
+    let mut s = boxed();
+    let wall = walls(&s)[0].id;
+    let out = apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_door", "wall": {}, "position": "10'"}}]"#,
+            wall.0
+        ),
+    );
+    let door = out.created[0];
+    let parts = |s: &Session, id: Id| {
+        housecraft_api::geom::mesh::build(s.document(), None)
+            .parts
+            .iter()
+            .filter(|p| p.object == id)
+            .count()
+    };
+    assert!(parts(&s, door) > 0);
+    s.apply(&[Command::SetRenovation {
+        ids: vec![door],
+        status: Renovation::Demolish,
+    }])
+    .unwrap();
+    assert_eq!(parts(&s, door), 0, "demolished door is filled in");
+    s.apply(&[Command::SetRenovation {
+        ids: vec![wall],
+        status: Renovation::Demolish,
+    }])
+    .unwrap();
+    assert_eq!(parts(&s, wall), 0);
+    // Only walls, openings and electrical carry a status.
+    let floor = s.document().floors_by_elevation()[0].id;
+    assert!(
+        s.apply(&[Command::SetRenovation {
+            ids: vec![floor],
+            status: Renovation::New
+        }])
+        .is_err()
+    );
+}
