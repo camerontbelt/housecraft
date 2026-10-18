@@ -1,0 +1,17 @@
+[package]
+name = "housecraft-mcp"
+description = "Model Context Protocol server exposing the HouseCraft API to LLMs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+housecraft-api.workspace = true
+housecraft-io-native.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+rmcp.workspace = true
+tokio.workspace = true
+anyhow.workspace = true

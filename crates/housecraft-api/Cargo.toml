@@ -1,0 +1,15 @@
+[package]
+name = "housecraft-api"
+description = "Commands, transactions, undo/redo and queries shared by every HouseCraft front-end"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+housecraft-units.workspace = true
+housecraft-model.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+thiserror.workspace = true
