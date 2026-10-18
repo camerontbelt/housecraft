@@ -84,6 +84,26 @@ enum Cmd {
         #[arg(long, default_value_t = 1600)]
         pixels: u32,
     },
+    /// Analyse an unknown file (e.g. a Chief Architect .plan): container,
+    /// compressed streams, entropy and strings.
+    Probe {
+        path: PathBuf,
+        #[arg(long)]
+        json: bool,
+        /// Write each payload (ZIP entries, inflated zlib streams) to this directory.
+        #[arg(long)]
+        extract: Option<PathBuf>,
+    },
+    /// Byte-diff two files, payload by payload (for "change one thing" sample pairs).
+    ProbeDiff {
+        a: PathBuf,
+        b: PathBuf,
+        /// Merge changes separated by fewer than this many equal bytes.
+        #[arg(long, default_value_t = 4)]
+        gap: usize,
+        #[arg(long)]
+        json: bool,
+    },
     /// Print the JSON Schema for command batches.
     Schema,
     /// Run the MCP server on stdin/stdout.
@@ -263,6 +283,89 @@ fn main() -> Result<()> {
                 .with_context(|| format!("writing {}", output.display()))?;
             println!("wrote {}", output.display());
         }
+        Cmd::Probe {
+            path,
+            json,
+            extract,
+        } => {
+            let data =
+                std::fs::read(&path).with_context(|| format!("reading {}", path.display()))?;
+            let report = housecraft_io_ca::probe::probe(&data);
+            if let Some(dir) = extract {
+                std::fs::create_dir_all(&dir)?;
+                for (name, bytes) in housecraft_io_ca::probe::payloads(&data) {
+                    let safe: String = name
+                        .chars()
+                        .map(|c| {
+                            if c.is_ascii_alphanumeric() || "._-@".contains(c) {
+                                c
+                            } else {
+                                '_'
+                            }
+                        })
+                        .collect();
+                    std::fs::write(dir.join(format!("{safe}.bin")), bytes)?;
+                }
+                eprintln!("payloads written to {}", dir.display());
+            }
+            if json {
+                print_json(&report)?;
+            } else {
+                print_probe(&report);
+            }
+        }
+        Cmd::ProbeDiff { a, b, gap, json } => {
+            let (da, db) = (std::fs::read(&a)?, std::fs::read(&b)?);
+            let (pa, pb) = (
+                housecraft_io_ca::probe::payloads(&da),
+                housecraft_io_ca::probe::payloads(&db),
+            );
+            let mut results = Vec::new();
+            for (name, bytes_a) in &pa {
+                match pb.iter().find(|(n, _)| n == name) {
+                    Some((_, bytes_b)) => results.push((
+                        name.clone(),
+                        housecraft_io_ca::diff::diff(bytes_a, bytes_b, gap),
+                    )),
+                    None => eprintln!("payload {name} only in {}", a.display()),
+                }
+            }
+            for (name, _) in pb.iter().filter(|(n, _)| !pa.iter().any(|(m, _)| m == n)) {
+                eprintln!("payload {name} only in {}", b.display());
+            }
+            if json {
+                let v: Vec<_> = results
+                    .iter()
+                    .map(|(n, d)| serde_json::json!({ "payload": n, "diff": d }))
+                    .collect();
+                print_json(&v)?;
+            } else {
+                for (name, d) in &results {
+                    if d.identical {
+                        println!("{name}: identical ({} bytes)", d.a_len);
+                        continue;
+                    }
+                    println!(
+                        "{name}: {} -> {} bytes, {} changed region(s){}",
+                        d.a_len,
+                        d.b_len,
+                        d.hunks.len(),
+                        if d.approximate { " (approximate)" } else { "" }
+                    );
+                    for h in d.hunks.iter().take(50) {
+                        println!(
+                            "  @{:#010x} -{} +{}
+    a: {}
+    b: {}",
+                            h.a_offset, h.a_len, h.b_len, h.a_bytes, h.b_bytes
+                        );
+                        if let Some(n) = &h.as_numbers {
+                            println!("    {n}");
+                        }
+                    }
+                }
+            }
+        }
         Cmd::Schema => print_json(&housecraft_api::command_schema())?,
         Cmd::Mcp => tokio::runtime::Runtime::new()?.block_on(housecraft_mcp::serve_stdio())?,
     }
@@ -300,4 +403,42 @@ fn read_commands(source: &Path) -> Result<Vec<Command>> {
 fn print_json(value: &impl serde::Serialize) -> Result<()> {
     println!("{}", serde_json::to_string_pretty(value)?);
     Ok(())
+}
+
+fn print_probe(r: &housecraft_io_ca::probe::ProbeReport) {
+    println!("size      {} bytes", r.size);
+    println!("sha256    {}", r.sha256);
+    println!("head      {}", r.head);
+    println!(
+        "container {}",
+        serde_json::to_string(&r.container).unwrap_or_default()
+    );
+    const LEVELS: &[char] = &[' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'];
+    let map: String = r
+        .entropy
+        .iter()
+        .map(|e| LEVELS[((e / 8.0) * (LEVELS.len() - 1) as f32).round() as usize])
+        .collect();
+    println!(
+        "entropy   per {} KiB block, ' ' = 0 ... '@' = 8 bits/byte:",
+        housecraft_io_ca::probe::ENTROPY_BLOCK / 1024
+    );
+    for line in map.as_bytes().chunks(64) {
+        println!("          |{}|", String::from_utf8_lossy(line));
+    }
+    println!("zlib streams: {}", r.zlib_streams.len());
+    for s in r.zlib_streams.iter().take(40) {
+        println!(
+            "  @{:#010x}  {} -> {} bytes  {}",
+            s.offset, s.compressed_len, s.inflated_len, s.inflated_head
+        );
+    }
+    println!("ascii strings (first 40 of {}):", r.ascii_strings.len());
+    for s in r.ascii_strings.iter().take(40) {
+        println!("  @{:#010x}  {}", s.offset, s.text);
+    }
+    println!("utf-16 strings (first 40 of {}):", r.utf16_strings.len());
+    for s in r.utf16_strings.iter().take(40) {
+        println!("  @{:#010x}  {}", s.offset, s.text);
+    }
 }

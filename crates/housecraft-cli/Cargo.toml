@@ -15,6 +15,7 @@ housecraft-api.workspace = true
 housecraft-io-native.workspace = true
 housecraft-mcp.workspace = true
 housecraft-draft = { workspace = true, features = ["png"] }
+housecraft-io-ca.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 clap.workspace = true

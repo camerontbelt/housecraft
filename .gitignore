@@ -1,3 +1,6 @@
 /target
 *.hcraft.bak
 .DS_Store
+
+# Private reverse-engineering samples (never commit third-party files)
+/samples

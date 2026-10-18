@@ -16,6 +16,7 @@ housecraft-io-native = { path = "crates/housecraft-io-native" }
 housecraft-mcp = { path = "crates/housecraft-mcp" }
 housecraft-geom = { path = "crates/housecraft-geom" }
 housecraft-draft = { path = "crates/housecraft-draft" }
+housecraft-io-ca = { path = "crates/housecraft-io-ca" }
 
 serde = { version = "1.0.229", features = ["derive"] }
 # float_roundtrip: lengths must survive save/load bit-for-bit.
