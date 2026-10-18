@@ -132,22 +132,23 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
     let mut out = Drawing::default();
 
     if opts.reference_floor
-        && let Some(below) = doc.floor_below(opts.floor) {
-            for g in wall_geoms(doc, below.id) {
-                out.push(
-                    None,
-                    Prim::Polyline {
-                        points: g.outline(),
-                        closed: true,
-                        stroke: Stroke {
-                            ink: Ink::Faded,
-                            width: 0.18,
-                            dash: &[],
-                        },
+        && let Some(below) = doc.floor_below(opts.floor)
+    {
+        for g in wall_geoms(doc, below.id) {
+            out.push(
+                None,
+                Prim::Polyline {
+                    points: g.outline(),
+                    closed: true,
+                    stroke: Stroke {
+                        ink: Ink::Faded,
+                        width: 0.18,
+                        dash: &[],
                     },
-                );
-            }
+                },
+            );
         }
+    }
 
     let geoms = wall_geoms(doc, opts.floor);
     for g in &geoms {

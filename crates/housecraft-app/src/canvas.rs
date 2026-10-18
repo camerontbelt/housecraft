@@ -1,0 +1,1548 @@
+//! The plan view: drawing, navigation, tools, snapping, selection and editing.
+
+use egui::{
+    Color32, Painter, Pos2, Rect, Response, Sense, Shape as EShape, Stroke, Ui, pos2, vec2,
+};
+use housecraft_api::geom::math::{distance_to_polyline, point_in_polygon};
+use housecraft_api::geom::rooms::FloorRegions;
+use housecraft_api::geom::triangulate::triangulate as triangulate_poly;
+use housecraft_api::geom::walls::wall_geoms;
+use housecraft_api::geom::{DVec2, pt, v2};
+use housecraft_api::model::*;
+use housecraft_api::units::{Length, Point2};
+use housecraft_api::{Command, LengthAnchor, TransformOp};
+use housecraft_draft::{Drawing, Fill, Ink, Prim, approx_text_width};
+
+use crate::app::App;
+use crate::snap::{Snap, SnapKind, SnapTargets, snap};
+use crate::tools::Tool;
+
+/// Pick radius in screen points.
+const PICK_PX: f64 = 7.0;
+
+struct Cache {
+    key: (u64, Id, Id, bool),
+    drawing: Drawing,
+    fills: Vec<(Vec<DVec2>, Vec<[usize; 3]>, Fill)>,
+    regions: FloorRegions,
+    targets: SnapTargets,
+}
+
+#[derive(Debug, Clone)]
+enum Drag {
+    Pan,
+    Move { ids: Vec<Id>, grab: DVec2 },
+    Handle { id: Id, handle: Handle },
+    Box { start: Pos2 },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Handle {
+    WallStart,
+    WallEnd,
+    Vertex(usize),
+    Radius,
+    TextPosition,
+    DimOffset,
+}
+
+pub struct PlanState {
+    pub floor: Id,
+    pub layer_set: Id,
+    pub view: Option<Id>,
+    pub reference_floor: bool,
+    pub center: DVec2,
+    pub mm_per_pt: f64,
+    pub fit_requested: bool,
+    pub zoom_to_selection: bool,
+    pub tool: Tool,
+    /// Points clicked so far by the active tool.
+    pub pending: Vec<DVec2>,
+    /// Typed length while drawing walls or lines.
+    pub length_input: Option<String>,
+    pub cursor: Option<DVec2>,
+    pub snap: Option<Snap>,
+    hover: Option<Id>,
+    drag: Option<Drag>,
+    cache: Option<Cache>,
+    /// Objects under the last click, for Select Next Object.
+    candidates: Vec<Id>,
+    text_prompt: Option<(DVec2, String)>,
+    temp_dim_edit: Option<(Id, String, bool)>,
+}
+
+impl PlanState {
+    pub fn new(doc: &Document) -> Self {
+        let view = doc.iter::<PlanView>().next();
+        PlanState {
+            floor: view
+                .and_then(|v| v.floor)
+                .unwrap_or_else(|| doc.floors_by_elevation()[0].id),
+            layer_set: view
+                .map(|v| v.layer_set)
+                .or_else(|| doc.iter::<LayerSet>().next().map(|s| s.id))
+                .unwrap_or(Id(0)),
+            view: view.map(|v| v.id),
+            reference_floor: false,
+            center: DVec2::new(6000.0, 4500.0),
+            mm_per_pt: 20.0,
+            fit_requested: true,
+            zoom_to_selection: false,
+            tool: Tool::Select,
+            pending: Vec::new(),
+            length_input: None,
+            cursor: None,
+            snap: None,
+            hover: None,
+            drag: None,
+            cache: None,
+            candidates: Vec::new(),
+            text_prompt: None,
+            temp_dim_edit: None,
+        }
+    }
+
+    pub fn set_tool(&mut self, tool: Tool) {
+        self.tool = tool;
+        self.pending.clear();
+        self.length_input = None;
+        self.drag = None;
+    }
+
+    pub fn zoom_by(&mut self, factor: f64) {
+        self.mm_per_pt = (self.mm_per_pt * factor).clamp(0.05, 2000.0);
+    }
+
+    pub fn next_candidate(&mut self, current: Option<Id>) -> Option<Id> {
+        if self.candidates.is_empty() {
+            return None;
+        }
+        let i = current
+            .and_then(|c| self.candidates.iter().position(|x| *x == c))
+            .map_or(0, |i| (i + 1) % self.candidates.len());
+        Some(self.candidates[i])
+    }
+
+    fn ensure_cache(&mut self, doc: &Document, rev: u64) {
+        let key = (rev, self.floor, self.layer_set, self.reference_floor);
+        if self.cache.as_ref().is_some_and(|c| c.key == key) {
+            return;
+        }
+        let drawing = housecraft_draft::plan(
+            doc,
+            &housecraft_draft::PlanOptions {
+                floor: self.floor,
+                layer_set: self.layer_set,
+                reference_floor: self.reference_floor,
+                default_set: None,
+            },
+        );
+        let fills = drawing
+            .items
+            .iter()
+            .filter_map(|i| match &i.prim {
+                Prim::Polygon { points, fill } => {
+                    Some((points.clone(), triangulate_poly(points), *fill))
+                }
+                _ => None,
+            })
+            .collect();
+        let mut floors = vec![self.floor];
+        if self.reference_floor
+            && let Some(below) = doc.floor_below(self.floor)
+        {
+            floors.push(below.id);
+        }
+        self.cache = Some(Cache {
+            key,
+            fills,
+            regions: housecraft_api::geom::rooms::detect(doc, self.floor),
+            targets: SnapTargets::build(doc, &floors),
+            drawing,
+        });
+    }
+}
+
+#[derive(Clone, Copy)]
+struct View {
+    rect: Rect,
+    center: DVec2,
+    mpp: f64,
+}
+
+impl View {
+    fn to_screen(self, p: DVec2) -> Pos2 {
+        let c = self.rect.center();
+        pos2(
+            c.x + ((p.x - self.center.x) / self.mpp) as f32,
+            c.y - ((p.y - self.center.y) / self.mpp) as f32,
+        )
+    }
+    fn to_model(self, s: Pos2) -> DVec2 {
+        let c = self.rect.center();
+        DVec2::new(
+            self.center.x + (s.x - c.x) as f64 * self.mpp,
+            self.center.y - (s.y - c.y) as f64 * self.mpp,
+        )
+    }
+    fn len_px(self, mm: f64) -> f32 {
+        (mm / self.mpp) as f32
+    }
+}
+
+fn ink_color(ui: &Ui, ink: Ink) -> Color32 {
+    let dark = ui.visuals().dark_mode;
+    match ink {
+        Ink::Default if dark => Color32::from_gray(225),
+        Ink::Default => Color32::BLACK,
+        Ink::Faded if dark => Color32::from_gray(110),
+        Ink::Faded => Color32::from_gray(170),
+        Ink::Color(c) if dark => {
+            // Lift dark layer colours so they stay readable on the dark canvas.
+            let col = crate::util::to_color32(c);
+            let luma = 0.299 * col.r() as f32 + 0.587 * col.g() as f32 + 0.114 * col.b() as f32;
+            if luma < 110.0 {
+                col.lerp_to_gamma(Color32::WHITE, 0.45)
+            } else {
+                col
+            }
+        }
+        Ink::Color(c) => crate::util::to_color32(c),
+    }
+}
+
+fn fill_color(ui: &Ui, fill: Fill) -> Color32 {
+    match fill {
+        Fill::Poche if ui.visuals().dark_mode => Color32::from_gray(90),
+        Fill::Poche => Color32::from_gray(195),
+        Fill::Ink(i) => ink_color(ui, i),
+    }
+}
+
+fn pen_px(paper_mm: f64) -> f32 {
+    (paper_mm * 3.2).clamp(0.7, 3.5) as f32
+}
+
+pub fn show(app: &mut App, ui: &mut Ui) {
+    let (resp, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
+    let rect = resp.rect;
+    app.plan.ensure_cache(app.session.document(), app.rev);
+
+    if std::mem::take(&mut app.plan.fit_requested) {
+        let bounds = app
+            .plan
+            .cache
+            .as_ref()
+            .and_then(|c| c.drawing.bounds())
+            .unwrap_or((DVec2::ZERO, DVec2::new(12192.0, 9144.0)));
+        fit(&mut app.plan, rect, bounds);
+    }
+    if std::mem::take(&mut app.plan.zoom_to_selection) {
+        let pts: Vec<DVec2> = app
+            .plan
+            .cache
+            .as_ref()
+            .map(|c| {
+                c.drawing
+                    .items
+                    .iter()
+                    .filter(|i| i.object.is_some_and(|o| app.selection.contains(&o)))
+                    .flat_map(|i| prim_points(&i.prim))
+                    .collect()
+            })
+            .unwrap_or_default();
+        if let Some(b) = housecraft_api::geom::math::bounds(pts) {
+            fit(&mut app.plan, rect, b);
+        }
+    }
+
+    navigate(app, ui, &resp);
+    let view = View {
+        rect,
+        center: app.plan.center,
+        mpp: app.plan.mm_per_pt,
+    };
+
+    // Cursor and snapping.
+    let tol = PICK_PX * view.mpp;
+    app.plan.cursor = resp.hover_pos().map(|p| view.to_model(p));
+    app.plan.snap = app.plan.cursor.map(|c| {
+        let from = app.plan.pending.last().copied().or(match &app.plan.drag {
+            Some(Drag::Handle { id, handle }) => {
+                handle_anchor(app.session.document(), *id, *handle)
+            }
+            _ => None,
+        });
+        let targets = &app.plan.cache.as_ref().expect("cache built").targets;
+        if app.plan.tool == Tool::Select && app.plan.drag.is_none() {
+            Snap {
+                point: c,
+                kind: SnapKind::Free,
+            }
+        } else {
+            snap(c, tol, targets, &app.prefs.snap, from)
+        }
+    });
+
+    let mut commands: Vec<Command> = Vec::new();
+    match app.plan.tool {
+        Tool::Select => select_tool(app, ui, &resp, &view, &mut commands),
+        _ => drawing_tool(app, ui, &resp, &view, &mut commands),
+    }
+
+    paint(app, ui, &painter, &view);
+    overlays(app, ui, &view, &mut commands);
+
+    if !commands.is_empty() {
+        let select_created = app.plan.tool == Tool::Select;
+        if let Some(out) = app.run(commands)
+            && select_created
+            && !out.created.is_empty()
+        {
+            app.selection = out.created;
+        }
+    }
+}
+
+fn fit(plan: &mut PlanState, rect: Rect, (lo, hi): (DVec2, DVec2)) {
+    let size = (hi - lo).max(DVec2::splat(1000.0));
+    plan.center = (lo + hi) / 2.0;
+    plan.mm_per_pt =
+        (size.x / (rect.width() as f64 * 0.9)).max(size.y / (rect.height() as f64 * 0.9));
+}
+
+fn prim_points(p: &Prim) -> Vec<DVec2> {
+    match p {
+        Prim::Polyline { points, .. } | Prim::Polygon { points, .. } => points.clone(),
+        Prim::Text { at, .. } => vec![*at],
+    }
+}
+
+/// Wheel zoom about the cursor; middle- or right-drag pans.
+fn navigate(app: &mut App, ui: &Ui, resp: &Response) {
+    let plan = &mut app.plan;
+    if let Some(hover) = resp.hover_pos() {
+        let (scroll, zoom) = ui.input(|i| (i.smooth_scroll_delta().y, i.zoom_delta()));
+        let factor = (-scroll as f64 * 0.0015).exp() / zoom as f64;
+        if (factor - 1.0).abs() > 1e-6 {
+            let view = View {
+                rect: resp.rect,
+                center: plan.center,
+                mpp: plan.mm_per_pt,
+            };
+            let before = view.to_model(hover);
+            plan.zoom_by(factor);
+            let after = View {
+                mpp: plan.mm_per_pt,
+                ..view
+            }
+            .to_model(hover);
+            plan.center += before - after;
+        }
+    }
+    let panning = resp.dragged_by(egui::PointerButton::Middle)
+        || resp.dragged_by(egui::PointerButton::Secondary);
+    if panning {
+        let d = resp.drag_delta();
+        plan.center -= DVec2::new(d.x as f64, -d.y as f64) * plan.mm_per_pt;
+        plan.drag = Some(Drag::Pan);
+    } else if matches!(plan.drag, Some(Drag::Pan)) {
+        plan.drag = None;
+    }
+}
+
+/// Objects under a model point, most specific first.
+fn hit_test(doc: &Document, cache: &Cache, p: DVec2, tol: f64) -> Vec<Id> {
+    let mut hits: Vec<Id> = Vec::new();
+    for item in cache.drawing.items.iter().rev() {
+        let Some(id) = item.object else {
+            continue;
+        };
+        if hits.contains(&id) {
+            continue;
+        }
+        let hit = match &item.prim {
+            Prim::Polyline { points, closed, .. } => {
+                distance_to_polyline(p, points, *closed) <= tol
+            }
+            Prim::Polygon { points, .. } => point_in_polygon(p, points),
+            Prim::Text {
+                at,
+                text,
+                height,
+                rotation,
+                justify,
+                ..
+            } => {
+                let local = (p - *at).rotate(DVec2::from_angle(-rotation.to_radians()));
+                let w = approx_text_width(text, *height);
+                let x0 = match justify {
+                    Justify::Left => 0.0,
+                    Justify::Center => -w / 2.0,
+                    Justify::Right => -w,
+                };
+                local.x >= x0 - tol
+                    && local.x <= x0 + w + tol
+                    && local.y >= -height * 0.3 - tol
+                    && local.y <= height * 1.2 + tol
+            }
+        };
+        if hit {
+            hits.push(id);
+        }
+    }
+    for room in doc.rooms_on(cache.key.1) {
+        if let Some(i) = cache.regions.room_at(v2(room.anchor))
+            && point_in_polygon(p, &cache.regions.rooms[i].polygon)
+            && !hits.contains(&room.id)
+        {
+            hits.push(room.id);
+        }
+    }
+    let rank = |id: &Id| match doc.kind_of(*id) {
+        Some(ObjectKind::Opening) => 0,
+        Some(ObjectKind::Text) => 1,
+        Some(ObjectKind::Dimension) => 2,
+        Some(ObjectKind::Cad) => 3,
+        Some(ObjectKind::Wall) => 4,
+        Some(ObjectKind::Room) => 6,
+        _ => 5,
+    };
+    hits.sort_by_key(rank);
+    hits
+}
+
+/// Editing handles of a single selected object: (handle, model position).
+fn handles(doc: &Document, id: Id) -> Vec<(Handle, DVec2)> {
+    match doc.object(id) {
+        Some(Object::Wall(w)) => vec![
+            (Handle::WallStart, v2(w.start)),
+            (Handle::WallEnd, v2(w.end)),
+        ],
+        Some(Object::Cad(c)) => match &c.shape {
+            Shape::Line { a, b, .. } => {
+                vec![(Handle::Vertex(0), v2(*a)), (Handle::Vertex(1), v2(*b))]
+            }
+            Shape::Polyline { points, .. } | Shape::Spline { points, .. } => points
+                .iter()
+                .enumerate()
+                .map(|(i, p)| (Handle::Vertex(i), v2(*p)))
+                .collect(),
+            Shape::Circle { center, radius } | Shape::Arc { center, radius, .. } => {
+                vec![(Handle::Radius, v2(*center) + DVec2::X * radius.mm())]
+            }
+            _ => Vec::new(),
+        },
+        Some(Object::Text(t)) => vec![(Handle::TextPosition, v2(t.position))],
+        Some(Object::Dimension(d)) => match &d.geometry {
+            DimensionGeometry::Linear {
+                points,
+                orientation,
+                offset,
+            } if points.len() >= 2 => {
+                vec![(
+                    Handle::DimOffset,
+                    dim_line_mid(points, *orientation, offset.mm()),
+                )]
+            }
+            _ => Vec::new(),
+        },
+        _ => Vec::new(),
+    }
+}
+
+/// The fixed point a handle drags from (for angle snapping).
+fn handle_anchor(doc: &Document, id: Id, handle: Handle) -> Option<DVec2> {
+    match (doc.object(id)?, handle) {
+        (Object::Wall(w), Handle::WallStart) => Some(v2(w.end)),
+        (Object::Wall(w), Handle::WallEnd) => Some(v2(w.start)),
+        (Object::Cad(c), Handle::Vertex(i)) => match &c.shape {
+            Shape::Line { a, b, .. } => Some(v2(if i == 0 { *b } else { *a })),
+            Shape::Polyline { points, .. } if i > 0 => Some(v2(points[i - 1])),
+            _ => None,
+        },
+        (Object::Cad(c), Handle::Radius) => match &c.shape {
+            Shape::Circle { center, .. } | Shape::Arc { center, .. } => Some(v2(*center)),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn dim_line_mid(points: &[Point2], orientation: DimOrientation, offset: f64) -> DVec2 {
+    let a = v2(points[0]);
+    let b = v2(points[points.len() - 1]);
+    match orientation {
+        DimOrientation::Aligned => {
+            let u = (b - a).normalize_or(DVec2::X);
+            (a + b) / 2.0 + DVec2::new(-u.y, u.x) * offset
+        }
+        DimOrientation::Horizontal => DVec2::new((a.x + b.x) / 2.0, a.y + offset),
+        DimOrientation::Vertical => DVec2::new(a.x + offset, (a.y + b.y) / 2.0),
+    }
+}
+
+/// Command for dragging `handle` of `id` to `p`.
+fn handle_command(doc: &Document, id: Id, handle: Handle, p: DVec2) -> Option<Command> {
+    let patch = |v: serde_json::Value| Command::Update {
+        id,
+        set: v.as_object().cloned().unwrap_or_default(),
+    };
+    match (doc.object(id)?, handle) {
+        (Object::Wall(_), Handle::WallStart) => Some(Command::MoveWall {
+            id,
+            start: Some(pt(p)),
+            end: None,
+            detach: false,
+        }),
+        (Object::Wall(_), Handle::WallEnd) => Some(Command::MoveWall {
+            id,
+            start: None,
+            end: Some(pt(p)),
+            detach: false,
+        }),
+        (Object::Cad(c), Handle::Vertex(i)) => {
+            let mut shape = c.shape.clone();
+            match &mut shape {
+                Shape::Line { a, b, .. } => *(if i == 0 { a } else { b }) = pt(p),
+                Shape::Polyline { points, .. } | Shape::Spline { points, .. } => points[i] = pt(p),
+                _ => return None,
+            }
+            Some(patch(serde_json::json!({ "shape": shape })))
+        }
+        (Object::Cad(c), Handle::Radius) => {
+            let mut shape = c.shape.clone();
+            match &mut shape {
+                Shape::Circle { center, radius } | Shape::Arc { center, radius, .. } => {
+                    *radius = Length::from_mm(v2(*center).distance(p).max(1.0));
+                }
+                _ => return None,
+            }
+            Some(patch(serde_json::json!({ "shape": shape })))
+        }
+        (Object::Text(_), Handle::TextPosition) => {
+            Some(patch(serde_json::json!({ "position": pt(p) })))
+        }
+        (Object::Dimension(d), Handle::DimOffset) => {
+            let DimensionGeometry::Linear {
+                points,
+                orientation,
+                ..
+            } = &d.geometry
+            else {
+                return None;
+            };
+            let a = v2(points[0]);
+            let b = v2(points[points.len() - 1]);
+            let offset = match orientation {
+                DimOrientation::Aligned => {
+                    let u = (b - a).normalize_or(DVec2::X);
+                    (p - a).dot(DVec2::new(-u.y, u.x))
+                }
+                DimOrientation::Horizontal => p.y - a.y,
+                DimOrientation::Vertical => p.x - a.x,
+            };
+            let mut g = d.geometry.clone();
+            if let DimensionGeometry::Linear { offset: o, .. } = &mut g {
+                *o = Length::from_mm(offset);
+            }
+            Some(patch(serde_json::json!({ "geometry": g })))
+        }
+        _ => None,
+    }
+}
+
+fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &mut Vec<Command>) {
+    let doc = app.session.document();
+    let cache = app.plan.cache.as_ref().expect("cache built");
+    let tol = PICK_PX * view.mpp;
+    let ctrl = ui.input(|i| i.modifiers.command || i.modifiers.shift);
+    app.plan.hover = app
+        .plan
+        .cursor
+        .and_then(|c| hit_test(doc, cache, c, tol).into_iter().next());
+
+    if resp.drag_started_by(egui::PointerButton::Primary)
+        && let Some(press) = resp.interact_pointer_pos()
+    {
+        let m = view.to_model(press);
+        // Handles of a single selection take priority.
+        let single = if app.selection.len() == 1 {
+            handles(doc, app.selection[0])
+        } else {
+            Vec::new()
+        };
+        let handle = single
+            .into_iter()
+            .find(|(_, hp)| hp.distance(m) <= tol * 1.3);
+        if let Some((h, _)) = handle {
+            app.plan.drag = Some(Drag::Handle {
+                id: app.selection[0],
+                handle: h,
+            });
+        } else if let Some(hit) = hit_test(doc, cache, m, tol)
+            .into_iter()
+            .find(|id| doc.kind_of(*id) != Some(ObjectKind::Room))
+        {
+            if !app.selection.contains(&hit) {
+                app.selection = vec![hit];
+            }
+            // Grab from the nearest snap point on the object for point-to-point moves.
+            let grab = snap(m, tol, &cache.targets, &app.prefs.snap, None).point;
+            app.plan.drag = Some(Drag::Move {
+                ids: app.selection.clone(),
+                grab,
+            });
+        } else {
+            app.plan.drag = Some(Drag::Box { start: press });
+        }
+    }
+
+    if resp.drag_stopped_by(egui::PointerButton::Primary) {
+        let cursor = app.plan.cursor;
+        match app.plan.drag.take() {
+            Some(Drag::Move { ids, grab }) => {
+                if let Some(c) = cursor {
+                    let dest = snap(c, tol, &cache.targets, &app.prefs.snap, Some(grab)).point;
+                    let d = dest - grab;
+                    if d.length() > 0.5 {
+                        commands.push(move_command(doc, &ids, d));
+                    }
+                }
+            }
+            Some(Drag::Handle { id, handle }) => {
+                if let Some(s) = app.plan.snap
+                    && let Some(cmd) = handle_command(doc, id, handle, s.point)
+                {
+                    commands.push(cmd);
+                }
+            }
+            Some(Drag::Box { start }) => {
+                if let Some(end) = resp.interact_pointer_pos().or(resp.hover_pos()) {
+                    let (a, b) = (view.to_model(start), view.to_model(end));
+                    let (lo, hi) = (a.min(b), a.max(b));
+                    let mut picked: Vec<Id> = Vec::new();
+                    for item in &cache.drawing.items {
+                        if let Some(id) = item.object
+                            && !picked.contains(&id)
+                            && prim_points(&item.prim)
+                                .iter()
+                                .any(|p| p.x >= lo.x && p.x <= hi.x && p.y >= lo.y && p.y <= hi.y)
+                            && doc.kind_of(id) != Some(ObjectKind::Room)
+                        {
+                            picked.push(id);
+                        }
+                    }
+                    if ctrl {
+                        for id in picked {
+                            if !app.selection.contains(&id) {
+                                app.selection.push(id);
+                            }
+                        }
+                    } else {
+                        app.selection = picked;
+                    }
+                }
+            }
+            other => app.plan.drag = other,
+        }
+    }
+
+    if resp.clicked()
+        && let Some(c) = app.plan.cursor
+    {
+        let hits = hit_test(doc, cache, c, tol);
+        app.plan.candidates = hits.clone();
+        match hits.first() {
+            Some(id) if ctrl => {
+                if let Some(i) = app.selection.iter().position(|x| x == id) {
+                    app.selection.remove(i);
+                } else {
+                    app.selection.push(*id);
+                }
+            }
+            Some(id) => app.selection = vec![*id],
+            None if !ctrl => app.selection.clear(),
+            None => {}
+        }
+    }
+    if resp.double_clicked() {
+        app.open_object();
+    }
+    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+        app.selection.clear();
+        app.plan.drag = None;
+    }
+}
+
+/// Moving a lone wall drags joined walls with it; anything else is a translate.
+fn move_command(doc: &Document, ids: &[Id], d: DVec2) -> Command {
+    if let [id] = ids
+        && let Some(w) = doc.get::<Wall>(*id)
+    {
+        return Command::MoveWall {
+            id: *id,
+            start: Some(pt(v2(w.start) + d)),
+            end: Some(pt(v2(w.end) + d)),
+            detach: false,
+        };
+    }
+    Command::Transform {
+        ids: ids.to_vec(),
+        transform: TransformOp::Translate {
+            dx: Length::from_mm(d.x),
+            dy: Length::from_mm(d.y),
+        },
+        copies: 0,
+    }
+}
+
+fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &mut Vec<Command>) {
+    let tool = app.plan.tool;
+    let floor = Some(app.plan.floor);
+    let doc = app.session.document();
+
+    // Typed length while drawing walls and lines (DIM-05).
+    let length_tools = matches!(
+        tool,
+        Tool::ExteriorWall | Tool::InteriorWall | Tool::Line | Tool::Arrow | Tool::Polyline
+    );
+    if length_tools && !app.plan.pending.is_empty() && app.plan.text_prompt.is_none() {
+        let typed: String = ui.input(|i| {
+            i.events
+                .iter()
+                .filter_map(|e| match e {
+                    egui::Event::Text(t) => Some(t.clone()),
+                    _ => None,
+                })
+                .collect()
+        });
+        if !typed.is_empty() {
+            app.plan
+                .length_input
+                .get_or_insert_with(String::new)
+                .push_str(&typed);
+        }
+        if let Some(buf) = &mut app.plan.length_input
+            && ui.input(|i| i.key_pressed(egui::Key::Backspace))
+        {
+            buf.pop();
+        }
+    }
+
+    let mut click: Option<DVec2> = None;
+    if resp.clicked() {
+        click = app.plan.snap.map(|s| s.point);
+    }
+    if let Some(buf) = app.plan.length_input.clone()
+        && ui.input(|i| i.key_pressed(egui::Key::Enter))
+    {
+        app.plan.length_input = None;
+        if let (Some(len), Some(last), Some(s)) = (
+            crate::util::parse(doc, &buf),
+            app.plan.pending.last(),
+            app.plan.snap,
+        ) {
+            let dir = (s.point - *last).normalize_or(DVec2::X);
+            click = Some(*last + dir * len.mm());
+        }
+    }
+    let finish = resp.double_clicked()
+        || resp.secondary_clicked()
+        || (app.plan.length_input.is_none() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
+    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+        if app.plan.pending.is_empty() && app.plan.length_input.is_none() {
+            app.set_tool(Tool::Select);
+        }
+        app.plan.pending.clear();
+        app.plan.length_input = None;
+        return;
+    }
+
+    let pending = &mut app.plan.pending;
+    if let Some(p) = click {
+        match tool {
+            Tool::ExteriorWall | Tool::InteriorWall => {
+                if let Some(last) = pending.last().copied() {
+                    if last.distance(p) >= 1.0 {
+                        commands.push(Command::AddWall {
+                            floor,
+                            start: pt(last),
+                            end: pt(p),
+                            wall_type: None,
+                            interior: tool == Tool::InteriorWall,
+                            height: None,
+                        });
+                        let closes = pending.first().is_some_and(|f| f.distance(p) < 1.0)
+                            && pending.len() > 1;
+                        if closes {
+                            pending.clear();
+                        } else {
+                            pending.push(p);
+                        }
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
+            Tool::Door(_) | Tool::Window(_) => {
+                let tol = PICK_PX * view.mpp;
+                let wall = wall_geoms(doc, app.plan.floor)
+                    .into_iter()
+                    .map(|g| {
+                        (
+                            housecraft_api::geom::math::distance_to_segment(p, g.start, g.end)
+                                - g.half,
+                            g.id,
+                        )
+                    })
+                    .filter(|(d, _)| *d <= tol)
+                    .min_by(|a, b| a.0.total_cmp(&b.0))
+                    .map(|(_, id)| id);
+                match wall {
+                    Some(wall) => commands.push(match tool {
+                        Tool::Door(style) => Command::AddDoor {
+                            wall,
+                            position: None,
+                            at: Some(pt(p)),
+                            style: Some(style),
+                            width: None,
+                            height: None,
+                            hinge: None,
+                            swing_in: None,
+                        },
+                        Tool::Window(ws) => Command::AddWindow {
+                            wall,
+                            position: None,
+                            at: Some(pt(p)),
+                            style: Some(ws),
+                            width: None,
+                            height: None,
+                            sill: None,
+                        },
+                        _ => unreachable!(),
+                    }),
+                    None => app.status = Some(("Click on a wall to place it.".into(), true)),
+                }
+            }
+            Tool::Line | Tool::Arrow => {
+                if let Some(a) = pending.pop() {
+                    if a.distance(p) > 0.5 {
+                        commands.push(cad(
+                            floor,
+                            Shape::Line {
+                                a: pt(a),
+                                b: pt(p),
+                                arrow_start: false,
+                                arrow_end: tool == Tool::Arrow,
+                            },
+                        ));
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
+            Tool::Polyline | Tool::Spline => {
+                let closes = pending.len() > 2 && pending[0].distance(p) < PICK_PX * view.mpp;
+                if closes {
+                    let points: Vec<Point2> = pending.drain(..).map(pt).collect();
+                    commands.push(cad(
+                        floor,
+                        if tool == Tool::Spline {
+                            Shape::Spline {
+                                points,
+                                closed: true,
+                            }
+                        } else {
+                            Shape::Polyline {
+                                points,
+                                closed: true,
+                            }
+                        },
+                    ));
+                } else {
+                    pending.push(p);
+                }
+            }
+            Tool::Box | Tool::Ellipse => {
+                if let Some(a) = pending.pop() {
+                    let (lo, hi) = (a.min(p), a.max(p));
+                    if (hi - lo).min_element() > 0.5 {
+                        commands.push(cad(
+                            floor,
+                            if tool == Tool::Box {
+                                Shape::Polyline {
+                                    points: vec![
+                                        pt(lo),
+                                        pt(DVec2::new(hi.x, lo.y)),
+                                        pt(hi),
+                                        pt(DVec2::new(lo.x, hi.y)),
+                                    ],
+                                    closed: true,
+                                }
+                            } else {
+                                Shape::Ellipse {
+                                    center: pt((lo + hi) / 2.0),
+                                    rx: Length::from_mm((hi.x - lo.x) / 2.0),
+                                    ry: Length::from_mm((hi.y - lo.y) / 2.0),
+                                    rotation: 0.0,
+                                }
+                            },
+                        ));
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
+            Tool::Circle => {
+                if let Some(c) = pending.pop() {
+                    if c.distance(p) > 0.5 {
+                        commands.push(cad(
+                            floor,
+                            Shape::Circle {
+                                center: pt(c),
+                                radius: Length::from_mm(c.distance(p)),
+                            },
+                        ));
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
+            Tool::Arc => {
+                pending.push(p);
+                if pending.len() == 3 {
+                    let (c, s, e) = (pending[0], pending[1], pending[2]);
+                    pending.clear();
+                    let a0 = (s - c).to_angle().to_degrees();
+                    let mut sweep = ((e - c).to_angle().to_degrees() - a0).rem_euclid(360.0);
+                    if sweep < 0.01 {
+                        sweep = 360.0;
+                    }
+                    if c.distance(s) > 0.5 {
+                        commands.push(cad(
+                            floor,
+                            Shape::Arc {
+                                center: pt(c),
+                                radius: Length::from_mm(c.distance(s)),
+                                start_angle: a0,
+                                sweep,
+                            },
+                        ));
+                    }
+                }
+            }
+            Tool::Point => commands.push(cad(floor, Shape::Point { at: pt(p) })),
+            Tool::Dimension => {
+                pending.push(p);
+                if pending.len() == 3 {
+                    let (a, b, o) = (pending[0], pending[1], pending[2]);
+                    pending.clear();
+                    let u = (b - a).normalize_or(DVec2::X);
+                    let offset = (o - a).dot(DVec2::new(-u.y, u.x));
+                    if a.distance(b) > 0.5 {
+                        commands.push(Command::AddDimension {
+                            floor,
+                            layer: None,
+                            geometry: DimensionGeometry::Linear {
+                                points: vec![pt(a), pt(b)],
+                                orientation: DimOrientation::Aligned,
+                                offset: Length::from_mm(offset),
+                            },
+                            text_override: None,
+                        });
+                    }
+                }
+            }
+            Tool::AngularDimension => {
+                pending.push(p);
+                if pending.len() == 4 {
+                    let (c, s, e, r) = (pending[0], pending[1], pending[2], pending[3]);
+                    pending.clear();
+                    if c.distance(s) > 0.5 && c.distance(e) > 0.5 {
+                        commands.push(Command::AddDimension {
+                            floor,
+                            layer: None,
+                            geometry: DimensionGeometry::Angular {
+                                center: pt(c),
+                                start: pt(s),
+                                end: pt(e),
+                                radius: Length::from_mm(c.distance(r).max(100.0)),
+                            },
+                            text_override: None,
+                        });
+                    }
+                }
+            }
+            Tool::Text => app.plan.text_prompt = Some((p, String::new())),
+            Tool::Select => {}
+        }
+    }
+
+    if finish {
+        let pending = std::mem::take(&mut app.plan.pending);
+        if matches!(tool, Tool::Polyline | Tool::Spline) && pending.len() >= 2 {
+            let points: Vec<Point2> = pending.into_iter().map(pt).collect();
+            commands.push(cad(
+                floor,
+                if tool == Tool::Spline {
+                    Shape::Spline {
+                        points,
+                        closed: false,
+                    }
+                } else {
+                    Shape::Polyline {
+                        points,
+                        closed: false,
+                    }
+                },
+            ));
+        }
+        app.plan.length_input = None;
+    }
+}
+
+fn cad(floor: Option<Id>, shape: Shape) -> Command {
+    Command::AddCad {
+        floor,
+        layer: None,
+        shape,
+        color: None,
+        fill: None,
+    }
+}
+
+fn paint(app: &App, ui: &Ui, painter: &Painter, view: &View) {
+    let rect = view.rect;
+    let dark = ui.visuals().dark_mode;
+    painter.rect_filled(
+        rect,
+        0.0,
+        if dark {
+            Color32::from_gray(28)
+        } else {
+            Color32::WHITE
+        },
+    );
+    if app.prefs.show_grid {
+        paint_grid(app, painter, view, dark);
+    }
+    let Some(cache) = &app.plan.cache else {
+        return;
+    };
+    let accent = ui.visuals().selection.stroke.color;
+    let accent = if accent == Color32::TRANSPARENT {
+        Color32::from_rgb(255, 140, 0)
+    } else {
+        accent
+    };
+    let selected = |id: Option<Id>| id.is_some_and(|i| app.selection.contains(&i));
+
+    // Selected rooms: tint their floor area.
+    for id in &app.selection {
+        if let Some(room) = app.doc().get::<Room>(*id)
+            && let Some(i) = cache.regions.room_at(v2(room.anchor))
+        {
+            let poly = &cache.regions.rooms[i].polygon;
+            paint_fill(
+                painter,
+                view,
+                poly,
+                &triangulate_poly(poly),
+                accent.gamma_multiply(0.18),
+            );
+        }
+    }
+
+    let moving = match &app.plan.drag {
+        Some(Drag::Move { grab, .. }) => app.plan.cursor.map(|c| c - *grab),
+        _ => None,
+    };
+
+    for (points, tris, fill) in &cache.fills {
+        paint_fill(painter, view, points, tris, fill_color(ui, *fill));
+    }
+    for item in &cache.drawing.items {
+        paint_prim(ui, painter, view, &item.prim, None, 0.0);
+    }
+    for item in &cache.drawing.items {
+        if selected(item.object) {
+            paint_prim(ui, painter, view, &item.prim, Some(accent), 2.0);
+            if let Some(d) = moving {
+                let shifted = shift_prim(&item.prim, d);
+                paint_prim(
+                    ui,
+                    painter,
+                    view,
+                    &shifted,
+                    Some(accent.gamma_multiply(0.6)),
+                    1.0,
+                );
+            }
+        } else if item.object.is_some() && item.object == app.plan.hover && app.plan.drag.is_none()
+        {
+            paint_prim(
+                ui,
+                painter,
+                view,
+                &item.prim,
+                Some(accent.gamma_multiply(0.55)),
+                1.0,
+            );
+        }
+    }
+
+    // Handles and temporary dimension for a single selection.
+    if app.selection.len() == 1 && app.plan.tool == Tool::Select {
+        let id = app.selection[0];
+        for (_, p) in handles(app.doc(), id) {
+            let s = view.to_screen(p);
+            painter.rect(
+                Rect::from_center_size(s, vec2(8.0, 8.0)),
+                1.0,
+                Color32::WHITE,
+                Stroke::new(1.5, accent),
+                egui::StrokeKind::Middle,
+            );
+        }
+        temp_dimension(app, painter, view, id, accent);
+    }
+    if let Some(Drag::Handle { id, handle }) = &app.plan.drag
+        && let (Some(s), Some(anchor)) = (app.plan.snap, handle_anchor(app.doc(), *id, *handle))
+    {
+        rubber_band(app, painter, view, &[anchor], s.point, accent);
+    }
+    if let Some(Drag::Box { start }) = &app.plan.drag
+        && let Some(c) = app.plan.cursor
+    {
+        let r = Rect::from_two_pos(*start, view.to_screen(c));
+        painter.rect(
+            r,
+            0.0,
+            accent.gamma_multiply(0.08),
+            Stroke::new(1.0, accent),
+            egui::StrokeKind::Middle,
+        );
+    }
+
+    // Tool previews.
+    if let Some(s) = app.plan.snap {
+        if app.plan.tool != Tool::Select && !app.plan.pending.is_empty() {
+            rubber_band(
+                app,
+                painter,
+                view,
+                &app.plan.pending.clone(),
+                s.point,
+                accent,
+            );
+        }
+        if app.plan.tool != Tool::Select {
+            let sp = view.to_screen(s.point);
+            match s.kind {
+                SnapKind::Free => {}
+                SnapKind::Endpoint | SnapKind::Midpoint | SnapKind::Center => {
+                    painter.rect_stroke(
+                        Rect::from_center_size(sp, vec2(10.0, 10.0)),
+                        0.0,
+                        Stroke::new(1.5, accent),
+                        egui::StrokeKind::Middle,
+                    );
+                }
+                _ => {
+                    painter.circle_stroke(sp, 5.0, Stroke::new(1.5, accent));
+                }
+            }
+            let c = if dark {
+                Color32::from_gray(160)
+            } else {
+                Color32::from_gray(90)
+            };
+            painter.line_segment(
+                [sp - vec2(12.0, 0.0), sp + vec2(12.0, 0.0)],
+                Stroke::new(1.0, c),
+            );
+            painter.line_segment(
+                [sp - vec2(0.0, 12.0), sp + vec2(0.0, 12.0)],
+                Stroke::new(1.0, c),
+            );
+        }
+    }
+}
+
+fn paint_grid(app: &App, painter: &Painter, view: &View, dark: bool) {
+    let mut step = app.prefs.snap.grid_mm.max(1.0);
+    while view.len_px(step) < 10.0 {
+        step *= 5.0;
+    }
+    let lo = view.to_model(view.rect.left_bottom());
+    let hi = view.to_model(view.rect.right_top());
+    let color = if dark {
+        Color32::from_gray(40)
+    } else {
+        Color32::from_gray(236)
+    };
+    let stroke = Stroke::new(1.0, color);
+    let mut x = (lo.x / step).floor() * step;
+    while x <= hi.x {
+        let s = view.to_screen(DVec2::new(x, 0.0)).x;
+        painter.line_segment(
+            [pos2(s, view.rect.top()), pos2(s, view.rect.bottom())],
+            stroke,
+        );
+        x += step;
+    }
+    let mut y = (lo.y / step).floor() * step;
+    while y <= hi.y {
+        let s = view.to_screen(DVec2::new(0.0, y)).y;
+        painter.line_segment(
+            [pos2(view.rect.left(), s), pos2(view.rect.right(), s)],
+            stroke,
+        );
+        y += step;
+    }
+}
+
+fn paint_fill(
+    painter: &Painter,
+    view: &View,
+    points: &[DVec2],
+    tris: &[[usize; 3]],
+    color: Color32,
+) {
+    let mut mesh = egui::Mesh::default();
+    for p in points {
+        mesh.colored_vertex(view.to_screen(*p), color);
+    }
+    for t in tris {
+        mesh.add_triangle(t[0] as u32, t[1] as u32, t[2] as u32);
+    }
+    painter.add(EShape::mesh(mesh));
+}
+
+fn shift_prim(p: &Prim, d: DVec2) -> Prim {
+    let mut p = p.clone();
+    match &mut p {
+        Prim::Polyline { points, .. } | Prim::Polygon { points, .. } => {
+            points.iter_mut().for_each(|q| *q += d)
+        }
+        Prim::Text { at, .. } => *at += d,
+    }
+    p
+}
+
+/// Draw a primitive; `highlight` replaces its colour and widens strokes.
+fn paint_prim(
+    ui: &Ui,
+    painter: &Painter,
+    view: &View,
+    prim: &Prim,
+    highlight: Option<Color32>,
+    extra: f32,
+) {
+    match prim {
+        Prim::Polyline {
+            points,
+            closed,
+            stroke,
+        } => {
+            let mut pts: Vec<Pos2> = points.iter().map(|p| view.to_screen(*p)).collect();
+            if *closed && pts.len() > 2 {
+                pts.push(pts[0]);
+            }
+            let color = highlight.unwrap_or_else(|| ink_color(ui, stroke.ink));
+            let s = Stroke::new(pen_px(stroke.width) + extra, color);
+            if stroke.dash.is_empty() || highlight.is_some() {
+                painter.add(EShape::line(pts, s));
+            } else {
+                let on = (stroke.dash[0] * 3.0).max(2.0) as f32;
+                let off = (stroke.dash.get(1).copied().unwrap_or(1.0) * 3.0).max(2.0) as f32;
+                painter.extend(EShape::dashed_line(&pts, s, on, off));
+            }
+        }
+        Prim::Polygon { points, .. } => {
+            if let Some(h) = highlight {
+                let mut pts: Vec<Pos2> = points.iter().map(|p| view.to_screen(*p)).collect();
+                pts.push(pts[0]);
+                painter.add(EShape::line(pts, Stroke::new(1.0 + extra, h)));
+            }
+        }
+        Prim::Text {
+            at,
+            text,
+            height,
+            rotation,
+            justify,
+            middle,
+            bold,
+            ink,
+        } => {
+            let px = view.len_px(height / 0.72);
+            if px < 3.0 {
+                return;
+            }
+            let color = highlight.unwrap_or_else(|| ink_color(ui, *ink));
+            let mut font = egui::FontId::proportional(px);
+            if *bold {
+                font.family = egui::FontFamily::Proportional;
+            }
+            let galley = painter.layout_no_wrap(text.clone(), font, color);
+            let size = galley.size();
+            let fx = match justify {
+                Justify::Left => 0.0,
+                Justify::Center => 0.5,
+                Justify::Right => 1.0,
+            };
+            // Anchor: baseline (or middle) at `at`.
+            let ascent = if *middle { size.y * 0.5 } else { size.y * 0.78 };
+            let angle = -(rotation.to_radians() as f32);
+            let offset = egui::emath::Rot2::from_angle(angle) * vec2(-size.x * fx, -ascent);
+            let pos = view.to_screen(*at) + offset;
+            painter.add(EShape::Text(
+                egui::epaint::TextShape::new(pos, galley, color).with_angle(angle),
+            ));
+            if *bold && highlight.is_none() {
+                // Fake bold: a second pass offset by a fraction of a point.
+                let galley =
+                    painter.layout_no_wrap(text.clone(), egui::FontId::proportional(px), color);
+                painter.add(EShape::Text(
+                    egui::epaint::TextShape::new(
+                        pos + egui::emath::Rot2::from_angle(angle) * vec2(0.6, 0.0),
+                        galley,
+                        color,
+                    )
+                    .with_angle(angle),
+                ));
+            }
+        }
+    }
+}
+
+/// Live preview from the pending points to the cursor, with a length label.
+fn rubber_band(
+    app: &App,
+    painter: &Painter,
+    view: &View,
+    pending: &[DVec2],
+    cursor: DVec2,
+    accent: Color32,
+) {
+    let doc = app.doc();
+    let stroke = Stroke::new(1.5, accent);
+    let last = *pending.last().expect("non-empty");
+    match app.plan.tool {
+        Tool::ExteriorWall | Tool::InteriorWall => {
+            let d = doc.active_defaults();
+            let ty = if app.plan.tool == Tool::InteriorWall {
+                d.interior_wall_type
+            } else {
+                d.exterior_wall_type
+            };
+            let half = doc
+                .get::<WallType>(ty)
+                .map_or(70.0, |t| t.thickness().mm() / 2.0);
+            let dir = (cursor - last).normalize_or_zero();
+            let n = DVec2::new(-dir.y, dir.x) * half;
+            let quad = [last + n, cursor + n, cursor - n, last - n];
+            let mut pts: Vec<Pos2> = quad.iter().map(|p| view.to_screen(*p)).collect();
+            pts.push(pts[0]);
+            painter.add(EShape::line(pts, stroke));
+        }
+        Tool::Circle => {
+            painter.circle_stroke(
+                view.to_screen(last),
+                view.len_px(last.distance(cursor)),
+                stroke,
+            );
+        }
+        Tool::Box | Tool::Ellipse => {
+            painter.rect_stroke(
+                Rect::from_two_pos(view.to_screen(last), view.to_screen(cursor)),
+                0.0,
+                stroke,
+                egui::StrokeKind::Middle,
+            );
+        }
+        _ => {
+            let mut pts: Vec<Pos2> = pending.iter().map(|p| view.to_screen(*p)).collect();
+            pts.push(view.to_screen(cursor));
+            painter.add(EShape::line(pts, stroke));
+        }
+    }
+    // Length label (or the typed length).
+    let len = Length::from_mm(last.distance(cursor));
+    let label = match &app.plan.length_input {
+        Some(buf) => format!("Length: {buf}▏"),
+        None => crate::util::fmt(doc, len),
+    };
+    let mid = view.to_screen((last + cursor) / 2.0) + vec2(0.0, -14.0);
+    let galley = painter.layout_no_wrap(label, egui::FontId::proportional(13.0), Color32::WHITE);
+    let r = Rect::from_center_size(mid, galley.size() + vec2(8.0, 4.0));
+    painter.rect_filled(r, 3.0, accent);
+    painter.galley(r.min + vec2(4.0, 2.0), galley, Color32::WHITE);
+}
+
+/// Screen rect of the clickable temporary dimension label for `id`.
+fn temp_dim_label(app: &App, view: &View, id: Id) -> Option<(Rect, String, Pos2, Pos2)> {
+    let doc = app.doc();
+    let (a, b) = match doc.object(id)? {
+        Object::Wall(w) => (v2(w.start), v2(w.end)),
+        Object::Cad(Cad {
+            shape: Shape::Line { a, b, .. },
+            ..
+        }) => (v2(*a), v2(*b)),
+        _ => return None,
+    };
+    let dir = (b - a).normalize_or(DVec2::X);
+    let n = DVec2::new(-dir.y, dir.x) * (28.0 * view.mpp);
+    let (sa, sb) = (view.to_screen(a + n), view.to_screen(b + n));
+    let text = crate::util::fmt(doc, Length::from_mm(a.distance(b)));
+    let mid = pos2((sa.x + sb.x) / 2.0, (sa.y + sb.y) / 2.0);
+    Some((
+        Rect::from_center_size(mid, vec2(text.len() as f32 * 7.5 + 10.0, 18.0)),
+        text,
+        sa,
+        sb,
+    ))
+}
+
+fn temp_dimension(app: &App, painter: &Painter, view: &View, id: Id, accent: Color32) {
+    let Some((r, text, sa, sb)) = temp_dim_label(app, view, id) else {
+        return;
+    };
+    let s = Stroke::new(1.0, accent);
+    painter.line_segment([sa, sb], s);
+    painter.rect(
+        r,
+        3.0,
+        Color32::from_black_alpha(10),
+        s,
+        egui::StrokeKind::Middle,
+    );
+    painter.text(
+        r.center(),
+        egui::Align2::CENTER_CENTER,
+        text,
+        egui::FontId::proportional(13.0),
+        accent,
+    );
+}
+
+/// Text prompt, typed-length box and the editable temporary dimension.
+fn overlays(app: &mut App, ui: &mut Ui, view: &View, commands: &mut Vec<Command>) {
+    let ctx = ui.ctx().clone();
+    // Click the temporary dimension of a selected wall or line to type a length.
+    if app.selection.len() == 1
+        && app.plan.tool == Tool::Select
+        && app.plan.temp_dim_edit.is_none()
+        && let Some((r, text, ..)) = temp_dim_label(app, view, app.selection[0])
+        && ctx.input(|i| i.pointer.primary_clicked())
+        && ctx
+            .input(|i| i.pointer.interact_pos())
+            .is_some_and(|p| r.contains(p))
+    {
+        app.plan.temp_dim_edit = Some((app.selection[0], text, true));
+    }
+    if let Some((id, mut buf, first)) = app.plan.temp_dim_edit.take()
+        && let Some((r, ..)) = temp_dim_label(app, view, id)
+    {
+        let mut keep = true;
+        egui::Area::new(egui::Id::unique("temp_dim_edit"))
+            .fixed_pos(r.left_top())
+            .order(egui::Order::Foreground)
+            .show(&ctx, |ui| {
+                let edit = ui.add(egui::TextEdit::singleline(&mut buf).desired_width(110.0));
+                if first {
+                    edit.request_focus();
+                }
+                if edit.lost_focus() {
+                    keep = false;
+                    if ui.input(|i| i.key_pressed(egui::Key::Enter))
+                        && let Some(len) = crate::util::parse(app.doc(), &buf)
+                        && len.mm() > 0.0
+                    {
+                        let doc = app.doc();
+                        match doc.object(id) {
+                            Some(Object::Wall(_)) => commands.push(Command::SetWallLength {
+                                id,
+                                length: len,
+                                anchor: LengthAnchor::Start,
+                            }),
+                            Some(Object::Cad(Cad {
+                                shape:
+                                    Shape::Line {
+                                        a,
+                                        b,
+                                        arrow_start,
+                                        arrow_end,
+                                    },
+                                ..
+                            })) => {
+                                let (pa, pb) = (v2(*a), v2(*b));
+                                let nb = pa + (pb - pa).normalize_or(DVec2::X) * len.mm();
+                                let shape = Shape::Line {
+                                    a: *a,
+                                    b: pt(nb),
+                                    arrow_start: *arrow_start,
+                                    arrow_end: *arrow_end,
+                                };
+                                commands.push(Command::Update {
+                                    id,
+                                    set: serde_json::json!({ "shape": shape })
+                                        .as_object()
+                                        .cloned()
+                                        .unwrap_or_default(),
+                                });
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            });
+        if keep {
+            app.plan.temp_dim_edit = Some((id, buf, false));
+        }
+    }
+
+    if let Some((p, mut buf)) = app.plan.text_prompt.take() {
+        let mut keep = true;
+        egui::Window::new("Text")
+            .collapsible(false)
+            .resizable(false)
+            .fixed_pos(view.to_screen(p) + vec2(10.0, 10.0))
+            .show(&ctx, |ui| {
+                let edit = ui.add(
+                    egui::TextEdit::multiline(&mut buf)
+                        .desired_rows(2)
+                        .desired_width(220.0),
+                );
+                edit.request_focus();
+                ui.horizontal(|ui| {
+                    let ok = ui.button("OK").clicked()
+                        || ui.input(|i| i.key_pressed(egui::Key::Enter) && i.modifiers.command);
+                    if ok && !buf.trim().is_empty() {
+                        commands.push(Command::AddText {
+                            floor: Some(app.plan.floor),
+                            layer: None,
+                            position: pt(p),
+                            text: buf.trim_end().to_string(),
+                            style: None,
+                            rotation: 0.0,
+                            justify: Justify::Left,
+                            height: None,
+                        });
+                        keep = false;
+                    }
+                    if ui.button("Cancel").clicked()
+                        || ui.input(|i| i.key_pressed(egui::Key::Escape))
+                    {
+                        keep = false;
+                    }
+                    ui.weak("Ctrl+Enter to place");
+                });
+            });
+        if keep {
+            app.plan.text_prompt = Some((p, buf));
+        }
+    }
+}

@@ -225,6 +225,18 @@ pub enum Command {
     },
     /// Cut the corner between two CAD lines with a straight segment.
     Chamfer { a: Id, b: Id, distance: Length },
+    /// Insert copies of objects (as returned by `get_object`), e.g. from a
+    /// clipboard. They get fresh ids; a door or window whose wall is in the
+    /// same batch follows the new wall. Placed objects move to `floor` and
+    /// shift by `dx`/`dy`.
+    InsertObjects {
+        objects: Vec<serde_json::Value>,
+        floor: Option<Id>,
+        #[serde(default)]
+        dx: Length,
+        #[serde(default)]
+        dy: Length,
+    },
     /// Delete objects. Floors take their contents with them; walls take their
     /// doors and windows. Objects still referenced elsewhere cannot be deleted.
     Delete { ids: Vec<Id> },
@@ -341,6 +353,7 @@ impl Command {
             Command::ExtendTo { .. } => "extend_to",
             Command::Fillet { .. } => "fillet",
             Command::Chamfer { .. } => "chamfer",
+            Command::InsertObjects { .. } => "insert_objects",
             Command::Delete { .. } => "delete",
         }
     }
@@ -742,6 +755,12 @@ impl Command {
                 positive(*distance, "distance")?;
                 ops::chamfer(doc, *a, *b, *distance, &mut out)?
             }
+            Command::InsertObjects {
+                objects,
+                floor,
+                dx,
+                dy,
+            } => ops::insert_objects(doc, objects, *floor, *dx, *dy, &mut out)?,
             Command::Delete { ids } => ops::delete(doc, ids, &mut out)?,
         }
         Ok(out)

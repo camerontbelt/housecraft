@@ -1,0 +1,1181 @@
+//! Dialog windows: print, transforms, CAD operations, preferences, defaults,
+//! wall types, layers, styles and help.
+
+use egui::{Context, Ui};
+use housecraft_api::geom::{DVec2, v2};
+use housecraft_api::model::*;
+use housecraft_api::units::{DisplayUnit, Length};
+use housecraft_api::{Command, TransformOp};
+use housecraft_draft::pdf::{Paper, Scale};
+use serde_json::json;
+
+use crate::app::{App, Theme};
+use crate::util::{fmt, parse};
+
+pub struct PrintDialog {
+    pub open: bool,
+    pub paper: Paper,
+    pub landscape: bool,
+    /// 0 = fit, otherwise model units per paper unit.
+    pub ratio: f64,
+}
+
+impl Default for PrintDialog {
+    fn default() -> Self {
+        PrintDialog {
+            open: false,
+            paper: Paper::Letter,
+            landscape: true,
+            ratio: 0.0,
+        }
+    }
+}
+
+impl PrintDialog {
+    pub fn scale(&self) -> Scale {
+        if self.ratio > 0.0 {
+            Scale::Ratio(self.ratio)
+        } else {
+            Scale::Fit
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransformTab {
+    Move,
+    Rotate,
+    Reflect,
+    MultipleCopy,
+}
+
+pub struct TransformDialog {
+    pub open: bool,
+    pub tab: TransformTab,
+    dx: String,
+    dy: String,
+    angle: String,
+    axis_vertical: bool,
+    copies: u32,
+    copy: bool,
+}
+
+impl Default for TransformDialog {
+    fn default() -> Self {
+        TransformDialog {
+            open: false,
+            tab: TransformTab::Move,
+            dx: "0".into(),
+            dy: "0".into(),
+            angle: "90".into(),
+            axis_vertical: true,
+            copies: 3,
+            copy: false,
+        }
+    }
+}
+
+impl TransformDialog {
+    pub fn open_tab(&mut self, tab: TransformTab) {
+        self.open = true;
+        self.tab = tab;
+    }
+    pub fn open_multiple(&mut self) {
+        self.open_tab(TransformTab::MultipleCopy);
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CadOp {
+    Offset,
+    Fillet,
+    Chamfer,
+}
+
+#[derive(Default)]
+pub struct CadOpDialog {
+    op: Option<CadOp>,
+    value: String,
+}
+
+impl CadOpDialog {
+    pub fn open(&mut self, op: CadOp) {
+        self.op = Some(op);
+        if self.value.is_empty() {
+            self.value = "6\"".into();
+        }
+    }
+}
+
+type LayerRow = (String, String, String);
+
+#[derive(Default)]
+pub struct WallTypesDialog {
+    pub open: bool,
+    selected: Option<Id>,
+    /// Working copy of the selected type's layers: (name, thickness, material).
+    edit: Option<(Id, Vec<LayerRow>)>,
+}
+
+#[derive(Default)]
+pub struct Dialogs {
+    pub print: PrintDialog,
+    pub transform: TransformDialog,
+    pub cad_op: CadOpDialog,
+    pub wall_types: WallTypesDialog,
+    pub prefs: bool,
+    pub defaults: bool,
+    pub layers: bool,
+    pub text_styles: bool,
+    pub room_types: bool,
+    pub about: bool,
+    pub shortcuts: bool,
+    pub save_view: Option<String>,
+}
+
+/// Centre of the selection's characteristic points.
+fn selection_center(doc: &Document, ids: &[Id]) -> DVec2 {
+    let mut pts = Vec::new();
+    for id in ids {
+        match doc.object(*id) {
+            Some(Object::Wall(w)) => pts.extend([v2(w.start), v2(w.end)]),
+            Some(Object::Cad(c)) => pts.extend(
+                housecraft_api::geom::math::shape_snap_points(&c.shape)
+                    .into_iter()
+                    .map(|p| p.0),
+            ),
+            Some(Object::Text(t)) => pts.push(v2(t.position)),
+            Some(Object::Dimension(d)) => match &d.geometry {
+                DimensionGeometry::Linear { points, .. } => {
+                    pts.extend(points.iter().map(|p| v2(*p)))
+                }
+                DimensionGeometry::Angular { center, .. } => pts.push(v2(*center)),
+            },
+            _ => {}
+        }
+    }
+    housecraft_api::geom::math::bounds(pts).map_or(DVec2::ZERO, |(lo, hi)| (lo + hi) / 2.0)
+}
+
+pub fn show(app: &mut App, ctx: &Context) {
+    print_dialog(app, ctx);
+    transform_dialog(app, ctx);
+    cad_op_dialog(app, ctx);
+    prefs_dialog(app, ctx);
+    defaults_dialog(app, ctx);
+    wall_types_dialog(app, ctx);
+    layers_dialog(app, ctx);
+    list_dialog::<TextStyle>(
+        app,
+        ctx,
+        "Text Styles",
+        |a| &mut a.dialogs.text_styles,
+        || Command::AddTextStyle {
+            name: "New Style".into(),
+            height: Length::from_inches(6.0),
+            font: None,
+            bold: false,
+            italic: false,
+            color: None,
+        },
+    );
+    list_dialog::<RoomType>(
+        app,
+        ctx,
+        "Room Types",
+        |a| &mut a.dialogs.room_types,
+        || Command::AddRoomType {
+            name: "New Room Type".into(),
+            ceiling_height: None,
+            floor_finish: String::new(),
+            living_area: true,
+        },
+    );
+    save_view_dialog(app, ctx);
+    shortcuts_dialog(app, ctx);
+    about_dialog(app, ctx);
+}
+
+fn print_dialog(app: &mut App, ctx: &Context) {
+    let mut open = app.dialogs.print.open;
+    let mut export = false;
+    egui::Window::new("Print / Export PDF")
+        .open(&mut open)
+        .resizable(false)
+        .show(ctx, |ui| {
+            let d = &mut app.dialogs.print;
+            egui::Grid::new("print").num_columns(2).show(ui, |ui| {
+                ui.label("Paper");
+                egui::ComboBox::from_id_salt("paper")
+                    .selected_text(format!("{:?}", d.paper))
+                    .show_ui(ui, |ui| {
+                        for p in [Paper::Letter, Paper::Legal, Paper::Tabloid, Paper::ArchC, Paper::ArchD, Paper::A4, Paper::A3, Paper::A2, Paper::A1] {
+                            ui.selectable_value(&mut d.paper, p, format!("{p:?}"));
+                        }
+                    });
+                ui.end_row();
+                ui.label("Orientation");
+                ui.horizontal(|ui| {
+                    ui.radio_value(&mut d.landscape, true, "Landscape");
+                    ui.radio_value(&mut d.landscape, false, "Portrait");
+                });
+                ui.end_row();
+                ui.label("Drawing Scale");
+                let label = |r: f64| {
+                    if r == 0.0 {
+                        "Fit to page".to_string()
+                    } else {
+                        housecraft_draft::pdf::scale_label(r, true)
+                    }
+                };
+                egui::ComboBox::from_id_salt("scale")
+                    .selected_text(label(d.ratio))
+                    .show_ui(ui, |ui| {
+                        for r in [0.0, 12.0, 16.0, 24.0, 48.0, 96.0, 192.0] {
+                            ui.selectable_value(&mut d.ratio, r, label(r));
+                        }
+                    });
+                ui.end_row();
+            });
+            ui.add_space(6.0);
+            ui.weak("Prints the current floor with the active layer set. Open the PDF to send it to a printer.");
+            if ui.button("Export PDF…").clicked() {
+                export = true;
+            }
+        });
+    app.dialogs.print.open = open && !export;
+    if export {
+        app.export("pdf");
+    }
+}
+
+fn transform_dialog(app: &mut App, ctx: &Context) {
+    let mut open = app.dialogs.transform.open;
+    let mut command = None;
+    egui::Window::new("Transform / Replicate")
+        .open(&mut open)
+        .resizable(false)
+        .show(ctx, |ui| {
+            let doc = app.session.document();
+            let ids = app.selection.clone();
+            let t = &mut app.dialogs.transform;
+            ui.horizontal(|ui| {
+                ui.selectable_value(&mut t.tab, TransformTab::Move, "Move");
+                ui.selectable_value(&mut t.tab, TransformTab::Rotate, "Rotate");
+                ui.selectable_value(&mut t.tab, TransformTab::Reflect, "Reflect");
+                ui.selectable_value(&mut t.tab, TransformTab::MultipleCopy, "Multiple Copy");
+            });
+            ui.separator();
+            if ids.is_empty() {
+                ui.weak("Select objects first.");
+                return;
+            }
+            let center = selection_center(doc, &ids);
+            let op = match t.tab {
+                TransformTab::Move | TransformTab::MultipleCopy => {
+                    egui::Grid::new("move").num_columns(2).show(ui, |ui| {
+                        ui.label("X distance");
+                        ui.text_edit_singleline(&mut t.dx);
+                        ui.end_row();
+                        ui.label("Y distance");
+                        ui.text_edit_singleline(&mut t.dy);
+                        ui.end_row();
+                        if t.tab == TransformTab::MultipleCopy {
+                            ui.label("Number of copies");
+                            ui.add(egui::DragValue::new(&mut t.copies).range(1..=500));
+                            ui.end_row();
+                        }
+                    });
+                    ui.weak("Arithmetic is allowed, e.g. 12'6\" + 3\".");
+                    match (parse(doc, &t.dx), parse(doc, &t.dy)) {
+                        (Some(dx), Some(dy)) => Some(TransformOp::Translate { dx, dy }),
+                        _ => None,
+                    }
+                }
+                TransformTab::Rotate => {
+                    ui.horizontal(|ui| {
+                        ui.label("Angle (° counter-clockwise)");
+                        ui.text_edit_singleline(&mut t.angle);
+                    });
+                    ui.weak("Rotates about the centre of the selection.");
+                    t.angle
+                        .trim()
+                        .parse::<f64>()
+                        .ok()
+                        .map(|angle| TransformOp::Rotate {
+                            center: housecraft_api::geom::pt(center),
+                            angle,
+                        })
+                }
+                TransformTab::Reflect => {
+                    ui.horizontal(|ui| {
+                        ui.radio_value(&mut t.axis_vertical, true, "About vertical axis");
+                        ui.radio_value(&mut t.axis_vertical, false, "About horizontal axis");
+                    });
+                    let d = if t.axis_vertical { DVec2::Y } else { DVec2::X };
+                    Some(TransformOp::Mirror {
+                        a: housecraft_api::geom::pt(center),
+                        b: housecraft_api::geom::pt(center + d * 1000.0),
+                    })
+                }
+            };
+            if t.tab != TransformTab::MultipleCopy {
+                ui.checkbox(&mut t.copy, "Make a copy (keep the original)");
+            }
+            ui.add_space(4.0);
+            if ui
+                .add_enabled(op.is_some(), egui::Button::new("Apply"))
+                .clicked()
+                && let Some(op) = op
+            {
+                let copies = match t.tab {
+                    TransformTab::MultipleCopy => t.copies,
+                    _ if t.copy => 1,
+                    _ => 0,
+                };
+                command = Some(Command::Transform {
+                    ids,
+                    transform: op,
+                    copies,
+                });
+            }
+        });
+    app.dialogs.transform.open = open;
+    if let Some(c) = command {
+        app.run1(c);
+    }
+}
+
+fn cad_op_dialog(app: &mut App, ctx: &Context) {
+    let Some(op) = app.dialogs.cad_op.op else {
+        return;
+    };
+    let mut open = true;
+    let mut command = None;
+    let (title, label) = match op {
+        CadOp::Offset => ("Offset", "Distance (positive = left / outward)"),
+        CadOp::Fillet => ("Fillet", "Radius (0 joins the corner)"),
+        CadOp::Chamfer => ("Chamfer", "Distance"),
+    };
+    egui::Window::new(title)
+        .open(&mut open)
+        .resizable(false)
+        .show(ctx, |ui| {
+            let doc = app.session.document();
+            ui.horizontal(|ui| {
+                ui.label(label);
+                ui.text_edit_singleline(&mut app.dialogs.cad_op.value);
+            });
+            let value = parse(doc, &app.dialogs.cad_op.value);
+            let sel = &app.selection;
+            let ready = value.is_some()
+                && if op == CadOp::Offset {
+                    sel.len() == 1
+                } else {
+                    sel.len() == 2
+                };
+            if !ready {
+                ui.weak(if op == CadOp::Offset {
+                    "Select one line, polyline, circle, arc or wall."
+                } else {
+                    "Select two lines."
+                });
+            }
+            if ui.add_enabled(ready, egui::Button::new("Apply")).clicked()
+                && let Some(v) = value
+            {
+                command = Some(match op {
+                    CadOp::Offset => Command::Offset {
+                        id: sel[0],
+                        distance: v,
+                    },
+                    CadOp::Fillet => Command::Fillet {
+                        a: sel[0],
+                        b: sel[1],
+                        radius: v,
+                    },
+                    CadOp::Chamfer => Command::Chamfer {
+                        a: sel[0],
+                        b: sel[1],
+                        distance: v,
+                    },
+                });
+            }
+        });
+    if command.is_some() || !open {
+        app.dialogs.cad_op.op = None;
+    }
+    if let Some(c) = command {
+        app.run1(c);
+    }
+}
+
+fn prefs_dialog(app: &mut App, ctx: &Context) {
+    let mut open = app.dialogs.prefs;
+    let mut unit_cmd = None;
+    let mut theme_changed = false;
+    egui::Window::new("Preferences")
+        .open(&mut open)
+        .resizable(false)
+        .show(ctx, |ui| {
+            let doc = app.session.document();
+            ui.heading("Appearance");
+            ui.horizontal(|ui| {
+                for (t, name) in [
+                    (Theme::System, "Follow system"),
+                    (Theme::Light, "Light"),
+                    (Theme::Dark, "Dark"),
+                ] {
+                    if ui.radio(app.prefs.theme == t, name).clicked() {
+                        app.prefs.theme = t;
+                        theme_changed = true;
+                    }
+                }
+            });
+            ui.checkbox(&mut app.prefs.show_grid, "Show reference grid");
+            ui.separator();
+            ui.heading("Snapping");
+            let s = &mut app.prefs.snap;
+            ui.checkbox(&mut s.objects, "Object snaps (Shift+F11)");
+            ui.checkbox(&mut s.angles, "Angle snaps (F10)");
+            ui.checkbox(&mut s.grid, "Grid snaps (Ctrl+F9)");
+            egui::Grid::new("snap_grid").num_columns(2).show(ui, |ui| {
+                ui.label("Angle increment (°)");
+                ui.add(egui::DragValue::new(&mut s.angle_step).range(1.0..=90.0));
+                ui.end_row();
+                ui.label("Grid spacing");
+                let mut g = fmt(doc, Length::from_mm(s.grid_mm));
+                if ui.text_edit_singleline(&mut g).lost_focus()
+                    && let Some(l) = parse(doc, &g)
+                    && l.mm() > 0.0
+                {
+                    s.grid_mm = l.mm();
+                }
+                ui.end_row();
+                ui.label("Length snap increment");
+                let mut l = fmt(doc, Length::from_mm(s.length_step_mm));
+                if ui.text_edit_singleline(&mut l).lost_focus()
+                    && let Some(v) = parse(doc, &l)
+                    && v.mm() >= 0.0
+                {
+                    s.length_step_mm = v.mm();
+                }
+                ui.end_row();
+            });
+            ui.separator();
+            ui.heading("Units (saved with the plan)");
+            let current = doc.settings.display_unit;
+            let options = [
+                (
+                    DisplayUnit::FeetInches { denominator: 16 },
+                    "Feet and inches, 1/16\"",
+                ),
+                (
+                    DisplayUnit::FeetInches { denominator: 32 },
+                    "Feet and inches, 1/32\"",
+                ),
+                (
+                    DisplayUnit::FeetInches { denominator: 128 },
+                    "Feet and inches, 1/128\"",
+                ),
+                (DisplayUnit::Inches { denominator: 16 }, "Inches, 1/16\""),
+                (DisplayUnit::Millimeters, "Millimeters"),
+                (DisplayUnit::Meters { decimals: 3 }, "Meters"),
+            ];
+            for (u, name) in options {
+                if ui.radio(current == u, name).clicked() && current != u {
+                    unit_cmd = Some(Command::SetDisplayUnit { unit: u });
+                }
+            }
+        });
+    app.dialogs.prefs = open;
+    if theme_changed {
+        app.apply_theme(ctx);
+    }
+    if let Some(c) = unit_cmd {
+        app.run1(c);
+    }
+}
+
+fn defaults_dialog(app: &mut App, ctx: &Context) {
+    let mut open = app.dialogs.defaults;
+    let mut commands = Vec::new();
+    egui::Window::new("Default Settings")
+        .open(&mut open)
+        .resizable(true)
+        .default_width(420.0)
+        .show(ctx, |ui| {
+            let doc = app.session.document();
+            let d = doc.active_defaults().clone();
+            let id = d.id;
+            let p = |v: serde_json::Value| Command::Update {
+                id,
+                set: v.as_object().cloned().unwrap_or_default(),
+            };
+            ui.horizontal(|ui| {
+                ui.label("Default set:");
+                egui::ComboBox::from_id_salt("default_set")
+                    .selected_text(d.name.clone())
+                    .show_ui(ui, |ui| {
+                        for s in doc.iter::<DefaultSet>() {
+                            if ui.selectable_label(s.id == id, &s.name).clicked() && s.id != id {
+                                commands.push(Command::SetActiveDefaultSet { id: s.id });
+                            }
+                        }
+                    });
+                if ui.button("Copy as new set").clicked() {
+                    commands.push(Command::AddDefaultSet {
+                        name: format!("{} copy", d.name),
+                        copy_from: Some(id),
+                    });
+                }
+            });
+            ui.separator();
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                egui::CollapsingHeader::new("Walls")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        pick_row::<WallType>(
+                            ui,
+                            doc,
+                            "Exterior wall type",
+                            d.exterior_wall_type,
+                            |v| commands.push(p(json!({"exterior_wall_type": v}))),
+                        );
+                        pick_row::<WallType>(
+                            ui,
+                            doc,
+                            "Interior wall type",
+                            d.interior_wall_type,
+                            |v| commands.push(p(json!({"interior_wall_type": v}))),
+                        );
+                    });
+                egui::CollapsingHeader::new("Doors")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        egui::Grid::new("door_defaults")
+                            .num_columns(2)
+                            .show(ui, |ui| {
+                                ui.label("Style");
+                                let mut s = d.door.style;
+                                egui::ComboBox::from_id_salt("door_style")
+                                    .selected_text(format!("{s:?}"))
+                                    .show_ui(ui, |ui| {
+                                        for v in [
+                                            DoorStyle::Hinged,
+                                            DoorStyle::Double,
+                                            DoorStyle::Sliding,
+                                            DoorStyle::Pocket,
+                                            DoorStyle::Bifold,
+                                            DoorStyle::Doorway,
+                                        ] {
+                                            ui.selectable_value(&mut s, v, format!("{v:?}"));
+                                        }
+                                    });
+                                if s != d.door.style {
+                                    commands.push(p(json!({"door": {"style": s}})));
+                                }
+                                ui.end_row();
+                                len_row(
+                                    ui,
+                                    doc,
+                                    &mut app.bufs,
+                                    "Width",
+                                    ("door", "width"),
+                                    d.door.width,
+                                    |v| commands.push(p(json!({"door": {"width": v}}))),
+                                );
+                                len_row(
+                                    ui,
+                                    doc,
+                                    &mut app.bufs,
+                                    "Height",
+                                    ("door", "height"),
+                                    d.door.height,
+                                    |v| commands.push(p(json!({"door": {"height": v}}))),
+                                );
+                            });
+                    });
+                egui::CollapsingHeader::new("Windows")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        egui::Grid::new("window_defaults")
+                            .num_columns(2)
+                            .show(ui, |ui| {
+                                ui.label("Style");
+                                let mut s = d.window.style;
+                                egui::ComboBox::from_id_salt("window_style")
+                                    .selected_text(format!("{s:?}"))
+                                    .show_ui(ui, |ui| {
+                                        for v in [
+                                            WindowStyle::DoubleHung,
+                                            WindowStyle::SingleHung,
+                                            WindowStyle::Casement,
+                                            WindowStyle::Sliding,
+                                            WindowStyle::Fixed,
+                                        ] {
+                                            ui.selectable_value(&mut s, v, format!("{v:?}"));
+                                        }
+                                    });
+                                if s != d.window.style {
+                                    commands.push(p(json!({"window": {"style": s}})));
+                                }
+                                ui.end_row();
+                                len_row(
+                                    ui,
+                                    doc,
+                                    &mut app.bufs,
+                                    "Width",
+                                    ("window", "width"),
+                                    d.window.width,
+                                    |v| commands.push(p(json!({"window": {"width": v}}))),
+                                );
+                                len_row(
+                                    ui,
+                                    doc,
+                                    &mut app.bufs,
+                                    "Height",
+                                    ("window", "height"),
+                                    d.window.height,
+                                    |v| commands.push(p(json!({"window": {"height": v}}))),
+                                );
+                                len_row(
+                                    ui,
+                                    doc,
+                                    &mut app.bufs,
+                                    "Top height",
+                                    ("window", "head"),
+                                    d.window.head_height,
+                                    |v| commands.push(p(json!({"window": {"head_height": v}}))),
+                                );
+                            });
+                    });
+                egui::CollapsingHeader::new("Rooms")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        pick_row::<RoomType>(ui, doc, "New room type", d.room_type, |v| {
+                            commands.push(p(json!({"room_type": v})))
+                        });
+                    });
+                egui::CollapsingHeader::new("Text and Dimensions")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        pick_row::<TextStyle>(ui, doc, "Text style", d.text_style, |v| {
+                            commands.push(p(json!({"text_style": v})))
+                        });
+                        pick_row::<TextStyle>(
+                            ui,
+                            doc,
+                            "Dimension text",
+                            d.dimensions.text_style,
+                            |v| commands.push(p(json!({"dimensions": {"text_style": v}}))),
+                        );
+                        ui.horizontal(|ui| {
+                            ui.label("Arrows");
+                            let mut a = d.dimensions.arrow;
+                            for (v, n) in [
+                                (ArrowStyle::Tick, "Tick"),
+                                (ArrowStyle::Arrow, "Arrow"),
+                                (ArrowStyle::Dot, "Dot"),
+                                (ArrowStyle::None, "None"),
+                            ] {
+                                ui.radio_value(&mut a, v, n);
+                            }
+                            if a != d.dimensions.arrow {
+                                commands.push(p(json!({"dimensions": {"arrow": a}})));
+                            }
+                        });
+                        egui::Grid::new("dim_defaults")
+                            .num_columns(2)
+                            .show(ui, |ui| {
+                                len_row(
+                                    ui,
+                                    doc,
+                                    &mut app.bufs,
+                                    "Extension gap",
+                                    ("dim", "gap"),
+                                    d.dimensions.extension_gap,
+                                    |v| {
+                                        commands
+                                            .push(p(json!({"dimensions": {"extension_gap": v}})))
+                                    },
+                                );
+                                len_row(
+                                    ui,
+                                    doc,
+                                    &mut app.bufs,
+                                    "Extension overshoot",
+                                    ("dim", "over"),
+                                    d.dimensions.extension_overshoot,
+                                    |v| {
+                                        commands.push(p(
+                                            json!({"dimensions": {"extension_overshoot": v}}),
+                                        ))
+                                    },
+                                );
+                                len_row(
+                                    ui,
+                                    doc,
+                                    &mut app.bufs,
+                                    "Exterior offset",
+                                    ("dim", "ext"),
+                                    d.dimensions.exterior_offset,
+                                    |v| {
+                                        commands
+                                            .push(p(json!({"dimensions": {"exterior_offset": v}})))
+                                    },
+                                );
+                                len_row(
+                                    ui,
+                                    doc,
+                                    &mut app.bufs,
+                                    "Show inches below",
+                                    ("dim", "inch"),
+                                    d.dimensions.inches_below,
+                                    |v| {
+                                        commands.push(p(json!({"dimensions": {"inches_below": v}})))
+                                    },
+                                );
+                            });
+                    });
+                egui::CollapsingHeader::new("Layers for new objects").show(ui, |ui| {
+                    let l = &d.layers;
+                    for (label, field, value) in [
+                        ("Walls", "walls", l.walls),
+                        ("Doors", "doors", l.doors),
+                        ("Windows", "windows", l.windows),
+                        ("Room labels", "rooms", l.rooms),
+                        ("CAD", "cad", l.cad),
+                        ("Dimensions", "dimensions", l.dimensions),
+                        ("Text", "text", l.text),
+                    ] {
+                        pick_row::<Layer>(ui, doc, label, value, |v| {
+                            commands.push(p(json!({"layers": {field: v}})))
+                        });
+                    }
+                });
+            });
+        });
+    app.dialogs.defaults = open;
+    if !commands.is_empty() {
+        app.run(commands);
+    }
+}
+
+fn pick_row<T: ObjectData + Named>(
+    ui: &mut Ui,
+    doc: &Document,
+    label: &str,
+    current: Id,
+    mut on_change: impl FnMut(Id),
+) {
+    ui.horizontal(|ui| {
+        ui.label(label);
+        let name = doc.get::<T>(current).map_or("?", |t| t.name());
+        egui::ComboBox::from_id_salt((label, T::KIND.name()))
+            .selected_text(name)
+            .show_ui(ui, |ui| {
+                for t in doc.iter::<T>() {
+                    if ui.selectable_label(t.id() == current, t.name()).clicked()
+                        && t.id() != current
+                    {
+                        on_change(t.id());
+                    }
+                }
+            });
+    });
+}
+
+fn len_row(
+    ui: &mut Ui,
+    doc: &Document,
+    bufs: &mut crate::util::EditBuffers,
+    label: &str,
+    key: (&str, &str),
+    value: Length,
+    mut on_change: impl FnMut(Length),
+) {
+    ui.label(label);
+    if let Some(v) = bufs.length(ui, doc, egui::Id::unique(("defaults", key)), value)
+        && v.mm() > 0.0
+    {
+        on_change(v);
+    }
+    ui.end_row();
+}
+
+fn wall_types_dialog(app: &mut App, ctx: &Context) {
+    let mut open = app.dialogs.wall_types.open;
+    let mut commands = Vec::new();
+    egui::Window::new("Wall Type Definitions")
+        .open(&mut open)
+        .resizable(true)
+        .default_width(560.0)
+        .show(ctx, |ui| {
+            let doc = app.session.document();
+            let dlg = &mut app.dialogs.wall_types;
+            let types: Vec<WallType> = doc.iter::<WallType>().cloned().collect();
+            if dlg
+                .selected
+                .is_none_or(|s| doc.get::<WallType>(s).is_none())
+            {
+                dlg.selected = types.first().map(|t| t.id);
+                dlg.edit = None;
+            }
+            ui.horizontal(|ui| {
+                ui.label("Wall type:");
+                let current = dlg
+                    .selected
+                    .and_then(|s| doc.get::<WallType>(s))
+                    .map_or("", |t| t.name.as_str());
+                egui::ComboBox::from_id_salt("wall_type_pick")
+                    .selected_text(current)
+                    .show_ui(ui, |ui| {
+                        for t in &types {
+                            if ui
+                                .selectable_label(dlg.selected == Some(t.id), &t.name)
+                                .clicked()
+                            {
+                                dlg.selected = Some(t.id);
+                                dlg.edit = None;
+                            }
+                        }
+                    });
+                if let Some(sel) = dlg.selected.and_then(|s| doc.get::<WallType>(s)) {
+                    if ui.button("Copy").clicked() {
+                        commands.push(Command::AddWallType {
+                            name: format!("{} copy", sel.name),
+                            layers: sel.layers.clone(),
+                        });
+                    }
+                    if ui.button("Rename / Edit").clicked() {
+                        app.spec.push(sel.id);
+                    }
+                    if ui.button("Delete").clicked() {
+                        commands.push(Command::Delete { ids: vec![sel.id] });
+                    }
+                }
+            });
+            let Some(sel) = dlg.selected.and_then(|s| doc.get::<WallType>(s)).cloned() else {
+                return;
+            };
+            let rows = &mut dlg
+                .edit
+                .get_or_insert_with(|| {
+                    (
+                        sel.id,
+                        sel.layers
+                            .iter()
+                            .map(|l| (l.name.clone(), fmt(doc, l.thickness), l.material.clone()))
+                            .collect(),
+                    )
+                })
+                .1;
+            ui.separator();
+            ui.label("Layers, exterior (top) to interior (bottom):");
+            let mut remove = None;
+            let mut swap = None;
+            egui::Grid::new("wall_layers")
+                .num_columns(5)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.strong("#");
+                    ui.strong("Name");
+                    ui.strong("Thickness");
+                    ui.strong("Material");
+                    ui.end_row();
+                    let n = rows.len();
+                    for (i, (name, thick, mat)) in rows.iter_mut().enumerate() {
+                        ui.label((i + 1).to_string());
+                        ui.add(egui::TextEdit::singleline(name).desired_width(120.0));
+                        ui.add(egui::TextEdit::singleline(thick).desired_width(80.0));
+                        ui.add(egui::TextEdit::singleline(mat).desired_width(120.0));
+                        ui.horizontal(|ui| {
+                            if ui.add_enabled(i > 0, egui::Button::new("↑")).clicked() {
+                                swap = Some((i, i - 1));
+                            }
+                            if ui.add_enabled(i + 1 < n, egui::Button::new("↓")).clicked() {
+                                swap = Some((i, i + 1));
+                            }
+                            if ui.add_enabled(n > 1, egui::Button::new("✕")).clicked() {
+                                remove = Some(i);
+                            }
+                        });
+                        ui.end_row();
+                    }
+                });
+            if let Some((a, b)) = swap {
+                rows.swap(a, b);
+            }
+            if let Some(i) = remove {
+                rows.remove(i);
+            }
+            let parsed: Option<Vec<WallLayer>> = rows
+                .iter()
+                .map(|(name, thick, mat)| {
+                    parse(doc, thick)
+                        .filter(|l| l.mm() > 0.0)
+                        .map(|thickness| WallLayer {
+                            name: name.clone(),
+                            thickness,
+                            material: mat.clone(),
+                        })
+                })
+                .collect();
+            let total: Option<Length> =
+                parsed.as_ref().map(|v| v.iter().map(|l| l.thickness).sum());
+            ui.horizontal(|ui| {
+                if ui.button("Add layer").clicked() {
+                    rows.push(("New layer".into(), "1/2\"".into(), String::new()));
+                }
+                ui.separator();
+                match total {
+                    Some(t) => ui.label(format!("Total thickness: {}", fmt(doc, t))),
+                    None => ui.colored_label(
+                        ui.visuals().error_fg_color,
+                        "Every thickness must be a positive length",
+                    ),
+                };
+            });
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(parsed.is_some(), egui::Button::new("Apply"))
+                    .clicked()
+                    && let Some(layers) = parsed
+                {
+                    commands.push(Command::Update {
+                        id: sel.id,
+                        set: json!({ "layers": layers })
+                            .as_object()
+                            .cloned()
+                            .unwrap_or_default(),
+                    });
+                    dlg.edit = None;
+                }
+                if ui.button("Revert").clicked() {
+                    dlg.edit = None;
+                }
+            });
+        });
+    app.dialogs.wall_types.open = open;
+    if !commands.is_empty() {
+        app.run(commands);
+    }
+}
+
+fn layers_dialog(app: &mut App, ctx: &Context) {
+    let mut open = app.dialogs.layers;
+    let mut commands = Vec::new();
+    let mut spec = Vec::new();
+    egui::Window::new("Layers and Layer Sets")
+        .open(&mut open)
+        .resizable(true)
+        .default_width(420.0)
+        .show(ctx, |ui| {
+            let doc = app.session.document();
+            ui.heading("Layers");
+            egui::Grid::new("layer_list")
+                .num_columns(4)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.strong("Name");
+                    ui.strong("Weight");
+                    ui.strong("Style");
+                    ui.end_row();
+                    for l in doc.iter::<Layer>() {
+                        if ui.link(&l.name).clicked() {
+                            spec.push(l.id);
+                        }
+                        ui.label(format!("{:.2} mm", l.line_weight));
+                        ui.label(format!("{:?}", l.line_style));
+                        if ui.small_button("Delete").clicked() {
+                            commands.push(Command::Delete { ids: vec![l.id] });
+                        }
+                        ui.end_row();
+                    }
+                });
+            if ui.button("New Layer").clicked() {
+                commands.push(Command::AddLayer {
+                    name: format!("Layer {}", doc.count::<Layer>() + 1),
+                    color: None,
+                    line_weight: None,
+                    line_style: LineStyle::Solid,
+                });
+            }
+            ui.separator();
+            ui.heading("Layer Sets");
+            for s in doc.iter::<LayerSet>() {
+                ui.horizontal(|ui| {
+                    if ui.link(&s.name).clicked() {
+                        spec.push(s.id);
+                    }
+                    if ui.small_button("Copy").clicked() {
+                        commands.push(Command::AddLayerSet {
+                            name: format!("{} copy", s.name),
+                            copy_from: Some(s.id),
+                        });
+                    }
+                    if ui.small_button("Delete").clicked() {
+                        commands.push(Command::Delete { ids: vec![s.id] });
+                    }
+                });
+            }
+            ui.weak("Visibility per set is edited in the Layer Display side window.");
+        });
+    app.dialogs.layers = open;
+    app.spec.extend(spec);
+    if !commands.is_empty() {
+        app.run(commands);
+    }
+}
+
+/// A simple list of named objects with New, Edit (spec window) and Delete.
+fn list_dialog<T: ObjectData + Named>(
+    app: &mut App,
+    ctx: &Context,
+    title: &str,
+    flag: fn(&mut App) -> &mut bool,
+    new: impl Fn() -> Command,
+) {
+    let mut open = *flag(app);
+    if !open {
+        return;
+    }
+    let mut commands = Vec::new();
+    let mut spec = Vec::new();
+    egui::Window::new(title)
+        .open(&mut open)
+        .resizable(true)
+        .show(ctx, |ui| {
+            let doc = app.session.document();
+            for t in doc.iter::<T>() {
+                ui.horizontal(|ui| {
+                    if ui.link(t.name()).clicked() {
+                        spec.push(t.id());
+                    }
+                    if ui.small_button("Delete").clicked() {
+                        commands.push(Command::Delete { ids: vec![t.id()] });
+                    }
+                });
+            }
+            if ui.button("New").clicked() {
+                commands.push(new());
+            }
+        });
+    *flag(app) = open;
+    app.spec.extend(spec);
+    if let Some(out) = (!commands.is_empty()).then(|| app.run(commands)).flatten() {
+        app.spec.extend(out.created);
+    }
+}
+
+fn save_view_dialog(app: &mut App, ctx: &Context) {
+    let Some(mut name) = app.dialogs.save_view.take() else {
+        return;
+    };
+    let mut keep = true;
+    let mut save = false;
+    egui::Window::new("Save Plan View")
+        .collapsible(false)
+        .resizable(false)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Name");
+                ui.text_edit_singleline(&mut name);
+            });
+            ui.weak("Saves the floor, layer set, default set and zoom.");
+            ui.horizontal(|ui| {
+                if ui.button("Save").clicked() {
+                    save = true;
+                }
+                if ui.button("Cancel").clicked() {
+                    keep = false;
+                }
+            });
+        });
+    if save {
+        keep = false;
+        let cmd = Command::AddPlanView {
+            name: name.clone(),
+            floor: Some(app.plan.floor),
+            layer_set: Some(app.plan.layer_set),
+            default_set: Some(app.doc().settings.active_default_set),
+            zoom: Some(ViewRect {
+                center: housecraft_api::geom::pt(app.plan.center),
+                mm_per_point: app.plan.mm_per_pt,
+            }),
+            reference_floor: app.plan.reference_floor,
+        };
+        if let Some(out) = app.run1(cmd) {
+            app.plan.view = out.created.first().copied();
+        }
+    }
+    if keep {
+        app.dialogs.save_view = Some(name);
+    }
+}
+
+fn shortcuts_dialog(app: &mut App, ctx: &Context) {
+    egui::Window::new("Keyboard Shortcuts")
+        .open(&mut app.dialogs.shortcuts)
+        .resizable(true)
+        .show(ctx, |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                egui::Grid::new("keys").striped(true).show(ui, |ui| {
+                    for (k, what) in [
+                        ("Space", "Select Objects"),
+                        ("Tab", "Select Next Object"),
+                        ("Ctrl+E / double-click", "Open Object"),
+                        ("Esc", "Cancel / end drawing"),
+                        ("Del", "Delete"),
+                        ("Ctrl+Z / Ctrl+Y", "Undo / Redo"),
+                        ("Ctrl+C / Ctrl+X / Ctrl+V", "Copy / Cut / Paste"),
+                        ("Ctrl+Alt+V", "Paste Hold Position"),
+                        ("Ctrl+A / Ctrl+J", "Select All / Select Same Type"),
+                        ("Shift+Q", "Straight Exterior Wall"),
+                        ("Shift+E", "Hinged Door"),
+                        ("Shift+W", "Window"),
+                        ("W / E / K", "Draw Line / Arc / Circle"),
+                        ("Shift+P", "Rectangular Polyline"),
+                        ("Y", "Text"),
+                        ("Shift+A", "Auto Exterior Dimensions"),
+                        ("Shift+X", "Build New Floor"),
+                        ("Shift+N / Shift+M", "Up / Down One Floor"),
+                        ("F9", "Reference Floor Display"),
+                        ("F6", "Fill Window"),
+                        ("F10 / Ctrl+F9 / Shift+F11", "Angle / Grid / Object snaps"),
+                        (
+                            "Shift+J / Shift+K / H",
+                            "Full Camera / Perspective / Ortho Overview",
+                        ),
+                        ("F2 / F3", "Plan view / 3D view"),
+                        ("~", "Preferences"),
+                        (
+                            "Typing while drawing",
+                            "Exact length, then Enter (arithmetic allowed)",
+                        ),
+                        ("Middle / right drag, wheel", "Pan, zoom"),
+                        (
+                            "3D: drag / Shift+drag / wheel",
+                            "Orbit / pan / zoom; WASD walks",
+                        ),
+                    ] {
+                        ui.monospace(k);
+                        ui.label(what);
+                        ui.end_row();
+                    }
+                });
+            });
+        });
+}
+
+fn about_dialog(app: &mut App, ctx: &Context) {
+    egui::Window::new("About HouseCraft")
+        .open(&mut app.dialogs.about)
+        .resizable(false)
+        .show(ctx, |ui| {
+            ui.heading(format!("HouseCraft {}", env!("CARGO_PKG_VERSION")));
+            ui.label("Residential design and construction documents.");
+            ui.label("Built in Rust with egui and wgpu. Also usable headless (housecraft CLI) and by AI assistants (housecraft mcp).");
+        });
+}

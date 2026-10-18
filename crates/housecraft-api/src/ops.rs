@@ -803,3 +803,51 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
     }
     Ok(())
 }
+
+pub(crate) fn insert_objects(
+    doc: &mut Document,
+    objects: &[serde_json::Value],
+    floor: Option<Id>,
+    dx: Length,
+    dy: Length,
+    out: &mut Outcome,
+) -> Result<(), ApiError> {
+    if let Some(f) = floor {
+        expect::<Floor>(doc, f)?;
+    }
+    let shift = Transform2::translate(DVec2::new(dx.mm(), dy.mm()));
+    let mut parsed: Vec<Object> = objects
+        .iter()
+        .map(|v| {
+            serde_json::from_value::<Object>(v.clone())
+                .map_err(|e| ApiError::Invalid(format!("invalid object: {e}")))
+        })
+        .collect::<Result<_, _>>()?;
+    // Walls first so their doors and windows can be re-pointed.
+    parsed.sort_by_key(|o| !matches!(o, Object::Wall(_)));
+    let mut remap = std::collections::BTreeMap::new();
+    for object in parsed {
+        let old = object.id();
+        let mut object = match object {
+            Object::Opening(mut o) => {
+                o.wall = *remap.get(&o.wall).unwrap_or(&o.wall);
+                Object::Opening(o)
+            }
+            o if o.kind().is_placed() => transformed(doc, &o, &shift)?,
+            o => o,
+        };
+        if let Some(f) = floor {
+            match &mut object {
+                Object::Wall(w) => w.floor = f,
+                Object::Cad(c) => c.floor = f,
+                Object::Dimension(d) => d.floor = f,
+                Object::Text(t) => t.floor = f,
+                _ => {}
+            }
+        }
+        let new = doc.insert(object);
+        remap.insert(old, new);
+        out.created.push(new);
+    }
+    Ok(())
+}

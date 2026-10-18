@@ -23,12 +23,15 @@ jobs:
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
+      - name: Linux GUI dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libwayland-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
       - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets
-      - run: cargo test --workspace
+      - run: cargo clippy --workspace --all-targets --all-features
+      - run: cargo test --workspace --all-features
 
   wasm:
-    name: wasm32 (core crates)
+    name: wasm32 (core crates and web app)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,3 +42,4 @@ jobs:
       - run: >
           cargo check --target wasm32-unknown-unknown
           -p housecraft-units -p housecraft-model -p housecraft-api -p housecraft-io-native
+          -p housecraft-geom -p housecraft-draft -p housecraft-app

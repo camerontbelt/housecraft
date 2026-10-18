@@ -5,6 +5,8 @@ paraphrased into short engineering items, and it supersedes the rougher inventor
 Source: https://cloud.chiefarchitect.com/1/pdf/marketing/x18-detailed-feature-list.pdf
 
 **Pri:** P0 MVP · P1 credible v1 · P2 parity · P3 later/optional · ✗ out of scope (vendor-specific service).
+**P0 status (2026-10-17):** all 29 P0 items are implemented; five are partial (◐) as noted in their rows.
+
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
@@ -45,9 +47,9 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| VIS-01 | Perspective and orthographic cameras; named, saved, editable, copyable | P0 | M1 |
+| VIS-01 | Perspective and orthographic cameras; named, saved, editable, copyable | P0 | M1 ✓ |
 | VIS-02 | XYZ axes indicator and project-origin marker in 2D/3D | P1 | M1 |
-| VIS-03 | Navigation: orbit, pan, dolly, tilt, walk; standard view-direction presets | P0 | M1 |
+| VIS-03 | Navigation: orbit, pan, dolly, tilt, walk; standard view-direction presets | P0 | M1 ✓ (orbit, pan, dolly, walk, presets) |
 | VIS-04 | Auto-hide camera-facing exterior walls while navigating small rooms | P2 | M7 |
 | VIS-05 | Cross-section slider: interactive cutaway from any side, live | P1 | M4 |
 | VIS-06 | Poché (solid fill) for walls/roofs/platforms in plan and camera views | P1 | M1 |
@@ -100,17 +102,17 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-03 | Space-planner room boxes: drag room bubbles, convert to walls | P2 | M3 |
 | PRJ-04 | Plan Check: egress, roof, wall layout review | P2 | M4 |
 | PRJ-05 | Rotate and mirror (flip) entire plan | P1 | M1 |
-| PRJ-06 | Zoom to selection | P0 | M1 |
+| PRJ-06 | Zoom to selection | P0 | M1 ✓ |
 | PRJ-07 | Free viewer app for clients (read-only) | P1 | web build |
 | PRJ-08 | Managed projects (auto-organized storage, no broken links) | P2 | M8 |
 | PRJ-09 | Project Browser: tree of layouts, floors, views, cameras, schedules, details; multi-select; folders; thumbnails | P1 | M4 |
 | PRJ-10 | Pin items in Project Browser (X18+) | P3 | M8 |
-| PRJ-11 | Saved Plan Views (layer set + default set + active defaults; zoom/floor optional); tabs/windows | P0 | M1 |
+| PRJ-11 | Saved Plan Views (layer set + default set + active defaults; zoom/floor optional); tabs/windows | P0 | M1 ✓ (multiple view tabs: later) |
 | PRJ-12 | Duplicate saved view copies its active layer set (X18+) | P2 | M1 |
 | PRJ-13 | Default Sets per drawing type (kitchen, framing, electrical…) | P1 | M1 |
 | PRJ-14 | Multi-floor structures | P0 | M0 ✓ |
 | PRJ-15 | Insert/exchange floors above/below | P1 | M3 |
-| PRJ-16 | Layers: create, assign, style, group into Layer Sets | P0 | M1 |
+| PRJ-16 | Layers: create, assign, style, group into Layer Sets | P0 | M1 ✓ |
 | PRJ-17 | Fill style by layer (X18+) | P2 | M1 |
 | PRJ-18 | Select all on layer | P1 | M1 |
 | PRJ-19 | Time tracker per project/client/task with export | P3 | M8 |
@@ -134,7 +136,7 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| RM-01 | Room defaults by room type (ceiling height, moldings, finishes) | P0 | M1 |
+| RM-01 | Room defaults by room type (ceiling height, moldings, finishes) | P0 | M1 ✓ |
 | RM-02 | Custom room type definitions | P1 | M1 |
 | RM-03 | Living-area calculation with include/exclude | P1 | M1 |
 | RM-04 | Room polygon tool (preset shapes) | P2 | M3 |
@@ -152,13 +154,13 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| WL-01 | Draw/edit walls in 2D and 3D: interior, exterior, railing, pony, half, curved, angled, raked, stepped | P0 | M1 (straight) / M3 (rest) |
+| WL-01 | Draw/edit walls in 2D and 3D: interior, exterior, railing, pony, half, curved, angled, raked, stepped | P0 | M1 ✓ straight walls / M3 (rest) |
 | WL-02 | Layered wall types: wood, stucco, ICF, SIPS, glass, railings, partitions | P0 | M0 ✓ (layers) |
 | WL-03 | Pony walls (upper/lower types, caps, framing, edge line) | P2 | M3 |
 | WL-04 | Railings: newels, balusters, panels, handrails, shoe, offsets | P1 | M3 |
 | WL-05 | Newel positioning rules and manual newel editing | P2 | M3 |
 | WL-06 | Raked & stepped walls; stepped foundations | P2 | M3 |
-| WL-07 | Wall type editor; layers feed materials list | P0 | M1 |
+| WL-07 | Wall type editor; layers feed materials list | P0 | M1 ✓ |
 | WL-08 | Match properties (wall to wall) | P1 | M1 |
 | WL-09 | Multiple main (structural) layers for ICF/SIP connections | P2 | M3 |
 | WL-10 | Wall niches | P2 | M3 |
@@ -170,7 +172,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-16 | Wall material regions | P2 | M5 |
 | WL-17 | Double walls (marriage/multi-family) incl. openings | P3 | M3 |
 | WL-18 | Control which layer intersecting walls snap to | P1 | M1 |
-| WL-19 | Continuous wall draw mode | P0 | M1 |
+| WL-19 | Continuous wall draw mode | P0 | M1 ✓ |
 
 ## 7. Cabinets
 
@@ -206,7 +208,7 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| DW-01 | Parametric doors/doorways/windows incl. arched, shaped, mulled; hardware library | P0 | M1 (basic) / M3 |
+| DW-01 | Parametric doors/doorways/windows incl. arched, shaped, mulled; hardware library | P0 | M1 ✓ basic / M3 (arched, shaped, mulled, hardware) |
 | DW-02 | Door types: interior, exterior, sliding, barn, pocket, bifold, atrium, fixed, double, shower, garage | P1 | M3 |
 | DW-03 | Window types: fixed, single/double hung, slider, casement, corner, recessed, louvered, bay, box, pass-through | P1 | M3 |
 | DW-04 | Defaults per door type | P1 | M3 |
@@ -317,11 +319,11 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| CAD-01 | Points, lines, polylines, splines, arcs, circles, ovals, boxes, arrows; trim/extend, parallel, perpendicular, reflect, replicate, transform, fillet, chamfer | P0 | M1 |
+| CAD-01 | Points, lines, polylines, splines, arcs, circles, ovals, boxes, arrows; trim/extend, parallel, perpendicular, reflect, replicate, transform, fillet, chamfer | P0 | M1 ✓ (perpendicular tool: later) |
 | CAD-02 | Multiple arc creation modes | P1 | M1 |
-| CAD-03 | Object snaps (end, center, tangent…), grid snap, reference-floor snap | P0 | M1 |
+| CAD-03 | Object snaps (end, center, tangent…), grid snap, reference-floor snap | P0 | M1 ◐ end/mid/center/on-object/angle/grid/reference floor; tangent, intersection, quadrant later |
 | CAD-04 | Paste in place across layers/plans/floors | P1 | M1 |
-| CAD-05 | Point-to-point move/copy/resize | P0 | M1 |
+| CAD-05 | Point-to-point move/copy/resize | P0 | M1 ✓ |
 | CAD-06 | Detailing primitives: cross box, blocking box, insulation | P1 | M4 |
 | CAD-07 | Convert 2D CAD into smart objects (solids, moldings, counters, slabs, roads, terrain, …) | P2 | M4 |
 | CAD-08 | Multiple copy at preset increments | P1 | M1 |
@@ -342,8 +344,8 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| LY-01 | Layer sets per drawing type; quick swap | P0 | M1 |
-| LY-02 | Layer management: weight, color, style; materials-list inclusion | P0 | M1 |
+| LY-01 | Layer sets per drawing type; quick swap | P0 | M1 ✓ |
+| LY-02 | Layer management: weight, color, style; materials-list inclusion | P0 | M1 ✓ (materials list itself: M4) |
 | LY-03 | Layer eyedropper & painter | P2 | M1 |
 | LY-04 | Layer hider (click to hide) | P1 | M1 |
 | LY-05 | Edit an object's layer properties from the toolbar | P2 | M1 |
@@ -356,14 +358,14 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| DIM-01 | Baseline, running, centerline, angular, end-to-end, interior, point-to-point, temporary dimensions; one-click exterior | P0 | M1 |
+| DIM-01 | Baseline, running, centerline, angular, end-to-end, interior, point-to-point, temporary dimensions; one-click exterior | P0 | M1 ◐ point-to-point/running chains, angular, temporary, auto exterior; baseline, centerline, auto interior later |
 | DIM-02 | Dimensions in 3D views | P2 | M7 |
-| DIM-03 | Move objects by editing dimensions; arithmetic in inputs | P0 | M1 |
+| DIM-03 | Move objects by editing dimensions; arithmetic in inputs | P0 | M1 ◐ arithmetic everywhere, wall/line length via temporary dimension; moving by any placed dimension later |
 | DIM-04 | Auto exterior dimensions with auto-refresh | P1 | M1 |
-| DIM-05 | Wall length editing via dimensions; type exact length while drawing | P0 | M1 |
+| DIM-05 | Wall length editing via dimensions; type exact length while drawing | P0 | M1 ✓ |
 | DIM-06 | Dimension snapping rules; hotkey override | P1 | M1 |
 | DIM-07 | Column/bubble grid lines with auto labeling | P2 | M4 |
-| DIM-08 | Units/accuracy (to 1/128" or 0.0078125), text and arrow styles | P0 | M0 ✓ (units) / M1 |
+| DIM-08 | Units/accuracy (to 1/128" or 0.0078125), text and arrow styles | P0 | M0 ✓ / M1 ✓ |
 | DIM-09 | Dimension defaults table editor | P2 | GUI |
 | DIM-10 | Centerline markers | P2 | M1 |
 | DIM-11 | Inch threshold display (18" vs 1'-6") | P1 | M1 |
@@ -426,7 +428,7 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| MAT-01 | Edit any architectural object in 2D or 3D | P0 | M1 |
+| MAT-01 | Edit any architectural object in 2D or 3D | P0 | M1 ✓ (select and edit from 3D; direct 3D dragging later) |
 | MAT-02 | Object painter / eyedropper with attribute choice and scope | P2 | M5 |
 | MAT-03 | Material painter with scope; default painter (reset) | P1 | M5 |
 | MAT-04 | Material eyedropper; color chooser from image | P2 | M5 |
@@ -511,7 +513,7 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| TXT-01 | Editable text: font, size, weight, color, justification | P0 | M1 |
+| TXT-01 | Editable text: font, size, weight, color, justification | P0 | M1 ◐ size, weight, color, justification; font families need font loading |
 | TXT-02 | Rich text, hyperlinks | P1 | M1 |
 | TXT-03 | Find/replace text | P2 | M4 |
 | TXT-04 | Replace fonts | P3 | M4 |
@@ -523,7 +525,7 @@ These come from reading the whole list and change the architecture, not just the
 | TXT-10 | Label formatting (justify, border, wrap) | P1 | M1 |
 | TXT-11 | Per-view label hide (X18+) | P2 | M1 |
 | TXT-12 | Auto labels for layout boxes | P2 | M4 |
-| TXT-13 | Text styles per layer/default/object | P0 | M1 |
+| TXT-13 | Text styles per layer/default/object | P0 | M1 ✓ |
 | TXT-14 | Default sets for annotation | P1 | M1 |
 | TXT-15 | Annotations on 3D views | P2 | M7 |
 | TXT-16 | Numbered notes with schedule; note markers in 3D | P2 | M4 |
@@ -538,7 +540,7 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| PRN-01 | Print to PDF | P0 | M1 |
+| PRN-01 | Print to PDF | P0 | M1 ✓ |
 | PRN-02 | Watermarks (text/image; also on walkthroughs) | P3 | M4 |
 | PRN-03 | Print preview with line weights | P1 | M4 |
 | PRN-04 | Drawing sheet setup and paper scaling | P1 | M4 |
@@ -566,19 +568,19 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| UI-01 | Windows + macOS native (ARM) (ours: + Linux + web) | P0 | GUI |
+| UI-01 | Windows + macOS native (ARM) (ours: + Linux + web) | P0 | GUI ◐ Windows verified; macOS/Linux in CI; web compiles (packaging later) |
 | UI-02 | Import from As-Built LiDAR scan app (X18+) → ours: RoomPlan/USDZ import | P3 | M8 |
 | UI-03 | 3D viewer app / cloud sharing → ours: web viewer build | P1 | web |
 | UI-04 | Free read-only viewer | P1 | web |
 | UI-05 | Home Designer compatibility | P2 | M8 |
 | UI-06 | Multiple monitors; tear-off tabbed views | P2 | GUI |
 | UI-07 | Touch (pinch/rotate) | P2 | GUI |
-| UI-08 | HiDPI icons | P0 | GUI |
-| UI-09 | Preferences & defaults dialogs | P0 | GUI |
+| UI-08 | HiDPI icons | P0 | GUI ✓ (vector icons) |
+| UI-09 | Preferences & defaults dialogs | P0 | GUI ✓ |
 | UI-10 | Search in default settings (X18+) | P2 | GUI |
 | UI-11 | Undo history panel; multi-step undo/redo | P1 | M0 ✓ (engine) / GUI |
 | UI-12 | 3Dconnexion SpaceMouse | P3 | GUI |
-| UI-13 | Dark mode | P0 | GUI |
+| UI-13 | Dark mode | P0 | GUI ✓ |
 | UI-14 | Virtual graph paper grid | P1 | M1 |
 | UI-15 | Auto-archive backups on schedule | P1 | M1 |
 | UI-16 | Single-file project archive (`.CAPROJ` equivalent) | P2 | M8 |
