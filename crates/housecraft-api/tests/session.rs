@@ -891,3 +891,50 @@ fn demolished_walls_no_longer_divide_rooms() {
         "rooms follow the finished design"
     );
 }
+
+#[test]
+fn door_sizes_by_type_and_new_styles() {
+    let mut s = boxed();
+    let wall = walls(&s)[0].id;
+    let set = s.document().settings.active_default_set;
+    s.apply(&[Command::Update {
+        id: set,
+        set: patch(serde_json::json!({
+            "door": { "sizes": [{ "style": "barn", "width": "42\"", "height": "84\"" }] }
+        })),
+    }])
+    .unwrap();
+    let out = apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_door", "wall": {w}, "position": "4'", "style": "barn"}},
+                {{"op": "add_door", "wall": {w}, "position": "12'", "style": "atrium"}},
+                {{"op": "add_door", "wall": {w}, "position": "18'", "style": "shower"}},
+                {{"op": "add_door", "wall": {w}, "position": "24'", "style": "fixed"}}]"#,
+            w = wall.0
+        ),
+    );
+    let doc = s.document();
+    let barn = doc.get::<Opening>(out.created[0]).unwrap();
+    assert_eq!(barn.width, Length::from_inches(42.0));
+    assert_eq!(barn.height, Length::from_inches(84.0));
+    let atrium = doc.get::<Opening>(out.created[1]).unwrap();
+    assert_eq!(atrium.width, Length::from_inches(60.0));
+    assert_eq!(atrium.plan_swing, 90.0);
+    // Every new style produces 3D geometry.
+    let mesh = housecraft_api::geom::mesh::build(doc, None);
+    for id in &out.created {
+        assert!(
+            mesh.parts.iter().any(|p| p.object == *id),
+            "{id:?} has no 3D"
+        );
+    }
+    // Plan swing is bounded.
+    assert!(
+        s.apply(&[Command::Update {
+            id: out.created[1],
+            set: patch(serde_json::json!({ "plan_swing": 200 })),
+        }])
+        .is_err()
+    );
+}

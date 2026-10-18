@@ -848,10 +848,12 @@ fn opening_symbol(g: &WallGeom, o: &Opening, stroke: Stroke, out: &mut Drawing) 
             let s = swing.side;
             let face = |u: f64| swing.face(g, u);
             let (hinge_u, free_u) = (swing.hinge_u, swing.free_u);
+            let swing_angle = o.plan_swing.to_radians();
             let leaf = |out_line: &mut dyn FnMut(DVec2, DVec2, Stroke), hu: f64, fu: f64| {
                 let h = face(hu);
                 let width = (fu - hu).abs();
-                let tip = h + s * width;
+                let closed = (face(fu) - h).normalize_or_zero();
+                let tip = h + (closed * swing_angle.cos() + s * swing_angle.sin()) * width;
                 out_line(h, tip, stroke);
                 let start = (tip - h).to_angle().to_degrees();
                 let end = (face(fu) - h).to_angle().to_degrees();
@@ -874,7 +876,19 @@ fn opening_symbol(g: &WallGeom, o: &Opening, stroke: Stroke, out: &mut Drawing) 
                 }
             };
             match style {
-                DoorStyle::Hinged => leaf(&mut line, hinge_u, free_u),
+                DoorStyle::Hinged | DoorStyle::Shower => leaf(&mut line, hinge_u, free_u),
+                DoorStyle::Atrium => {
+                    // The active leaf swings from the hinge jamb; the other half is fixed.
+                    let mid = (a + b) / 2.0;
+                    leaf(&mut line, hinge_u, mid);
+                    let fixed = if hinge_u == a { b } else { a };
+                    line(face(fixed), face(mid), stroke);
+                }
+                DoorStyle::Fixed => {
+                    let off = g.left * (g.half * 0.15).min(12.0);
+                    line(g.center_at(a) + off, g.center_at(b) + off, stroke);
+                    line(g.center_at(a) - off, g.center_at(b) - off, stroke);
+                }
                 DoorStyle::Double => {
                     let mid = (a + b) / 2.0;
                     leaf(&mut line, a, mid);

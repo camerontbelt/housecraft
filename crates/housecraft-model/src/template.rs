@@ -182,6 +182,7 @@ pub(crate) fn new_document(name: String) -> Document {
             width: inch(32.0),
             height: inch(80.0),
             hinge: Hinge::Left,
+            sizes: Vec::new(),
         },
         window: WindowDefaults {
             style: WindowStyle::DoubleHung,

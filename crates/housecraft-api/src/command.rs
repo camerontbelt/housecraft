@@ -994,11 +994,9 @@ impl Command {
             } => {
                 let w = expect::<Wall>(doc, *wall)?.clone();
                 let style = style.unwrap_or(d.door.style);
-                // Garage and double doors have their own typical sizes unless
-                // the default door is that style already.
-                let typical = style.typical_size().filter(|_| style != d.door.style);
-                let width = width.or(typical.map(|t| t.0)).unwrap_or(d.door.width);
-                let height = height.or(typical.map(|t| t.1)).unwrap_or(d.door.height);
+                let (dw, dh) = d.door.size_for(style);
+                let width = width.unwrap_or(dw);
+                let height = height.unwrap_or(dh);
                 let position = ops::opening_position(&w, *position, *at, width)?;
                 out.created.push(doc.insert(Opening {
                     id: Id(0),
@@ -1011,6 +1009,7 @@ impl Command {
                     hinge: hinge.unwrap_or(d.door.hinge),
                     swing_in: swing_in.unwrap_or(true),
                     open_percent: 0.0,
+                    plan_swing: 90.0,
                     renovation: Default::default(),
                     layer: d.layers.doors,
                 }));
@@ -1040,6 +1039,7 @@ impl Command {
                     hinge: Hinge::Left,
                     swing_in: true,
                     open_percent: 0.0,
+                    plan_swing: 90.0,
                     renovation: Default::default(),
                     layer: d.layers.windows,
                 }));

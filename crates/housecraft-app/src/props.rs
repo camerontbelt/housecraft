@@ -558,6 +558,19 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     ed.out.push(patch(id, json!({ "swing_in": swing_in })));
                 }
                 ui.end_row();
+                if matches!(
+                    o.opening_kind,
+                    OpeningKind::Door(
+                        DoorStyle::Hinged
+                            | DoorStyle::Double
+                            | DoorStyle::Atrium
+                            | DoorStyle::Shower
+                    )
+                ) && let Some(a) = ed.number(ui, "Plan swing (deg)", "plan_swing", o.plan_swing)
+                    && (0.0..=180.0).contains(&a)
+                {
+                    ed.out.push(patch(id, json!({ "plan_swing": a })));
+                }
                 if o.opening_kind != OpeningKind::Door(DoorStyle::Doorway) {
                     Ed::label(ui, "Open in 3D");
                     let mut pct = o.open_percent;

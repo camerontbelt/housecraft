@@ -251,6 +251,30 @@ pub struct DoorDefaults {
     pub width: Length,
     pub height: Length,
     pub hinge: Hinge,
+    /// Sizes for particular door types, overriding the typical ones.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sizes: Vec<DoorSize>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct DoorSize {
+    pub style: DoorStyle,
+    pub width: Length,
+    pub height: Length,
+}
+
+impl DoorDefaults {
+    /// Width and height for a new door of `style`: a per-type size if set,
+    /// the default size for the default style, else the style's typical size.
+    pub fn size_for(&self, style: DoorStyle) -> (Length, Length) {
+        if let Some(s) = self.sizes.iter().find(|s| s.style == style) {
+            return (s.width, s.height);
+        }
+        if style == self.style {
+            return (self.width, self.height);
+        }
+        style.typical_size().unwrap_or((self.width, self.height))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

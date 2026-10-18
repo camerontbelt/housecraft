@@ -354,17 +354,26 @@ pub enum DoorStyle {
     Garage,
     /// A surface-mounted sliding barn door, hung on the swing side.
     Barn,
+    /// A pair with one operable leaf beside a fixed one.
+    Atrium,
+    /// A frameless glass hinged door.
+    Shower,
+    /// A fixed glass panel in a door frame.
+    Fixed,
 }
 
 impl DoorStyle {
-    pub const ALL: [DoorStyle; 8] = [
+    pub const ALL: [DoorStyle; 11] = [
         DoorStyle::Hinged,
         DoorStyle::Double,
+        DoorStyle::Atrium,
         DoorStyle::Sliding,
         DoorStyle::Pocket,
         DoorStyle::Bifold,
         DoorStyle::Barn,
         DoorStyle::Garage,
+        DoorStyle::Shower,
+        DoorStyle::Fixed,
         DoorStyle::Doorway,
     ];
 
@@ -378,6 +387,9 @@ impl DoorStyle {
             DoorStyle::Doorway => "Doorway",
             DoorStyle::Garage => "Garage Door",
             DoorStyle::Barn => "Barn Door",
+            DoorStyle::Atrium => "Atrium Door",
+            DoorStyle::Shower => "Shower Door",
+            DoorStyle::Fixed => "Fixed Glass Door",
         }
     }
 
@@ -387,6 +399,8 @@ impl DoorStyle {
         match self {
             DoorStyle::Double => Some((Length::from_inches(60.0), Length::from_inches(80.0))),
             DoorStyle::Garage => Some((Length::from_feet(16.0), Length::from_feet(7.0))),
+            DoorStyle::Atrium => Some((Length::from_inches(60.0), Length::from_inches(80.0))),
+            DoorStyle::Shower => Some((Length::from_inches(24.0), Length::from_inches(72.0))),
             _ => None,
         }
     }
@@ -443,6 +457,10 @@ impl OpeningKind {
     }
 }
 
+fn ninety() -> f64 {
+    90.0
+}
+
 /// Which jamb a door is hinged on, seen from the side it swings toward.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -470,6 +488,9 @@ pub struct Opening {
     /// How far the door is open in 3D, 0 (closed) to 100 (fully open).
     #[serde(default)]
     pub open_percent: f64,
+    /// Angle the leaf is drawn open in plan, degrees (90 = square to the wall).
+    #[serde(default = "ninety")]
+    pub plan_swing: f64,
     #[serde(default)]
     pub renovation: Renovation,
     pub layer: Id,

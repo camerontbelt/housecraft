@@ -157,11 +157,14 @@ impl Family {
             Family::Doors => &[
                 Tool::Door(D::Hinged),
                 Tool::Door(D::Double),
+                Tool::Door(D::Atrium),
                 Tool::Door(D::Sliding),
                 Tool::Door(D::Pocket),
                 Tool::Door(D::Bifold),
                 Tool::Door(D::Barn),
                 Tool::Door(D::Garage),
+                Tool::Door(D::Shower),
+                Tool::Door(D::Fixed),
                 Tool::Door(D::Doorway),
             ],
             Family::Windows => &[
@@ -273,6 +276,8 @@ impl Tool {
             Tool::Door(D::Bifold) => Icon::BifoldDoor,
             Tool::Door(D::Doorway) => Icon::Doorway,
             Tool::Door(D::Garage | D::Barn) => Icon::SlidingDoor,
+            Tool::Door(D::Atrium) => Icon::DoubleDoor,
+            Tool::Door(D::Shower | D::Fixed) => Icon::Door,
             Tool::Window(_) => Icon::Window,
             Tool::Dimension => Icon::Dimension,
             Tool::AngularDimension => Icon::AngularDimension,

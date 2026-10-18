@@ -134,6 +134,9 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
             }
             Object::Opening(o) => {
+                if !(0.0..=180.0).contains(&o.plan_swing) {
+                    c.issue(id, "plan_swing must be between 0 and 180 degrees");
+                }
                 if !(0.0..=100.0).contains(&o.open_percent) {
                     c.issue(id, "open_percent must be between 0 and 100");
                 }

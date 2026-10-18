@@ -690,6 +690,47 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                     |v| commands.push(p(json!({"door": {"height": v}}))),
                                 );
                             });
+                        egui::CollapsingHeader::new("Sizes by door type")
+                            .id_salt("door_sizes")
+                            .show(ui, |ui| {
+                                egui::Grid::new("door_size_grid")
+                                    .num_columns(3)
+                                    .show(ui, |ui| {
+                                        ui.weak("Type");
+                                        ui.weak("Width");
+                                        ui.weak("Height");
+                                        ui.end_row();
+                                        for style in DoorStyle::ALL {
+                                            let (w, h) = d.door.size_for(style);
+                                            ui.label(style.name());
+                                            let mut set = |w: Length, h: Length| {
+                                                let mut sizes = d.door.sizes.clone();
+                                                sizes.retain(|s| s.style != style);
+                                                sizes.push(DoorSize {
+                                                    style,
+                                                    width: w,
+                                                    height: h,
+                                                });
+                                                commands.push(p(json!({"door": {"sizes": sizes}})));
+                                            };
+                                            let kw =
+                                                egui::Id::unique(("door_size_w", style.name()));
+                                            if let Some(v) = app.bufs.length(ui, doc, kw, w)
+                                                && v.mm() > 0.0
+                                            {
+                                                set(v, h);
+                                            }
+                                            let kh =
+                                                egui::Id::unique(("door_size_h", style.name()));
+                                            if let Some(v) = app.bufs.length(ui, doc, kh, h)
+                                                && v.mm() > 0.0
+                                            {
+                                                set(w, v);
+                                            }
+                                            ui.end_row();
+                                        }
+                                    });
+                            });
                     });
                 egui::CollapsingHeader::new("Windows")
                     .default_open(true)

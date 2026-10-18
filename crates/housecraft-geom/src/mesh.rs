@@ -727,9 +727,10 @@ fn door_mesh(
     let inset = |u: f64| swing.face(g, u) - swing.side * DOOR_THICKNESS;
     match style {
         D::Doorway => {}
-        D::Hinged => {
+        D::Hinged | D::Shower => {
             let w = (swing.free_u - swing.hinge_u).abs();
             let closed = along(swing.hinge_u, swing.free_u);
+            let start = mesh.colors.len();
             swung_leaf(
                 inset(swing.hinge_u),
                 closed,
@@ -738,6 +739,50 @@ fn door_mesh(
                 angle,
                 (bottom, top),
                 mesh,
+            );
+            if style == D::Shower {
+                for c in &mut mesh.colors[start..] {
+                    *c = GLASS_COLOR;
+                }
+            }
+        }
+        D::Atrium => {
+            let mid = (a + b) / 2.0;
+            let fixed = if swing.hinge_u == a { b } else { a };
+            let active = (mid - swing.hinge_u).abs();
+            swung_leaf(
+                inset(swing.hinge_u),
+                along(swing.hinge_u, mid),
+                swing.side,
+                active,
+                angle,
+                (bottom, top),
+                mesh,
+            );
+            swung_leaf(
+                inset(fixed),
+                along(fixed, mid),
+                swing.side,
+                (mid - fixed).abs(),
+                0.0,
+                (bottom, top),
+                mesh,
+            );
+        }
+        D::Fixed => {
+            let frame = 50.0;
+            let (lo, hi) = (a.min(b), a.max(b));
+            panel(mesh, lo, hi, 0.0, bottom, bottom + frame);
+            panel(mesh, lo, hi, 0.0, top - frame, top);
+            panel(mesh, lo, lo + frame, 0.0, bottom, top);
+            panel(mesh, hi - frame, hi, 0.0, bottom, top);
+            let t = g.left * 10.0;
+            let (c0, c1) = (g.center_at(lo + frame), g.center_at(hi - frame));
+            mesh.prism(
+                &ccw(vec![c0 - t, c1 - t, c1 + t, c0 + t]),
+                bottom + frame,
+                top - frame,
+                GLASS_COLOR,
             );
         }
         D::Double => {

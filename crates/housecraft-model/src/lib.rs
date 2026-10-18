@@ -554,6 +554,7 @@ mod tests {
             hinge: Hinge::Left,
             swing_in: true,
             open_percent: 0.0,
+            plan_swing: 90.0,
             renovation: Default::default(),
             layer: d.layers.doors,
         });
