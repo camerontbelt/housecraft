@@ -431,6 +431,18 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     }
                 }
             }
+            Object::SectionView(v) => {
+                c.reference(id, "floor", v.floor, K::Floor);
+                c.reference(id, "layer", v.layer, K::Layer);
+                let (a, b) = (v.a.mm(), v.b.mm());
+                c.finite(id, "a/b", &[a[0], a[1], b[0], b[1]]);
+                if (a[0] - b[0]).hypot(a[1] - b[1]) < 1.0 {
+                    c.issue(id, "a section line needs two distinct points");
+                }
+                if let Some(d) = v.depth {
+                    c.positive(id, "depth", d);
+                }
+            }
             Object::Camera(cam) => {
                 c.reference(id, "layer_set", cam.layer_set, K::LayerSet);
                 match cam.projection {

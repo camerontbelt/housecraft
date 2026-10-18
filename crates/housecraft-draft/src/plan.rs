@@ -551,6 +551,14 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         north_pointer(v2(at), doc.settings.north, &mut out);
     }
 
+    for v in doc.iter::<SectionView>().filter(|v| v.floor == opts.floor) {
+        let look = ctx.look(v.layer);
+        if look.visible {
+            let style = ctx.text_style(None, &look);
+            section_callout(v, look.stroke, style.height.mm(), &mut out);
+        }
+    }
+
     for s in doc.iter::<Schedule>().filter(|s| s.floor == opts.floor) {
         let look = ctx.look(s.layer);
         if look.visible {
@@ -783,6 +791,70 @@ fn schedule_table(
             x += widths[c];
         }
     }
+}
+
+/// Plan callout for an elevation / section view: its line (dashed for a
+/// cut), a marker whose arrow points the way the view looks, and its name.
+fn section_callout(v: &SectionView, stroke: Stroke, text: f64, out: &mut Drawing) {
+    let id = Some(v.id);
+    let (a, b) = (v2(v.a), v2(v.b));
+    let dir = (b - a).normalize_or_zero();
+    let look = perp(dir);
+    let line = Stroke {
+        dash: if v.section_kind == SectionKind::Section {
+            &[3.0, 1.0, 0.6, 1.0]
+        } else {
+            &[]
+        },
+        ..stroke
+    };
+    out.push(
+        id,
+        Prim::Polyline {
+            points: vec![a, b],
+            closed: false,
+            stroke: line,
+        },
+    );
+    let r = text * 1.6;
+    // Markers at both ends for a section, the middle for an elevation.
+    let marks = if v.section_kind == SectionKind::Section {
+        vec![a, b]
+    } else {
+        vec![(a + b) / 2.0]
+    };
+    for c in marks {
+        out.push(
+            id,
+            Prim::Polyline {
+                points: arc_points(c, r, 0.0, 360.0),
+                closed: true,
+                stroke,
+            },
+        );
+        let side = dir * r * 0.9;
+        out.push(
+            id,
+            Prim::Polygon {
+                points: vec![c + look * r * 1.9, c + side, c - side],
+                fill: Fill::Ink(stroke.ink),
+            },
+        );
+    }
+    let mid = (a + b) / 2.0;
+    out.push(
+        id,
+        Prim::Text {
+            at: mid - look * r * 2.0,
+            text: v.name.clone(),
+            height: text * 0.8,
+            rotation: 0.0,
+            justify: Justify::Center,
+            middle: true,
+            bold: false,
+            ink: stroke.ink,
+        },
+    );
 }
 
 /// A north pointer: a circle with a half-filled arrow and an "N" past its tip.

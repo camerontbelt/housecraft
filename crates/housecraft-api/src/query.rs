@@ -214,6 +214,7 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         }
         Object::Electrical(e) => e.electrical_kind.name().to_string(),
         Object::Schedule(s) => format!("{} on {}", s.schedule_kind.name(), name_of(s.floor)),
+        Object::SectionView(v) => v.name.clone(),
         Object::Stair(s) => {
             let shape = match s.shape {
                 StairShape::Straight => "straight",

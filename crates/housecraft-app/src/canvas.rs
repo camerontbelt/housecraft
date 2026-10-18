@@ -180,21 +180,21 @@ impl PlanState {
 }
 
 #[derive(Clone, Copy)]
-struct View {
-    rect: Rect,
-    center: DVec2,
-    mpp: f64,
+pub(crate) struct View {
+    pub rect: Rect,
+    pub center: DVec2,
+    pub mpp: f64,
 }
 
 impl View {
-    fn to_screen(self, p: DVec2) -> Pos2 {
+    pub(crate) fn to_screen(self, p: DVec2) -> Pos2 {
         let c = self.rect.center();
         pos2(
             c.x + ((p.x - self.center.x) / self.mpp) as f32,
             c.y - ((p.y - self.center.y) / self.mpp) as f32,
         )
     }
-    fn to_model(self, s: Pos2) -> DVec2 {
+    pub(crate) fn to_model(self, s: Pos2) -> DVec2 {
         let c = self.rect.center();
         DVec2::new(
             self.center.x + (s.x - c.x) as f64 * self.mpp,
@@ -227,7 +227,7 @@ fn ink_color(ui: &Ui, ink: Ink) -> Color32 {
     }
 }
 
-fn fill_color(ui: &Ui, fill: Fill) -> Color32 {
+pub(crate) fn fill_color(ui: &Ui, fill: Fill) -> Color32 {
     match fill {
         Fill::Poche if ui.visuals().dark_mode => Color32::from_gray(90),
         Fill::Poche => Color32::from_gray(195),
@@ -314,12 +314,20 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     overlays(app, ui, &view, &mut commands);
 
     if !commands.is_empty() {
-        let select_created = app.plan.tool == Tool::Select;
-        if let Some(out) = app.run(commands)
-            && select_created
-            && !out.created.is_empty()
-        {
-            app.selection = out.created;
+        let tool = app.plan.tool;
+        if let Some(out) = app.run(commands) {
+            if tool == Tool::Select && !out.created.is_empty() {
+                app.selection = out.created.clone();
+            }
+            // A new elevation or section opens straight away.
+            if matches!(tool, Tool::SectionLine(_))
+                && let Some(id) = out
+                    .created
+                    .iter()
+                    .find(|id| app.doc().kind_of(**id) == Some(ObjectKind::SectionView))
+            {
+                app.mode = crate::app::Mode::Drawing(*id);
+            }
         }
     }
 }
@@ -935,6 +943,27 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     }
                 }
             }
+            Tool::SectionLine(kind) => {
+                if let Some(eye) = pending.pop() {
+                    let look = (p - eye).normalize_or_zero();
+                    if look != DVec2::ZERO {
+                        // The view looks left of its line, so run the line across the look.
+                        let along = DVec2::new(look.y, -look.x);
+                        let half = 1219.2; // 4' each side, just for the callout
+                        commands.push(Command::AddSectionView {
+                            name: None,
+                            floor,
+                            a: pt(eye - along * half),
+                            b: pt(eye + along * half),
+                            section_kind: kind,
+                            depth: None,
+                            clip_sides: false,
+                        });
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
             Tool::RoofPlane => pending.push(p),
             Tool::Polyline | Tool::Spline => {
                 let closes = pending.len() > 2 && pending[0].distance(p) < PICK_PX * view.mpp;
@@ -1317,7 +1346,7 @@ fn paint_grid(app: &App, painter: &Painter, view: &View, dark: bool) {
     }
 }
 
-fn paint_fill(
+pub(crate) fn paint_fill(
     painter: &Painter,
     view: &View,
     points: &[DVec2],
@@ -1346,7 +1375,7 @@ fn shift_prim(p: &Prim, d: DVec2) -> Prim {
 }
 
 /// Draw a primitive; `highlight` replaces its colour and widens strokes.
-fn paint_prim(
+pub(crate) fn paint_prim(
     ui: &Ui,
     painter: &Painter,
     view: &View,

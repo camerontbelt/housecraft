@@ -51,6 +51,8 @@ impl Default for Prefs {
 pub enum Mode {
     Plan,
     ThreeD,
+    /// A 2D elevation or cross-section view.
+    Drawing(Id),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,6 +93,7 @@ pub struct App {
     /// The schedule or materials list shown in the table window, if open.
     pub table_view: Option<crate::schedules::TableSource>,
     pub table_this_floor: bool,
+    pub drawing_view: crate::drawing_view::DrawingViewState,
     pub clipboard: Vec<serde_json::Value>,
     pub status: Option<(String, bool)>,
     pub pending: Option<Pending>,
@@ -124,6 +127,7 @@ impl App {
             room_multi: None,
             table_view: None,
             table_this_floor: false,
+            drawing_view: Default::default(),
             clipboard: Vec::new(),
             status: None,
             pending: None,
@@ -787,7 +791,39 @@ impl App {
                     self.run1(cmd);
                 }
                 ui.separator();
-                if item(ui, "Back to Plan View", "F2", self.mode == Mode::ThreeD) {
+                ui.menu_button("Elevations and Sections", |ui| {
+                    if item(ui, "Cross Section / Elevation Tool", "", true) {
+                        self.set_tool(Tool::SectionLine(SectionKind::Section));
+                        self.mode = Mode::Plan;
+                    }
+                    if item(ui, "Elevation Tool", "", true) {
+                        self.set_tool(Tool::SectionLine(SectionKind::Elevation));
+                        self.mode = Mode::Plan;
+                    }
+                    if item(ui, "Auto Exterior Elevations", "", true)
+                        && let Some(out) = self.run1(Command::AutoElevations {
+                            floor: Some(self.plan.floor),
+                        })
+                    {
+                        self.info(format!(
+                            "{} elevations added (Project Browser)",
+                            out.created.len()
+                        ));
+                    }
+                    let room = self
+                        .selection
+                        .iter()
+                        .copied()
+                        .find(|id| self.doc().kind_of(*id) == Some(ObjectKind::Room));
+                    if item(ui, "Room Elevations (selected room)", "", room.is_some())
+                        && let Some(room) = room
+                        && let Some(out) = self.run1(Command::RoomElevations { room })
+                        && let Some(first) = out.created.first()
+                    {
+                        self.mode = Mode::Drawing(*first);
+                    }
+                });
+                if item(ui, "Back to Plan View", "F2", self.mode != Mode::Plan) {
                     self.mode = Mode::Plan;
                 }
             });
@@ -1130,6 +1166,16 @@ impl App {
                     self.camera_action(*a);
                 }
             }
+            for tool in [
+                Tool::SectionLine(SectionKind::Section),
+                Tool::SectionLine(SectionKind::Elevation),
+            ] {
+                let resp = palette_row(ui, tool.icon(), tool.name(), self.plan.tool == tool);
+                if resp.on_hover_text(tool.hint()).clicked() {
+                    self.set_tool(tool);
+                    self.mode = Mode::Plan;
+                }
+            }
             return;
         }
         for tool in self.palette.tools() {
@@ -1414,6 +1460,34 @@ impl App {
                     });
                 }
             });
+        egui::CollapsingHeader::new("Elevations and Sections")
+            .default_open(true)
+            .show(ui, |ui| {
+                let views: Vec<(Id, String)> = self
+                    .doc()
+                    .iter::<SectionView>()
+                    .map(|v| (v.id, v.name.clone()))
+                    .collect();
+                if views.is_empty() {
+                    ui.weak("3D > Elevations and Sections");
+                }
+                for (id, name) in views {
+                    let resp = ui.selectable_label(self.mode == Mode::Drawing(id), &name);
+                    if resp.clicked() {
+                        self.mode = Mode::Drawing(id);
+                    }
+                    resp.context_menu(|ui| {
+                        if ui.button("Open Object").clicked() {
+                            self.spec.push(id);
+                            ui.close();
+                        }
+                        if ui.button("Delete").clicked() {
+                            self.run1(Command::Delete { ids: vec![id] });
+                            ui.close();
+                        }
+                    });
+                }
+            });
         egui::CollapsingHeader::new("Rooms")
             .default_open(true)
             .show(ui, |ui| {
@@ -1664,6 +1738,7 @@ impl App {
         if consume(none, Key::F6) {
             self.plan.fit_requested = true;
             self.view3d.fit_requested = true;
+            self.drawing_view.fit_requested = true;
         }
         if consume(none, Key::F9) {
             self.plan.reference_floor = !self.plan.reference_floor;
@@ -1685,6 +1760,8 @@ impl App {
         ui.horizontal(|ui| {
             let tool_name = if self.mode == Mode::ThreeD {
                 "3D View"
+            } else if matches!(self.mode, Mode::Drawing(_)) {
+                "Elevation / Section"
             } else {
                 self.plan.tool.name()
             };
@@ -1859,6 +1936,7 @@ impl eframe::App for App {
                 match self.mode {
                     Mode::Plan => crate::canvas::show(self, ui),
                     Mode::ThreeD => crate::view3d::show(self, ui),
+                    Mode::Drawing(id) => crate::drawing_view::show(self, ui, id),
                 }
             });
         crate::props::spec_windows(self, &ctx);

@@ -363,6 +363,7 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_stair", "start": ["5'","5'"], "direction": 90}},
                 {{"op": "add_electrical", "electrical_kind": "outlet", "at": [0,"5'"]}},
                 {{"op": "add_schedule", "schedule_kind": "rooms", "position": [0,0]}},
+                {{"op": "add_section_view", "a": [0,"-5'"], "b": ["20'","-5'"]}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
             w = wall.0
         ),
@@ -1279,5 +1280,49 @@ fn materials_list_takes_off_and_prices() {
     assert!(
         s.apply(&commands(r#"[{"op": "set_markup", "percent": -5}]"#))
             .is_err()
+    );
+}
+
+#[test]
+fn elevations_and_sections() {
+    let mut s = boxed();
+    apply(
+        &mut s,
+        r#"[{"op": "set_roof_style", "style": "gable"}, {"op": "auto_elevations"}]"#,
+    );
+    let doc = s.document();
+    let names: Vec<String> = doc.iter::<SectionView>().map(|v| v.name.clone()).collect();
+    for side in ["North", "South", "East", "West"] {
+        assert!(names.iter().any(|n| n.starts_with(side)), "{names:?}");
+    }
+    // Every elevation looks back at the building: its left side faces the footprint centre.
+    let centre = housecraft_api::geom::DVec2::new(
+        Length::from_feet(10.0).mm(),
+        Length::from_feet(15.0).mm(),
+    );
+    for v in doc.iter::<SectionView>() {
+        let (a, b) = (housecraft_api::geom::v2(v.a), housecraft_api::geom::v2(v.b));
+        let left = housecraft_api::geom::math::perp((b - a).normalize());
+        assert!(
+            left.dot(centre - (a + b) / 2.0) > 0.0,
+            "{} looks away",
+            v.name
+        );
+    }
+    let room = doc.iter::<Room>().next().unwrap().id;
+    let out = apply(
+        &mut s,
+        &format!(r#"[{{"op": "room_elevations", "room": {}}}]"#, room.0),
+    );
+    assert_eq!(out.created.len(), 4);
+    let v = s.document().get::<SectionView>(out.created[0]).unwrap();
+    assert_eq!(v.section_kind, SectionKind::Section);
+    assert!(v.clip_sides && v.depth.is_some());
+    assert!(
+        s.apply(&commands(
+            r#"[{"op": "add_section_view", "a": [0,0], "b": [0,0]}]"#
+        ))
+        .is_err(),
+        "a view needs a real line"
     );
 }

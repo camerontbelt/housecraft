@@ -2,7 +2,7 @@
 //! Tool Palette. Names and hotkeys follow the conventions residential CAD users
 //! already know, so muscle memory carries over.
 
-use housecraft_api::model::{DoorStyle, ElectricalKind, WindowStyle};
+use housecraft_api::model::{DoorStyle, ElectricalKind, SectionKind, WindowStyle};
 
 use crate::icons::Icon;
 
@@ -26,6 +26,8 @@ pub enum Tool {
     Spline,
     Point,
     RoofPlane,
+    /// Draw an elevation or cross-section camera: click where you stand, then the direction to look.
+    SectionLine(SectionKind),
     Stair(StairKind),
     Electrical(ElectricalKind),
     /// Wire switches to the fixtures they control.
@@ -236,6 +238,7 @@ impl Tool {
             Tool::Dimension | Tool::AngularDimension => Family::Dimensions,
             Tool::Text => Family::Text,
             Tool::RoofPlane => Family::Roofs,
+            Tool::SectionLine(_) => Family::Cameras,
             Tool::Stair(_) => Family::Stairs,
             Tool::Electrical(_) | Tool::ConnectSwitch => Family::Electrical,
             _ => Family::Cad,
@@ -262,6 +265,8 @@ impl Tool {
             Tool::Spline => "Spline",
             Tool::Point => "Point",
             Tool::RoofPlane => "Roof Plane",
+            Tool::SectionLine(SectionKind::Section) => "Cross Section / Elevation",
+            Tool::SectionLine(SectionKind::Elevation) => "Elevation",
             Tool::Stair(StairKind::Straight) => "Straight Stair",
             Tool::Stair(StairKind::L) => "L-Shaped Stair",
             Tool::Stair(StairKind::U) => "U-Shaped Stair",
@@ -299,6 +304,7 @@ impl Tool {
             Tool::Spline => Icon::Spline,
             Tool::Point => Icon::Point,
             Tool::RoofPlane => Icon::Roof,
+            Tool::SectionLine(_) => Icon::Camera,
             Tool::Stair(_) => Icon::Stairs,
             Tool::Electrical(_) | Tool::ConnectSwitch => Icon::Electrical,
         }
@@ -358,6 +364,9 @@ impl Tool {
             Tool::Electrical(_) => "Click to place it on the ceiling.",
             Tool::ConnectSwitch => {
                 "Click a switch, then click fixtures to wire or unwire them. Shared fixtures make 3-way and 4-way switches."
+            }
+            Tool::SectionLine(_) => {
+                "Click where the view stands, then click in the direction to look."
             }
             Tool::RoofPlane => {
                 "Click the two ends of the eave, then the other corners; double-click or Enter to finish."

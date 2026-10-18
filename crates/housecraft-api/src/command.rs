@@ -155,6 +155,23 @@ pub enum Command {
     SetMaterialPrice { item: String, price: Option<f64> },
     /// Markup percentage added to the materials list total.
     SetMarkup { percent: f64 },
+    /// Add an elevation or cross-section view looking across the line `a`→`b`
+    /// toward its left side.
+    AddSectionView {
+        name: Option<String>,
+        floor: Option<Id>,
+        a: Point2,
+        b: Point2,
+        #[serde(default)]
+        section_kind: SectionKind,
+        depth: Option<Length>,
+        #[serde(default)]
+        clip_sides: bool,
+    },
+    /// Add North, South, East and West exterior elevations around the building.
+    AutoElevations { floor: Option<Id> },
+    /// Add four interior elevations of a room, one looking at each side.
+    RoomElevations { room: Id },
     /// Exchange everything drawn on two floors (walls, rooms, CAD, text...),
     /// keeping the floors' own heights.
     SwapFloors { a: Id, b: Id },
@@ -473,6 +490,9 @@ impl Command {
             Command::RemoveRoof { .. } => "remove_roof",
             Command::AddRoofPlane { .. } => "add_roof_plane",
             Command::AddStair { .. } => "add_stair",
+            Command::AddSectionView { .. } => "add_section_view",
+            Command::AutoElevations { .. } => "auto_elevations",
+            Command::RoomElevations { .. } => "room_elevations",
             Command::SetMaterialPrice { .. } => "set_material_price",
             Command::SetMarkup { .. } => "set_markup",
             Command::AddSchedule { .. } => "add_schedule",
@@ -905,6 +925,39 @@ impl Command {
                     return invalid("markup must be a non-negative percentage");
                 }
                 doc.settings.markup_percent = *percent;
+            }
+            Command::AddSectionView {
+                name,
+                floor,
+                a,
+                b,
+                section_kind,
+                depth,
+                clip_sides,
+            } => {
+                let floor = crate::views::callout_floor(doc, *floor)?;
+                let n = doc.count::<SectionView>() + 1;
+                let name = name.clone().unwrap_or_else(|| match section_kind {
+                    SectionKind::Section => format!("Section {n}"),
+                    SectionKind::Elevation => format!("Elevation {n}"),
+                });
+                out.created.push(doc.insert(SectionView {
+                    id: Id(0),
+                    name,
+                    floor,
+                    layer: d.layers.text,
+                    a: *a,
+                    b: *b,
+                    section_kind: *section_kind,
+                    depth: *depth,
+                    clip_sides: *clip_sides,
+                }));
+            }
+            Command::AutoElevations { floor } => {
+                crate::views::auto_elevations(doc, *floor, &d, &mut out)?;
+            }
+            Command::RoomElevations { room } => {
+                crate::views::room_elevations(doc, *room, &d, &mut out)?;
             }
             Command::SwapFloors { a, b } => {
                 expect::<Floor>(doc, *a)?;

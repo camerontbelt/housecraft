@@ -20,6 +20,18 @@ pub struct Mesh {
     pub indices: Vec<u32>,
     /// Which object each index range belongs to (for picking).
     pub parts: Vec<MeshPart>,
+    /// Every planar polygon as added (millimetres), for 2D views such as
+    /// elevations and sections that need faces rather than triangles.
+    pub faces: Vec<Face>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Face {
+    /// Index into [`Mesh::parts`] of the part the face belongs to.
+    pub part: usize,
+    pub points: Vec<DVec3>,
+    pub normal: DVec3,
+    pub color: [f32; 4],
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -91,6 +103,14 @@ impl Mesh {
         let n = normal.normalize();
         let (u, v) = basis(n);
         let flat: Vec<DVec2> = pts.iter().map(|p| DVec2::new(p.dot(u), p.dot(v))).collect();
+        if !self.parts.is_empty() {
+            self.faces.push(Face {
+                part: self.parts.len() - 1,
+                points: pts.to_vec(),
+                normal: n,
+                color,
+            });
+        }
         let base = self.positions.len() as u32;
         for p in pts {
             self.positions.push(to_m(*p));

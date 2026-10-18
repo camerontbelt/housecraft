@@ -6,6 +6,7 @@ mod app;
 mod associate;
 mod canvas;
 mod dialogs;
+mod drawing_view;
 mod icons;
 mod props;
 mod schedules;

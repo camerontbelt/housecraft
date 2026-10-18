@@ -361,6 +361,16 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             s.position = t.apply_point(s.position);
             Object::Schedule(s)
         }
+        Object::SectionView(v) => {
+            let mut v = v.clone();
+            v.a = t.apply_point(v.a);
+            v.b = t.apply_point(v.b);
+            if t.is_reflection() {
+                // Keep looking at the same (mirrored) side.
+                std::mem::swap(&mut v.a, &mut v.b);
+            }
+            Object::SectionView(v)
+        }
         Object::RoofPlane(r) => {
             let mut r = r.clone();
             for p in r.outline.iter_mut() {
@@ -890,6 +900,7 @@ pub(crate) fn insert_objects(
                 Object::RoofPlane(r) => r.floor = f,
                 Object::Stair(s) => s.floor = f,
                 Object::Electrical(e) => e.floor = f,
+                Object::SectionView(v) => v.floor = f,
                 Object::Schedule(s) => s.floor = f,
                 _ => {}
             }
@@ -932,6 +943,7 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::RoofPlane(r) => &mut r.floor,
             Object::Stair(s) => &mut s.floor,
             Object::Electrical(e) => &mut e.floor,
+            Object::SectionView(v) => &mut v.floor,
             Object::Schedule(s) => &mut s.floor,
             _ => continue,
         };

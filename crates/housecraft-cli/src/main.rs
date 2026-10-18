@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
-use housecraft_api::model::{Document, Id, ObjectKind, Phase};
+use housecraft_api::model::{Document, Id, ObjectKind, Phase, SectionView};
 use housecraft_api::{Command, Session, query};
 use housecraft_draft::pdf::{Paper, PdfOptions, Scale};
 use housecraft_draft::svg::SvgOptions;
@@ -83,6 +83,9 @@ enum Cmd {
         /// Show this floor (name or id) faded instead of the floor below; repeatable.
         #[arg(long)]
         reference_floor: Vec<String>,
+        /// Export this elevation or section view (name or id) instead of a plan.
+        #[arg(long)]
+        view: Option<String>,
         /// Draw sun shadows on the ground around the lowest storey.
         #[arg(long)]
         shadows: bool,
@@ -265,6 +268,7 @@ fn main() -> Result<()> {
             portrait,
             reference,
             reference_floor,
+            view,
             shadows,
             phase,
             pixels,
@@ -288,7 +292,26 @@ fn main() -> Result<()> {
                 "proposed" => Phase::Proposed,
                 other => bail!("unknown phase {other:?} (all, as-built, demolition, proposed)"),
             };
-            let drawing = plan(&doc, &opts);
+            let drawing = match &view {
+                Some(v) => {
+                    let found = v
+                        .trim_start_matches('#')
+                        .parse::<u64>()
+                        .ok()
+                        .and_then(|n| doc.get::<SectionView>(Id(n)))
+                        .or_else(|| {
+                            doc.iter::<SectionView>()
+                                .find(|s| s.name.eq_ignore_ascii_case(v))
+                        });
+                    let Some(sv) = found else {
+                        let names: Vec<&str> =
+                            doc.iter::<SectionView>().map(|s| s.name.as_str()).collect();
+                        bail!("no view {v:?} (have: {})", names.join(", "));
+                    };
+                    housecraft_draft::elevation::section_view(&doc, sv)
+                }
+                None => plan(&doc, &opts),
+            };
             let imperial = matches!(
                 doc.settings.display_unit,
                 housecraft_api::units::DisplayUnit::FeetInches { .. }

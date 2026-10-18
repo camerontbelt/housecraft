@@ -102,3 +102,33 @@ pub struct Camera {
     pub target: Point3,
     pub layer_set: Id,
 }
+
+/// Elevation (everything in view) or cross section (cut at the line).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SectionKind {
+    #[default]
+    Elevation,
+    Section,
+}
+
+/// A 2D elevation or cross-section view. It looks across the line `a`→`b`
+/// toward its left side; the line shows in plan as a callout.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct SectionView {
+    pub id: Id,
+    pub name: String,
+    /// Floor whose plan shows the callout.
+    pub floor: Id,
+    pub layer: Id,
+    pub a: Point2,
+    pub b: Point2,
+    #[serde(default)]
+    pub section_kind: SectionKind,
+    /// How far beyond the line to draw; everything when `None`.
+    #[serde(default)]
+    pub depth: Option<Length>,
+    /// Only draw what lies between the line's ends (room elevations).
+    #[serde(default)]
+    pub clip_sides: bool,
+}

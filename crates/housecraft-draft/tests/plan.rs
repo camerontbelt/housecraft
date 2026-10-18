@@ -201,3 +201,62 @@ fn north_pointer_is_drawn_where_placed() {
             .any(|i| matches!(&i.prim, Prim::Text { text, .. } if text == "N"))
     );
 }
+
+#[test]
+fn elevation_and_section_drawings() {
+    use housecraft_api::model::{SectionKind, SectionView};
+    let mut s = house();
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "set_roof_style", "style": "gable"},
+            {"op": "add_section_view", "name": "South", "a": ["-10'","-10'"], "b": ["50'","-10'"]},
+            {"op": "add_section_view", "name": "Cut", "a": ["-10'","15'"], "b": ["50'","15'"], "section_kind": "section"}]"#,
+    )
+    .unwrap();
+    s.apply(&cmds).unwrap();
+    let doc = s.document();
+    let view = |name: &str| doc.iter::<SectionView>().find(|v| v.name == name).unwrap();
+    let elev = housecraft_draft::elevation::section_view(doc, view("South"));
+    let polys = elev
+        .items
+        .iter()
+        .filter(|i| matches!(i.prim, Prim::Polygon { .. }))
+        .count();
+    assert!(polys > 10, "faces painted: {polys}");
+    // Drawn left to right along the line, roof above the walls, ground at grade.
+    let (mut xmin, mut xmax, mut ymax) = (f64::MAX, f64::MIN, f64::MIN);
+    for i in &elev.items {
+        if let Prim::Polygon { points, .. } = &i.prim {
+            for p in points {
+                xmin = xmin.min(p.x);
+                xmax = xmax.max(p.x);
+                ymax = ymax.max(p.y);
+            }
+        }
+    }
+    let ft = 304.8;
+    assert!(xmin > 5.0 * ft && xmax < 55.0 * ft, "{xmin} {xmax}");
+    assert!(ymax > 10.0 * ft, "roof rises above the 8' walls: {ymax}");
+    // The cross section has heavy cut lines; the elevation has none but the ground.
+    let heavy = |d: &housecraft_draft::Drawing| {
+        d.items
+            .iter()
+            .filter(|i| matches!(&i.prim, Prim::Polyline { stroke, .. } if stroke.width >= 0.5))
+            .count()
+    };
+    let cut = housecraft_draft::elevation::section_view(doc, view("Cut"));
+    assert_eq!(view("Cut").section_kind, SectionKind::Section);
+    assert!(
+        heavy(&cut) > heavy(&elev) + 4,
+        "cut edges: {} vs {}",
+        heavy(&cut),
+        heavy(&elev)
+    );
+    // Callouts appear in plan.
+    let plan_d = plan(doc, &PlanOptions::first(doc).unwrap());
+    assert!(
+        plan_d
+            .items
+            .iter()
+            .any(|i| matches!(&i.prim, Prim::Text { text, .. } if text == "Cut"))
+    );
+}

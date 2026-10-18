@@ -340,6 +340,36 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ui.end_row();
             }
         }
+        Object::SectionView(v) => {
+            ed.text(ui, "Name", "name", &v.name);
+            Ed::label(ui, "Type");
+            let mut k = v.section_kind;
+            ui.horizontal(|ui| {
+                ui.radio_value(&mut k, SectionKind::Elevation, "Elevation");
+                ui.radio_value(&mut k, SectionKind::Section, "Cross section");
+            });
+            if k != v.section_kind {
+                ed.out.push(patch(id, json!({ "section_kind": k })));
+            }
+            ui.end_row();
+            if let Some(p) = ed.point(ui, "Line start", "a", v.a) {
+                ed.out.push(patch(id, json!({ "a": p })));
+            }
+            if let Some(p) = ed.point(ui, "Line end", "b", v.b) {
+                ed.out.push(patch(id, json!({ "b": p })));
+            }
+            ed.opt_length(ui, "Depth", "depth", v.depth, Some(Length::from_feet(20.0)));
+            Ed::label(ui, "Clip");
+            let mut c = v.clip_sides;
+            if ui
+                .checkbox(&mut c, "Only between the line's ends")
+                .changed()
+            {
+                ed.out.push(patch(id, json!({ "clip_sides": c })));
+            }
+            ui.end_row();
+            ed.pick::<Layer>(ui, "Callout Layer", "layer", Some(v.layer), None);
+        }
         Object::Schedule(s) => {
             Ed::label(ui, "Schedule");
             ui.label(s.schedule_kind.name());

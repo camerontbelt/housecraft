@@ -13,6 +13,7 @@ mod roofs;
 mod rooms;
 pub mod schedule;
 mod session;
+mod views;
 
 pub use command::{Command, LengthAnchor, Outcome, TransformOp};
 pub use housecraft_geom as geom;

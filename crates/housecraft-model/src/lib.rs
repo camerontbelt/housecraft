@@ -140,6 +140,7 @@ objects! {
     Stair => "stair",
     Electrical => "electrical",
     Schedule => "schedule",
+    SectionView => "section_view",
 }
 
 impl fmt::Display for ObjectKind {
@@ -354,6 +355,7 @@ impl Document {
             Object::Stair(s) => Some(s.floor),
             Object::Electrical(e) => Some(e.floor),
             Object::Schedule(s) => Some(s.floor),
+            Object::SectionView(v) => Some(v.floor),
             _ => None,
         }
     }
@@ -371,6 +373,7 @@ impl Document {
             Object::Stair(s) => Some(s.layer),
             Object::Electrical(e) => Some(e.layer),
             Object::Schedule(s) => Some(s.layer),
+            Object::SectionView(v) => Some(v.layer),
             _ => None,
         }
     }
