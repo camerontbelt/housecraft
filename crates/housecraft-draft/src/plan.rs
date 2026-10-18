@@ -160,7 +160,29 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             continue;
         }
         let openings: Vec<&Opening> = doc.openings_in(g.id).collect();
-        for piece in g.pieces(&openings) {
+        let railing = doc.get::<WallType>(wall.wall_type).and_then(|t| t.railing);
+        if let Some(r) = railing {
+            // Railings: outline only, with a dot at each baluster.
+            let len = (g.end - g.start).length();
+            let spacing = r.baluster_spacing.mm().max(25.0);
+            let n = (len / spacing).floor() as usize;
+            let off = (len - n as f64 * spacing) / 2.0;
+            for i in 0..=n {
+                let c = g.start + g.dir * (off + i as f64 * spacing);
+                out.push(
+                    Some(g.id),
+                    Prim::Polygon {
+                        points: arc_points(c, 12.0, 0.0, 360.0),
+                        fill: Fill::Ink(look.ink),
+                    },
+                );
+            }
+        }
+        for piece in g
+            .pieces(&openings)
+            .into_iter()
+            .filter(|_| railing.is_none())
+        {
             out.push(
                 Some(g.id),
                 Prim::Polygon {
@@ -365,6 +387,20 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         );
     }
 
+    for stair in doc.iter::<Stair>() {
+        let here = stair.floor == opts.floor;
+        let below = doc
+            .floor_above(stair.floor)
+            .is_some_and(|f| f.id == opts.floor);
+        if !here && !below {
+            continue;
+        }
+        let look = ctx.look(stair.layer);
+        if look.visible {
+            let style = ctx.text_style(None, &look);
+            stair_symbol(doc, stair, here, look.stroke, style.height.mm(), &mut out);
+        }
+    }
     for dim in doc.iter::<Dimension>().filter(|d| d.floor == opts.floor) {
         let look = ctx.look(dim.layer);
         if !look.visible {
@@ -409,6 +445,103 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
     out
 }
 
+/// Height above the floor where the plan cut line crosses a stair.
+const STAIR_CUT: f64 = 48.0 * 25.4;
+
+/// A stair in plan: treads, the cut line (on its own floor, treads above
+/// the cut dashed), and the walk line with an UP or DN arrow.
+fn stair_symbol(
+    doc: &Document,
+    stair: &Stair,
+    here: bool,
+    stroke: Stroke,
+    text: f64,
+    out: &mut Drawing,
+) {
+    let g = housecraft_geom::stairs::geometry(doc, stair);
+    let dashed = Stroke {
+        dash: &[1.5, 1.0],
+        ..stroke
+    };
+    let thin = Stroke {
+        width: stroke.width * 0.6,
+        ..stroke
+    };
+    let cut_riser = (STAIR_CUT / g.riser_height).ceil() as u32;
+    for step in &g.steps {
+        let beyond = here && step.index > cut_riser;
+        out.push(
+            Some(stair.id),
+            Prim::Polyline {
+                points: step.poly.clone(),
+                closed: true,
+                stroke: if beyond { dashed } else { thin },
+            },
+        );
+    }
+    // Break line: a zig-zag across the tread at the cut.
+    if here && let Some(step) = g.steps.iter().rfind(|s| s.index <= cut_riser && !s.landing) {
+        let p = &step.poly;
+        // Corner to corner across the tread, so the slant reads at any scale.
+        let (a, b) = (p[0], p[2]);
+        let n = perp((b - a).normalize_or_zero()) * 90.0;
+        out.push(
+            Some(stair.id),
+            Prim::Polyline {
+                points: vec![a, a.lerp(b, 0.45) + n, a.lerp(b, 0.55) - n, b],
+                closed: false,
+                stroke,
+            },
+        );
+    }
+    // Walk line and arrow.
+    // From the floor above the arrow points down the stair.
+    let mut walk: Vec<DVec2> = g.walk.iter().map(|p| p.truncate()).collect();
+    if !here {
+        walk.reverse();
+    }
+    if walk.len() >= 2 {
+        let (tip, from) = (walk[walk.len() - 1], walk[walk.len() - 2]);
+        let dir = (tip - from).normalize_or_zero();
+        let tip = tip - dir * 100.0;
+        let mut line = walk.clone();
+        let last = line.len() - 1;
+        line[last] = tip;
+        out.push(
+            Some(stair.id),
+            Prim::Polyline {
+                points: line,
+                closed: false,
+                stroke: thin,
+            },
+        );
+        let back = tip - dir * 180.0;
+        let side = perp(dir) * 70.0;
+        out.push(
+            Some(stair.id),
+            Prim::Polygon {
+                points: vec![tip, back + side, back - side],
+                fill: Fill::Ink(stroke.ink),
+            },
+        );
+        let dir0 = (walk[1] - walk[0]).normalize_or_zero();
+        out.push(
+            Some(stair.id),
+            Prim::Text {
+                at: walk[0] - dir0 * text * 1.4,
+                text: if here { "UP" } else { "DN" }.into(),
+                height: text * 0.8,
+                rotation: 0.0,
+                justify: Justify::Center,
+                middle: true,
+                bold: true,
+                ink: stroke.ink,
+            },
+        );
+    }
+}
+
+/// Plan symbol for a door or window in its wall gap.
 /// Plan symbol for a door or window in its wall gap.
 fn opening_symbol(g: &WallGeom, o: &Opening, stroke: Stroke, out: &mut Drawing) {
     let Some(&(a, b)) = opening_spans(g, &[o]).first() else {

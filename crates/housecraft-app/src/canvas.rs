@@ -15,7 +15,7 @@ use housecraft_draft::{Drawing, Fill, Ink, Prim, approx_text_width};
 
 use crate::app::App;
 use crate::snap::{Snap, SnapKind, SnapTargets, snap};
-use crate::tools::Tool;
+use crate::tools::{StairKind, Tool};
 
 /// Pick radius in screen points.
 const PICK_PX: f64 = 7.0;
@@ -837,6 +837,38 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                                 arrow_end: tool == Tool::Arrow,
                             },
                         ));
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
+            Tool::Stair(kind) => {
+                if let Some(a) = pending.pop() {
+                    if a.distance(p) > 1.0 {
+                        let dir = p - a;
+                        let shape = match kind {
+                            StairKind::Straight => StairShape::Straight,
+                            StairKind::L => StairShape::L {
+                                turn: Turn::Right,
+                                first_treads: 0,
+                            },
+                            StairKind::U => StairShape::U {
+                                turn: Turn::Right,
+                                first_treads: 0,
+                                gap: Length::ZERO,
+                            },
+                        };
+                        commands.push(Command::AddStair {
+                            floor,
+                            start: pt(a),
+                            direction: dir.y.atan2(dir.x).to_degrees(),
+                            shape,
+                            width: None,
+                            rise: None,
+                            railing_left: None,
+                            railing_right: None,
+                            stairwell: true,
+                        });
                     }
                 } else {
                     pending.push(p);

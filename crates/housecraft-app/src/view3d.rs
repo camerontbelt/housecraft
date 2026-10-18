@@ -706,7 +706,7 @@ fn overlay(app: &mut App, ui: &mut Ui, rect: Rect) {
                 }
                 ui.separator();
                 for (name, yaw, pitch) in [
-                    ("Top", -90.0f32, 89.5f32),
+                    ("Top", 90.0f32, 89.5f32),
                     ("Front", 90.0, 0.0),
                     ("Back", -90.0, 0.0),
                     ("Left", 0.0, 0.0),

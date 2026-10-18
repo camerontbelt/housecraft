@@ -645,6 +645,13 @@ impl App {
                         self.set_tool(Tool::RoofPlane);
                     }
                 });
+                ui.menu_button("Stairs", |ui| {
+                    for tool in Family::Stairs.tools() {
+                        if tool_item(ui, *tool) {
+                            self.set_tool(*tool);
+                        }
+                    }
+                });
                 if item(ui, "Build Foundation...", "Ctrl+F", true) {
                     self.dialogs.foundation.open = true;
                 }
@@ -695,12 +702,7 @@ impl App {
                     }
                 });
                 ui.separator();
-                for f in [
-                    Family::Cabinets,
-                    Family::Stairs,
-                    Family::Roofs,
-                    Family::Electrical,
-                ] {
+                for f in [Family::Cabinets, Family::Roofs, Family::Electrical] {
                     item(ui, f.name(), "coming soon", false);
                 }
             });

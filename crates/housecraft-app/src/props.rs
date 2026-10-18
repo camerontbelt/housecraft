@@ -298,6 +298,117 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "roof": { "overhang": l } })));
             }
         }
+        Object::Stair(s) => {
+            let g = housecraft_api::geom::stairs::geometry(doc, s);
+            Ed::label(ui, "Shape");
+            let names = ["Straight", "L-shaped", "U-shaped"];
+            let current = match s.shape {
+                StairShape::Straight => 0,
+                StairShape::L { .. } => 1,
+                StairShape::U { .. } => 2,
+            };
+            let mut chosen = current;
+            egui::ComboBox::from_id_salt(ed.key("shape"))
+                .selected_text(names[current])
+                .show_ui(ui, |ui| {
+                    for (i, n) in names.iter().enumerate() {
+                        ui.selectable_value(&mut chosen, i, *n);
+                    }
+                });
+            ui.end_row();
+            let half = (g.risers.saturating_sub(2) / 2).max(1);
+            if chosen != current {
+                let v = match chosen {
+                    0 => json!({"type": "straight"}),
+                    1 => json!({"type": "l", "turn": "right", "first_treads": half}),
+                    _ => {
+                        json!({"type": "u", "turn": "right", "first_treads": half, "gap": Length::ZERO})
+                    }
+                };
+                ed.out.push(patch(id, json!({ "shape": v })));
+            }
+            if let StairShape::L { turn, first_treads }
+            | StairShape::U {
+                turn, first_treads, ..
+            } = s.shape
+            {
+                Ed::label(ui, "Turn");
+                let mut t = turn;
+                ui.horizontal(|ui| {
+                    ui.radio_value(&mut t, Turn::Left, "Left");
+                    ui.radio_value(&mut t, Turn::Right, "Right");
+                });
+                ui.end_row();
+                if t != turn {
+                    ed.out.push(patch(id, json!({ "shape": { "turn": t } })));
+                }
+                if let Some(n) = ed.number(
+                    ui,
+                    "Treads before landing",
+                    "first_treads",
+                    first_treads as f64,
+                ) && n >= 1.0
+                {
+                    ed.out.push(patch(
+                        id,
+                        json!({ "shape": { "first_treads": n.round() as u32 } }),
+                    ));
+                }
+                if let StairShape::U { gap, .. } = s.shape
+                    && let Some(l) = ed.length(ui, "Gap between flights", "gap", gap)
+                {
+                    ed.out.push(patch(id, json!({ "shape": { "gap": l } })));
+                }
+            }
+            if let Some(l) = ed.length(ui, "Width", "width", s.width) {
+                ed.out.push(patch(id, json!({ "width": l })));
+            }
+            if let Some(n) = ed.number(ui, "Direction (deg)", "direction", s.direction) {
+                ed.out.push(patch(id, json!({ "direction": n })));
+            }
+            let auto_rise = doc.stair_rise(&Stair {
+                rise: None,
+                ..s.clone()
+            });
+            ed.opt_length(ui, "Total rise", "rise", s.rise, Some(auto_rise));
+            if let Some(l) = ed.length(ui, "Maximum riser", "max_riser", s.max_riser) {
+                ed.out.push(patch(id, json!({ "max_riser": l })));
+            }
+            if let Some(l) = ed.length(ui, "Tread depth", "tread_depth", s.tread_depth) {
+                ed.out.push(patch(id, json!({ "tread_depth": l })));
+            }
+            Ed::label(ui, "Risers");
+            ui.label(format!(
+                "{} at {}",
+                g.risers,
+                fmt(doc, Length::from_mm(g.riser_height))
+            ));
+            ui.end_row();
+            Ed::label(ui, "Railings");
+            ui.horizontal(|ui| {
+                let (mut l, mut r) = (s.railing_left, s.railing_right);
+                if ui.checkbox(&mut l, "Left").changed() {
+                    ed.out.push(patch(id, json!({ "railing_left": l })));
+                }
+                if ui.checkbox(&mut r, "Right").changed() {
+                    ed.out.push(patch(id, json!({ "railing_right": r })));
+                }
+            });
+            ui.end_row();
+            if let Some(l) = ed.length(ui, "Railing height", "railing_height", s.railing_height) {
+                ed.out.push(patch(id, json!({ "railing_height": l })));
+            }
+            Ed::label(ui, "Stairwell");
+            let mut w = s.stairwell;
+            if ui
+                .checkbox(&mut w, "Cut an opening in the floor above")
+                .changed()
+            {
+                ed.out.push(patch(id, json!({ "stairwell": w })));
+            }
+            ui.end_row();
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(s.layer), None);
+        }
         Object::RoofPlane(r) => {
             Ed::label(ui, "Type");
             ui.label(if r.gable {

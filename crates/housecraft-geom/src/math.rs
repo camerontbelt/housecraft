@@ -352,3 +352,96 @@ mod tests {
         assert!((t - 0.5).abs() < 1e-12 && (s - 0.5).abs() < 1e-12);
     }
 }
+
+/// Keep the part of `poly` on the left of the directed line a→b (or the right).
+pub fn clip_half_plane(poly: &[DVec2], a: DVec2, b: DVec2, keep_left: bool) -> Vec<DVec2> {
+    let side = |p: DVec2| {
+        let c = cross(b - a, p - a);
+        if keep_left { c >= -1e-9 } else { c <= 1e-9 }
+    };
+    let mut out = Vec::new();
+    for j in 0..poly.len() {
+        let (p, q) = (poly[j], poly[(j + 1) % poly.len()]);
+        let (pi, qi) = (side(p), side(q));
+        if pi {
+            out.push(p);
+        }
+        if pi != qi
+            && let Some(x) = line_intersection(p, q - p, a, b - a)
+        {
+            out.push(x);
+        }
+    }
+    out
+}
+
+/// Convex pieces covering `poly` minus a set of convex `holes`.
+pub fn minus_convex_holes(poly: &[DVec2], holes: &[Vec<DVec2>]) -> Vec<Vec<DVec2>> {
+    let mut pieces: Vec<Vec<DVec2>> = if holes.is_empty() {
+        return vec![poly.to_vec()];
+    } else {
+        crate::triangulate::triangulate(poly)
+            .into_iter()
+            .map(|t| vec![poly[t[0]], poly[t[1]], poly[t[2]]])
+            .collect()
+    };
+    for hole in holes {
+        let mut h = hole.clone();
+        if signed_area(&h) < 0.0 {
+            h.reverse();
+        }
+        let m = h.len();
+        let mut next = Vec::new();
+        for piece in pieces {
+            // piece − H = ⋃ᵢ (piece ∩ right(eᵢ) ∩ left(e₀..eᵢ₋₁))
+            let mut rest = piece;
+            for i in 0..m {
+                let (a, b) = (h[i], h[(i + 1) % m]);
+                let outside = clip_half_plane(&rest, a, b, false);
+                if outside.len() >= 3 && signed_area(&outside).abs() > 1.0 {
+                    next.push(outside);
+                }
+                rest = clip_half_plane(&rest, a, b, true);
+                if rest.len() < 3 {
+                    break;
+                }
+            }
+        }
+        pieces = next;
+    }
+    pieces
+}
+
+#[cfg(test)]
+mod hole_tests {
+    use super::*;
+
+    #[test]
+    fn convex_hole_is_subtracted() {
+        let square = vec![
+            DVec2::new(0.0, 0.0),
+            DVec2::new(100.0, 0.0),
+            DVec2::new(100.0, 100.0),
+            DVec2::new(0.0, 100.0),
+        ];
+        let hole = vec![
+            DVec2::new(20.0, 20.0),
+            DVec2::new(20.0, 50.0),
+            DVec2::new(60.0, 50.0),
+            DVec2::new(60.0, 20.0),
+        ];
+        let pieces = minus_convex_holes(&square, &[hole]);
+        let area: f64 = pieces.iter().map(|p| signed_area(p).abs()).sum();
+        assert!((area - (10_000.0 - 1_200.0)).abs() < 1e-6, "{area}");
+        // A hole hanging off the edge only removes the overlap.
+        let edge = vec![
+            DVec2::new(90.0, 0.0),
+            DVec2::new(110.0, 0.0),
+            DVec2::new(110.0, 10.0),
+            DVec2::new(90.0, 10.0),
+        ];
+        let pieces = minus_convex_holes(&square, &[edge]);
+        let area: f64 = pieces.iter().map(|p| signed_area(p).abs()).sum();
+        assert!((area - 9_900.0).abs() < 1e-6, "{area}");
+    }
+}

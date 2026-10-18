@@ -135,6 +135,7 @@ objects! {
     PlanView => "plan_view",
     Camera => "camera",
     RoofPlane => "roof_plane",
+    Stair => "stair",
 }
 
 impl fmt::Display for ObjectKind {
@@ -154,6 +155,7 @@ impl ObjectKind {
                 | ObjectKind::Dimension
                 | ObjectKind::Text
                 | ObjectKind::RoofPlane
+                | ObjectKind::Stair
         )
     }
 }
@@ -293,6 +295,7 @@ impl Document {
             Object::Dimension(d) => Some(d.floor),
             Object::Text(t) => Some(t.floor),
             Object::RoofPlane(r) => Some(r.floor),
+            Object::Stair(s) => Some(s.floor),
             _ => None,
         }
     }
@@ -307,6 +310,7 @@ impl Document {
             Object::Dimension(d) => Some(d.layer),
             Object::Text(t) => Some(t.layer),
             Object::RoofPlane(r) => Some(r.layer),
+            Object::Stair(s) => Some(s.layer),
             _ => None,
         }
     }
@@ -340,6 +344,28 @@ impl Document {
             self.get::<RoomType>(room.room_type)
                 .map_or_else(|| "Room".into(), |t| t.name.clone())
         })
+    }
+
+    /// The floor directly above `floor`, if any.
+    pub fn floor_above(&self, floor: Id) -> Option<&Floor> {
+        let floors = self.floors_by_elevation();
+        let i = floors.iter().position(|f| f.id == floor)?;
+        floors.get(i + 1).copied()
+    }
+
+    /// Total rise of a stair: its own, or up to the finished floor above
+    /// (or the ceiling when it is on the top floor).
+    pub fn stair_rise(&self, stair: &Stair) -> Length {
+        if let Some(r) = stair.rise {
+            return r;
+        }
+        let Some(floor) = self.get::<Floor>(stair.floor) else {
+            return Length::from_feet(9.0);
+        };
+        match self.floor_above(floor.id) {
+            Some(above) => above.elevation - floor.elevation,
+            None => floor.ceiling_height,
+        }
     }
 
     /// Check referential integrity and invariants. A document with no issues

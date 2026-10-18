@@ -204,6 +204,20 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
             r.pitch.to_radians().tan() * 12.0,
             if r.auto { ", automatic" } else { "" }
         ),
+        Object::Stair(s) => {
+            let shape = match s.shape {
+                StairShape::Straight => "straight",
+                StairShape::L { .. } => "L-shaped",
+                StairShape::U { .. } => "U-shaped",
+            };
+            let rise = doc.stair_rise(s);
+            let risers = ((rise.mm() / s.max_riser.mm()).ceil() as u32).max(1);
+            format!(
+                "{shape} stair, {risers} risers of {}, {} wide",
+                fmt(rise / risers as f64),
+                fmt(s.width)
+            )
+        }
         Object::PlanView(v) => v.name.clone(),
         Object::Camera(c) => c.name.clone(),
     };

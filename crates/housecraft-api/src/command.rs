@@ -69,6 +69,25 @@ pub enum Command {
         eave_height: Length,
         pitch: f64,
     },
+    /// Add a stair from a floor up to the floor above. Its risers come from the
+    /// floor-to-floor height (or `rise`) and the default maximum riser. For L
+    /// and U shapes, `first_treads: 0` splits the flights evenly.
+    AddStair {
+        floor: Option<Id>,
+        /// Centre of the bottom riser.
+        start: Point2,
+        /// Direction of travel going up, degrees counter-clockwise from east.
+        direction: f64,
+        #[serde(default = "straight")]
+        shape: StairShape,
+        width: Option<Length>,
+        rise: Option<Length>,
+        railing_left: Option<bool>,
+        railing_right: Option<bool>,
+        /// Cut an opening in the floor above (default true).
+        #[serde(default = "yes")]
+        stairwell: bool,
+    },
     /// Exchange everything drawn on two floors (walls, rooms, CAD, text...),
     /// keeping the floors' own heights.
     SwapFloors { a: Id, b: Id },
@@ -290,6 +309,10 @@ fn yes() -> bool {
     true
 }
 
+fn straight() -> StairShape {
+    StairShape::Straight
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum LengthAnchor {
@@ -376,6 +399,7 @@ impl Command {
             Command::BuildRoof { .. } => "build_roof",
             Command::RemoveRoof { .. } => "remove_roof",
             Command::AddRoofPlane { .. } => "add_roof_plane",
+            Command::AddStair { .. } => "add_stair",
             Command::AddWallType { .. } => "add_wall_type",
             Command::AddLayer { .. } => "add_layer",
             Command::AddLayerSet { .. } => "add_layer_set",
@@ -540,6 +564,51 @@ impl Command {
                 *pitch,
                 &mut out,
             )?,
+            Command::AddStair {
+                floor,
+                start,
+                direction,
+                shape,
+                width,
+                rise,
+                railing_left,
+                railing_right,
+                stairwell,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                if !direction.is_finite() {
+                    return invalid("direction must be a number of degrees");
+                }
+                let mut stair = Stair {
+                    id: Id(0),
+                    floor,
+                    start: *start,
+                    direction: *direction,
+                    width: width.unwrap_or(d.stair.width),
+                    shape: *shape,
+                    rise: *rise,
+                    max_riser: d.stair.max_riser,
+                    tread_depth: d.stair.tread_depth,
+                    railing_left: railing_left.unwrap_or(d.stair.railing_left),
+                    railing_right: railing_right.unwrap_or(d.stair.railing_right),
+                    railing_height: d.stair.railing_height,
+                    stairwell: *stairwell,
+                    layer: d.layers.stairs.unwrap_or(d.layers.walls),
+                };
+                // Split L and U stairs evenly when asked to.
+                let risers =
+                    ((doc.stair_rise(&stair).mm() / stair.max_riser.mm()).ceil() as u32).max(1);
+                let treads = housecraft_geom::stairs::tread_count(risers, &stair.shape);
+                match &mut stair.shape {
+                    StairShape::L { first_treads, .. } | StairShape::U { first_treads, .. }
+                        if *first_treads == 0 =>
+                    {
+                        *first_treads = (treads / 2).max(1);
+                    }
+                    _ => {}
+                }
+                out.created.push(doc.insert(stair));
+            }
             Command::SwapFloors { a, b } => {
                 expect::<Floor>(doc, *a)?;
                 expect::<Floor>(doc, *b)?;
@@ -550,6 +619,7 @@ impl Command {
                     id: Id(0),
                     name: name.clone(),
                     layers: layers.clone(),
+                    railing: None,
                 }));
             }
             Command::AddLayer {

@@ -360,6 +360,7 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_layer", "name": "Extra", "color": "#ff000080"}},
                 {{"op": "add_plan_view", "name": "Second"}},
                 {{"op": "build_roof"}},
+                {{"op": "add_stair", "start": ["5'","5'"], "direction": 90}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
             w = wall.0
         ),
@@ -539,4 +540,129 @@ fn hand_drawn_roof_plane_rises_from_its_eave() {
     let plane = s.document().get::<RoofPlane>(out.created[0]).unwrap();
     let top = plane.outline.iter().map(|p| p.mm()[2]).fold(0.0, f64::max);
     assert!((top - Length::from_feet(18.0).mm()).abs() < 1e-6, "{top}");
+}
+
+#[test]
+fn stair_climbs_to_the_floor_above_and_cuts_a_stairwell() {
+    let mut s = boxed();
+    apply(&mut s, r#"[{"op": "add_floor"}]"#);
+    let floors = s.document().floors_by_elevation();
+    let (ground, upper) = (floors[0].id, floors[1].id);
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_walls", "floor": {}, "points": [[0,0], [0,"30'"], ["20'","30'"], ["20'",0]], "closed": true}}]"#,
+            upper.0
+        ),
+    );
+    let out = apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_stair", "floor": {}, "start": ["10'","5'"], "direction": 90, "shape": {{"type": "l", "turn": "left", "first_treads": 0}}}}]"#,
+            ground.0
+        ),
+    );
+    let doc = s.document();
+    let stair = doc.get::<Stair>(out.created[0]).unwrap();
+    // Floor-to-floor = ceiling height + floor structure of the floor above.
+    let rise = doc.stair_rise(stair).mm();
+    let g = housecraft_api::geom::stairs::geometry(doc, stair);
+    assert!(g.riser_height <= stair.max_riser.mm() + 1e-9);
+    assert!((g.risers as f64 * g.riser_height - rise).abs() < 1e-6);
+    // An L stair splits evenly around its landing.
+    let StairShape::L { first_treads, .. } = stair.shape else {
+        panic!("not an L stair")
+    };
+    assert_eq!(g.flights, vec![first_treads, g.flights[1]]);
+    assert!(first_treads.abs_diff(g.flights[1]) <= 1);
+    assert!(
+        query::describe(doc, doc.object(out.created[0]).unwrap())
+            .label
+            .contains("L-shaped stair")
+    );
+
+    // The upper floor's surface has a hole where the stair comes up.
+    let mesh = housecraft_api::geom::mesh::build(doc, None);
+    let floor_area = |mesh: &housecraft_api::geom::mesh::Mesh, owner_floor: Id| {
+        let mut area = 0.0;
+        for part in mesh
+            .parts
+            .iter()
+            .filter(|p| p.category == housecraft_api::geom::mesh::Category::Floor)
+        {
+            let Some(room) = doc.get::<Room>(part.object) else {
+                continue;
+            };
+            if room.floor != owner_floor {
+                continue;
+            }
+            let idx = &mesh.indices
+                [part.first_index as usize..(part.first_index + part.index_count) as usize];
+            for t in idx.chunks(3) {
+                let [a, b, c] = [t[0], t[1], t[2]].map(|i| mesh.positions[i as usize]);
+                if mesh.normals[t[0] as usize][2] > 0.9 && (a[2] - b[2]).abs() < 1e-3 {
+                    area += 0.5
+                        * ((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])).abs()
+                            as f64;
+                }
+            }
+        }
+        area
+    };
+    let with_hole = floor_area(&mesh, upper);
+    let footprint: f64 = g
+        .footprint()
+        .iter()
+        .map(|p| housecraft_api::geom::math::signed_area(p).abs())
+        .sum();
+    let mut s2 = s.clone();
+    s2.apply(&[Command::Update {
+        id: stair.id,
+        set: patch(serde_json::json!({ "stairwell": false })),
+    }])
+    .unwrap();
+    let solid = floor_area(
+        &housecraft_api::geom::mesh::build(s2.document(), None),
+        upper,
+    );
+    // Mesh positions are metres; the hole goes through both the floor
+    // surface and the top of the floor platform beneath it.
+    let expected = 2.0 * footprint / 1e6;
+    assert!(
+        ((solid - with_hole) - expected).abs() / expected < 0.01,
+        "solid {solid} hole {with_hole} footprint {footprint}"
+    );
+    assert!(
+        mesh.parts
+            .iter()
+            .any(|p| p.category == housecraft_api::geom::mesh::Category::Stair)
+    );
+}
+
+#[test]
+fn mirroring_an_l_stair_flips_its_turn_and_railings() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_stair", "start": ["10'","5'"], "direction": 90, "railing_left": false, "railing_right": true,
+             "shape": {"type": "l", "turn": "left", "first_treads": 5}}]"#,
+    );
+    let id = out.created[0];
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "transform", "ids": [{}], "transform": {{"type": "mirror", "a": ["10'",0], "b": ["10'","30'"]}}}}]"#,
+            id.0
+        ),
+    );
+    let st = s.document().get::<Stair>(id).unwrap();
+    assert!(matches!(
+        st.shape,
+        StairShape::L {
+            turn: Turn::Right,
+            first_treads: 5
+        }
+    ));
+    assert!(st.railing_left && !st.railing_right);
+    assert!((st.direction.rem_euclid(360.0) - 90.0).abs() < 1e-9);
 }

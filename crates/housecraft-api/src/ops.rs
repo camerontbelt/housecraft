@@ -329,6 +329,26 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             geometry: t.apply_dimension(&d.geometry),
             ..d.clone()
         }),
+        Object::Stair(st) => {
+            let mut st = st.clone();
+            st.start = t.apply_point(st.start);
+            st.direction = t.apply_angle(st.direction);
+            if t.is_reflection() {
+                let flip = |turn: &mut Turn| {
+                    *turn = match turn {
+                        Turn::Left => Turn::Right,
+                        Turn::Right => Turn::Left,
+                    }
+                };
+                match &mut st.shape {
+                    StairShape::L { turn, .. } | StairShape::U { turn, .. } => flip(turn),
+                    StairShape::Straight => {}
+                }
+                // Mirroring also swaps which side each railing is on.
+                std::mem::swap(&mut st.railing_left, &mut st.railing_right);
+            }
+            Object::Stair(st)
+        }
         Object::RoofPlane(r) => {
             let mut r = r.clone();
             for p in r.outline.iter_mut() {
@@ -854,6 +874,7 @@ pub(crate) fn insert_objects(
                 Object::Dimension(d) => d.floor = f,
                 Object::Text(t) => t.floor = f,
                 Object::RoofPlane(r) => r.floor = f,
+                Object::Stair(s) => s.floor = f,
                 _ => {}
             }
         }
@@ -882,6 +903,7 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::Dimension(d) => &mut d.floor,
             Object::Text(t) => &mut t.floor,
             Object::RoofPlane(r) => &mut r.floor,
+            Object::Stair(s) => &mut s.floor,
             _ => continue,
         };
         let before = *floor;

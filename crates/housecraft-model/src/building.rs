@@ -69,6 +69,77 @@ pub struct WallType {
     pub name: String,
     /// Layers listed exterior to interior.
     pub layers: Vec<WallLayer>,
+    /// Makes walls of this type railings (rail and balusters) instead of solid walls.
+    #[serde(default)]
+    pub railing: Option<Railing>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Railing {
+    /// Top of the handrail above the floor (or the stair nosing line).
+    pub height: Length,
+    /// Centre-to-centre baluster spacing.
+    pub baluster_spacing: Length,
+}
+
+impl Default for Railing {
+    fn default() -> Self {
+        Railing {
+            height: Length::from_inches(36.0),
+            baluster_spacing: Length::from_inches(4.0),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Turn {
+    Left,
+    Right,
+}
+
+/// Plan shape of a stair.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum StairShape {
+    Straight,
+    /// Turns 90° at a square landing after `first_treads` treads.
+    L {
+        turn: Turn,
+        first_treads: u32,
+    },
+    /// Turns back 180° at a landing after `first_treads` treads; `gap` separates the flights.
+    U {
+        turn: Turn,
+        first_treads: u32,
+        #[serde(default)]
+        gap: Length,
+    },
+}
+
+/// A stair from its floor up to the floor above.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Stair {
+    pub id: Id,
+    /// The floor the stair starts on.
+    pub floor: Id,
+    /// Centre of the first riser (the bottom of the stair).
+    pub start: Point2,
+    /// Direction of travel going up, degrees counter-clockwise from east.
+    pub direction: f64,
+    pub width: Length,
+    pub shape: StairShape,
+    /// Total rise; `None` reaches the finished floor above.
+    #[serde(default)]
+    pub rise: Option<Length>,
+    pub max_riser: Length,
+    pub tread_depth: Length,
+    pub railing_left: bool,
+    pub railing_right: bool,
+    pub railing_height: Length,
+    /// Cut the floor platform above (and the ceiling below) over the stair.
+    pub stairwell: bool,
+    pub layer: Id,
 }
 
 impl WallType {

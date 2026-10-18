@@ -26,8 +26,16 @@ pub enum Tool {
     Spline,
     Point,
     RoofPlane,
+    Stair(StairKind),
 }
 
+/// The shapes offered by the stair tools.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StairKind {
+    Straight,
+    L,
+    U,
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Family {
     Select,
@@ -134,7 +142,7 @@ impl Family {
 
     /// Families whose tools are not built yet are shown disabled.
     pub fn available(self) -> bool {
-        !matches!(self, Family::Cabinets | Family::Stairs | Family::Electrical)
+        !matches!(self, Family::Cabinets | Family::Electrical)
     }
 
     pub fn tools(self) -> &'static [Tool] {
@@ -172,7 +180,12 @@ impl Family {
                 Tool::Point,
             ],
             Family::Roofs => &[Tool::RoofPlane],
-            Family::Cabinets | Family::Stairs | Family::Electrical | Family::Cameras => &[],
+            Family::Stairs => &[
+                Tool::Stair(StairKind::Straight),
+                Tool::Stair(StairKind::L),
+                Tool::Stair(StairKind::U),
+            ],
+            Family::Cabinets | Family::Electrical | Family::Cameras => &[],
         }
     }
 
@@ -192,6 +205,7 @@ impl Tool {
             Tool::Dimension | Tool::AngularDimension => Family::Dimensions,
             Tool::Text => Family::Text,
             Tool::RoofPlane => Family::Roofs,
+            Tool::Stair(_) => Family::Stairs,
             _ => Family::Cad,
         }
     }
@@ -227,6 +241,9 @@ impl Tool {
             Tool::Spline => "Spline",
             Tool::Point => "Point",
             Tool::RoofPlane => "Roof Plane",
+            Tool::Stair(StairKind::Straight) => "Straight Stair",
+            Tool::Stair(StairKind::L) => "L-Shaped Stair",
+            Tool::Stair(StairKind::U) => "U-Shaped Stair",
         }
     }
 
@@ -256,6 +273,7 @@ impl Tool {
             Tool::Spline => Icon::Spline,
             Tool::Point => Icon::Point,
             Tool::RoofPlane => Icon::Roof,
+            Tool::Stair(_) => Icon::Stairs,
         }
     }
 
@@ -305,6 +323,9 @@ impl Tool {
             }
             Tool::Ellipse => "Click two opposite corners of the bounding box.",
             Tool::Point => "Click to place a point.",
+            Tool::Stair(_) => {
+                "Click the bottom of the stair, then click in the direction it climbs."
+            }
             Tool::RoofPlane => {
                 "Click the two ends of the eave, then the other corners; double-click or Enter to finish."
             }

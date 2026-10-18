@@ -52,6 +52,7 @@ pub(crate) fn new_document(name: String) -> Document {
         0.18,
         Some(Color::rgb(0x9a, 0x4a, 0x1f)),
     );
+    let stairs = layer(&mut doc, "Stairs", 0.25, None);
 
     let style = |doc: &mut Document, name: &str, height: Length, bold: bool| {
         doc.insert(TextStyle {
@@ -88,6 +89,7 @@ pub(crate) fn new_document(name: String) -> Document {
             layer_of("Framing", 5.5, "2x6 stud"),
             layer_of("Interior finish", 0.5, "Gypsum board"),
         ],
+        railing: None,
     });
     let interior = doc.insert(WallType {
         id: PLACEHOLDER,
@@ -97,6 +99,13 @@ pub(crate) fn new_document(name: String) -> Document {
             layer_of("Framing", 3.5, "2x4 stud"),
             layer_of("Finish", 0.5, "Gypsum board"),
         ],
+        railing: None,
+    });
+    doc.insert(WallType {
+        id: PLACEHOLDER,
+        name: "Railing".into(),
+        layers: vec![layer_of("Rail", 3.5, "Painted wood")],
+        railing: Some(Railing::default()),
     });
 
     let mut unspecified = PLACEHOLDER;
@@ -151,6 +160,7 @@ pub(crate) fn new_document(name: String) -> Document {
             dimensions,
             text,
             roofs: Some(roofs),
+            stairs: Some(stairs),
         },
         dimensions: DimensionDefaults {
             text_style: dim_text,
@@ -173,6 +183,7 @@ pub(crate) fn new_document(name: String) -> Document {
             head_height: inch(80.0),
         },
         roof: RoofDefaults::default(),
+        stair: StairDefaults::default(),
     });
     doc.settings.active_default_set = defaults;
 

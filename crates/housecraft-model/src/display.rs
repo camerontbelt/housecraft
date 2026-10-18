@@ -223,6 +223,9 @@ pub struct KindLayers {
     /// Roof planes; falls back to the walls layer when unset (older files).
     #[serde(default)]
     pub roofs: Option<Id>,
+    /// Stairs; falls back to the walls layer when unset (older files).
+    #[serde(default)]
+    pub stairs: Option<Id>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -272,6 +275,31 @@ pub struct DefaultSet {
     pub window: WindowDefaults,
     #[serde(default)]
     pub roof: RoofDefaults,
+    #[serde(default)]
+    pub stair: StairDefaults,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct StairDefaults {
+    pub width: Length,
+    pub max_riser: Length,
+    pub tread_depth: Length,
+    pub railing_height: Length,
+    pub railing_left: bool,
+    pub railing_right: bool,
+}
+
+impl Default for StairDefaults {
+    fn default() -> Self {
+        StairDefaults {
+            width: Length::from_inches(36.0),
+            max_riser: Length::from_inches(7.75),
+            tread_depth: Length::from_inches(10.0),
+            railing_height: Length::from_inches(36.0),
+            railing_left: false,
+            railing_right: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

@@ -52,6 +52,8 @@ pub const CEILING_COLOR: [f32; 4] = [0.96, 0.96, 0.95, 1.0];
 pub const CONCRETE_COLOR: [f32; 4] = [0.68, 0.68, 0.66, 1.0];
 pub const ROOF_COLOR: [f32; 4] = [0.36, 0.34, 0.33, 1.0];
 pub const SOFFIT_COLOR: [f32; 4] = [0.9, 0.89, 0.86, 1.0];
+pub const STAIR_COLOR: [f32; 4] = [0.68, 0.52, 0.36, 1.0];
+pub const RAIL_COLOR: [f32; 4] = [0.95, 0.95, 0.93, 1.0];
 pub const PLATFORM_COLOR: [f32; 4] = [0.82, 0.74, 0.6, 1.0];
 
 impl Mesh {
@@ -158,7 +160,112 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         roof_plane_mesh(plane, &mut mesh);
         mesh.end();
     }
+    for stair in doc.iter::<housecraft_model::Stair>() {
+        if only_floor.is_some_and(|f| f != stair.floor) {
+            continue;
+        }
+        mesh.begin(stair.id, Category::Stair);
+        stair_mesh(doc, stair, &mut mesh);
+        mesh.end();
+    }
     mesh
+}
+
+fn stair_mesh(doc: &Document, stair: &housecraft_model::Stair, mesh: &mut Mesh) {
+    let g = crate::stairs::geometry(doc, stair);
+    for step in &g.steps {
+        mesh.prism(&ccw(step.poly.clone()), g.base_z, step.z, STAIR_COLOR);
+    }
+    let spacing = 4.0 * 25.4;
+    for rail in &g.rails {
+        for w in rail.windows(2) {
+            rail_segment(w[0], w[1], spacing, true, mesh);
+        }
+    }
+}
+
+/// A handrail between two 3D points with balusters dropping `drop_to_stair`
+/// (stairs: to the tread surface below the rail) or to `z0` for level railings.
+fn rail_segment(a: DVec3, b: DVec3, spacing: f64, along_stair: bool, mesh: &mut Mesh) {
+    let flat = (b - a).truncate();
+    let len = flat.length();
+    if len < 1.0 {
+        return;
+    }
+    let dir = flat / len;
+    let side = crate::math::perp(dir) * 25.0;
+    let rail_depth = 50.0;
+    // Handrail: a sloped bar (two triangles per face via polygons).
+    let corners = |p: DVec3, dz: f64| -> [DVec3; 2] {
+        [
+            DVec3::new(p.x + side.x, p.y + side.y, p.z + dz),
+            DVec3::new(p.x - side.x, p.y - side.y, p.z + dz),
+        ]
+    };
+    let [a_l, a_r] = corners(a, 0.0);
+    let [b_l, b_r] = corners(b, 0.0);
+    let [a_lb, a_rb] = corners(a, -rail_depth);
+    let [b_lb, b_rb] = corners(b, -rail_depth);
+    mesh.polygon(&[a_r, b_r, b_l, a_l], RAIL_COLOR);
+    mesh.polygon(&[a_lb, b_lb, b_rb, a_rb], RAIL_COLOR);
+    mesh.polygon(&[a_l, b_l, b_lb, a_lb], RAIL_COLOR);
+    mesh.polygon(&[a_rb, b_rb, b_r, a_r], RAIL_COLOR);
+    // Balusters.
+    let n = (len / spacing).floor() as usize;
+    let rail_height_above_base = if along_stair { 36.0 * 25.4 } else { 0.0 };
+    for i in 0..=n {
+        let t = (i as f64 * spacing + (len - n as f64 * spacing) / 2.0) / len;
+        let p = a.lerp(b, t);
+        let top = p.z - rail_depth;
+        let bottom = if along_stair {
+            p.z - rail_height_above_base
+        } else {
+            a.z.min(b.z) - (a.z.min(b.z) - top).abs()
+        };
+        if top - bottom < 10.0 {
+            continue;
+        }
+        let c = p.truncate();
+        let q = 15.0;
+        let square = vec![
+            c + DVec2::new(-q, -q),
+            c + DVec2::new(q, -q),
+            c + DVec2::new(q, q),
+            c + DVec2::new(-q, q),
+        ];
+        mesh.prism(&square, bottom, top, RAIL_COLOR);
+    }
+}
+
+fn ccw(mut poly: Vec<DVec2>) -> Vec<DVec2> {
+    if crate::math::signed_area(&poly) < 0.0 {
+        poly.reverse();
+    }
+    poly
+}
+
+/// Stairwell openings cut into `floor`'s platform (from stairs below) and into
+/// its ceiling (from its own stairs).
+fn stairwell_holes(doc: &Document, floor: Id) -> (Vec<Vec<DVec2>>, Vec<Vec<DVec2>>) {
+    let mut platform = Vec::new();
+    let mut ceiling = Vec::new();
+    for s in doc
+        .iter::<housecraft_model::Stair>()
+        .filter(|s| s.stairwell)
+    {
+        let above = doc.floor_above(s.floor).map(|f| f.id);
+        if above.is_none() {
+            continue;
+        }
+        let pieces = crate::stairs::geometry(doc, s).footprint();
+        if above == Some(floor) {
+            platform.extend(pieces.iter().cloned());
+        }
+        if s.floor == floor {
+            ceiling.extend(pieces);
+        }
+    }
+    (platform, ceiling)
 }
 
 fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, mesh: &mut Mesh) {
@@ -288,6 +395,30 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
         let height = doc.wall_height(wall).map_or(2438.4, |h| h.mm());
         let openings: Vec<&Opening> = doc.openings_in(g.id).collect();
         mesh.begin(g.id, wall_category);
+        let railing = doc
+            .get::<housecraft_model::WallType>(wall.wall_type)
+            .and_then(|t| t.railing);
+        if let Some(r) = railing {
+            let h = z0 + r.height.mm();
+            rail_segment(
+                DVec3::new(g.start.x, g.start.y, h),
+                DVec3::new(g.end.x, g.end.y, h),
+                r.baluster_spacing.mm(),
+                false,
+                mesh,
+            );
+            // Bottom rail so the balusters have something to stand on.
+            let half = g.half.min(30.0);
+            let n = g.left * half;
+            mesh.prism(
+                &[g.start - n, g.end - n, g.end + n, g.start + n],
+                z0,
+                z0 + 40.0,
+                RAIL_COLOR,
+            );
+            mesh.end();
+            continue;
+        }
         for piece in g.pieces(&openings) {
             mesh.prism(&piece, z0, z0 + height, wall_color);
         }
@@ -317,6 +448,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
         }
     }
 
+    let (platform_holes, ceiling_holes) = stairwell_holes(doc, floor.id);
     let regions = rooms::detect(doc, floor.id);
     let rooms_here: Vec<&Room> = doc.rooms_on(floor.id).collect();
     let lowest = doc.floors_by_elevation().first().map(|f| f.id) == Some(floor.id);
@@ -353,14 +485,17 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
             }
             None => {
                 mesh.begin(owner, Category::Floor);
-                mesh.polygon(&at(z0), FLOOR_COLOR);
-                if !lowest && floor.floor_structure.mm() > 1.0 {
-                    mesh.prism(
-                        &region.polygon,
-                        z0 - floor.floor_structure.mm(),
-                        z0 - 1.0,
-                        PLATFORM_COLOR,
-                    );
+                for piece in crate::math::minus_convex_holes(&region.polygon, &platform_holes) {
+                    let pts: Vec<DVec3> = piece.iter().map(|p| DVec3::new(p.x, p.y, z0)).collect();
+                    mesh.polygon(&pts, FLOOR_COLOR);
+                    if !lowest && floor.floor_structure.mm() > 1.0 {
+                        mesh.prism(
+                            &ccw(piece.clone()),
+                            z0 - floor.floor_structure.mm(),
+                            z0 - 1.0,
+                            PLATFORM_COLOR,
+                        );
+                    }
                 }
                 mesh.end();
             }
@@ -375,7 +510,12 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
         mesh.begin(owner, Category::Ceiling);
         match room.ceiling {
             CeilingStyle::None => {}
-            CeilingStyle::Flat => mesh.polygon(&at(zc), CEILING_COLOR),
+            CeilingStyle::Flat => {
+                for piece in crate::math::minus_convex_holes(&region.polygon, &ceiling_holes) {
+                    let pts: Vec<DVec3> = piece.iter().map(|p| DVec3::new(p.x, p.y, zc)).collect();
+                    mesh.polygon(&pts, CEILING_COLOR);
+                }
+            }
             CeilingStyle::Vaulted => {
                 if !vaulted_ceiling(doc, floor.id, &region.polygon, mesh) {
                     mesh.polygon(&at(zc), CEILING_COLOR);

@@ -101,6 +101,10 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
             }
             Object::WallType(t) => {
+                if let Some(r) = t.railing {
+                    c.positive(id, "railing.height", r.height);
+                    c.positive(id, "railing.baluster_spacing", r.baluster_spacing);
+                }
                 if t.layers.is_empty() {
                     c.issue(id, "wall type has no layers");
                 }
@@ -209,6 +213,9 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
                 if let Some(l) = d.layers.roofs {
                     c.reference(id, "layers.roofs", l, K::Layer);
+                }
+                if let Some(l) = d.layers.stairs {
+                    c.reference(id, "layers.stairs", l, K::Layer);
                 }
                 c.positive(id, "window.width", d.window.width);
                 c.positive(id, "window.height", d.window.height);
@@ -332,6 +339,30 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     c.issue(id, "pitch must be between 0 and 90 degrees");
                 }
                 c.non_negative(id, "thickness", r.thickness);
+            }
+            Object::Stair(st) => {
+                c.reference(id, "floor", st.floor, K::Floor);
+                c.reference(id, "layer", st.layer, K::Layer);
+                c.positive(id, "width", st.width);
+                c.positive(id, "max_riser", st.max_riser);
+                c.positive(id, "tread_depth", st.tread_depth);
+                c.positive(id, "railing_height", st.railing_height);
+                if let Some(r) = st.rise {
+                    c.positive(id, "rise", r);
+                }
+                c.finite(
+                    id,
+                    "start",
+                    &[st.start.mm()[0], st.start.mm()[1], st.direction],
+                );
+                match st.shape {
+                    StairShape::Straight => {}
+                    StairShape::L { first_treads, .. } | StairShape::U { first_treads, .. } => {
+                        if first_treads == 0 {
+                            c.issue(id, "the first flight needs at least one tread");
+                        }
+                    }
+                }
             }
             Object::Camera(cam) => {
                 c.reference(id, "layer_set", cam.layer_set, K::LayerSet);
