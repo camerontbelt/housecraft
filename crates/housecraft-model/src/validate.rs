@@ -92,6 +92,13 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
             Object::Floor(f) => {
                 c.positive(id, "ceiling_height", f.ceiling_height);
                 c.non_negative(id, "floor_structure", f.floor_structure);
+                if let Some(fd) = &f.foundation {
+                    c.positive(id, "foundation.wall_height", fd.wall_height);
+                    c.positive(id, "foundation.wall_thickness", fd.wall_thickness);
+                    c.non_negative(id, "foundation.footing_width", fd.footing_width);
+                    c.non_negative(id, "foundation.footing_depth", fd.footing_depth);
+                    c.positive(id, "foundation.slab_thickness", fd.slab_thickness);
+                }
             }
             Object::WallType(t) => {
                 if t.layers.is_empty() {
@@ -111,6 +118,10 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
                 if let Some(h) = w.height {
                     c.positive(id, "height", h);
+                }
+                if let Some(f) = w.footing {
+                    c.positive(id, "footing.width", f.width);
+                    c.positive(id, "footing.depth", f.depth);
                 }
             }
             Object::Opening(o) => {

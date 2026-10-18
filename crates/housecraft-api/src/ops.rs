@@ -79,6 +79,7 @@ pub(crate) fn add_wall(
         wall_type,
         height,
         layer,
+        footing: None,
     }))
 }
 

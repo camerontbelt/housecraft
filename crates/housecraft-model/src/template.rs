@@ -19,6 +19,7 @@ pub(crate) fn new_document(name: String) -> Document {
         elevation: Length::ZERO,
         ceiling_height: ft(8.0),
         floor_structure: default_floor_structure(),
+        foundation: None,
     });
 
     let layer = |doc: &mut Document, name: &str, weight: f64, color: Option<Color>| {

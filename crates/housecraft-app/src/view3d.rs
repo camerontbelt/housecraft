@@ -395,7 +395,27 @@ impl View3d {
     }
 }
 
-fn to_gpu(mesh: &Mesh, selection: &[Id], hidden: &[Category]) -> (Vec<Vertex>, Vec<u32>) {
+/// Grade level in metres: 8" below the platform of the lowest storey above a
+/// foundation, or just under the lowest floor when there is none.
+fn grade(doc: &housecraft_api::model::Document) -> Option<f32> {
+    use housecraft_api::model::Floor;
+    let floors = doc.floors_by_elevation();
+    let has_foundation = floors.iter().any(|f| f.foundation.is_some());
+    let first: &Floor = floors.iter().find(|f| f.foundation.is_none())?;
+    let z = if has_foundation {
+        (first.elevation - first.floor_structure).mm() - 203.2
+    } else {
+        first.elevation.mm() - 20.0
+    };
+    Some((z / 1000.0) as f32)
+}
+
+fn to_gpu(
+    mesh: &Mesh,
+    selection: &[Id],
+    hidden: &[Category],
+    grade_z: Option<f32>,
+) -> (Vec<Vertex>, Vec<u32>) {
     let mut vertices: Vec<Vertex> = mesh
         .positions
         .iter()
@@ -422,7 +442,7 @@ fn to_gpu(mesh: &Mesh, selection: &[Id], hidden: &[Category]) -> (Vec<Vertex>, V
     // Ground plane under everything.
     if let Some((lo, hi)) = mesh_bounds(mesh) {
         let pad = ((hi - lo).length() * 0.6).max(10.0);
-        let z = lo.z - 0.02;
+        let z = grade_z.unwrap_or(lo.z - 0.02);
         let base = vertices.len() as u32;
         let g = [0.62, 0.68, 0.55, 1.0];
         for (x, y) in [
@@ -617,7 +637,12 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             h.wrapping_mul(31).wrapping_add(id.0)
         });
     if v.gpu.as_ref().is_none_or(|g| g.0 != sel_hash) {
-        let (verts, idx) = to_gpu(&mesh, &app.selection, &v.hidden);
+        let (verts, idx) = to_gpu(
+            &mesh,
+            &app.selection,
+            &v.hidden,
+            grade(app.session.document()),
+        );
         v.gpu_key = v.gpu_key.wrapping_add(1);
         v.gpu = Some((sel_hash, Arc::new(verts), Arc::new(idx)));
     }

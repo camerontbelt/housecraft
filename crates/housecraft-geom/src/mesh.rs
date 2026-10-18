@@ -1,7 +1,9 @@
 //! 3D triangle meshes of the building model for the viewer and exports.
 
 use glam::{DVec2, DVec3, Vec3};
-use housecraft_model::{CeilingStyle, Document, Floor, Id, Opening, OpeningKind, Room};
+use housecraft_model::{
+    CeilingStyle, Document, Floor, FoundationKind, Id, Opening, OpeningKind, Room,
+};
 
 use crate::math::v2;
 use crate::rooms;
@@ -47,6 +49,7 @@ pub const DOOR_COLOR: [f32; 4] = [0.55, 0.38, 0.24, 1.0];
 pub const GLASS_COLOR: [f32; 4] = [0.55, 0.75, 0.88, 1.0];
 pub const FRAME_COLOR: [f32; 4] = [0.97, 0.97, 0.97, 1.0];
 pub const CEILING_COLOR: [f32; 4] = [0.96, 0.96, 0.95, 1.0];
+pub const CONCRETE_COLOR: [f32; 4] = [0.68, 0.68, 0.66, 1.0];
 pub const PLATFORM_COLOR: [f32; 4] = [0.82, 0.74, 0.6, 1.0];
 
 impl Mesh {
@@ -150,6 +153,12 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
 
 fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
     let z0 = floor.elevation.mm();
+    let foundation = floor.foundation.as_ref();
+    let (wall_category, wall_color) = if foundation.is_some() {
+        (Category::Foundation, CONCRETE_COLOR)
+    } else {
+        (Category::Wall, WALL_COLOR)
+    };
     let geoms = wall_geoms(doc, floor.id);
     for g in &geoms {
         let Some(wall) = doc.get::<housecraft_model::Wall>(g.id) else {
@@ -157,18 +166,26 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
         };
         let height = doc.wall_height(wall).map_or(2438.4, |h| h.mm());
         let openings: Vec<&Opening> = doc.openings_in(g.id).collect();
-        mesh.begin(g.id, Category::Wall);
+        mesh.begin(g.id, wall_category);
         for piece in g.pieces(&openings) {
-            mesh.prism(&piece, z0, z0 + height, WALL_COLOR);
+            mesh.prism(&piece, z0, z0 + height, wall_color);
+        }
+        if let Some(f) = wall.footing {
+            // Footing centred under the wall, running past each end by half its width.
+            let hw = f.width.mm() / 2.0;
+            let (a, b) = (g.start - g.dir * hw, g.end + g.dir * hw);
+            let n = g.left * hw;
+            let quad = vec![a - n, b - n, b + n, a + n];
+            mesh.prism(&quad, z0 - f.depth.mm(), z0, CONCRETE_COLOR);
         }
         // Wall above and below each opening span.
         for o in &openings {
             let (a, b) = span_of(g, o);
             let quad = vec![g.right_at(a), g.right_at(b), g.left_at(b), g.left_at(a)];
             let head = z0 + (o.sill + o.height).mm();
-            mesh.prism(&quad, head, z0 + height, WALL_COLOR);
+            mesh.prism(&quad, head, z0 + height, wall_color);
             if o.sill.mm() > 0.0 {
-                mesh.prism(&quad, z0, z0 + o.sill.mm(), WALL_COLOR);
+                mesh.prism(&quad, z0, z0 + o.sill.mm(), wall_color);
             }
         }
         mesh.end();
@@ -195,18 +212,38 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                 .collect()
         };
 
-        // Floor surface, and the platform under it on upper floors.
-        mesh.begin(owner, Category::Floor);
-        mesh.polygon(&at(z0), FLOOR_COLOR);
-        if !lowest && floor.floor_structure.mm() > 1.0 {
-            mesh.prism(
-                &region.polygon,
-                z0 - floor.floor_structure.mm(),
-                z0 - 1.0,
-                PLATFORM_COLOR,
-            );
+        // Floor surface, and the platform under it on upper floors; foundations
+        // get a concrete slab (none in a crawlspace).
+        match foundation {
+            Some(fd) => {
+                if fd.kind != FoundationKind::Crawlspace {
+                    mesh.begin(owner, Category::Foundation);
+                    mesh.prism(
+                        &region.polygon,
+                        z0 - fd.slab_thickness.mm(),
+                        z0,
+                        CONCRETE_COLOR,
+                    );
+                    mesh.end();
+                }
+                if fd.kind != FoundationKind::Basement {
+                    continue;
+                }
+            }
+            None => {
+                mesh.begin(owner, Category::Floor);
+                mesh.polygon(&at(z0), FLOOR_COLOR);
+                if !lowest && floor.floor_structure.mm() > 1.0 {
+                    mesh.prism(
+                        &region.polygon,
+                        z0 - floor.floor_structure.mm(),
+                        z0 - 1.0,
+                        PLATFORM_COLOR,
+                    );
+                }
+                mesh.end();
+            }
         }
-        mesh.end();
 
         // Ceiling.
         let Some(room) = room else {

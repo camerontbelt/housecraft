@@ -393,6 +393,7 @@ mod tests {
             wall_type: Id(998),
             height: None,
             layer,
+            footing: None,
         });
         assert_eq!(doc.validate().len(), 2, "{:?}", doc.validate());
     }
@@ -410,6 +411,7 @@ mod tests {
             wall_type: d.exterior_wall_type,
             height: None,
             layer: d.layers.walls,
+            footing: None,
         });
         doc.insert(Opening {
             id: Id(0),

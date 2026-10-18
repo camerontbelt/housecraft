@@ -18,6 +18,41 @@ pub struct Floor {
     /// finished surface; the floor sits on the ceiling of the floor below.
     #[serde(default = "default_floor_structure")]
     pub floor_structure: Length,
+    /// Set when this floor is the foundation under the floor above it.
+    #[serde(default)]
+    pub foundation: Option<Foundation>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum FoundationKind {
+    /// Slab on grade with a thickened (footed) edge; floor 1 sits on the slab.
+    Slab,
+    /// Stem walls on footings around an unexcavated crawlspace.
+    Crawlspace,
+    /// Full-height walls on footings around a slab; a habitable level.
+    Basement,
+}
+
+/// How a foundation floor was built, so it can be rebuilt when the floor above changes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Foundation {
+    pub kind: FoundationKind,
+    /// Foundation wall height (slab thickness for slabs).
+    pub wall_height: Length,
+    pub wall_thickness: Length,
+    pub footing_width: Length,
+    pub footing_depth: Length,
+    pub slab_thickness: Length,
+    /// Regenerate the foundation walls whenever the floor above changes outline.
+    pub auto_rebuild: bool,
+}
+
+/// A concrete footing centred under a wall.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Footing {
+    pub width: Length,
+    pub depth: Length,
 }
 
 /// 3/4" subfloor on 11 7/8" I-joists.
@@ -60,6 +95,8 @@ pub struct Wall {
     /// Overrides the floor's ceiling height when set.
     pub height: Option<Length>,
     pub layer: Id,
+    #[serde(default)]
+    pub footing: Option<Footing>,
 }
 
 impl Wall {

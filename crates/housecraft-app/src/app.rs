@@ -634,6 +634,9 @@ impl App {
                         }
                     }
                 });
+                if item(ui, "Build Foundation...", "Ctrl+F", true) {
+                    self.dialogs.foundation.open = true;
+                }
                 ui.menu_button("Floor", |ui| {
                     if item(ui, "Build New Floor", "Shift+X", true)
                         && let Some(out) = self.run1(Command::AddFloor {
@@ -1403,6 +1406,9 @@ impl App {
         if consume(ctrl, Key::A) {
             self.select_all();
         }
+        if consume(ctrl, Key::F) {
+            self.dialogs.foundation.open = true;
+        }
         if consume(ctrl, Key::J) {
             self.select_same_type();
         }
@@ -1518,10 +1524,12 @@ impl App {
             };
             ui.label(tool_name);
             ui.separator();
+            // Foundation is floor 0; storeys count from 1.
             let floor = self
                 .doc()
                 .floors_by_elevation()
                 .iter()
+                .filter(|f| f.foundation.is_none())
                 .position(|f| f.id == self.plan.floor)
                 .map_or(0, |i| i + 1);
             ui.label(format!("Floor: {floor}"));

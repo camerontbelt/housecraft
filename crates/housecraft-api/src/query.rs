@@ -75,7 +75,12 @@ pub fn summary(doc: &Document) -> DocumentSummary {
                         .find(|(id, _)| *id == r.id)
                         .map_or(0.0, |(_, a)| *a);
                     let ty = doc.get::<RoomType>(r.room_type);
-                    if ty.is_some_and(|t| t.living_area) {
+                    // Crawlspaces and slabs are not living space; basements can be.
+                    let below_grade_shell = f
+                        .foundation
+                        .as_ref()
+                        .is_some_and(|fd| fd.kind != FoundationKind::Basement);
+                    if ty.is_some_and(|t| t.living_area) && !below_grade_shell {
                         living += area;
                     }
                     RoomSummary {

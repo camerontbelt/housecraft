@@ -243,6 +243,7 @@ mod tests {
             wall_type: d.interior_wall_type,
             height: None,
             layer: d.layers.walls,
+            footing: None,
         });
     }
 

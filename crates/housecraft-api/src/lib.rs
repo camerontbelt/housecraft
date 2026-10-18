@@ -5,6 +5,7 @@
 //! the document after every transaction. Read access goes through [`query`].
 
 mod command;
+mod foundation;
 mod ops;
 pub mod query;
 mod rooms;

@@ -386,6 +386,34 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     ed.out.push(patch(id, json!({ field: l })));
                 }
             }
+            if let Some(fd) = &f.foundation {
+                Ed::label(ui, "Foundation");
+                ui.label(format!("{:?}", fd.kind));
+                ui.end_row();
+                for (label, field, value) in [
+                    ("Foundation Wall Height", "wall_height", fd.wall_height),
+                    (
+                        "Foundation Wall Thickness",
+                        "wall_thickness",
+                        fd.wall_thickness,
+                    ),
+                    ("Footing Width", "footing_width", fd.footing_width),
+                    ("Footing Depth", "footing_depth", fd.footing_depth),
+                    ("Slab Thickness", "slab_thickness", fd.slab_thickness),
+                ] {
+                    if let Some(l) = ed.length(ui, label, &format!("foundation.{field}"), value) {
+                        ed.out
+                            .push(patch(id, json!({ "foundation": { field: l } })));
+                    }
+                }
+                Ed::label(ui, "Auto Rebuild");
+                let mut auto = fd.auto_rebuild;
+                if ui.checkbox(&mut auto, "Follow the floor above").changed() {
+                    ed.out
+                        .push(patch(id, json!({ "foundation": { "auto_rebuild": auto } })));
+                }
+                ui.end_row();
+            }
         }
         Object::Cad(c) => {
             match &c.shape {

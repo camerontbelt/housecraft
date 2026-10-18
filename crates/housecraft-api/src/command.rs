@@ -35,6 +35,19 @@ pub enum Command {
         #[serde(default)]
         below: Option<Id>,
     },
+    /// Build (or rebuild) the foundation under the lowest floor from its
+    /// exterior walls. Omitted sizes use typical values for the kind.
+    BuildFoundation {
+        kind: FoundationKind,
+        wall_height: Option<Length>,
+        wall_thickness: Option<Length>,
+        footing_width: Option<Length>,
+        footing_depth: Option<Length>,
+        slab_thickness: Option<Length>,
+        /// Keep the foundation in step with the floor above (default true).
+        #[serde(default = "yes")]
+        auto_rebuild: bool,
+    },
     /// Exchange everything drawn on two floors (walls, rooms, CAD, text...),
     /// keeping the floors' own heights.
     SwapFloors { a: Id, b: Id },
@@ -338,6 +351,7 @@ impl Command {
             Command::SetDisplayUnit { .. } => "set_display_unit",
             Command::AddFloor { .. } => "add_floor",
             Command::SwapFloors { .. } => "swap_floors",
+            Command::BuildFoundation { .. } => "build_foundation",
             Command::AddWallType { .. } => "add_wall_type",
             Command::AddLayer { .. } => "add_layer",
             Command::AddLayerSet { .. } => "add_layer_set",
@@ -422,6 +436,7 @@ impl Command {
                             elevation,
                             ceiling_height,
                             floor_structure: structure,
+                            foundation: None,
                         })
                     }
                     None => {
@@ -438,10 +453,42 @@ impl Command {
                             elevation,
                             ceiling_height,
                             floor_structure: structure,
+                            foundation: None,
                         })
                     }
                 };
                 out.created.push(id);
+            }
+            Command::BuildFoundation {
+                kind,
+                wall_height,
+                wall_thickness,
+                footing_width,
+                footing_depth,
+                slab_thickness,
+                auto_rebuild,
+            } => {
+                let inch = Length::from_inches;
+                let spec = Foundation {
+                    kind: *kind,
+                    wall_height: wall_height.unwrap_or(match kind {
+                        FoundationKind::Slab => inch(4.0),
+                        FoundationKind::Crawlspace => inch(30.0),
+                        FoundationKind::Basement => inch(96.0),
+                    }),
+                    wall_thickness: wall_thickness.unwrap_or(inch(8.0)),
+                    footing_width: footing_width.unwrap_or(match kind {
+                        FoundationKind::Slab => inch(12.0),
+                        _ => inch(16.0),
+                    }),
+                    footing_depth: footing_depth.unwrap_or(match kind {
+                        FoundationKind::Slab => inch(12.0),
+                        _ => inch(8.0),
+                    }),
+                    slab_thickness: slab_thickness.unwrap_or(inch(4.0)),
+                    auto_rebuild: *auto_rebuild,
+                };
+                crate::foundation::build(doc, spec, &mut out)?;
             }
             Command::SwapFloors { a, b } => {
                 expect::<Floor>(doc, *a)?;

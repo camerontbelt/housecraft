@@ -404,3 +404,91 @@ fn insert_and_swap_floors() {
     assert_eq!(s.document().walls_on(ground).count(), 0);
     assert_eq!(s.document().rooms_on(basement).count(), 1);
 }
+
+#[test]
+fn foundation_follows_the_house() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "build_foundation", "kind": "crawlspace"}]"#,
+    );
+    let doc = s.document();
+    let floors = doc.floors_by_elevation();
+    assert_eq!(floors.len(), 2);
+    let fnd = floors[0];
+    let ground = floors[1];
+    let (fnd_id, ground_id) = (fnd.id, ground.id);
+    assert!(fnd.foundation.is_some());
+    // Stem walls reach the underside of the floor platform.
+    let top = fnd.elevation + fnd.ceiling_height;
+    assert!((top.mm() - (ground.elevation - ground.floor_structure).mm()).abs() < 1e-6);
+    let walls: Vec<&Wall> = doc.walls_on(fnd.id).collect();
+    assert_eq!(walls.len(), 4, "{out:?}");
+    assert!(walls.iter().all(|w| w.footing.is_some()));
+    // Outer face of the foundation matches the outer face of the walls above.
+    let t = doc
+        .get::<WallType>(walls[0].wall_type)
+        .unwrap()
+        .thickness()
+        .mm();
+    let xs: Vec<f64> = walls
+        .iter()
+        .flat_map(|w| [w.start.x().mm(), w.end.x().mm()])
+        .collect();
+    let min_x = xs.iter().copied().fold(f64::INFINITY, f64::min);
+    let ext_half = 7.1875 * 25.4 / 2.0;
+    assert!((min_x - (-ext_half + t / 2.0)).abs() < 1e-6, "{min_x}");
+    assert_eq!(doc.rooms_on(fnd.id).count(), 1, "crawlspace becomes a room");
+
+    // Widen the house by moving the east wall: the foundation follows.
+    let east = doc
+        .walls_on(ground_id)
+        .find(|w| {
+            (w.start.x().feet() - 20.0).abs() < 1e-6 && (w.end.x().feet() - 20.0).abs() < 1e-6
+        })
+        .unwrap()
+        .id;
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "move_wall", "id": {}, "start": ["26'", "30'"], "end": ["26'", 0]}}]"#,
+            east.0
+        ),
+    );
+    let doc = s.document();
+    let max_x = doc
+        .walls_on(fnd_id)
+        .flat_map(|w| [w.start.x().mm(), w.end.x().mm()])
+        .fold(f64::NEG_INFINITY, f64::max);
+    assert!(
+        (max_x - (Length::from_feet(26.0).mm() + ext_half - t / 2.0)).abs() < 1e-6,
+        "{max_x}"
+    );
+}
+
+#[test]
+fn slab_foundation_removes_the_floor_platform() {
+    let mut s = boxed();
+    apply(&mut s, r#"[{"op": "build_foundation", "kind": "slab"}]"#);
+    let doc = s.document();
+    let floors = doc.floors_by_elevation();
+    assert_eq!(floors[1].floor_structure.mm(), 0.0);
+    assert!((floors[0].elevation.inches() + 4.0).abs() < 1e-9);
+    let err = Session::new(Document::new("empty"))
+        .apply(&commands(
+            r#"[{"op": "build_foundation", "kind": "basement"}]"#,
+        ))
+        .unwrap_err();
+    assert!(err.to_string().contains("enclose"), "{err}");
+}
+
+#[test]
+fn crawlspace_is_not_living_area() {
+    let mut s = boxed();
+    let before = query::summary(s.document()).living_area;
+    apply(
+        &mut s,
+        r#"[{"op": "build_foundation", "kind": "crawlspace"}]"#,
+    );
+    assert_eq!(query::summary(s.document()).living_area, before);
+}

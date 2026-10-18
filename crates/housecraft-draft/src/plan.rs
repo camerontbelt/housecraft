@@ -169,6 +169,23 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
                 },
             );
         }
+        if let Some(f) = wall.footing {
+            let hw = f.width.mm() / 2.0;
+            let (a, b) = (g.start - g.dir * hw, g.end + g.dir * hw);
+            let n = g.left * hw;
+            out.push(
+                Some(g.id),
+                Prim::Polyline {
+                    points: vec![a - n, b - n, b + n, a + n],
+                    closed: true,
+                    stroke: Stroke {
+                        width: look.stroke.width * 0.5,
+                        dash: &[2.0, 1.2],
+                        ..look.stroke
+                    },
+                },
+            );
+        }
         for [a, b] in g.outline_segments(&openings) {
             out.push(
                 Some(g.id),

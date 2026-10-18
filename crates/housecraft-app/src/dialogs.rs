@@ -117,8 +117,31 @@ pub struct WallTypesDialog {
     edit: Option<(Id, Vec<LayerRow>)>,
 }
 
+pub struct FoundationDialog {
+    pub open: bool,
+    kind: FoundationKind,
+    wall_height: String,
+    footing_width: String,
+    footing_depth: String,
+    auto_rebuild: bool,
+}
+
+impl Default for FoundationDialog {
+    fn default() -> Self {
+        FoundationDialog {
+            open: false,
+            kind: FoundationKind::Crawlspace,
+            wall_height: String::new(),
+            footing_width: String::new(),
+            footing_depth: String::new(),
+            auto_rebuild: true,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Dialogs {
+    pub foundation: FoundationDialog,
     pub print: PrintDialog,
     pub transform: TransformDialog,
     pub cad_op: CadOpDialog,
@@ -158,6 +181,7 @@ fn selection_center(doc: &Document, ids: &[Id]) -> DVec2 {
 }
 
 pub fn show(app: &mut App, ctx: &Context) {
+    foundation_dialog(app, ctx);
     print_dialog(app, ctx);
     transform_dialog(app, ctx);
     cad_op_dialog(app, ctx);
@@ -1218,4 +1242,64 @@ fn about_dialog(app: &mut App, ctx: &Context) {
             ui.label("Residential design and construction documents.");
             ui.label("Built in Rust with egui and wgpu. Also usable headless (housecraft CLI) and by AI assistants (housecraft mcp).");
         });
+}
+
+fn foundation_dialog(app: &mut App, ctx: &Context) {
+    let mut open = app.dialogs.foundation.open;
+    if !open {
+        return;
+    }
+    let mut command = None;
+    egui::Window::new("Build Foundation")
+        .open(&mut open)
+        .resizable(false)
+        .show(ctx, |ui| {
+            let doc = app.session.document();
+            let d = &mut app.dialogs.foundation;
+            ui.horizontal(|ui| {
+                ui.radio_value(&mut d.kind, FoundationKind::Slab, "Slab");
+                ui.radio_value(&mut d.kind, FoundationKind::Crawlspace, "Crawlspace / stem wall");
+                ui.radio_value(&mut d.kind, FoundationKind::Basement, "Basement");
+            });
+            let hint = match d.kind {
+                FoundationKind::Slab => "4\"",
+                FoundationKind::Crawlspace => "30\"",
+                FoundationKind::Basement => "8'",
+            };
+            egui::Grid::new("foundation_grid").num_columns(2).show(ui, |ui| {
+                ui.label(if d.kind == FoundationKind::Slab { "Slab thickness" } else { "Wall height" });
+                ui.add(egui::TextEdit::singleline(&mut d.wall_height).hint_text(hint));
+                ui.end_row();
+                ui.label("Footing width");
+                ui.add(egui::TextEdit::singleline(&mut d.footing_width).hint_text(if d.kind == FoundationKind::Slab { "12\"" } else { "16\"" }));
+                ui.end_row();
+                ui.label("Footing depth");
+                ui.add(egui::TextEdit::singleline(&mut d.footing_depth).hint_text(if d.kind == FoundationKind::Slab { "12\"" } else { "8\"" }));
+                ui.end_row();
+            });
+            ui.checkbox(&mut d.auto_rebuild, "Rebuild automatically when the floor above changes");
+            ui.weak("Built under the lowest floor, following its exterior walls. Running it again replaces the foundation.");
+            let opt = |s: &str| if s.trim().is_empty() { Some(None) } else { parse(doc, s).filter(|l| l.mm() > 0.0).map(Some) };
+            let parsed = (opt(&d.wall_height), opt(&d.footing_width), opt(&d.footing_depth));
+            let ok = parsed.0.is_some() && parsed.1.is_some() && parsed.2.is_some();
+            if ui.add_enabled(ok, egui::Button::new("Build")).clicked()
+                && let (Some(h), Some(w), Some(dp)) = parsed
+            {
+                command = Some(Command::BuildFoundation {
+                    kind: d.kind,
+                    wall_height: h,
+                    wall_thickness: None,
+                    footing_width: w,
+                    footing_depth: dp,
+                    slab_thickness: None,
+                    auto_rebuild: d.auto_rebuild,
+                });
+            }
+        });
+    app.dialogs.foundation.open = open && command.is_none();
+    if let Some(c) = command
+        && app.run1(c).is_some()
+    {
+        app.info("Foundation built");
+    }
 }
