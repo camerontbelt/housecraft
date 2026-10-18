@@ -298,6 +298,66 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "roof": { "overhang": l } })));
             }
         }
+        Object::Electrical(e) => {
+            Ed::label(ui, "Type");
+            let mut kind = e.electrical_kind;
+            egui::ComboBox::from_id_salt(ed.key("electrical_kind"))
+                .selected_text(kind.name())
+                .show_ui(ui, |ui| {
+                    for k in ElectricalKind::ALL {
+                        // Switches and fixtures don't swap (controls would dangle).
+                        if k.is_switch() == e.electrical_kind.is_switch() {
+                            ui.selectable_value(&mut kind, k, k.name());
+                        }
+                    }
+                });
+            if kind != e.electrical_kind {
+                ed.out.push(patch(id, json!({ "electrical_kind": kind })));
+            }
+            ui.end_row();
+            if let Some(p) = ed.point(ui, "Position", "position", e.position) {
+                ed.out.push(patch(id, json!({ "position": p })));
+            }
+            if let Some(n) = ed.number(ui, "Facing (deg)", "rotation", e.rotation) {
+                ed.out.push(patch(id, json!({ "rotation": n })));
+            }
+            match e.electrical_kind.default_height() {
+                Some(h) => ed.opt_length(ui, "Height", "height", e.height, Some(h)),
+                None => {
+                    Ed::label(ui, "Height");
+                    ui.weak("At the ceiling");
+                    ui.end_row();
+                }
+            }
+            if e.electrical_kind.is_switch() {
+                Ed::label(ui, "Switch type");
+                ui.label(doc.switch_labels().remove(&id).unwrap_or_default());
+                ui.end_row();
+                Ed::label(ui, "Controls");
+                ui.vertical(|ui| {
+                    if e.controls.is_empty() {
+                        ui.weak("Nothing yet. Use Connect Electrical to wire fixtures.");
+                    }
+                    for c in &e.controls {
+                        ui.horizontal(|ui| {
+                            let name = doc
+                                .get::<Electrical>(*c)
+                                .map_or("?", |x| x.electrical_kind.name());
+                            ui.label(format!("{name} #{}", c.0));
+                            if ui.small_button("Unwire").clicked() {
+                                ed.out.push(Command::ConnectSwitch {
+                                    switch: id,
+                                    fixtures: vec![*c],
+                                    disconnect: true,
+                                });
+                            }
+                        });
+                    }
+                });
+                ui.end_row();
+            }
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(e.layer), None);
+        }
         Object::Stair(s) => {
             let g = housecraft_api::geom::stairs::geometry(doc, s);
             Ed::label(ui, "Shape");

@@ -204,6 +204,15 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
             r.pitch.to_radians().tan() * 12.0,
             if r.auto { ", automatic" } else { "" }
         ),
+        Object::Electrical(e) if e.electrical_kind.is_switch() => {
+            let l = doc.switch_labels().remove(&e.id).unwrap_or_default();
+            format!(
+                "{} ({l}) controlling {} fixture(s)",
+                e.electrical_kind.name(),
+                e.controls.len()
+            )
+        }
+        Object::Electrical(e) => e.electrical_kind.name().to_string(),
         Object::Stair(s) => {
             let shape = match s.shape {
                 StairShape::Straight => "straight",

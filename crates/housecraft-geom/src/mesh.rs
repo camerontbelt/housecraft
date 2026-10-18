@@ -54,6 +54,8 @@ pub const ROOF_COLOR: [f32; 4] = [0.36, 0.34, 0.33, 1.0];
 pub const SOFFIT_COLOR: [f32; 4] = [0.9, 0.89, 0.86, 1.0];
 pub const STAIR_COLOR: [f32; 4] = [0.68, 0.52, 0.36, 1.0];
 pub const RAIL_COLOR: [f32; 4] = [0.95, 0.95, 0.93, 1.0];
+pub const DEVICE_COLOR: [f32; 4] = [0.96, 0.95, 0.92, 1.0];
+pub const LAMP_COLOR: [f32; 4] = [1.0, 0.93, 0.62, 1.0];
 pub const PLATFORM_COLOR: [f32; 4] = [0.82, 0.74, 0.6, 1.0];
 
 impl Mesh {
@@ -168,7 +170,101 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         stair_mesh(doc, stair, &mut mesh);
         mesh.end();
     }
+    for e in doc.iter::<housecraft_model::Electrical>() {
+        if only_floor.is_some_and(|f| f != e.floor) {
+            continue;
+        }
+        mesh.begin(e.id, Category::Fixture);
+        electrical_mesh(doc, e, &mut mesh);
+        mesh.end();
+    }
     mesh
+}
+
+/// A regular polygon approximating a circle.
+fn disc(c: DVec2, r: f64, sides: usize) -> Vec<DVec2> {
+    (0..sides)
+        .map(|i| c + DVec2::from_angle(i as f64 / sides as f64 * std::f64::consts::TAU) * r)
+        .collect()
+}
+
+/// A rectangle centred on `c`, `w` along `dir` and `d` across it.
+fn rect(c: DVec2, dir: DVec2, w: f64, d: f64) -> Vec<DVec2> {
+    let (u, v) = (dir * (w / 2.0), crate::math::perp(dir) * (d / 2.0));
+    ccw(vec![c - u - v, c + u - v, c + u + v, c - u + v])
+}
+
+fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut Mesh) {
+    use housecraft_model::ElectricalKind as K;
+    let Some(floor) = doc.get::<Floor>(e.floor) else {
+        return;
+    };
+    let z0 = floor.elevation.mm();
+    let ceiling = z0 + floor.ceiling_height.mm();
+    let p = v2(e.position);
+    let out = DVec2::from_angle(e.rotation.to_radians());
+    let along = crate::math::perp(out);
+    let z = e
+        .height
+        .or(e.electrical_kind.default_height())
+        .map(|h| z0 + h.mm());
+    match e.electrical_kind {
+        K::Outlet | K::GfciOutlet | K::Outlet240 | K::Switch | K::Dimmer => {
+            // Cover plate standing proud of the wall face.
+            let zc = z.unwrap_or(z0 + 300.0);
+            let plate = rect(p + out * 4.0, along, 70.0, 8.0);
+            mesh.prism(&plate, zc - 57.0, zc + 57.0, DEVICE_COLOR);
+        }
+        K::WallLight => {
+            let zc = z.unwrap_or(z0 + 1800.0);
+            mesh.prism(
+                &rect(p + out * 10.0, along, 120.0, 20.0),
+                zc - 100.0,
+                zc + 100.0,
+                DEVICE_COLOR,
+            );
+            mesh.prism(
+                &rect(p + out * 70.0, along, 150.0, 100.0),
+                zc - 60.0,
+                zc + 140.0,
+                LAMP_COLOR,
+            );
+        }
+        K::CeilingLight => {
+            mesh.prism(&disc(p, 170.0, 16), ceiling - 90.0, ceiling, LAMP_COLOR);
+        }
+        K::RecessedLight => {
+            mesh.prism(&disc(p, 90.0, 16), ceiling - 6.0, ceiling, LAMP_COLOR);
+        }
+        K::SmokeDetector => {
+            mesh.prism(&disc(p, 65.0, 12), ceiling - 40.0, ceiling, DEVICE_COLOR);
+        }
+        K::JunctionBox => {
+            mesh.prism(
+                &rect(p, DVec2::X, 100.0, 100.0),
+                ceiling - 50.0,
+                ceiling,
+                DEVICE_COLOR,
+            );
+        }
+        K::CeilingFan => {
+            let hub = ceiling - 300.0;
+            mesh.prism(&disc(p, 20.0, 8), hub, ceiling, DEVICE_COLOR);
+            mesh.prism(&disc(p, 110.0, 16), hub - 120.0, hub, DEVICE_COLOR);
+            for i in 0..4 {
+                let d = DVec2::from_angle(
+                    e.rotation.to_radians() + i as f64 * std::f64::consts::FRAC_PI_2,
+                );
+                mesh.prism(
+                    &rect(p + d * 420.0, d, 640.0, 130.0),
+                    hub - 60.0,
+                    hub - 48.0,
+                    STAIR_COLOR,
+                );
+            }
+            mesh.prism(&disc(p, 80.0, 12), hub - 200.0, hub - 120.0, LAMP_COLOR);
+        }
+    }
 }
 
 fn stair_mesh(doc: &Document, stair: &housecraft_model::Stair, mesh: &mut Mesh) {

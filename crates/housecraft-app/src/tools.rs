@@ -2,7 +2,7 @@
 //! Tool Palette. Names and hotkeys follow the conventions residential CAD users
 //! already know, so muscle memory carries over.
 
-use housecraft_api::model::{DoorStyle, WindowStyle};
+use housecraft_api::model::{DoorStyle, ElectricalKind, WindowStyle};
 
 use crate::icons::Icon;
 
@@ -27,6 +27,9 @@ pub enum Tool {
     Point,
     RoofPlane,
     Stair(StairKind),
+    Electrical(ElectricalKind),
+    /// Wire switches to the fixtures they control.
+    ConnectSwitch,
 }
 
 /// The shapes offered by the stair tools.
@@ -142,7 +145,7 @@ impl Family {
 
     /// Families whose tools are not built yet are shown disabled.
     pub fn available(self) -> bool {
-        !matches!(self, Family::Cabinets | Family::Electrical)
+        !matches!(self, Family::Cabinets)
     }
 
     pub fn tools(self) -> &'static [Tool] {
@@ -189,7 +192,21 @@ impl Family {
                 Tool::Stair(StairKind::L),
                 Tool::Stair(StairKind::U),
             ],
-            Family::Cabinets | Family::Electrical | Family::Cameras => &[],
+            Family::Electrical => &[
+                Tool::Electrical(ElectricalKind::Outlet),
+                Tool::Electrical(ElectricalKind::GfciOutlet),
+                Tool::Electrical(ElectricalKind::Outlet240),
+                Tool::Electrical(ElectricalKind::Switch),
+                Tool::Electrical(ElectricalKind::Dimmer),
+                Tool::Electrical(ElectricalKind::CeilingLight),
+                Tool::Electrical(ElectricalKind::RecessedLight),
+                Tool::Electrical(ElectricalKind::WallLight),
+                Tool::Electrical(ElectricalKind::CeilingFan),
+                Tool::Electrical(ElectricalKind::SmokeDetector),
+                Tool::Electrical(ElectricalKind::JunctionBox),
+                Tool::ConnectSwitch,
+            ],
+            Family::Cabinets | Family::Cameras => &[],
         }
     }
 
@@ -210,6 +227,7 @@ impl Tool {
             Tool::Text => Family::Text,
             Tool::RoofPlane => Family::Roofs,
             Tool::Stair(_) => Family::Stairs,
+            Tool::Electrical(_) | Tool::ConnectSwitch => Family::Electrical,
             _ => Family::Cad,
         }
     }
@@ -237,6 +255,8 @@ impl Tool {
             Tool::Stair(StairKind::Straight) => "Straight Stair",
             Tool::Stair(StairKind::L) => "L-Shaped Stair",
             Tool::Stair(StairKind::U) => "U-Shaped Stair",
+            Tool::Electrical(k) => k.name(),
+            Tool::ConnectSwitch => "Connect Electrical",
         }
     }
 
@@ -268,6 +288,7 @@ impl Tool {
             Tool::Point => Icon::Point,
             Tool::RoofPlane => Icon::Roof,
             Tool::Stair(_) => Icon::Stairs,
+            Tool::Electrical(_) | Tool::ConnectSwitch => Icon::Electrical,
         }
     }
 
@@ -319,6 +340,11 @@ impl Tool {
             Tool::Point => "Click to place a point.",
             Tool::Stair(_) => {
                 "Click the bottom of the stair, then click in the direction it climbs."
+            }
+            Tool::Electrical(k) if k.on_wall() => "Click near a wall to place it on the wall face.",
+            Tool::Electrical(_) => "Click to place it on the ceiling.",
+            Tool::ConnectSwitch => {
+                "Click a switch, then click fixtures to wire or unwire them. Shared fixtures make 3-way and 4-way switches."
             }
             Tool::RoofPlane => {
                 "Click the two ends of the eave, then the other corners; double-click or Enter to finish."

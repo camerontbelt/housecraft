@@ -361,6 +361,7 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_plan_view", "name": "Second"}},
                 {{"op": "build_roof"}},
                 {{"op": "add_stair", "start": ["5'","5'"], "direction": 90}},
+                {{"op": "add_electrical", "electrical_kind": "outlet", "at": [0,"5'"]}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
             w = wall.0
         ),
@@ -715,4 +716,78 @@ fn garage_doors_get_their_own_size_and_doors_open_in_3d() {
         }])
         .is_err()
     );
+}
+
+#[test]
+fn switches_sharing_a_light_become_three_and_four_way() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_electrical", "electrical_kind": "ceiling_light", "at": ["10'","15'"]},
+            {"op": "add_electrical", "electrical_kind": "switch", "at": ["1'","5'"]},
+            {"op": "add_electrical", "electrical_kind": "switch", "at": ["19'","5'"]},
+            {"op": "add_electrical", "electrical_kind": "dimmer", "at": ["10'","29'"]},
+            {"op": "add_electrical", "electrical_kind": "switch", "at": ["5'","29'"]}]"#,
+    );
+    let [light, a, b, c, lone] = out.created[..] else {
+        panic!("five objects")
+    };
+    // Wall devices snap to the wall face and face into the room.
+    let sw = s.document().get::<Electrical>(a).unwrap();
+    let inner = Length::from_inches(7.1875 / 2.0).mm();
+    assert!(
+        (sw.position.x().mm() - inner).abs() < 1.0,
+        "{:?}",
+        sw.position
+    );
+    assert!(
+        sw.rotation.abs() < 1e-6,
+        "faces east, into the room: {}",
+        sw.rotation
+    );
+    // Ceiling fixtures stay where they were clicked.
+    assert_eq!(
+        s.document().get::<Electrical>(light).unwrap().position,
+        housecraft_api::units::Point2::from_mm(
+            Length::from_feet(10.0).mm(),
+            Length::from_feet(15.0).mm()
+        )
+    );
+
+    let connect = |s: &mut Session, sw: Id| {
+        s.apply(&[Command::ConnectSwitch {
+            switch: sw,
+            fixtures: vec![light],
+            disconnect: false,
+        }])
+        .unwrap();
+    };
+    connect(&mut s, a);
+    assert_eq!(s.document().switch_labels()[&a], "S");
+    connect(&mut s, b);
+    let labels = s.document().switch_labels();
+    assert_eq!((labels[&a].as_str(), labels[&b].as_str()), ("S3", "S3"));
+    connect(&mut s, c);
+    let labels = s.document().switch_labels();
+    assert_eq!(labels[&c], "S4D");
+    assert_eq!(labels[&lone], "S");
+
+    // Switches can't control switches; deleting a fixture unwires it.
+    assert!(
+        s.apply(&[Command::ConnectSwitch {
+            switch: a,
+            fixtures: vec![b],
+            disconnect: false
+        }])
+        .is_err()
+    );
+    s.apply(&[Command::Delete { ids: vec![light] }]).unwrap();
+    assert!(
+        s.document()
+            .get::<Electrical>(a)
+            .unwrap()
+            .controls
+            .is_empty()
+    );
+    assert_eq!(s.document().switch_labels()[&b], "S");
 }

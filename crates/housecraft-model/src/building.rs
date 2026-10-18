@@ -117,6 +117,105 @@ pub enum StairShape {
     },
 }
 
+/// Electrical devices and fixtures.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ElectricalKind {
+    Outlet,
+    GfciOutlet,
+    /// 240 V appliance receptacle.
+    Outlet240,
+    Switch,
+    Dimmer,
+    CeilingLight,
+    RecessedLight,
+    WallLight,
+    CeilingFan,
+    SmokeDetector,
+    JunctionBox,
+}
+
+impl ElectricalKind {
+    pub const ALL: [ElectricalKind; 11] = [
+        ElectricalKind::Outlet,
+        ElectricalKind::GfciOutlet,
+        ElectricalKind::Outlet240,
+        ElectricalKind::Switch,
+        ElectricalKind::Dimmer,
+        ElectricalKind::CeilingLight,
+        ElectricalKind::RecessedLight,
+        ElectricalKind::WallLight,
+        ElectricalKind::CeilingFan,
+        ElectricalKind::SmokeDetector,
+        ElectricalKind::JunctionBox,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            ElectricalKind::Outlet => "Duplex Outlet",
+            ElectricalKind::GfciOutlet => "GFCI Outlet",
+            ElectricalKind::Outlet240 => "240V Outlet",
+            ElectricalKind::Switch => "Switch",
+            ElectricalKind::Dimmer => "Dimmer Switch",
+            ElectricalKind::CeilingLight => "Ceiling Light",
+            ElectricalKind::RecessedLight => "Recessed Light",
+            ElectricalKind::WallLight => "Wall Light",
+            ElectricalKind::CeilingFan => "Ceiling Fan",
+            ElectricalKind::SmokeDetector => "Smoke Detector",
+            ElectricalKind::JunctionBox => "Junction Box",
+        }
+    }
+
+    pub fn is_switch(self) -> bool {
+        matches!(self, ElectricalKind::Switch | ElectricalKind::Dimmer)
+    }
+
+    /// Mounted on a wall face (snaps to walls when placed).
+    pub fn on_wall(self) -> bool {
+        matches!(
+            self,
+            ElectricalKind::Outlet
+                | ElectricalKind::GfciOutlet
+                | ElectricalKind::Outlet240
+                | ElectricalKind::Switch
+                | ElectricalKind::Dimmer
+                | ElectricalKind::WallLight
+        )
+    }
+
+    /// Typical mounting height to the centre of the device; `None` for
+    /// ceiling-mounted fixtures, which sit at the room's ceiling.
+    pub fn default_height(self) -> Option<Length> {
+        Some(Length::from_inches(match self {
+            ElectricalKind::Outlet | ElectricalKind::GfciOutlet => 12.0,
+            ElectricalKind::Outlet240 => 18.0,
+            ElectricalKind::Switch | ElectricalKind::Dimmer => 48.0,
+            ElectricalKind::WallLight => 72.0,
+            _ => return None,
+        }))
+    }
+}
+
+/// An electrical device or fixture. Switches list the fixtures they control;
+/// two or more switches sharing a fixture become 3-way and 4-way switches.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Electrical {
+    pub id: Id,
+    pub floor: Id,
+    pub electrical_kind: ElectricalKind,
+    /// Plan position (on the wall face for wall-mounted devices).
+    pub position: Point2,
+    /// Degrees; wall devices face this direction (into the room).
+    #[serde(default)]
+    pub rotation: f64,
+    /// Height above the floor; `None` uses the kind's default (ceiling for fixtures).
+    #[serde(default)]
+    pub height: Option<Length>,
+    /// Fixtures this switch controls (switches only).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub controls: Vec<Id>,
+    pub layer: Id,
+}
 /// A stair from its floor up to the floor above.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Stair {

@@ -220,6 +220,9 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 if let Some(l) = d.layers.stairs {
                     c.reference(id, "layers.stairs", l, K::Layer);
                 }
+                if let Some(l) = d.layers.electrical {
+                    c.reference(id, "layers.electrical", l, K::Layer);
+                }
                 c.positive(id, "window.width", d.window.width);
                 c.positive(id, "window.height", d.window.height);
                 if d.window.head_height.mm() < d.window.height.mm() {
@@ -342,6 +345,33 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     c.issue(id, "pitch must be between 0 and 90 degrees");
                 }
                 c.non_negative(id, "thickness", r.thickness);
+            }
+            Object::Electrical(e) => {
+                c.reference(id, "floor", e.floor, K::Floor);
+                c.reference(id, "layer", e.layer, K::Layer);
+                c.finite(
+                    id,
+                    "position",
+                    &[e.position.mm()[0], e.position.mm()[1], e.rotation],
+                );
+                if let Some(h) = e.height {
+                    c.non_negative(id, "height", h);
+                }
+                if !e.controls.is_empty() && !e.electrical_kind.is_switch() {
+                    c.issue(id, "only switches control other fixtures");
+                }
+                for t in &e.controls {
+                    match c.doc.get::<Electrical>(*t) {
+                        None => c.issue(
+                            id,
+                            format!("controls {t}, which is not an electrical object"),
+                        ),
+                        Some(x) if x.electrical_kind.is_switch() => {
+                            c.issue(id, format!("controls {t}, which is a switch"))
+                        }
+                        Some(_) => {}
+                    }
+                }
             }
             Object::Stair(st) => {
                 c.reference(id, "floor", st.floor, K::Floor);

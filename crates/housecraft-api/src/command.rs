@@ -88,6 +88,27 @@ pub enum Command {
         #[serde(default = "yes")]
         stairwell: bool,
     },
+    /// Place an electrical device or fixture. Wall devices (outlets,
+    /// switches, wall lights) snap to the nearest wall face within 2' and
+    /// face into the room unless `rotation` is given.
+    AddElectrical {
+        floor: Option<Id>,
+        electrical_kind: ElectricalKind,
+        at: Point2,
+        rotation: Option<f64>,
+        height: Option<Length>,
+        /// Fixtures a switch controls.
+        #[serde(default)]
+        controls: Vec<Id>,
+    },
+    /// Wire a switch to fixtures (or unwire with `disconnect`). Switches that
+    /// share a fixture become 3-way and 4-way automatically.
+    ConnectSwitch {
+        switch: Id,
+        fixtures: Vec<Id>,
+        #[serde(default)]
+        disconnect: bool,
+    },
     /// Exchange everything drawn on two floors (walls, rooms, CAD, text...),
     /// keeping the floors' own heights.
     SwapFloors { a: Id, b: Id },
@@ -400,6 +421,8 @@ impl Command {
             Command::RemoveRoof { .. } => "remove_roof",
             Command::AddRoofPlane { .. } => "add_roof_plane",
             Command::AddStair { .. } => "add_stair",
+            Command::AddElectrical { .. } => "add_electrical",
+            Command::ConnectSwitch { .. } => "connect_switch",
             Command::AddWallType { .. } => "add_wall_type",
             Command::AddLayer { .. } => "add_layer",
             Command::AddLayerSet { .. } => "add_layer_set",
@@ -608,6 +631,71 @@ impl Command {
                     _ => {}
                 }
                 out.created.push(doc.insert(stair));
+            }
+            Command::AddElectrical {
+                floor,
+                electrical_kind,
+                at,
+                rotation,
+                height,
+                controls,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                let mut position = *at;
+                let mut angle = rotation.unwrap_or(0.0);
+                if electrical_kind.on_wall()
+                    && rotation.is_none()
+                    && let Some((q, a)) = housecraft_geom::electrical::snap_to_wall(
+                        doc,
+                        floor,
+                        housecraft_geom::v2(*at),
+                        Length::from_feet(2.0).mm(),
+                    )
+                {
+                    position = housecraft_geom::pt(q);
+                    angle = a;
+                }
+                if !controls.is_empty() && !electrical_kind.is_switch() {
+                    return invalid("only switches control fixtures");
+                }
+                out.created.push(doc.insert(Electrical {
+                    id: Id(0),
+                    floor,
+                    electrical_kind: *electrical_kind,
+                    position,
+                    rotation: angle,
+                    height: *height,
+                    controls: controls.clone(),
+                    layer: d.layers.electrical.unwrap_or(d.layers.cad),
+                }));
+            }
+            Command::ConnectSwitch {
+                switch,
+                fixtures,
+                disconnect,
+            } => {
+                let sw = expect::<Electrical>(doc, *switch)?;
+                if !sw.electrical_kind.is_switch() {
+                    return invalid(format!(
+                        "{switch} is a {}, not a switch",
+                        sw.electrical_kind.name()
+                    ));
+                }
+                for f in fixtures {
+                    let fx = expect::<Electrical>(doc, *f)?;
+                    if fx.electrical_kind.is_switch() {
+                        return invalid(format!("{f} is a switch; connect switches to fixtures"));
+                    }
+                }
+                let sw = doc.get_mut::<Electrical>(*switch).expect("checked");
+                for f in fixtures {
+                    if *disconnect {
+                        sw.controls.retain(|c| c != f);
+                    } else if !sw.controls.contains(f) {
+                        sw.controls.push(*f);
+                    }
+                }
+                out.modified.push(*switch);
             }
             Command::SwapFloors { a, b } => {
                 expect::<Floor>(doc, *a)?;

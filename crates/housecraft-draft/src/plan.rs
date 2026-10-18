@@ -401,6 +401,41 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             stair_symbol(doc, stair, here, look.stroke, style.height.mm(), &mut out);
         }
     }
+    let switch_labels = doc.switch_labels();
+    for e in doc.iter::<Electrical>().filter(|e| e.floor == opts.floor) {
+        let look = ctx.look(e.layer);
+        if !look.visible {
+            continue;
+        }
+        let label = switch_labels.get(&e.id).map(String::as_str);
+        electrical_symbol(e, label, look.stroke, &mut out);
+        // Switch legs: a dashed curve to each fixture it controls.
+        for target in e.controls.iter().filter_map(|t| doc.get::<Electrical>(*t)) {
+            if target.floor != opts.floor {
+                continue;
+            }
+            let (a, b) = (v2(e.position), v2(target.position));
+            let mid = (a + b) / 2.0 + perp((b - a).normalize_or_zero()) * a.distance(b) * 0.2;
+            let points: Vec<DVec2> = (0..=16)
+                .map(|i| {
+                    let t = i as f64 / 16.0;
+                    a * (1.0 - t) * (1.0 - t) + mid * 2.0 * t * (1.0 - t) + b * t * t
+                })
+                .collect();
+            out.push(
+                Some(e.id),
+                Prim::Polyline {
+                    points,
+                    closed: false,
+                    stroke: Stroke {
+                        width: look.stroke.width * 0.6,
+                        dash: &[2.0, 1.2],
+                        ..look.stroke
+                    },
+                },
+            );
+        }
+    }
     for dim in doc.iter::<Dimension>().filter(|d| d.floor == opts.floor) {
         let look = ctx.look(dim.layer);
         if !look.visible {
@@ -443,6 +478,133 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         );
     }
     out
+}
+
+/// Plan symbol for an electrical device, drawn about its position. Wall
+/// devices are drawn just inside the room, facing `rotation`.
+fn electrical_symbol(
+    e: &Electrical,
+    switch_label: Option<&str>,
+    stroke: Stroke,
+    out: &mut Drawing,
+) {
+    use ElectricalKind as K;
+    let id = Some(e.id);
+    let p = v2(e.position);
+    let n = DVec2::from_angle(e.rotation.to_radians());
+    let t = perp(n);
+    let line = |out: &mut Drawing, a: DVec2, b: DVec2| {
+        out.push(
+            id,
+            Prim::Polyline {
+                points: vec![a, b],
+                closed: false,
+                stroke,
+            },
+        );
+    };
+    let circle = |out: &mut Drawing, c: DVec2, r: f64| {
+        out.push(
+            id,
+            Prim::Polyline {
+                points: arc_points(c, r, 0.0, 360.0),
+                closed: true,
+                stroke,
+            },
+        );
+    };
+    let text = |out: &mut Drawing, at: DVec2, s: &str, h: f64| {
+        out.push(
+            id,
+            Prim::Text {
+                at,
+                text: s.into(),
+                height: h,
+                rotation: 0.0,
+                justify: Justify::Center,
+                middle: true,
+                bold: false,
+                ink: stroke.ink,
+            },
+        );
+    };
+    let r = 100.0;
+    match e.electrical_kind {
+        K::Outlet | K::GfciOutlet | K::Outlet240 => {
+            let c = p + n * r;
+            circle(out, c, r);
+            // Prongs: two lines parallel to the wall (three for 240 V).
+            let prongs: &[f64] = if e.electrical_kind == K::Outlet240 {
+                &[-0.5, 0.0, 0.5]
+            } else {
+                &[-0.35, 0.35]
+            };
+            for k in prongs {
+                let o = n * (r * k);
+                line(out, c + o - t * r * 1.5, c + o + t * r * 1.5);
+            }
+            if e.electrical_kind == K::GfciOutlet {
+                text(out, c + n * r * 2.2, "GFI", r * 1.1);
+            }
+        }
+        K::Switch | K::Dimmer => {
+            let c = p + n * r * 2.0;
+            line(out, p, p + n * r);
+            text(out, c, switch_label.unwrap_or("S"), r * 1.6);
+        }
+        K::WallLight => {
+            let c = p + n * r * 0.9;
+            circle(out, c, r * 0.9);
+            line(out, p - t * r * 1.2, p + t * r * 1.2);
+            line(
+                out,
+                c - t * r * 0.6 - n * r * 0.6,
+                c + t * r * 0.6 + n * r * 0.6,
+            );
+            line(
+                out,
+                c + t * r * 0.6 - n * r * 0.6,
+                c - t * r * 0.6 + n * r * 0.6,
+            );
+        }
+        K::CeilingLight => {
+            circle(out, p, r * 1.5);
+            for d in [DVec2::new(1.0, 1.0), DVec2::new(1.0, -1.0)] {
+                let d = d.normalize() * r * 1.5;
+                line(out, p - d, p + d);
+            }
+        }
+        K::RecessedLight => {
+            circle(out, p, r * 1.2);
+            circle(out, p, r * 0.6);
+        }
+        K::CeilingFan => {
+            circle(out, p, r * 0.8);
+            for i in 0..4 {
+                let d = DVec2::from_angle(
+                    e.rotation.to_radians() + i as f64 * std::f64::consts::FRAC_PI_2,
+                );
+                let q = perp(d) * r * 0.6;
+                let (a, b) = (p + d * r * 0.8, p + d * r * 4.5);
+                out.push(
+                    id,
+                    Prim::Polyline {
+                        points: vec![a - q * 0.5, b - q, b + q, a + q * 0.5],
+                        closed: true,
+                        stroke,
+                    },
+                );
+            }
+        }
+        K::SmokeDetector => {
+            circle(out, p, r * 1.4);
+            text(out, p, "SD", r * 1.1);
+        }
+        K::JunctionBox => {
+            circle(out, p, r * 1.2);
+            text(out, p, "J", r * 1.4);
+        }
+    }
 }
 
 /// Height above the floor where the plan cut line crosses a stair.

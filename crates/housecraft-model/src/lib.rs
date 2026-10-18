@@ -51,6 +51,8 @@ macro_rules! objects {
         /// Any object in a document, tagged by `kind`.
         #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
         #[serde(tag = "kind", rename_all = "snake_case")]
+        // Default sets are the big variant; there are few, so boxing buys nothing.
+        #[allow(clippy::large_enum_variant)]
         pub enum Object {
             $($variant($variant)),*
         }
@@ -136,6 +138,7 @@ objects! {
     Camera => "camera",
     RoofPlane => "roof_plane",
     Stair => "stair",
+    Electrical => "electrical",
 }
 
 impl fmt::Display for ObjectKind {
@@ -156,6 +159,7 @@ impl ObjectKind {
                 | ObjectKind::Text
                 | ObjectKind::RoofPlane
                 | ObjectKind::Stair
+                | ObjectKind::Electrical
         )
     }
 }
@@ -296,6 +300,7 @@ impl Document {
             Object::Text(t) => Some(t.floor),
             Object::RoofPlane(r) => Some(r.floor),
             Object::Stair(s) => Some(s.floor),
+            Object::Electrical(e) => Some(e.floor),
             _ => None,
         }
     }
@@ -311,10 +316,59 @@ impl Document {
             Object::Text(t) => Some(t.layer),
             Object::RoofPlane(r) => Some(r.layer),
             Object::Stair(s) => Some(s.layer),
+            Object::Electrical(e) => Some(e.layer),
             _ => None,
         }
     }
 
+    /// Switch label for each switch: "S", "S3" or "S4" (with "D" for dimmers),
+    /// from how many switches share fixtures. Two switches on a fixture are
+    /// both 3-way; with more, the first two (by id) are 3-way and the rest 4-way.
+    pub fn switch_labels(&self) -> BTreeMap<Id, String> {
+        let switches: Vec<&Electrical> = self
+            .iter::<Electrical>()
+            .filter(|e| e.electrical_kind.is_switch())
+            .collect();
+        // Union-find over switches that share a controlled fixture.
+        let n = switches.len();
+        let mut parent: Vec<usize> = (0..n).collect();
+        fn root(parent: &mut [usize], mut i: usize) -> usize {
+            while parent[i] != i {
+                parent[i] = parent[parent[i]];
+                i = parent[i];
+            }
+            i
+        }
+        for i in 0..n {
+            for j in i + 1..n {
+                if switches[i]
+                    .controls
+                    .iter()
+                    .any(|c| switches[j].controls.contains(c))
+                {
+                    let (ri, rj) = (root(&mut parent, i), root(&mut parent, j));
+                    parent[rj] = ri;
+                }
+            }
+        }
+        // Each switch's group root; switches come in id order.
+        let groups: Vec<usize> = (0..n).map(|i| root(&mut parent, i)).collect();
+        let mut labels = BTreeMap::new();
+        for (i, s) in switches.iter().enumerate() {
+            let size = groups.iter().filter(|g| **g == groups[i]).count();
+            let pos = groups[..i].iter().filter(|g| **g == groups[i]).count();
+            let mut label = match (size, pos) {
+                (1, _) => "S".to_string(),
+                (_, 0 | 1) => "S3".to_string(),
+                _ => "S4".to_string(),
+            };
+            if s.electrical_kind == ElectricalKind::Dimmer {
+                label.push('D');
+            }
+            labels.insert(s.id, label);
+        }
+        labels
+    }
     /// The active default set. Panics only on a document that fails [`Document::validate`].
     pub fn active_defaults(&self) -> &DefaultSet {
         self.get::<DefaultSet>(self.settings.active_default_set)

@@ -645,6 +645,13 @@ impl App {
                         self.set_tool(Tool::RoofPlane);
                     }
                 });
+                ui.menu_button("Electrical", |ui| {
+                    for tool in Family::Electrical.tools() {
+                        if tool_item(ui, *tool) {
+                            self.set_tool(*tool);
+                        }
+                    }
+                });
                 ui.menu_button("Stairs", |ui| {
                     for tool in Family::Stairs.tools() {
                         if tool_item(ui, *tool) {
@@ -702,9 +709,7 @@ impl App {
                     }
                 });
                 ui.separator();
-                for f in [Family::Cabinets, Family::Roofs, Family::Electrical] {
-                    item(ui, f.name(), "coming soon", false);
-                }
+                item(ui, Family::Cabinets.name(), "coming soon", false);
             });
             ui.menu_button("Terrain", |ui| {
                 ui.weak("Terrain tools are planned for a later release (backlog M6).");

@@ -349,6 +349,12 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             }
             Object::Stair(st)
         }
+        Object::Electrical(e) => {
+            let mut e = e.clone();
+            e.position = t.apply_point(e.position);
+            e.rotation = t.apply_angle(e.rotation);
+            Object::Electrical(e)
+        }
         Object::RoofPlane(r) => {
             let mut r = r.clone();
             for p in r.outline.iter_mut() {
@@ -829,6 +835,7 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
             Object::Text(t) if t.style.is_some_and(|s| doomed.contains(&s)) => {
                 t.style = None;
             }
+            Object::Electrical(e) => e.controls.retain(|c| !doomed.contains(c)),
             _ => {}
         }
     }
@@ -875,12 +882,24 @@ pub(crate) fn insert_objects(
                 Object::Text(t) => t.floor = f,
                 Object::RoofPlane(r) => r.floor = f,
                 Object::Stair(s) => s.floor = f,
+                Object::Electrical(e) => e.floor = f,
                 _ => {}
             }
         }
         let new = doc.insert(object);
         remap.insert(old, new);
         out.created.push(new);
+    }
+    // Pasted switches control the pasted copies of their fixtures; controls
+    // that were not pasted along are dropped.
+    for new in &out.created {
+        if let Some(e) = doc.get_mut::<Electrical>(*new) {
+            e.controls = e
+                .controls
+                .iter()
+                .filter_map(|c| remap.get(c).copied())
+                .collect();
+        }
     }
     Ok(())
 }
@@ -904,6 +923,7 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::Text(t) => &mut t.floor,
             Object::RoofPlane(r) => &mut r.floor,
             Object::Stair(s) => &mut s.floor,
+            Object::Electrical(e) => &mut e.floor,
             _ => continue,
         };
         let before = *floor;

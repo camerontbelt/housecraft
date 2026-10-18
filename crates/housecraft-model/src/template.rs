@@ -53,6 +53,12 @@ pub(crate) fn new_document(name: String) -> Document {
         Some(Color::rgb(0x9a, 0x4a, 0x1f)),
     );
     let stairs = layer(&mut doc, "Stairs", 0.25, None);
+    let electrical = layer(
+        &mut doc,
+        "Electrical",
+        0.18,
+        Some(Color::rgb(0x8a, 0x2b, 0x8f)),
+    );
 
     let style = |doc: &mut Document, name: &str, height: Length, bold: bool| {
         doc.insert(TextStyle {
@@ -161,6 +167,7 @@ pub(crate) fn new_document(name: String) -> Document {
             text,
             roofs: Some(roofs),
             stairs: Some(stairs),
+            electrical: Some(electrical),
         },
         dimensions: DimensionDefaults {
             text_style: dim_text,

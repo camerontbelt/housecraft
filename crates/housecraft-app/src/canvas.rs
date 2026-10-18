@@ -69,6 +69,8 @@ pub struct PlanState {
     candidates: Vec<Id>,
     text_prompt: Option<(DVec2, String)>,
     temp_dim_edit: Option<(Id, String, bool)>,
+    /// The switch being wired by the Connect Electrical tool.
+    pub wiring: Option<Id>,
 }
 
 impl PlanState {
@@ -99,11 +101,13 @@ impl PlanState {
             candidates: Vec::new(),
             text_prompt: None,
             temp_dim_edit: None,
+            wiring: None,
         }
     }
 
     pub fn set_tool(&mut self, tool: Tool) {
         self.tool = tool;
+        self.wiring = None;
         self.pending.clear();
         self.length_input = None;
         self.drag = None;
@@ -872,6 +876,47 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     }
                 } else {
                     pending.push(p);
+                }
+            }
+            Tool::Electrical(kind) => commands.push(Command::AddElectrical {
+                floor,
+                electrical_kind: kind,
+                at: pt(p),
+                rotation: None,
+                height: None,
+                controls: Vec::new(),
+            }),
+            Tool::ConnectSwitch => {
+                let reach = (PICK_PX * view.mpp).max(250.0);
+                let hit = doc
+                    .iter::<Electrical>()
+                    .filter(|e| e.floor == app.plan.floor)
+                    .map(|e| (v2(e.position).distance(p), e))
+                    .filter(|(d, _)| *d <= reach)
+                    .min_by(|a, b| a.0.total_cmp(&b.0))
+                    .map(|(_, e)| e);
+                match (hit, app.plan.wiring) {
+                    (Some(e), _) if e.electrical_kind.is_switch() => {
+                        app.plan.wiring = Some(e.id);
+                        app.status =
+                            Some(("Now click the fixtures this switch controls.".into(), false));
+                    }
+                    (Some(e), Some(sw)) => {
+                        let wired = doc
+                            .get::<Electrical>(sw)
+                            .is_some_and(|s| s.controls.contains(&e.id));
+                        commands.push(Command::ConnectSwitch {
+                            switch: sw,
+                            fixtures: vec![e.id],
+                            disconnect: wired,
+                        });
+                    }
+                    (Some(_), None) => {
+                        app.status = Some(("Click a switch first.".into(), true));
+                    }
+                    (None, _) => {
+                        app.status = Some(("Click on a switch or fixture.".into(), true));
+                    }
                 }
             }
             Tool::RoofPlane => pending.push(p),

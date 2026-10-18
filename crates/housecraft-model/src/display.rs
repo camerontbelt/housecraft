@@ -226,6 +226,9 @@ pub struct KindLayers {
     /// Stairs; falls back to the walls layer when unset (older files).
     #[serde(default)]
     pub stairs: Option<Id>,
+    /// Electrical; falls back to the CAD layer when unset (older files).
+    #[serde(default)]
+    pub electrical: Option<Id>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
