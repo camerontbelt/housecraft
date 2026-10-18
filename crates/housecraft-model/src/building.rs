@@ -14,6 +14,15 @@ pub struct Floor {
     pub elevation: Length,
     /// Finished floor to finished ceiling.
     pub ceiling_height: Length,
+    /// Depth of the floor platform (subfloor + joists) under this floor's
+    /// finished surface; the floor sits on the ceiling of the floor below.
+    #[serde(default = "default_floor_structure")]
+    pub floor_structure: Length,
+}
+
+/// 3/4" subfloor on 11 7/8" I-joists.
+pub fn default_floor_structure() -> Length {
+    Length::from_inches(12.625)
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -149,4 +158,21 @@ pub struct Room {
     pub ceiling_height: Option<Length>,
     pub floor_finish: Option<String>,
     pub layer: Id,
+    #[serde(default)]
+    pub ceiling: CeilingStyle,
+}
+
+/// The shape of a room's ceiling.
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "style", rename_all = "snake_case")]
+pub enum CeilingStyle {
+    /// Flat at the room's ceiling height.
+    #[default]
+    Flat,
+    /// Follows the underside of the roof above (flat until a roof exists).
+    Vaulted,
+    /// A raised centre: the flat ceiling steps up `rise` at `inset` from the walls.
+    Tray { inset: Length, rise: Length },
+    /// Open to the floor above (no ceiling or platform drawn).
+    None,
 }

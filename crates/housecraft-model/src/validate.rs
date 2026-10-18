@@ -89,7 +89,10 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
             c.issue(*key, format!("stored under key {key} but has id {id}"));
         }
         match object {
-            Object::Floor(f) => c.positive(id, "ceiling_height", f.ceiling_height),
+            Object::Floor(f) => {
+                c.positive(id, "ceiling_height", f.ceiling_height);
+                c.non_negative(id, "floor_structure", f.floor_structure);
+            }
             Object::WallType(t) => {
                 if t.layers.is_empty() {
                     c.issue(id, "wall type has no layers");
@@ -140,6 +143,10 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 c.reference(id, "layer", r.layer, K::Layer);
                 if let Some(h) = r.ceiling_height {
                     c.positive(id, "ceiling_height", h);
+                }
+                if let CeilingStyle::Tray { inset, rise } = r.ceiling {
+                    c.positive(id, "ceiling.inset", inset);
+                    c.positive(id, "ceiling.rise", rise);
                 }
             }
             Object::Layer(l) => {

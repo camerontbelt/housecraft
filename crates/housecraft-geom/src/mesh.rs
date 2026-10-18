@@ -1,7 +1,7 @@
 //! 3D triangle meshes of the building model for the viewer and exports.
 
 use glam::{DVec2, DVec3, Vec3};
-use housecraft_model::{Document, Floor, Id, Opening, OpeningKind, Room};
+use housecraft_model::{CeilingStyle, Document, Floor, Id, Opening, OpeningKind, Room};
 
 use crate::math::v2;
 use crate::rooms;
@@ -23,8 +23,22 @@ pub struct Mesh {
 #[derive(Debug, Clone, Copy)]
 pub struct MeshPart {
     pub object: Id,
+    pub category: Category,
     pub first_index: u32,
     pub index_count: u32,
+}
+
+/// What a mesh part is, so views can show or hide groups (e.g. ceilings in an overview).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Category {
+    Wall,
+    Opening,
+    Floor,
+    Ceiling,
+    Roof,
+    Foundation,
+    Stair,
+    Fixture,
 }
 
 pub const WALL_COLOR: [f32; 4] = [0.93, 0.91, 0.87, 1.0];
@@ -32,19 +46,22 @@ pub const FLOOR_COLOR: [f32; 4] = [0.72, 0.6, 0.45, 1.0];
 pub const DOOR_COLOR: [f32; 4] = [0.55, 0.38, 0.24, 1.0];
 pub const GLASS_COLOR: [f32; 4] = [0.55, 0.75, 0.88, 1.0];
 pub const FRAME_COLOR: [f32; 4] = [0.97, 0.97, 0.97, 1.0];
+pub const CEILING_COLOR: [f32; 4] = [0.96, 0.96, 0.95, 1.0];
+pub const PLATFORM_COLOR: [f32; 4] = [0.82, 0.74, 0.6, 1.0];
 
 impl Mesh {
-    fn begin(&mut self, object: Id) -> u32 {
+    pub fn begin(&mut self, object: Id, category: Category) -> u32 {
         let first = self.indices.len() as u32;
         self.parts.push(MeshPart {
             object,
+            category,
             first_index: first,
             index_count: 0,
         });
         first
     }
 
-    fn end(&mut self) {
+    pub fn end(&mut self) {
         let len = self.indices.len() as u32;
         if let Some(p) = self.parts.last_mut() {
             p.index_count = len - p.first_index;
@@ -52,7 +69,7 @@ impl Mesh {
     }
 
     /// Add a planar polygon (counter-clockwise when seen from its normal side).
-    fn polygon(&mut self, pts: &[DVec3], color: [f32; 4]) {
+    pub fn polygon(&mut self, pts: &[DVec3], color: [f32; 4]) {
         if pts.len() < 3 {
             return;
         }
@@ -77,7 +94,7 @@ impl Mesh {
     }
 
     /// Extrude a counter-clockwise plan polygon between two heights (mm).
-    fn prism(&mut self, poly: &[DVec2], z0: f64, z1: f64, color: [f32; 4]) {
+    pub fn prism(&mut self, poly: &[DVec2], z0: f64, z1: f64, color: [f32; 4]) {
         if z1 - z0 < 0.01 || poly.len() < 3 {
             return;
         }
@@ -140,7 +157,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
         };
         let height = doc.wall_height(wall).map_or(2438.4, |h| h.mm());
         let openings: Vec<&Opening> = doc.openings_in(g.id).collect();
-        mesh.begin(g.id);
+        mesh.begin(g.id, Category::Wall);
         for piece in g.pieces(&openings) {
             mesh.prism(&piece, z0, z0 + height, WALL_COLOR);
         }
@@ -156,7 +173,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
         }
         mesh.end();
         for o in &openings {
-            mesh.begin(o.id);
+            mesh.begin(o.id, Category::Opening);
             opening_mesh(g, o, z0, mesh);
             mesh.end();
         }
@@ -164,18 +181,79 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
 
     let regions = rooms::detect(doc, floor.id);
     let rooms_here: Vec<&Room> = doc.rooms_on(floor.id).collect();
+    let lowest = doc.floors_by_elevation().first().map(|f| f.id) == Some(floor.id);
     for region in &regions.rooms {
-        let owner = rooms_here
+        let room = rooms_here
             .iter()
-            .find(|r| crate::math::point_in_polygon(v2(r.anchor), &region.centerline))
-            .map_or(Id(0), |r| r.id);
-        mesh.begin(owner);
-        let pts: Vec<DVec3> = region
-            .polygon
-            .iter()
-            .map(|p| DVec3::new(p.x, p.y, z0))
-            .collect();
-        mesh.polygon(&pts, FLOOR_COLOR);
+            .find(|r| crate::math::point_in_polygon(v2(r.anchor), &region.centerline));
+        let owner = room.map_or(Id(0), |r| r.id);
+        let at = |z: f64| -> Vec<DVec3> {
+            region
+                .polygon
+                .iter()
+                .map(|p| DVec3::new(p.x, p.y, z))
+                .collect()
+        };
+
+        // Floor surface, and the platform under it on upper floors.
+        mesh.begin(owner, Category::Floor);
+        mesh.polygon(&at(z0), FLOOR_COLOR);
+        if !lowest && floor.floor_structure.mm() > 1.0 {
+            mesh.prism(
+                &region.polygon,
+                z0 - floor.floor_structure.mm(),
+                z0 - 1.0,
+                PLATFORM_COLOR,
+            );
+        }
+        mesh.end();
+
+        // Ceiling.
+        let Some(room) = room else {
+            continue;
+        };
+        let h = doc.room_ceiling_height(room).map_or(2438.4, |h| h.mm());
+        let zc = z0 + h;
+        mesh.begin(owner, Category::Ceiling);
+        match room.ceiling {
+            CeilingStyle::None => {}
+            CeilingStyle::Flat | CeilingStyle::Vaulted => mesh.polygon(&at(zc), CEILING_COLOR),
+            CeilingStyle::Tray { inset, rise } => {
+                let inner = crate::math::inset_polygon(&region.polygon, inset.mm());
+                let outer = &region.polygon;
+                let n = outer.len();
+                if inner.len() == n && crate::math::signed_area(&inner) > 0.0 {
+                    let zr = zc + rise.mm();
+                    for i in 0..n {
+                        let j = (i + 1) % n;
+                        let (o0, o1, i0, i1) = (outer[i], outer[j], inner[i], inner[j]);
+                        // Lower ring, the vertical step, and the raised centre.
+                        mesh.polygon(
+                            &[
+                                DVec3::new(o0.x, o0.y, zc),
+                                DVec3::new(o1.x, o1.y, zc),
+                                DVec3::new(i1.x, i1.y, zc),
+                                DVec3::new(i0.x, i0.y, zc),
+                            ],
+                            CEILING_COLOR,
+                        );
+                        mesh.polygon(
+                            &[
+                                DVec3::new(i0.x, i0.y, zc),
+                                DVec3::new(i1.x, i1.y, zc),
+                                DVec3::new(i1.x, i1.y, zr),
+                                DVec3::new(i0.x, i0.y, zr),
+                            ],
+                            CEILING_COLOR,
+                        );
+                    }
+                    let top: Vec<DVec3> = inner.iter().map(|p| DVec3::new(p.x, p.y, zr)).collect();
+                    mesh.polygon(&top, CEILING_COLOR);
+                } else {
+                    mesh.polygon(&at(zc), CEILING_COLOR);
+                }
+            }
+        }
         mesh.end();
     }
 }

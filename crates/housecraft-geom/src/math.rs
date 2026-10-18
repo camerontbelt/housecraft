@@ -127,6 +127,24 @@ pub fn point_in_polygon(p: DVec2, poly: &[DVec2]) -> bool {
     inside
 }
 
+/// Offset a counter-clockwise polygon inward by `d` (negative = outward),
+/// mitring corners. Keeps the vertex count; very acute corners are capped.
+pub fn inset_polygon(poly: &[DVec2], d: f64) -> Vec<DVec2> {
+    let n = poly.len();
+    (0..n)
+        .map(|i| {
+            let (p0, p1, p2) = (poly[(i + n - 1) % n], poly[i], poly[(i + 1) % n]);
+            let d0 = (p1 - p0).normalize_or_zero();
+            let d1 = (p2 - p1).normalize_or_zero();
+            let a = p1 + perp(d0) * d;
+            let b = p1 + perp(d1) * d;
+            line_intersection(a, d0, b, d1)
+                .filter(|c| c.distance(p1) < 6.0 * d.abs().max(1.0))
+                .unwrap_or(b)
+        })
+        .collect()
+}
+
 /// A point well inside a polygon: the centroid if it is inside, otherwise the
 /// sampled point farthest from the boundary.
 pub fn interior_point(poly: &[DVec2]) -> DVec2 {

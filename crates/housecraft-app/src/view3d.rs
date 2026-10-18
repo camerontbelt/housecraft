@@ -8,7 +8,7 @@ use egui_wgpu::wgpu;
 use glam::{Mat4, Vec3, Vec4};
 
 use housecraft_api::Command;
-use housecraft_api::geom::mesh::{Mesh, build, mesh_bounds};
+use housecraft_api::geom::mesh::{Category, Mesh, build, mesh_bounds};
 use housecraft_api::model::{Camera, Id, Projection};
 use housecraft_api::units::{Length, Point3};
 use wgpu::util::DeviceExt as _;
@@ -213,6 +213,18 @@ impl egui_wgpu::CallbackTrait for Paint3d {
     }
 }
 
+/// Distinct values mixed into the upload key for each hidden category.
+const CATEGORY_KEYS: [Id; 8] = [
+    Id(u64::MAX - 1),
+    Id(u64::MAX - 2),
+    Id(u64::MAX - 3),
+    Id(u64::MAX - 4),
+    Id(u64::MAX - 5),
+    Id(u64::MAX - 6),
+    Id(u64::MAX - 7),
+    Id(u64::MAX - 8),
+];
+
 /// Uploaded geometry: (selection/document key, vertices, indices).
 type GpuMesh = (u64, Arc<Vec<Vertex>>, Arc<Vec<u32>>);
 
@@ -226,6 +238,8 @@ pub struct View3d {
     pub ortho: bool,
     pub walk: bool,
     pub fit_requested: bool,
+    /// Mesh categories not drawn (ceilings are hidden in overviews so rooms stay visible).
+    pub hidden: Vec<Category>,
     mesh: Option<(u64, Mesh)>,
     gpu: Option<GpuMesh>,
     gpu_key: u64,
@@ -242,6 +256,7 @@ impl Default for View3d {
             ortho: false,
             walk: false,
             fit_requested: true,
+            hidden: vec![Category::Ceiling],
             mesh: None,
             gpu: None,
             gpu_key: 0,
@@ -323,6 +338,10 @@ impl View3d {
 
     pub fn preset_for(&mut self, action: CameraAction) {
         self.fit_requested = true;
+        self.hidden.retain(|c| *c != Category::Ceiling);
+        if action != CameraAction::FullCamera {
+            self.hidden.push(Category::Ceiling);
+        }
         match action {
             CameraAction::PerspectiveOverview => {
                 self.ortho = false;
@@ -376,7 +395,7 @@ impl View3d {
     }
 }
 
-fn to_gpu(mesh: &Mesh, selection: &[Id]) -> (Vec<Vertex>, Vec<u32>) {
+fn to_gpu(mesh: &Mesh, selection: &[Id], hidden: &[Category]) -> (Vec<Vertex>, Vec<u32>) {
     let mut vertices: Vec<Vertex> = mesh
         .positions
         .iter()
@@ -418,18 +437,30 @@ fn to_gpu(mesh: &Mesh, selection: &[Id]) -> (Vec<Vertex>, Vec<u32>) {
                 color: g,
             });
         }
-        let mut indices = mesh.indices.clone();
+        let mut indices = visible_indices(mesh, hidden);
         indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
         return (vertices, indices);
     }
-    (vertices, mesh.indices.clone())
+    (vertices, visible_indices(mesh, hidden))
+}
+
+fn visible_indices(mesh: &Mesh, hidden: &[Category]) -> Vec<u32> {
+    mesh.parts
+        .iter()
+        .filter(|p| !hidden.contains(&p.category))
+        .flat_map(|p| {
+            mesh.indices[p.first_index as usize..(p.first_index + p.index_count) as usize]
+                .iter()
+                .copied()
+        })
+        .collect()
 }
 
 /// Nearest object hit by a ray (Möller–Trumbore over the mesh).
-fn pick(mesh: &Mesh, origin: Vec3, dir: Vec3) -> Option<Id> {
+fn pick(mesh: &Mesh, origin: Vec3, dir: Vec3, hidden: &[Category]) -> Option<Id> {
     let mut best: Option<(f32, Id)> = None;
     for part in &mesh.parts {
-        if part.object == Id(0) {
+        if part.object == Id(0) || hidden.contains(&part.category) {
             continue;
         }
         let range = part.first_index as usize..(part.first_index + part.index_count) as usize;
@@ -557,7 +588,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         let near = inv * Vec4::new(ndc.x, ndc.y, 0.0, 1.0);
         let far = inv * Vec4::new(ndc.x, ndc.y, 1.0, 1.0);
         let (near, far) = (near.truncate() / near.w, far.truncate() / far.w);
-        let hit = pick(&mesh, near, (far - near).normalize());
+        let hit = pick(&mesh, near, (far - near).normalize(), &app.view3d.hidden);
         let ctrl = ui.input(|i| i.modifiers.command);
         match hit {
             Some(id) if ctrl => {
@@ -581,11 +612,12 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     let sel_hash = app
         .selection
         .iter()
+        .chain(v.hidden.iter().map(|c| &CATEGORY_KEYS[*c as usize]))
         .fold(app.rev.wrapping_mul(1_000_003), |h, id| {
             h.wrapping_mul(31).wrapping_add(id.0)
         });
     if v.gpu.as_ref().is_none_or(|g| g.0 != sel_hash) {
-        let (verts, idx) = to_gpu(&mesh, &app.selection);
+        let (verts, idx) = to_gpu(&mesh, &app.selection, &v.hidden);
         v.gpu_key = v.gpu_key.wrapping_add(1);
         v.gpu = Some((sel_hash, Arc::new(verts), Arc::new(idx)));
     }
@@ -638,9 +670,13 @@ fn overlay(app: &mut App, ui: &mut Ui, rect: Rect) {
                     .clicked()
                 {
                     v.walk = !v.walk;
+                    // Inside the house ceilings belong in the view; overviews hide them.
+                    v.hidden.retain(|c| *c != Category::Ceiling);
                     if v.walk {
                         v.pitch = 0.0;
                         v.distance = 3.0;
+                    } else {
+                        v.hidden.push(Category::Ceiling);
                     }
                 }
                 ui.separator();

@@ -280,7 +280,9 @@ fn deleting_a_floor_deletes_its_contents() {
     let mut s = boxed();
     let out = apply(&mut s, r#"[{"op": "add_floor"}]"#);
     let upper = out.created[0];
-    assert!((s.document().get::<Floor>(upper).unwrap().elevation.feet() - 8.0).abs() < 1e-9);
+    // On top of floor 1's 8' ceiling plus the new floor's 12 5/8" platform.
+    let expected = 8.0 * 12.0 + 12.625;
+    assert!((s.document().get::<Floor>(upper).unwrap().elevation.inches() - expected).abs() < 1e-9);
     let ground = s.document().floors_by_elevation()[0].id;
     s.apply(&[Command::Delete { ids: vec![ground] }]).unwrap();
     assert_eq!(s.document().count::<Wall>(), 0);
@@ -371,4 +373,34 @@ fn every_object_kind_round_trips_through_json() {
     let json = serde_json::to_string(doc).unwrap();
     let back: Document = serde_json::from_str(&json).unwrap();
     assert_eq!(&back, doc);
+}
+
+#[test]
+fn insert_and_swap_floors() {
+    let mut s = boxed();
+    let ground = s.document().floors_by_elevation()[0].id;
+    let out = apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_floor", "below": {}, "name": "Basement"}}]"#,
+            ground.0
+        ),
+    );
+    let basement = out.created[0];
+    let floors = s.document().floors_by_elevation();
+    assert_eq!(floors[0].id, basement);
+    assert_eq!(floors[1].id, ground);
+    assert!(
+        floors[1].elevation.mm() > 0.0,
+        "the old ground floor moved up"
+    );
+    assert_eq!(s.document().walls_on(ground).count(), 4);
+    s.apply(&[Command::SwapFloors {
+        a: ground,
+        b: basement,
+    }])
+    .unwrap();
+    assert_eq!(s.document().walls_on(basement).count(), 4);
+    assert_eq!(s.document().walls_on(ground).count(), 0);
+    assert_eq!(s.document().rooms_on(basement).count(), 1);
 }

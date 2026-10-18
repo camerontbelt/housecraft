@@ -58,6 +58,7 @@ pub(crate) fn sync(doc: &mut Document, out: &mut Outcome) {
                     ceiling_height: None,
                     floor_finish: None,
                     layer: d.layers.rooms,
+                    ceiling: Default::default(),
                 }));
             }
         }

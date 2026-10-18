@@ -86,6 +86,8 @@ pub struct App {
     pub bufs: EditBuffers,
     /// Objects whose specification windows are open.
     pub spec: Vec<Id>,
+    /// Rooms being edited together (multi-room specification).
+    pub room_multi: Option<Vec<Id>>,
     pub clipboard: Vec<serde_json::Value>,
     pub status: Option<(String, bool)>,
     pub pending: Option<Pending>,
@@ -116,6 +118,7 @@ impl App {
             dialogs: Dialogs::default(),
             bufs: EditBuffers::default(),
             spec: Vec::new(),
+            room_multi: None,
             clipboard: Vec::new(),
             status: None,
             pending: None,
@@ -214,6 +217,16 @@ impl App {
 
     /// Open specification windows for the selection (Open Object).
     pub fn open_object(&mut self) {
+        let doc = self.doc();
+        if self.selection.len() > 1
+            && self
+                .selection
+                .iter()
+                .all(|id| doc.kind_of(*id) == Some(ObjectKind::Room))
+        {
+            self.room_multi = Some(self.selection.clone());
+            return;
+        }
         for id in self.selection.clone() {
             if !self.spec.contains(&id) {
                 self.spec.push(id);
@@ -627,9 +640,35 @@ impl App {
                             name: None,
                             elevation: None,
                             ceiling_height: None,
+                            floor_structure: None,
+                            below: None,
                         })
                     {
                         self.plan.floor = out.created[0];
+                    }
+                    if item(ui, "Insert Floor Below Current", "", true)
+                        && let Some(out) = self.run1(Command::AddFloor {
+                            name: None,
+                            elevation: None,
+                            ceiling_height: None,
+                            floor_structure: None,
+                            below: Some(self.plan.floor),
+                        })
+                    {
+                        self.plan.floor = out.created[0];
+                    }
+                    let above = {
+                        let floors = self.doc().floors_by_elevation();
+                        let i = floors.iter().position(|f| f.id == self.plan.floor);
+                        i.and_then(|i| floors.get(i + 1)).map(|f| f.id)
+                    };
+                    if item(ui, "Exchange with Floor Above", "", above.is_some())
+                        && let Some(b) = above
+                    {
+                        self.run1(Command::SwapFloors {
+                            a: self.plan.floor,
+                            b,
+                        });
                     }
                     if item(ui, "Up One Floor", "Shift+N", true) {
                         self.change_floor(true);
@@ -1403,6 +1442,8 @@ impl App {
                 name: None,
                 elevation: None,
                 ceiling_height: None,
+                floor_structure: None,
+                below: None,
             })
         {
             self.plan.floor = out.created[0];
@@ -1647,6 +1688,7 @@ impl eframe::App for App {
                 }
             });
         crate::props::spec_windows(self, &ctx);
+        crate::props::room_multi_window(self, &ctx);
         crate::dialogs::show(self, &ctx);
         self.confirm_discard(&ctx);
     }

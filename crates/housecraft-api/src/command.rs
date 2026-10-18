@@ -21,13 +21,23 @@ pub enum Command {
     SetDocumentName { name: String },
     /// Change how lengths are displayed.
     SetDisplayUnit { unit: DisplayUnit },
-    /// Add a floor. Elevation defaults to the top of the highest floor.
+    /// Add a floor. By default it goes on top: its elevation is the highest
+    /// floor's ceiling plus this floor's structure. With `below`, it is inserted
+    /// under that floor and every floor from there up moves up to make room.
     AddFloor {
         name: Option<String>,
         elevation: Option<Length>,
         /// Defaults to the highest floor's ceiling height, or 8'.
         ceiling_height: Option<Length>,
+        /// Floor platform depth (subfloor + joists); default 12 5/8".
+        #[serde(default)]
+        floor_structure: Option<Length>,
+        #[serde(default)]
+        below: Option<Id>,
     },
+    /// Exchange everything drawn on two floors (walls, rooms, CAD, text...),
+    /// keeping the floors' own heights.
+    SwapFloors { a: Id, b: Id },
     /// Add a layered wall type.
     AddWallType {
         name: String,
@@ -327,6 +337,7 @@ impl Command {
             Command::SetDocumentName { .. } => "set_document_name",
             Command::SetDisplayUnit { .. } => "set_display_unit",
             Command::AddFloor { .. } => "add_floor",
+            Command::SwapFloors { .. } => "swap_floors",
             Command::AddWallType { .. } => "add_wall_type",
             Command::AddLayer { .. } => "add_layer",
             Command::AddLayerSet { .. } => "add_layer_set",
@@ -378,23 +389,64 @@ impl Command {
                 name,
                 elevation,
                 ceiling_height,
+                floor_structure,
+                below,
             } => {
-                let top = doc.floors_by_elevation().last().map(|f| (*f).clone());
-                let ceiling_height = ceiling_height
-                    .or(top.as_ref().map(|f| f.ceiling_height))
-                    .unwrap_or(Length::from_feet(8.0));
-                let elevation = elevation
-                    .or(top.as_ref().map(|f| f.elevation + f.ceiling_height))
-                    .unwrap_or(Length::ZERO);
+                let structure = floor_structure.unwrap_or_else(default_floor_structure);
+                if !(structure.is_finite() && structure.mm() >= 0.0) {
+                    return invalid("floor_structure must not be negative");
+                }
+                let floors: Vec<Floor> = doc.floors_by_elevation().into_iter().cloned().collect();
                 let name = name
                     .clone()
                     .unwrap_or_else(|| format!("Floor {}", doc.count::<Floor>() + 1));
-                out.created.push(doc.insert(Floor {
-                    id: Id(0),
-                    name,
-                    elevation,
-                    ceiling_height,
-                }));
+                let id = match below {
+                    Some(b) => {
+                        let anchor = expect::<Floor>(doc, *b)?.clone();
+                        let ceiling_height = ceiling_height.unwrap_or(anchor.ceiling_height);
+                        let elevation = elevation.unwrap_or(anchor.elevation);
+                        // Everything from the anchor floor up moves up by the new storey.
+                        let shift = ceiling_height + anchor.floor_structure;
+                        for f in floors
+                            .iter()
+                            .filter(|f| f.elevation.mm() >= anchor.elevation.mm())
+                        {
+                            if let Some(fm) = doc.get_mut::<Floor>(f.id) {
+                                fm.elevation += shift;
+                                out.modified.push(f.id);
+                            }
+                        }
+                        doc.insert(Floor {
+                            id: Id(0),
+                            name,
+                            elevation,
+                            ceiling_height,
+                            floor_structure: structure,
+                        })
+                    }
+                    None => {
+                        let top = floors.last();
+                        let ceiling_height = ceiling_height
+                            .or(top.map(|f| f.ceiling_height))
+                            .unwrap_or(Length::from_feet(8.0));
+                        let elevation = elevation
+                            .or(top.map(|f| f.elevation + f.ceiling_height + structure))
+                            .unwrap_or(Length::ZERO);
+                        doc.insert(Floor {
+                            id: Id(0),
+                            name,
+                            elevation,
+                            ceiling_height,
+                            floor_structure: structure,
+                        })
+                    }
+                };
+                out.created.push(id);
+            }
+            Command::SwapFloors { a, b } => {
+                expect::<Floor>(doc, *a)?;
+                expect::<Floor>(doc, *b)?;
+                ops::swap_floors(doc, *a, *b, &mut out);
             }
             Command::AddWallType { name, layers } => {
                 out.created.push(doc.insert(WallType {

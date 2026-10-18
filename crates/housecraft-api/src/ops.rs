@@ -851,3 +851,30 @@ pub(crate) fn insert_objects(
     }
     Ok(())
 }
+
+/// Move every object on floor `a` to `b` and vice versa.
+pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
+    let swap = |f: &mut Id| {
+        if *f == a {
+            *f = b;
+        } else if *f == b {
+            *f = a;
+        }
+    };
+    for object in doc.objects.values_mut() {
+        let id = object.id();
+        let floor = match object {
+            Object::Wall(w) => &mut w.floor,
+            Object::Room(r) => &mut r.floor,
+            Object::Cad(c) => &mut c.floor,
+            Object::Dimension(d) => &mut d.floor,
+            Object::Text(t) => &mut t.floor,
+            _ => continue,
+        };
+        let before = *floor;
+        swap(floor);
+        if *floor != before {
+            out.modified.push(id);
+        }
+    }
+}

@@ -370,6 +370,9 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     .map_or_else(String::new, |t| t.floor_finish.clone())
             });
             ed.text(ui, "Floor Finish", "floor_finish", &finish);
+            if let Some(c) = ceiling_editor(ui, ed, r.ceiling) {
+                ed.out.push(patch(id, json!({ "ceiling": c })));
+            }
             ed.pick::<Layer>(ui, "Label Layer", "layer", Some(r.layer), None);
         }
         Object::Floor(f) => {
@@ -377,6 +380,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             for (label, field, value) in [
                 ("Floor Elevation", "elevation", f.elevation),
                 ("Ceiling Height", "ceiling_height", f.ceiling_height),
+                ("Floor Structure", "floor_structure", f.floor_structure),
             ] {
                 if let Some(l) = ed.length(ui, label, field, value) {
                     ed.out.push(patch(id, json!({ field: l })));
@@ -769,5 +773,133 @@ pub fn opening_name(k: OpeningKind) -> String {
         OpeningKind::Window(WindowStyle::DoubleHung) => "Double Hung Window".into(),
         OpeningKind::Window(WindowStyle::SingleHung) => "Single Hung Window".into(),
         OpeningKind::Window(s) => format!("{s:?} Window"),
+    }
+}
+
+/// Ceiling style picker; returns the new style when changed.
+fn ceiling_editor(ui: &mut Ui, ed: &mut Ed<'_>, current: CeilingStyle) -> Option<CeilingStyle> {
+    Ed::label(ui, "Ceiling");
+    let mut chosen = current;
+    let name = |c: &CeilingStyle| match c {
+        CeilingStyle::Flat => "Flat",
+        CeilingStyle::Vaulted => "Vaulted (follows roof)",
+        CeilingStyle::Tray { .. } => "Tray",
+        CeilingStyle::None => "None (open above)",
+    };
+    let same_kind =
+        |a: &CeilingStyle, b: &CeilingStyle| std::mem::discriminant(a) == std::mem::discriminant(b);
+    egui::ComboBox::from_id_salt(ed.key("ceiling"))
+        .selected_text(name(&current))
+        .show_ui(ui, |ui| {
+            for c in [
+                CeilingStyle::Flat,
+                CeilingStyle::Vaulted,
+                CeilingStyle::Tray {
+                    inset: Length::from_inches(18.0),
+                    rise: Length::from_inches(12.0),
+                },
+                CeilingStyle::None,
+            ] {
+                if ui
+                    .selectable_label(same_kind(&c, &current), name(&c))
+                    .clicked()
+                    && !same_kind(&c, &current)
+                {
+                    chosen = c;
+                }
+            }
+        });
+    ui.end_row();
+    if let CeilingStyle::Tray { inset, rise } = current {
+        let i = ed.length(ui, "Tray Inset", "tray_inset", inset);
+        let r = ed.length(ui, "Tray Rise", "tray_rise", rise);
+        if i.is_some() || r.is_some() {
+            chosen = CeilingStyle::Tray {
+                inset: i.unwrap_or(inset),
+                rise: r.unwrap_or(rise),
+            };
+        }
+    }
+    (chosen != current).then_some(chosen)
+}
+
+/// One window editing several rooms at once (type, ceiling, heights).
+pub fn room_multi_window(app: &mut App, ctx: &egui::Context) {
+    let Some(ids) = app.room_multi.clone() else {
+        return;
+    };
+    let doc = app.session.document();
+    let rooms: Vec<Room> = ids
+        .iter()
+        .filter_map(|id| doc.get::<Room>(*id).cloned())
+        .collect();
+    if rooms.is_empty() {
+        app.room_multi = None;
+        return;
+    }
+    let mut open = true;
+    let mut set: Option<Value> = None;
+    let bufs = &mut app.bufs;
+    egui::Window::new(format!("Room Specification ({} rooms)", rooms.len()))
+        .open(&mut open)
+        .resizable(false)
+        .show(ctx, |ui| {
+            egui::Grid::new("room_multi").num_columns(2).show(ui, |ui| {
+                ui.label("Room Type");
+                let same_type = rooms.iter().all(|r| r.room_type == rooms[0].room_type);
+                let current = if same_type {
+                    doc.get::<RoomType>(rooms[0].room_type)
+                        .map_or("", |t| t.name.as_str())
+                } else {
+                    "(various)"
+                };
+                egui::ComboBox::from_id_salt("multi_room_type")
+                    .selected_text(current)
+                    .show_ui(ui, |ui| {
+                        for t in doc.iter::<RoomType>() {
+                            if ui.selectable_label(false, &t.name).clicked() {
+                                set = Some(json!({ "room_type": t.id }));
+                            }
+                        }
+                    });
+                ui.end_row();
+                ui.label("Ceiling");
+                ui.horizontal(|ui| {
+                    for (label, style) in [
+                        ("Flat", CeilingStyle::Flat),
+                        ("Vaulted", CeilingStyle::Vaulted),
+                        ("None", CeilingStyle::None),
+                    ] {
+                        if ui.button(label).clicked() {
+                            set = Some(json!({ "ceiling": style }));
+                        }
+                    }
+                });
+                ui.end_row();
+                ui.label("Ceiling Height");
+                ui.horizontal(|ui| {
+                    if ui.button("Use default").clicked() {
+                        set = Some(json!({ "ceiling_height": null }));
+                    }
+                    let key = egui::Id::unique("multi_ceiling_height");
+                    let shown = doc
+                        .room_ceiling_height(&rooms[0])
+                        .unwrap_or(Length::from_feet(8.0));
+                    if let Some(l) = bufs.length(ui, doc, key, shown)
+                        && l.mm() > 0.0
+                    {
+                        set = Some(json!({ "ceiling_height": l }));
+                    }
+                });
+                ui.end_row();
+            });
+            ui.weak("Changes apply to every selected room.");
+        });
+    if !open {
+        app.room_multi = None;
+    }
+    if let Some(v) = set {
+        let commands = ids.iter().map(|id| patch(*id, v.clone())).collect();
+        app.run(commands);
     }
 }
