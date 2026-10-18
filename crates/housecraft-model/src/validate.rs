@@ -92,6 +92,9 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
             Object::Floor(f) => {
                 c.positive(id, "ceiling_height", f.ceiling_height);
                 c.non_negative(id, "floor_structure", f.floor_structure);
+                for l in &f.platform {
+                    c.positive(id, "platform layer thickness", l.thickness);
+                }
                 if let Some(fd) = &f.foundation {
                     c.positive(id, "foundation.wall_height", fd.wall_height);
                     c.positive(id, "foundation.wall_thickness", fd.wall_thickness);
@@ -170,9 +173,25 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 if let Some(h) = r.ceiling_height {
                     c.positive(id, "ceiling_height", h);
                 }
-                if let CeilingStyle::Tray { inset, rise } = r.ceiling {
-                    c.positive(id, "ceiling.inset", inset);
-                    c.positive(id, "ceiling.rise", rise);
+                match r.ceiling {
+                    CeilingStyle::Tray { inset, rise } => {
+                        c.positive(id, "ceiling.inset", inset);
+                        c.positive(id, "ceiling.rise", rise);
+                    }
+                    CeilingStyle::Coffered {
+                        spacing,
+                        beam_width,
+                        depth,
+                    } => {
+                        c.positive(id, "ceiling.spacing", spacing);
+                        c.positive(id, "ceiling.beam_width", beam_width);
+                        c.positive(id, "ceiling.depth", depth);
+                        if beam_width >= spacing {
+                            c.issue(id, "coffer beams must be narrower than their spacing");
+                        }
+                    }
+                    CeilingStyle::Barrel { rise } => c.positive(id, "ceiling.rise", rise),
+                    _ => {}
                 }
             }
             Object::Layer(l) => {

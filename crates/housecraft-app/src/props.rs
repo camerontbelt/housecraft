@@ -636,12 +636,12 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             for (label, field, value) in [
                 ("Floor Elevation", "elevation", f.elevation),
                 ("Ceiling Height", "ceiling_height", f.ceiling_height),
-                ("Floor Structure", "floor_structure", f.floor_structure),
             ] {
                 if let Some(l) = ed.length(ui, label, field, value) {
                     ed.out.push(patch(id, json!({ field: l })));
                 }
             }
+            platform_editor(ui, ed, f);
             if let Some(fd) = &f.foundation {
                 Ed::label(ui, "Foundation");
                 ui.label(format!("{:?}", fd.kind));
@@ -1067,6 +1067,66 @@ fn renovation_row(ui: &mut Ui, ed: &mut Ed<'_>, current: Renovation) {
     ui.end_row();
 }
 
+/// Floor structure: one depth, or a list of layers (finish first).
+fn platform_editor(ui: &mut Ui, ed: &mut Ed<'_>, f: &Floor) {
+    if f.platform.is_empty() {
+        if let Some(l) = ed.length(ui, "Floor Structure", "floor_structure", f.floor_structure) {
+            ed.out.push(patch(ed.id, json!({ "floor_structure": l })));
+        }
+        Ed::label(ui, "");
+        if ui.button("Define layers…").clicked() {
+            ed.out
+                .push(patch(ed.id, json!({ "platform": default_platform() })));
+        }
+        ui.end_row();
+        return;
+    }
+    Ed::label(ui, "Floor Structure");
+    ui.label(format!("{} total", fmt(ed.doc, f.floor_structure)));
+    ui.end_row();
+    let mut layers = f.platform.clone();
+    let mut changed = false;
+    let mut remove = None;
+    for (i, layer) in f.platform.iter().enumerate() {
+        Ed::label(ui, if i == 0 { "Layers (top first)" } else { "" });
+        ui.horizontal(|ui| {
+            let key = ed.key(&format!("platform_name_{i}"));
+            if let Some(t) = ed.bufs.text(ui, key, &layer.name, 110.0) {
+                layers[i].name = t;
+                changed = true;
+            }
+            let key = ed.key(&format!("platform_thick_{i}"));
+            if let Some(l) = ed.bufs.length(ui, ed.doc, key, layer.thickness)
+                && l.mm() > 0.0
+            {
+                layers[i].thickness = l;
+                changed = true;
+            }
+            if ui.small_button("✕").on_hover_text("Remove layer").clicked() {
+                remove = Some(i);
+            }
+        });
+        ui.end_row();
+    }
+    if let Some(i) = remove {
+        layers.remove(i);
+        changed = true;
+    }
+    Ed::label(ui, "");
+    if ui.button("Add layer").clicked() {
+        layers.push(WallLayer {
+            name: "Layer".into(),
+            thickness: Length::from_inches(0.5),
+            material: String::new(),
+        });
+        changed = true;
+    }
+    ui.end_row();
+    if changed {
+        ed.out.push(patch(ed.id, json!({ "platform": layers })));
+    }
+}
+
 pub fn opening_name(k: OpeningKind) -> String {
     match k {
         OpeningKind::Door(s) => s.name().into(),
@@ -1082,6 +1142,8 @@ fn ceiling_editor(ui: &mut Ui, ed: &mut Ed<'_>, current: CeilingStyle) -> Option
         CeilingStyle::Flat => "Flat",
         CeilingStyle::Vaulted => "Vaulted (follows roof)",
         CeilingStyle::Tray { .. } => "Tray",
+        CeilingStyle::Coffered { .. } => "Coffered",
+        CeilingStyle::Barrel { .. } => "Barrel vault",
         CeilingStyle::None => "None (open above)",
     };
     let same_kind =
@@ -1095,6 +1157,14 @@ fn ceiling_editor(ui: &mut Ui, ed: &mut Ed<'_>, current: CeilingStyle) -> Option
                 CeilingStyle::Tray {
                     inset: Length::from_inches(18.0),
                     rise: Length::from_inches(12.0),
+                },
+                CeilingStyle::Coffered {
+                    spacing: Length::from_inches(48.0),
+                    beam_width: Length::from_inches(6.0),
+                    depth: Length::from_inches(8.0),
+                },
+                CeilingStyle::Barrel {
+                    rise: Length::from_inches(24.0),
                 },
                 CeilingStyle::None,
             ] {
@@ -1117,6 +1187,28 @@ fn ceiling_editor(ui: &mut Ui, ed: &mut Ed<'_>, current: CeilingStyle) -> Option
                 rise: r.unwrap_or(rise),
             };
         }
+    }
+    if let CeilingStyle::Coffered {
+        spacing,
+        beam_width,
+        depth,
+    } = current
+    {
+        let s = ed.length(ui, "Beam Spacing", "coffer_spacing", spacing);
+        let w = ed.length(ui, "Beam Width", "coffer_width", beam_width);
+        let d = ed.length(ui, "Beam Depth", "coffer_depth", depth);
+        if s.is_some() || w.is_some() || d.is_some() {
+            chosen = CeilingStyle::Coffered {
+                spacing: s.unwrap_or(spacing),
+                beam_width: w.unwrap_or(beam_width),
+                depth: d.unwrap_or(depth),
+            };
+        }
+    }
+    if let CeilingStyle::Barrel { rise } = current
+        && let Some(r) = ed.length(ui, "Vault Rise", "barrel_rise", rise)
+    {
+        chosen = CeilingStyle::Barrel { rise: r };
     }
     (chosen != current).then_some(chosen)
 }

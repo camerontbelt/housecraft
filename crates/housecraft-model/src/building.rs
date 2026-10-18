@@ -18,6 +18,10 @@ pub struct Floor {
     /// finished surface; the floor sits on the ceiling of the floor below.
     #[serde(default = "default_floor_structure")]
     pub floor_structure: Length,
+    /// Layers of the floor platform, top (finish) first. When present,
+    /// `floor_structure` is kept equal to their total.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub platform: Vec<WallLayer>,
     /// Set when this floor is the foundation under the floor above it.
     #[serde(default)]
     pub foundation: Option<Foundation>,
@@ -59,6 +63,20 @@ pub struct Footing {
 }
 
 /// 3/4" subfloor on 11 7/8" I-joists.
+/// A typical framed floor: finish, subfloor and 2x12 joists (12 5/8" total).
+pub fn default_platform() -> Vec<WallLayer> {
+    let layer = |name: &str, inches: f64, material: &str| WallLayer {
+        name: name.into(),
+        thickness: Length::from_inches(inches),
+        material: material.into(),
+    };
+    vec![
+        layer("Finish floor", 0.75, "Hardwood"),
+        layer("Subfloor", 0.75, "Plywood"),
+        layer("Joists", 11.125, "2x12 joist"),
+    ]
+}
+
 pub fn default_floor_structure() -> Length {
     Length::from_inches(12.625)
 }
@@ -555,4 +573,12 @@ pub enum CeilingStyle {
     Tray { inset: Length, rise: Length },
     /// Open to the floor above (no ceiling or platform drawn).
     None,
+    /// A flat ceiling with a grid of beams `depth` deep every `spacing`.
+    Coffered {
+        spacing: Length,
+        beam_width: Length,
+        depth: Length,
+    },
+    /// A half-round vault along the room's long axis, rising `rise` at the middle.
+    Barrel { rise: Length },
 }

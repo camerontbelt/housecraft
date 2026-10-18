@@ -21,6 +21,7 @@ pub(crate) fn new_document(name: String) -> Document {
         floor_structure: default_floor_structure(),
         foundation: None,
         auto_roof: false,
+        platform: Vec::new(),
     });
 
     let layer = |doc: &mut Document, name: &str, weight: f64, color: Option<Color>| {

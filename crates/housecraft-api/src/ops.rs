@@ -935,3 +935,23 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
         }
     }
 }
+
+/// Keep each floor's structure depth equal to its platform layers' total.
+pub(crate) fn sync_platforms(doc: &mut Document, out: &mut Outcome) {
+    for object in doc.objects.values_mut() {
+        if let Object::Floor(f) = object
+            && !f.platform.is_empty()
+        {
+            let total = f
+                .platform
+                .iter()
+                .fold(Length::ZERO, |sum, l| sum + l.thickness);
+            if (total - f.floor_structure).mm().abs() > 1e-6 {
+                f.floor_structure = total;
+                if !out.modified.contains(&f.id) {
+                    out.modified.push(f.id);
+                }
+            }
+        }
+    }
+}

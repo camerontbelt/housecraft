@@ -412,6 +412,36 @@ pub fn minus_convex_holes(poly: &[DVec2], holes: &[Vec<DVec2>]) -> Vec<Vec<DVec2
     pieces
 }
 
+/// Convex pieces covering `poly` ∩ `convex` (`poly` may be concave).
+pub fn intersect_convex(poly: &[DVec2], convex: &[DVec2]) -> Vec<Vec<DVec2>> {
+    let mut c = convex.to_vec();
+    if signed_area(&c) < 0.0 {
+        c.reverse();
+    }
+    let mut out = Vec::new();
+    for t in crate::triangulate::triangulate(poly) {
+        let mut piece = vec![poly[t[0]], poly[t[1]], poly[t[2]]];
+        for i in 0..c.len() {
+            piece = clip_half_plane(&piece, c[i], c[(i + 1) % c.len()], true);
+            if piece.len() < 3 {
+                break;
+            }
+        }
+        if piece.len() >= 3 && signed_area(&piece).abs() > 1.0 {
+            out.push(piece);
+        }
+    }
+    out
+}
+
+/// Direction of the polygon's longest edge (unit).
+pub fn long_axis(poly: &[DVec2]) -> DVec2 {
+    (0..poly.len())
+        .map(|i| poly[(i + 1) % poly.len()] - poly[i])
+        .max_by(|a, b| a.length_squared().total_cmp(&b.length_squared()))
+        .map_or(DVec2::X, |d| d.normalize_or(DVec2::X))
+}
+
 #[cfg(test)]
 mod hole_tests {
     use super::*;

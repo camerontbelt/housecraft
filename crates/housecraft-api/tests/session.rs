@@ -626,9 +626,10 @@ fn stair_climbs_to_the_floor_above_and_cuts_a_stairwell() {
         &housecraft_api::geom::mesh::build(s2.document(), None),
         upper,
     );
-    // Mesh positions are metres; the hole goes through both the floor
-    // surface and the top of the floor platform beneath it.
-    let expected = 2.0 * footprint / 1e6;
+    // Mesh positions are metres; the hole goes through the floor surface
+    // and the top of every platform layer beneath it.
+    let layers = doc.get::<Floor>(upper).unwrap().platform.len().max(1) as f64;
+    let expected = (1.0 + layers) * footprint / 1e6;
     assert!(
         ((solid - with_hole) - expected).abs() / expected < 0.01,
         "solid {solid} hole {with_hole} footprint {footprint}"
@@ -969,5 +970,88 @@ fn exterior_stairs_use_exterior_defaults_and_have_nosings() {
     assert!(
         g.steps.iter().all(|s| s.nosing.is_empty()),
         "exterior: no nosing"
+    );
+}
+
+#[test]
+fn layered_platforms_and_new_ceilings() {
+    let mut s = boxed();
+    let out = apply(&mut s, r#"[{"op": "add_floor"}]"#);
+    let upper = out.created[0];
+    let f = s.document().get::<Floor>(upper).unwrap();
+    assert_eq!(
+        f.platform.len(),
+        3,
+        "new floors get finish, subfloor and joists"
+    );
+    assert!((f.floor_structure.mm() - Length::from_inches(12.625).mm()).abs() < 1e-6);
+    // Editing the layers keeps the structure depth in step.
+    s.apply(&[Command::Update {
+        id: upper,
+        set: patch(serde_json::json!({ "platform": [
+            { "name": "Tile", "thickness": "1/2\"" },
+            { "name": "Joists", "thickness": "9 1/4\"" }
+        ] })),
+    }])
+    .unwrap();
+    let f = s.document().get::<Floor>(upper).unwrap();
+    assert!((f.floor_structure.mm() - Length::from_inches(9.75).mm()).abs() < 1e-6);
+
+    let ground = s.document().floors_by_elevation()[0].id;
+    let room = s.document().rooms_on(ground).next().unwrap().id;
+    let ceiling_tris = |s: &Session| {
+        let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+        mesh.parts
+            .iter()
+            .filter(|p| {
+                p.object == room && p.category == housecraft_api::geom::mesh::Category::Ceiling
+            })
+            .map(|p| p.index_count)
+            .sum::<u32>()
+    };
+    // Plan-projected area of the room's ceiling surfaces, in m².
+    let ceiling_area = |s: &Session| {
+        let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+        let mut area = 0.0f64;
+        for p in mesh.parts.iter().filter(|p| {
+            p.object == room && p.category == housecraft_api::geom::mesh::Category::Ceiling
+        }) {
+            let idx =
+                &mesh.indices[p.first_index as usize..(p.first_index + p.index_count) as usize];
+            for t in idx.chunks(3) {
+                let [a, b, c] = [t[0], t[1], t[2]].map(|i| mesh.positions[i as usize]);
+                area += 0.5
+                    * ((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])).abs() as f64;
+            }
+        }
+        area
+    };
+    let flat_area = ceiling_area(&s);
+    let flat = ceiling_tris(&s);
+    for style in [
+        serde_json::json!({ "style": "coffered", "spacing": "4'", "beam_width": "6\"", "depth": "8\"" }),
+        serde_json::json!({ "style": "barrel", "rise": "2'" }),
+    ] {
+        s.apply(&[Command::Update {
+            id: room,
+            set: patch(serde_json::json!({ "ceiling": style })),
+        }])
+        .unwrap();
+        assert!(ceiling_tris(&s) > flat * 4, "{style} adds geometry");
+        if style["style"] == "barrel" {
+            let a = ceiling_area(&s);
+            assert!(
+                (a - flat_area).abs() / flat_area < 0.02,
+                "vault covers the room: {a} vs {flat_area}"
+            );
+        }
+    }
+    // Coffer beams must be narrower than their spacing.
+    assert!(
+        s.apply(&[Command::Update {
+            id: room,
+            set: patch(serde_json::json!({ "ceiling": { "style": "coffered", "spacing": "6\"", "beam_width": "6\"", "depth": "8\"" } })),
+        }])
+        .is_err()
     );
 }

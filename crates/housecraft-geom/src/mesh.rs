@@ -635,12 +635,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                     let pts: Vec<DVec3> = piece.iter().map(|p| DVec3::new(p.x, p.y, z0)).collect();
                     mesh.polygon(&pts, FLOOR_COLOR);
                     if !lowest && floor.floor_structure.mm() > 1.0 {
-                        mesh.prism(
-                            &ccw(piece.clone()),
-                            z0 - floor.floor_structure.mm(),
-                            z0 - 1.0,
-                            PLATFORM_COLOR,
-                        );
+                        platform_mesh(floor, &ccw(piece.clone()), z0, mesh);
                     }
                 }
                 mesh.end();
@@ -667,6 +662,25 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                     mesh.polygon(&at(zc), CEILING_COLOR);
                 }
             }
+            CeilingStyle::Coffered {
+                spacing,
+                beam_width,
+                depth,
+            } => {
+                for piece in crate::math::minus_convex_holes(&region.polygon, &ceiling_holes) {
+                    let pts: Vec<DVec3> = piece.iter().map(|p| DVec3::new(p.x, p.y, zc)).collect();
+                    mesh.polygon(&pts, CEILING_COLOR);
+                }
+                coffer_beams(
+                    &region.polygon,
+                    zc,
+                    spacing.mm(),
+                    beam_width.mm(),
+                    depth.mm(),
+                    mesh,
+                );
+            }
+            CeilingStyle::Barrel { rise } => barrel_ceiling(&region.polygon, zc, rise.mm(), mesh),
             CeilingStyle::Tray { inset, rise } => {
                 let inner = crate::math::inset_polygon(&region.polygon, inset.mm());
                 let outer = &region.polygon;
@@ -704,6 +718,116 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
             }
         }
         mesh.end();
+    }
+}
+
+/// The floor platform under an upper floor, drawn layer by layer.
+fn platform_mesh(floor: &Floor, poly: &[DVec2], z0: f64, mesh: &mut Mesh) {
+    if floor.platform.is_empty() {
+        mesh.prism(
+            poly,
+            z0 - floor.floor_structure.mm(),
+            z0 - 1.0,
+            PLATFORM_COLOR,
+        );
+        return;
+    }
+    let mut top = z0 - 1.0;
+    for (i, layer) in floor.platform.iter().enumerate() {
+        let bottom = top - layer.thickness.mm();
+        // Alternate shades so the layers read in a cutaway.
+        let k = if i % 2 == 0 { 1.0 } else { 0.85 };
+        let c = PLATFORM_COLOR;
+        mesh.prism(poly, bottom, top, [c[0] * k, c[1] * k, c[2] * k, 1.0]);
+        top = bottom;
+    }
+}
+
+/// A grid of beams under a flat ceiling at `zc`, aligned with the room's long axis.
+fn coffer_beams(poly: &[DVec2], zc: f64, spacing: f64, width: f64, depth: f64, mesh: &mut Mesh) {
+    if spacing <= width || spacing < 50.0 {
+        return;
+    }
+    let u = crate::math::long_axis(poly);
+    let v = crate::math::perp(u);
+    for (along, across) in [(u, v), (v, u)] {
+        // Beams run along `along`, spaced across `across`.
+        let (lo, hi) = poly
+            .iter()
+            .map(|p| p.dot(across))
+            .fold((f64::MAX, f64::MIN), |(a, b), x| (a.min(x), b.max(x)));
+        let (alo, ahi) = poly
+            .iter()
+            .map(|p| p.dot(along))
+            .fold((f64::MAX, f64::MIN), |(a, b), x| (a.min(x), b.max(x)));
+        let n = ((hi - lo) / spacing).floor() as i64;
+        let first = lo + ((hi - lo) - n as f64 * spacing) / 2.0;
+        for i in 0..=n {
+            let c = first + i as f64 * spacing;
+            if c - width / 2.0 <= lo + 1.0 || c + width / 2.0 >= hi - 1.0 {
+                continue; // beams at the walls would just thicken them
+            }
+            let rect = [
+                along * alo + across * (c - width / 2.0),
+                along * ahi + across * (c - width / 2.0),
+                along * ahi + across * (c + width / 2.0),
+                along * alo + across * (c + width / 2.0),
+            ];
+            for piece in crate::math::intersect_convex(poly, &rect) {
+                mesh.prism(&ccw(piece), zc - depth, zc, CEILING_COLOR);
+            }
+        }
+    }
+}
+
+/// A vault along the room's long axis: height above `zc` follows a half
+/// ellipse across the room, `rise` at the middle.
+fn barrel_ceiling(poly: &[DVec2], zc: f64, rise: f64, mesh: &mut Mesh) {
+    let u = crate::math::long_axis(poly);
+    let v = crate::math::perp(u);
+    let (lo, hi) = poly
+        .iter()
+        .map(|p| p.dot(v))
+        .fold((f64::MAX, f64::MIN), |(a, b), x| (a.min(x), b.max(x)));
+    let width = (hi - lo).max(1.0);
+    let height = |p: DVec2| {
+        let t = ((p.dot(v) - lo) / width).clamp(0.0, 1.0);
+        zc + rise * (1.0 - (2.0 * t - 1.0).powi(2)).max(0.0).sqrt()
+    };
+    // Bands parallel to the axis; within each, height is interpolated
+    // linearly across the band so every face stays planar.
+    let bands = 16;
+    for k in 0..bands {
+        let (t0, t1) = (k as f64 / bands as f64, (k + 1) as f64 / bands as f64);
+        let (c0, c1) = (lo + t0 * width, lo + t1 * width);
+        let (z0, z1) = (height(v * c0), height(v * c1));
+        let a = u * 1.0;
+        // Points with a larger v lie to the left of a line running along u.
+        let mut band = crate::math::clip_half_plane(poly, v * c0, v * c0 + a, true);
+        band = crate::math::clip_half_plane(&band, v * c1, v * c1 + a, false);
+        if band.len() < 3 {
+            continue;
+        }
+        let lift = |p: &DVec2| {
+            let s = ((p.dot(v) - c0) / (c1 - c0)).clamp(0.0, 1.0);
+            DVec3::new(p.x, p.y, z0 + (z1 - z0) * s)
+        };
+        let pts: Vec<DVec3> = band.iter().map(lift).collect();
+        mesh.polygon(&pts, CEILING_COLOR);
+    }
+    // Close the ends: infill from the wall tops up to the curve.
+    for i in 0..poly.len() {
+        let (a, b) = (poly[i], poly[(i + 1) % poly.len()]);
+        let steps = 24;
+        let pts: Vec<DVec2> = (0..=steps)
+            .map(|s| a.lerp(b, s as f64 / steps as f64))
+            .collect();
+        if pts.iter().map(|p| height(*p) - zc).fold(0.0, f64::max) < 1.0 {
+            continue;
+        }
+        let mut face: Vec<DVec3> = pts.iter().map(|p| DVec3::new(p.x, p.y, zc)).collect();
+        face.extend(pts.iter().rev().map(|p| DVec3::new(p.x, p.y, height(*p))));
+        mesh.polygon(&face, CEILING_COLOR);
     }
 }
 

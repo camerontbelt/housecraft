@@ -533,6 +533,11 @@ impl Command {
                             floor_structure: structure,
                             foundation: None,
                             auto_roof: false,
+                            platform: if floor_structure.is_none() {
+                                housecraft_model::default_platform()
+                            } else {
+                                Vec::new()
+                            },
                         })
                     }
                     None => {
@@ -551,6 +556,11 @@ impl Command {
                             floor_structure: structure,
                             foundation: None,
                             auto_roof: false,
+                            platform: if floor_structure.is_none() {
+                                housecraft_model::default_platform()
+                            } else {
+                                Vec::new()
+                            },
                         })
                     }
                 };

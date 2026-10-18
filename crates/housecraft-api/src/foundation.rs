@@ -182,6 +182,7 @@ pub(crate) fn build(
                 floor_structure: Length::ZERO,
                 foundation: Some(spec.clone()),
                 auto_roof: false,
+                platform: Vec::new(),
             });
             out.created.push(id);
             id
