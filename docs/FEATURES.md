@@ -596,3 +596,9 @@ These come from reading the whole list and change the architecture, not just the
 | UI-21 | VR (OpenXR) | P3 | M8 |
 | UI-22 | Context-sensitive help | P2 | GUI |
 | UI-23 | License activation | ✗ | — |
+| UI-24 | Document tabs for open views (Dashboard, plan, 3D, layouts) under the toolbars | P1 | GUI |
+| UI-25 | Plan canvas stays white with a light lavender grid in every theme; red X / blue Y origin marker | P1 | GUI |
+| UI-26 | Typed Tool Search box in the top toolbar; floor stepper (down, floor number, up) beside the plan-view list | P1 | GUI |
+| UI-27 | Right dock order Library, Project Browser, Active Layer Display; Project Browser with filter box, Project Folders / Projects tree, Details and Preview panes | P1 | GUI |
+| UI-28 | Status bar: hint, current tool [hotkey], floor, layer, drawing group, live X/Y/Z, view size in pixels | P1 | GUI |
+| UI-29 | Account menu before Help; left dock titled "Tool Palette" | P2 | GUI |
