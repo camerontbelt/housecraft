@@ -171,21 +171,22 @@ The room's walls also carry a 16-byte id at +0x5b (different per wall; zero in t
 **[open]** how later walls reference their type; whether the +0x5b id is the wall's own or its room's; which side
 is exterior.
 
-### 3.2 Door and window records — partly confirmed
+### 3.2 Door and window records — mostly decoded
 
-**[obs]** Both kinds share a run of five `f64`s:
+**[obs]** Doors and windows share this run (offsets from the first value):
 
-| | f64 0 | f64 1 | f64 2 | f64 3 | f64 4 |
-|---|---|---|---|---|---|
-| door (snapshot 15) | 117.24 | 30 | 0.625 | 80 | 80 |
-| window (snapshot 16) | 56.707 | 32 | 0.625 | 48 | 80 |
+| Offset | Type | Field | Evidence |
+|---|---|---|---|
+| +0x00 | f64 | centre position along the host wall | unchanged when the width changed (door 117.24, window 56.71) |
+| +0x08 | f64 | width | spec dialogs: door 2'-6" = 30, window 2'-8" = 32; edits to 36 changed only this value |
+| +0x10 | 2 bytes | 0 (unknown) | |
+| +0x12 | f64 | 0.625 in both (unknown; maybe trim or frame size) | |
+| +0x1a | f64 | height | door 80 (dialog: 80"), window 48 |
+| +0x22 | f64 | top (header) height | 80 for both, so the window sill is 32 |
 
-**[obs]** f64 1 is the **width**: Chief's specification dialogs show the door at 2'-6" (30") and the window at
-2'-8" (32"), matching f64 1 in both records.
-**[inf]** f64 0 is the position along the host wall (the door's 117.24 exceeds the horizontal wall's 116.89, so it is
-on the vertical wall); f64 4 is the header height (6'-8"); f64 3 is the height (80" door, 48" window, so the
-window's sill is 32"). The string "BM11 - Base Molding" sits nearby (casing / molding settings).
-**[open]** f64 2 (0.625 in both).
+Samples: snapshot 29 (window width 32 → 36) and 32 (door width 30 → 36); each holds the before and after copy.
+The string "BM11 - Base Molding" sits nearby (casing / molding settings).
+**[open]** the 0.625 field, the host-wall reference, swing and hinge side, door/window type.
 
 ## 4. Next steps
 
