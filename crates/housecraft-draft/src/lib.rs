@@ -39,6 +39,10 @@ pub enum Fill {
     Ink(Ink),
     /// Wall poché: a mid-grey that reads in both themes.
     Poche,
+    /// Cast sun shadows: a light tint under everything else.
+    Shadow,
+    /// The page background, to mask what lies beneath.
+    Paper,
 }
 
 #[derive(Debug, Clone, PartialEq)]

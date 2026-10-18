@@ -381,15 +381,7 @@ impl egui_wgpu::CallbackTrait for Paint3d {
 
 /// Direction toward the sun (z up) from the document's north and sun settings.
 fn sun_direction(doc: &housecraft_api::model::Document) -> Vec3 {
-    let sun = doc.settings.sun;
-    // Azimuth is clockwise from north; plan angles are counter-clockwise.
-    let bearing = (doc.settings.north - sun.azimuth).to_radians() as f32;
-    let alt = (sun.altitude as f32).to_radians();
-    Vec3::new(
-        alt.cos() * bearing.cos(),
-        alt.cos() * bearing.sin(),
-        alt.sin(),
-    )
+    housecraft_api::geom::sun::direction(doc).as_vec3()
 }
 
 /// An orthographic view-projection looking down `light` that covers `lo..hi`
@@ -589,19 +581,9 @@ impl View3d {
     }
 }
 
-/// Grade level in metres: 8" below the platform of the lowest storey above a
-/// foundation, or just under the lowest floor when there is none.
+/// Grade level in metres (see [`housecraft_api::geom::sun::grade`]).
 fn grade(doc: &housecraft_api::model::Document) -> Option<f32> {
-    use housecraft_api::model::Floor;
-    let floors = doc.floors_by_elevation();
-    let has_foundation = floors.iter().any(|f| f.foundation.is_some());
-    let first: &Floor = floors.iter().find(|f| f.foundation.is_none())?;
-    let z = if has_foundation {
-        (first.elevation - first.floor_structure).mm() - 203.2
-    } else {
-        first.elevation.mm() - 20.0
-    };
-    Some((z / 1000.0) as f32)
+    housecraft_api::geom::sun::grade(doc).map(|z| (z / 1000.0) as f32)
 }
 
 fn to_gpu(

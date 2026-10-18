@@ -83,6 +83,9 @@ enum Cmd {
         /// Show this floor (name or id) faded instead of the floor below; repeatable.
         #[arg(long)]
         reference_floor: Vec<String>,
+        /// Draw sun shadows on the ground around the lowest storey.
+        #[arg(long)]
+        shadows: bool,
         /// Remodel phase: all, as-built, demolition or proposed.
         #[arg(long, default_value = "all")]
         phase: String,
@@ -227,6 +230,7 @@ fn main() -> Result<()> {
             portrait,
             reference,
             reference_floor,
+            shadows,
             phase,
             pixels,
         } => {
@@ -241,6 +245,7 @@ fn main() -> Result<()> {
                         .floor,
                 );
             }
+            opts.sun_shadows = shadows;
             opts.phase = match phase.as_str() {
                 "all" => Phase::All,
                 "as-built" | "as_built" => Phase::AsBuilt,

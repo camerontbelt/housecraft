@@ -461,6 +461,7 @@ impl App {
             reference_floor: self.plan.reference_floor,
             references: self.plan.references.clone(),
             phase: self.plan.phase,
+            sun_shadows: self.plan.sun_shadows,
             default_set: None,
         };
         let drawing = housecraft_draft::plan(doc, &opts);
@@ -871,6 +872,7 @@ impl App {
                         }
                     }
                 });
+                ui.checkbox(&mut self.plan.sun_shadows, "Sun Shadows in Plan");
                 ui.menu_button("Renovation Phase", |ui| {
                     for p in Phase::ALL {
                         if ui.radio(self.plan.phase == p, p.name()).clicked() {

@@ -18,6 +18,8 @@ pub struct PlanOptions {
     pub references: Vec<Id>,
     /// Remodel phase to show.
     pub phase: Phase,
+    /// Draw the building's sun shadows on the ground (lowest storey only).
+    pub sun_shadows: bool,
     /// Default set used for dimension and text defaults; `None` = active.
     pub default_set: Option<Id>,
 }
@@ -65,6 +67,7 @@ impl PlanOptions {
             reference_floor: false,
             references: Vec::new(),
             phase: Phase::All,
+            sun_shadows: false,
             default_set: None,
         })
     }
@@ -156,6 +159,10 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         defaults,
     };
     let mut out = Drawing::default();
+
+    if opts.sun_shadows {
+        sun_shadows(doc, opts.floor, &mut out);
+    }
 
     for reference in opts.reference_floor_ids(doc) {
         for g in wall_geoms(doc, reference) {
@@ -586,6 +593,69 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         );
     }
     out
+}
+
+/// Shadows the walls and roof cast on the ground at the document's sun
+/// position, drawn under the plan of the lowest storey and masked by its
+/// footprint (the building's own shade inside is not shown).
+fn sun_shadows(doc: &Document, floor: Id, out: &mut Drawing) {
+    use housecraft_geom::mesh::Category;
+    let lowest = doc
+        .floors_by_elevation()
+        .into_iter()
+        .find(|f| f.foundation.is_none());
+    if lowest.map(|f| f.id) != Some(floor) {
+        return;
+    }
+    let sun = housecraft_geom::sun::direction(doc);
+    let Some(ground) = housecraft_geom::sun::grade(doc) else {
+        return;
+    };
+    // Very low sun throws shadows off the page; 5° keeps them bounded.
+    if sun.z < 5f64.to_radians().sin() || !doc.settings.sun.shadows {
+        return;
+    }
+    let mesh = housecraft_geom::mesh::build(doc, None);
+    let project = |i: u32| {
+        let [x, y, z] = mesh.positions[i as usize];
+        let p = glam::DVec3::new(x as f64, y as f64, z as f64) * 1000.0;
+        let h = (p.z - ground).max(0.0);
+        (p.truncate() - sun.truncate() * (h / sun.z), h)
+    };
+    for part in mesh.parts.iter().filter(|p| {
+        matches!(
+            p.category,
+            Category::Wall | Category::Roof | Category::Foundation
+        )
+    }) {
+        let range = part.first_index as usize..(part.first_index + part.index_count) as usize;
+        for t in mesh.indices[range].chunks(3) {
+            let pts = [project(t[0]), project(t[1]), project(t[2])];
+            if pts.iter().all(|(_, h)| *h < 1.0) {
+                continue;
+            }
+            let poly: Vec<DVec2> = pts.iter().map(|(p, _)| *p).collect();
+            if housecraft_geom::math::signed_area(&poly).abs() < 1.0 {
+                continue;
+            }
+            out.push(
+                None,
+                Prim::Polygon {
+                    points: poly,
+                    fill: Fill::Shadow,
+                },
+            );
+        }
+    }
+    for fp in rooms::detect(doc, floor).footprints {
+        out.push(
+            None,
+            Prim::Polygon {
+                points: fp,
+                fill: Fill::Paper,
+            },
+        );
+    }
 }
 
 /// A north pointer: a circle with a half-filled arrow and an "N" past its tip.

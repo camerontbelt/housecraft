@@ -21,7 +21,7 @@ use crate::tools::{StairKind, Tool};
 const PICK_PX: f64 = 7.0;
 
 struct Cache {
-    key: (u64, Id, Id, bool, Vec<Id>, Phase),
+    key: (u64, Id, Id, bool, Vec<Id>, Phase, bool),
     drawing: Drawing,
     fills: Vec<(Vec<DVec2>, Vec<[usize; 3]>, Fill)>,
     regions: FloorRegions,
@@ -54,6 +54,7 @@ pub struct PlanState {
     /// Chosen reference floors; empty = the floor below.
     pub references: Vec<Id>,
     pub phase: Phase,
+    pub sun_shadows: bool,
     pub center: DVec2,
     pub mm_per_pt: f64,
     pub fit_requested: bool,
@@ -91,6 +92,7 @@ impl PlanState {
             reference_floor: false,
             references: Vec::new(),
             phase: Phase::All,
+            sun_shadows: false,
             center: DVec2::new(6000.0, 4500.0),
             mm_per_pt: 20.0,
             fit_requested: true,
@@ -140,6 +142,7 @@ impl PlanState {
             self.reference_floor,
             self.references.clone(),
             self.phase,
+            self.sun_shadows,
         );
         if self.cache.as_ref().is_some_and(|c| c.key == key) {
             return;
@@ -150,6 +153,7 @@ impl PlanState {
             reference_floor: self.reference_floor,
             references: self.references.clone(),
             phase: self.phase,
+            sun_shadows: self.sun_shadows,
             default_set: None,
         };
         let drawing = housecraft_draft::plan(doc, &opts);
@@ -227,6 +231,10 @@ fn fill_color(ui: &Ui, fill: Fill) -> Color32 {
     match fill {
         Fill::Poche if ui.visuals().dark_mode => Color32::from_gray(90),
         Fill::Poche => Color32::from_gray(195),
+        Fill::Shadow if ui.visuals().dark_mode => Color32::from_rgb(44, 48, 56),
+        Fill::Shadow => Color32::from_rgb(226, 228, 232),
+        Fill::Paper if ui.visuals().dark_mode => Color32::from_gray(28),
+        Fill::Paper => Color32::WHITE,
         Fill::Ink(i) => ink_color(ui, i),
     }
 }

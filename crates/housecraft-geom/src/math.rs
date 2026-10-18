@@ -434,12 +434,30 @@ pub fn intersect_convex(poly: &[DVec2], convex: &[DVec2]) -> Vec<Vec<DVec2>> {
     out
 }
 
-/// Direction of the polygon's longest edge (unit).
+/// The polygon's dominant direction (unit): the direction with the most total
+/// edge length, so a long wall split by T-junctions still counts as one.
 pub fn long_axis(poly: &[DVec2]) -> DVec2 {
-    (0..poly.len())
-        .map(|i| poly[(i + 1) % poly.len()] - poly[i])
-        .max_by(|a, b| a.length_squared().total_cmp(&b.length_squared()))
-        .map_or(DVec2::X, |d| d.normalize_or(DVec2::X))
+    let mut buckets: Vec<(DVec2, f64)> = Vec::new();
+    for i in 0..poly.len() {
+        let d = poly[(i + 1) % poly.len()] - poly[i];
+        let len = d.length();
+        if len < 1e-6 {
+            continue;
+        }
+        let mut u = d / len;
+        // Opposite edges run the same way for this purpose.
+        if u.x < -1e-9 || (u.x.abs() <= 1e-9 && u.y < 0.0) {
+            u = -u;
+        }
+        match buckets.iter_mut().find(|(b, _)| b.dot(u) > 0.9998) {
+            Some((_, total)) => *total += len,
+            None => buckets.push((u, len)),
+        }
+    }
+    buckets
+        .into_iter()
+        .max_by(|a, b| a.1.total_cmp(&b.1))
+        .map_or(DVec2::X, |(u, _)| u)
 }
 
 #[cfg(test)]

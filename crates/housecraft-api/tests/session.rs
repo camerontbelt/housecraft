@@ -1139,3 +1139,26 @@ fn plumbing_and_hvac_symbols() {
         );
     }
 }
+
+#[test]
+fn gable_style_puts_the_ridge_along_the_long_side() {
+    // 40' x 20' with an interior wall T-ing into both long walls.
+    let mut s = Session::new(Document::new("Long"));
+    apply(
+        &mut s,
+        r#"[{"op": "add_walls", "points": [[0,0], [0,"20'"], ["40'","20'"], ["40'",0]], "closed": true},
+            {"op": "add_wall", "start": ["15'",0], "end": ["15'","20'"], "interior": true},
+            {"op": "set_roof_style", "style": "gable"}]"#,
+    );
+    let doc = s.document();
+    for w in doc
+        .iter::<Wall>()
+        .filter(|w| w.wall_type == doc.active_defaults().exterior_wall_type)
+    {
+        let runs_ns = (w.start.x() - w.end.x()).mm().abs() < 1.0;
+        assert_eq!(
+            w.roof.gable, runs_ns,
+            "short (north-south) walls are the gable ends"
+        );
+    }
+}

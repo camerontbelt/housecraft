@@ -44,6 +44,10 @@ pub(crate) fn fill_rgb(fill: Fill, dark: bool) -> (u8, u8, u8, f64) {
     match fill {
         Fill::Poche if dark => (95, 95, 95, 1.0),
         Fill::Poche => (190, 190, 190, 1.0),
+        Fill::Shadow if dark => (48, 52, 60, 1.0),
+        Fill::Shadow => (226, 228, 232, 1.0),
+        Fill::Paper if dark => (30, 30, 30, 1.0),
+        Fill::Paper => (255, 255, 255, 1.0),
         Fill::Ink(ink) => ink_rgb(ink, dark),
     }
 }

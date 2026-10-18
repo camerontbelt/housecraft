@@ -15,6 +15,33 @@ pub fn position(latitude: f64, day_of_year: u32, hour: f64) -> (f64, f64) {
     (az.to_degrees().rem_euclid(360.0), alt.to_degrees())
 }
 
+/// Unit vector toward the sun (z up, plan axes) from the document's north
+/// angle and sun bearing/altitude.
+pub fn direction(doc: &housecraft_model::Document) -> glam::DVec3 {
+    let sun = doc.settings.sun;
+    // Azimuth is clockwise from north; plan angles are counter-clockwise.
+    let bearing = (doc.settings.north - sun.azimuth).to_radians();
+    let alt = sun.altitude.to_radians();
+    glam::DVec3::new(
+        alt.cos() * bearing.cos(),
+        alt.cos() * bearing.sin(),
+        alt.sin(),
+    )
+}
+
+/// Ground level in mm: 8" below the platform of the lowest storey when there
+/// is a foundation, else just under the lowest floor.
+pub fn grade(doc: &housecraft_model::Document) -> Option<f64> {
+    let floors = doc.floors_by_elevation();
+    let has_foundation = floors.iter().any(|f| f.foundation.is_some());
+    let first = floors.iter().find(|f| f.foundation.is_none())?;
+    Some(if has_foundation {
+        (first.elevation - first.floor_structure).mm() - 203.2
+    } else {
+        first.elevation.mm() - 20.0
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
