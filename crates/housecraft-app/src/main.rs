@@ -8,6 +8,7 @@ mod canvas;
 mod dialogs;
 mod icons;
 mod props;
+mod schedules;
 mod snap;
 mod tools;
 mod util;

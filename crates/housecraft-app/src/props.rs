@@ -340,6 +340,52 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ui.end_row();
             }
         }
+        Object::Schedule(s) => {
+            Ed::label(ui, "Schedule");
+            ui.label(s.schedule_kind.name());
+            ui.end_row();
+            if let Some(p) = ed.point(ui, "Position", "position", s.position) {
+                ed.out.push(patch(id, json!({ "position": p })));
+            }
+            Ed::label(ui, "Scope");
+            let mut all = s.all_floors;
+            if ui.checkbox(&mut all, "All floors").changed() {
+                ed.out.push(patch(id, json!({ "all_floors": all })));
+            }
+            ui.end_row();
+            Ed::label(ui, "Columns");
+            ui.vertical(|ui| {
+                let shown: Vec<String> = if s.columns.is_empty() {
+                    housecraft_api::schedule::available_columns(s.schedule_kind)
+                        .iter()
+                        .map(|c| c.to_string())
+                        .collect()
+                } else {
+                    s.columns.clone()
+                };
+                for c in housecraft_api::schedule::available_columns(s.schedule_kind) {
+                    let mut on = shown.iter().any(|x| x.eq_ignore_ascii_case(c));
+                    if ui.checkbox(&mut on, *c).changed() {
+                        // Keep the catalogue's order.
+                        let cols: Vec<&str> =
+                            housecraft_api::schedule::available_columns(s.schedule_kind)
+                                .iter()
+                                .copied()
+                                .filter(|k| {
+                                    if k == c {
+                                        on
+                                    } else {
+                                        shown.iter().any(|x| x.eq_ignore_ascii_case(k))
+                                    }
+                                })
+                                .collect();
+                        ed.out.push(patch(id, json!({ "columns": cols })));
+                    }
+                }
+            });
+            ui.end_row();
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(s.layer), None);
+        }
         Object::Electrical(e) => {
             Ed::label(ui, "Type");
             let mut kind = e.electrical_kind;

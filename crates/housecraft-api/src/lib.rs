@@ -10,6 +10,7 @@ mod ops;
 pub mod query;
 mod roofs;
 mod rooms;
+pub mod schedule;
 mod session;
 
 pub use command::{Command, LengthAnchor, Outcome, TransformOp};

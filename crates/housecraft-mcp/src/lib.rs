@@ -102,6 +102,19 @@ pub struct ExportPlanArgs {
     pub layer_set: Option<String>,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ScheduleArgs {
+    /// doors, windows, rooms, walls, fixtures, stairs or roof_planes.
+    pub kind: housecraft_api::model::ScheduleKind,
+    /// Only this floor (id); every floor when omitted.
+    pub floor: Option<Id>,
+    /// Columns to include, in order; all when omitted.
+    #[serde(default)]
+    pub columns: Vec<String>,
+    /// csv, txt, xml or html (default txt).
+    pub format: Option<housecraft_api::schedule::TableFormat>,
+}
+
 #[derive(Serialize)]
 struct Status<'a> {
     message: &'a str,
@@ -215,6 +228,27 @@ impl HouseCraftServer {
             let obj = query::get_object(s.document(), args.id)
                 .ok_or_else(|| format!("{} not found", args.id))?;
             json(&obj)
+        })
+    }
+
+    /// A schedule (doors, windows, rooms, walls, fixtures, stairs or roof planes) as a
+    /// text, CSV, XML or HTML table, computed from the current model.
+    #[tool]
+    async fn schedule(&self, Parameters(args): Parameters<ScheduleArgs>) -> ToolResult {
+        self.with_session(|s, _| {
+            let table = housecraft_api::schedule::schedule(
+                s.document(),
+                args.kind,
+                &housecraft_api::schedule::ScheduleOptions {
+                    floor: args.floor,
+                    columns: args.columns,
+                },
+            );
+            let text = table.export(
+                args.format
+                    .unwrap_or(housecraft_api::schedule::TableFormat::Txt),
+            );
+            Ok(text)
         })
     }
 
@@ -351,6 +385,7 @@ mod tests {
             "redo",
             "view_plan",
             "export_plan",
+            "schedule",
         ] {
             assert!(
                 names.iter().any(|n| n == expected),

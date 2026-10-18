@@ -356,6 +356,11 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             e.rotation = t.apply_angle(e.rotation);
             Object::Electrical(e)
         }
+        Object::Schedule(s) => {
+            let mut s = s.clone();
+            s.position = t.apply_point(s.position);
+            Object::Schedule(s)
+        }
         Object::RoofPlane(r) => {
             let mut r = r.clone();
             for p in r.outline.iter_mut() {
@@ -885,6 +890,7 @@ pub(crate) fn insert_objects(
                 Object::RoofPlane(r) => r.floor = f,
                 Object::Stair(s) => s.floor = f,
                 Object::Electrical(e) => e.floor = f,
+                Object::Schedule(s) => s.floor = f,
                 _ => {}
             }
         }
@@ -926,6 +932,7 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::RoofPlane(r) => &mut r.floor,
             Object::Stair(s) => &mut s.floor,
             Object::Electrical(e) => &mut e.floor,
+            Object::Schedule(s) => &mut s.floor,
             _ => continue,
         };
         let before = *floor;

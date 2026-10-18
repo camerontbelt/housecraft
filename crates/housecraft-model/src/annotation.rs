@@ -133,3 +133,63 @@ pub struct Text {
     #[serde(default)]
     pub color: Option<Color>,
 }
+
+/// What a schedule lists.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum ScheduleKind {
+    Doors,
+    Windows,
+    Rooms,
+    Walls,
+    /// Electrical, plumbing and HVAC symbols.
+    Fixtures,
+    Stairs,
+    RoofPlanes,
+}
+
+impl ScheduleKind {
+    pub const ALL: [ScheduleKind; 7] = [
+        ScheduleKind::Doors,
+        ScheduleKind::Windows,
+        ScheduleKind::Rooms,
+        ScheduleKind::Walls,
+        ScheduleKind::Fixtures,
+        ScheduleKind::Stairs,
+        ScheduleKind::RoofPlanes,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            ScheduleKind::Doors => "Door Schedule",
+            ScheduleKind::Windows => "Window Schedule",
+            ScheduleKind::Rooms => "Room Finish Schedule",
+            ScheduleKind::Walls => "Wall Schedule",
+            ScheduleKind::Fixtures => "Electrical, Plumbing and HVAC Schedule",
+            ScheduleKind::Stairs => "Stair Schedule",
+            ScheduleKind::RoofPlanes => "Roof Plane Schedule",
+        }
+    }
+}
+
+/// A schedule table placed in plan; its rows come from the live model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Schedule {
+    pub id: Id,
+    pub floor: Id,
+    pub layer: Id,
+    /// Top-left corner of the table.
+    pub position: Point2,
+    pub schedule_kind: ScheduleKind,
+    /// Columns to show, by name, in order; empty for all.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub columns: Vec<String>,
+    /// List objects on every floor, not just this one.
+    #[serde(default)]
+    pub all_floors: bool,
+    /// Text height; `None` uses the layer's or default text style.
+    #[serde(default)]
+    pub text_height: Option<Length>,
+}

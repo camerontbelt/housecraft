@@ -139,6 +139,7 @@ objects! {
     RoofPlane => "roof_plane",
     Stair => "stair",
     Electrical => "electrical",
+    Schedule => "schedule",
 }
 
 impl fmt::Display for ObjectKind {
@@ -160,6 +161,7 @@ impl ObjectKind {
                 | ObjectKind::RoofPlane
                 | ObjectKind::Stair
                 | ObjectKind::Electrical
+                | ObjectKind::Schedule
         )
     }
 }
@@ -343,6 +345,7 @@ impl Document {
             Object::RoofPlane(r) => Some(r.floor),
             Object::Stair(s) => Some(s.floor),
             Object::Electrical(e) => Some(e.floor),
+            Object::Schedule(s) => Some(s.floor),
             _ => None,
         }
     }
@@ -359,6 +362,7 @@ impl Document {
             Object::RoofPlane(r) => Some(r.layer),
             Object::Stair(s) => Some(s.layer),
             Object::Electrical(e) => Some(e.layer),
+            Object::Schedule(s) => Some(s.layer),
             _ => None,
         }
     }

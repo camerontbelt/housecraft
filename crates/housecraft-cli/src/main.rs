@@ -123,6 +123,21 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// Print or export a schedule: doors, windows, rooms, walls, fixtures,
+    /// stairs or roof-planes.
+    Schedule {
+        path: PathBuf,
+        kind: String,
+        /// Floor name or id (default: every floor).
+        #[arg(long)]
+        floor: Option<String>,
+        /// Comma-separated columns to include, in order.
+        #[arg(long, value_delimiter = ',')]
+        columns: Vec<String>,
+        /// Write here; .csv, .txt, .xml or .html picks the format (default: text to stdout).
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
     /// Print the JSON Schema for command batches.
     Schema,
     /// Run the MCP server on stdin/stdout.
@@ -449,6 +464,38 @@ fn main() -> Result<()> {
                         w.height.map_or("?".to_string(), |h| format!("{h:.3}\""))
                     );
                 }
+            }
+        }
+        Cmd::Schedule {
+            path,
+            kind,
+            floor,
+            columns,
+            output,
+        } => {
+            use housecraft_api::schedule::{ScheduleOptions, TableFormat, schedule};
+            let doc = load(&path)?;
+            let kind: housecraft_api::model::ScheduleKind =
+                serde_json::from_value(serde_json::Value::String(kind.replace('-', "_")))
+                    .map_err(|_| anyhow::anyhow!("unknown schedule {kind:?} (doors, windows, rooms, walls, fixtures, stairs, roof-planes)"))?;
+            let floor = match floor {
+                Some(f) => Some(
+                    PlanOptions::resolve(&doc, Some(&f), None)
+                        .map_err(anyhow::Error::msg)?
+                        .floor,
+                ),
+                None => None,
+            };
+            let table = schedule(&doc, kind, &ScheduleOptions { floor, columns });
+            match output {
+                Some(out) => {
+                    let ext = out.extension().and_then(|e| e.to_str()).unwrap_or("");
+                    let format = TableFormat::from_extension(ext)
+                        .ok_or_else(|| anyhow::anyhow!("use a .csv, .txt, .xml or .html output"))?;
+                    std::fs::write(&out, table.export(format))?;
+                    println!("wrote {}", out.display());
+                }
+                None => print!("{}", table.export(TableFormat::Txt)),
             }
         }
         Cmd::Schema => print_json(&housecraft_api::command_schema())?,

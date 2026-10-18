@@ -297,7 +297,8 @@ pub fn underside_at(outline: &[DVec3], thickness: f64, pitch: f64, p: DVec2) -> 
     Some(z - thickness / pitch.to_radians().cos())
 }
 
-pub(crate) fn newell(pts: &[DVec3]) -> DVec3 {
+/// Newell normal of a planar polygon; its length is twice the polygon's area.
+pub fn newell(pts: &[DVec3]) -> DVec3 {
     let mut n = DVec3::ZERO;
     for i in 0..pts.len() {
         let (a, b) = (pts[i], pts[(i + 1) % pts.len()]);

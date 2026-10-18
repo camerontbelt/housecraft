@@ -139,6 +139,17 @@ pub enum Command {
         hour: Option<f64>,
         shadows: Option<bool>,
     },
+    /// Place a schedule table (door, window, room, wall, fixture, stair or
+    /// roof plane) with its top-left corner at `position`.
+    AddSchedule {
+        floor: Option<Id>,
+        schedule_kind: ScheduleKind,
+        position: Point2,
+        #[serde(default)]
+        columns: Vec<String>,
+        #[serde(default)]
+        all_floors: bool,
+    },
     /// Exchange everything drawn on two floors (walls, rooms, CAD, text...),
     /// keeping the floors' own heights.
     SwapFloors { a: Id, b: Id },
@@ -457,6 +468,7 @@ impl Command {
             Command::RemoveRoof { .. } => "remove_roof",
             Command::AddRoofPlane { .. } => "add_roof_plane",
             Command::AddStair { .. } => "add_stair",
+            Command::AddSchedule { .. } => "add_schedule",
             Command::AddElectrical { .. } => "add_electrical",
             Command::ConnectSwitch { .. } => "connect_switch",
             Command::SetRenovation { .. } => "set_renovation",
@@ -839,6 +851,36 @@ impl Command {
                 if let Some(s) = shadows {
                     sun.shadows = *s;
                 }
+            }
+            Command::AddSchedule {
+                floor,
+                schedule_kind,
+                position,
+                columns,
+                all_floors,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                let known = crate::schedule::available_columns(*schedule_kind);
+                if let Some(bad) = columns
+                    .iter()
+                    .find(|c| !known.iter().any(|k| k.eq_ignore_ascii_case(c)))
+                {
+                    return invalid(format!(
+                        "{} has no column {bad:?} (has: {})",
+                        schedule_kind.name(),
+                        known.join(", ")
+                    ));
+                }
+                out.created.push(doc.insert(Schedule {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.text,
+                    position: *position,
+                    schedule_kind: *schedule_kind,
+                    columns: columns.clone(),
+                    all_floors: *all_floors,
+                    text_height: None,
+                }));
             }
             Command::SwapFloors { a, b } => {
                 expect::<Floor>(doc, *a)?;

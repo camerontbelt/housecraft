@@ -551,6 +551,16 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         north_pointer(v2(at), doc.settings.north, &mut out);
     }
 
+    for s in doc.iter::<Schedule>().filter(|s| s.floor == opts.floor) {
+        let look = ctx.look(s.layer);
+        if look.visible {
+            let style = ctx.text_style(None, &look);
+            let h = s.text_height.unwrap_or(style.height).mm();
+            let ink = style.color.map_or(look.ink, Ink::Color);
+            schedule_table(doc, s, h, look.stroke, ink, &mut out);
+        }
+    }
+
     for dim in doc.iter::<Dimension>().filter(|d| d.floor == opts.floor) {
         let look = ctx.look(dim.layer);
         if !look.visible {
@@ -655,6 +665,123 @@ fn sun_shadows(doc: &Document, floor: Id, out: &mut Drawing) {
                 fill: Fill::Paper,
             },
         );
+    }
+}
+
+/// Draw a schedule as a ruled table hanging down-right from its position.
+fn schedule_table(
+    doc: &Document,
+    s: &Schedule,
+    h: f64,
+    stroke: Stroke,
+    ink: Ink,
+    out: &mut Drawing,
+) {
+    let table = housecraft_api::schedule::schedule(
+        doc,
+        s.schedule_kind,
+        &housecraft_api::schedule::ScheduleOptions {
+            floor: (!s.all_floors).then_some(s.floor),
+            columns: s.columns.clone(),
+        },
+    );
+    let id = Some(s.id);
+    let pad = h * 0.6;
+    let row_h = h * 2.0;
+    // The shared width estimate is tuned for labels; table text, and the bold
+    // header especially, renders wider, so allow a margin.
+    let text_w =
+        |t: &str, bold: bool| crate::approx_text_width(t, h) * if bold { 1.4 } else { 1.3 };
+    let widths: Vec<f64> = (0..table.columns.len())
+        .map(|i| {
+            table
+                .rows
+                .iter()
+                .map(|r| text_w(&r.cells[i], false))
+                .chain(std::iter::once(text_w(&table.columns[i], true)))
+                .fold(0.0, f64::max)
+                + 2.0 * pad
+        })
+        .collect();
+    let width: f64 = widths
+        .iter()
+        .sum::<f64>()
+        .max(crate::approx_text_width(&table.title, h * 1.3) + 2.0 * pad);
+    let rows = table.rows.len() + 2; // title and header
+    let height = rows as f64 * row_h;
+    let o = v2(s.position);
+    let at = |x: f64, y: f64| o + DVec2::new(x, -y);
+    let line = |out: &mut Drawing, a: DVec2, b: DVec2, stroke: Stroke| {
+        out.push(
+            id,
+            Prim::Polyline {
+                points: vec![a, b],
+                closed: false,
+                stroke,
+            },
+        );
+    };
+    out.push(
+        id,
+        Prim::Polyline {
+            points: vec![
+                at(0.0, 0.0),
+                at(width, 0.0),
+                at(width, height),
+                at(0.0, height),
+            ],
+            closed: true,
+            stroke,
+        },
+    );
+    let thin = Stroke {
+        width: stroke.width * 0.6,
+        ..stroke
+    };
+    for r in 1..rows {
+        line(
+            out,
+            at(0.0, r as f64 * row_h),
+            at(width, r as f64 * row_h),
+            if r <= 2 { stroke } else { thin },
+        );
+    }
+    let mut x = 0.0;
+    for w in &widths[..widths.len().saturating_sub(1)] {
+        x += w;
+        line(out, at(x, row_h), at(x, height), thin);
+    }
+    let text = |out: &mut Drawing, p: DVec2, t: &str, height: f64, bold: bool, justify: Justify| {
+        out.push(
+            id,
+            Prim::Text {
+                at: p,
+                text: t.to_string(),
+                height,
+                rotation: 0.0,
+                justify,
+                middle: true,
+                bold,
+                ink,
+            },
+        );
+    };
+    text(
+        out,
+        at(width / 2.0, row_h / 2.0),
+        &table.title,
+        h * 1.3,
+        true,
+        Justify::Center,
+    );
+    let cells = std::iter::once(&table.columns).chain(table.rows.iter().map(|r| &r.cells));
+    for (r, row) in cells.enumerate() {
+        let y = (r as f64 + 1.5) * row_h;
+        let mut x = 0.0;
+        for (c, cell) in row.iter().enumerate() {
+            text(out, at(x + pad, y), cell, h, r == 0, Justify::Left);
+            x += widths[c];
+        }
     }
 }
 

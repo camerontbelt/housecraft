@@ -88,6 +88,9 @@ pub struct App {
     pub spec: Vec<Id>,
     /// Rooms being edited together (multi-room specification).
     pub room_multi: Option<Vec<Id>>,
+    /// The schedule shown in the schedule window, if open.
+    pub schedule_view: Option<ScheduleKind>,
+    pub schedule_this_floor: bool,
     pub clipboard: Vec<serde_json::Value>,
     pub status: Option<(String, bool)>,
     pub pending: Option<Pending>,
@@ -119,6 +122,8 @@ impl App {
             bufs: EditBuffers::default(),
             spec: Vec::new(),
             room_multi: None,
+            schedule_view: None,
+            schedule_this_floor: false,
             clipboard: Vec::new(),
             status: None,
             pending: None,
@@ -808,6 +813,21 @@ impl App {
                 }
             });
             ui.menu_button("Tools", |ui| {
+                ui.menu_button("Schedules", |ui| {
+                    for kind in ScheduleKind::ALL {
+                        if item(ui, &format!("{}…", kind.name()), "", true) {
+                            self.schedule_view = Some(kind);
+                        }
+                    }
+                    ui.separator();
+                    ui.menu_button("Place in Plan", |ui| {
+                        for kind in ScheduleKind::ALL {
+                            if item(ui, kind.name(), "", true) {
+                                crate::schedules::place_schedule(self, kind);
+                            }
+                        }
+                    });
+                });
                 ui.menu_button("Snap Settings", |ui| {
                     ui.checkbox(&mut self.prefs.snap.objects, "Object Snaps (Shift+F11)");
                     ui.checkbox(&mut self.prefs.snap.angles, "Angle Snaps (F10)");
@@ -1840,6 +1860,7 @@ impl eframe::App for App {
             });
         crate::props::spec_windows(self, &ctx);
         crate::props::room_multi_window(self, &ctx);
+        crate::schedules::schedule_window(self, &ctx);
         crate::dialogs::show(self, &ctx);
         self.confirm_discard(&ctx);
     }
@@ -1860,7 +1881,7 @@ fn pick_open_path() -> Option<PathBuf> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn pick_save_path(name: &str, ext: &str) -> Option<PathBuf> {
+pub fn pick_save_path(name: &str, ext: &str) -> Option<PathBuf> {
     rfd::FileDialog::new()
         .set_file_name(format!("{name}.{ext}"))
         .add_filter(ext.to_uppercase(), &[ext])
@@ -1873,6 +1894,6 @@ fn pick_open_path() -> Option<PathBuf> {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn pick_save_path(_name: &str, _ext: &str) -> Option<PathBuf> {
+pub fn pick_save_path(_name: &str, _ext: &str) -> Option<PathBuf> {
     None
 }

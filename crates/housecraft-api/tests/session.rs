@@ -362,6 +362,7 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "build_roof"}},
                 {{"op": "add_stair", "start": ["5'","5'"], "direction": 90}},
                 {{"op": "add_electrical", "electrical_kind": "outlet", "at": [0,"5'"]}},
+                {{"op": "add_schedule", "schedule_kind": "rooms", "position": [0,0]}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
             w = wall.0
         ),
@@ -1161,4 +1162,63 @@ fn gable_style_puts_the_ridge_along_the_long_side() {
             "short (north-south) walls are the gable ends"
         );
     }
+}
+
+#[test]
+fn schedules_group_and_export() {
+    use housecraft_api::schedule::{ScheduleOptions, TableFormat, schedule};
+    let mut s = boxed();
+    let wall = walls(&s)[0].id;
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_door", "wall": {w}, "position": "5'"}},
+                {{"op": "add_door", "wall": {w}, "position": "10'"}},
+                {{"op": "add_door", "wall": {w}, "position": "20'", "style": "double"}},
+                {{"op": "add_window", "wall": {w}, "position": "25'"}},
+                {{"op": "add_schedule", "schedule_kind": "doors", "position": ["25'","10'"]}}]"#,
+            w = wall.0
+        ),
+    );
+    let doc = s.document();
+    let doors = schedule(doc, ScheduleKind::Doors, &ScheduleOptions::default());
+    assert_eq!(doors.columns[0], "Label");
+    assert_eq!(
+        doors.rows.len(),
+        2,
+        "two identical hinged doors share a row"
+    );
+    // Widest first: the 5' double door is D01.
+    assert_eq!(doors.rows[0].cells[0], "D01");
+    assert_eq!(doors.rows[0].cells[2], "Double Door");
+    let hinged = &doors.rows[1];
+    assert_eq!(hinged.cells[1], "2");
+    assert_eq!(hinged.ids.len(), 2);
+
+    let rooms = schedule(
+        doc,
+        ScheduleKind::Rooms,
+        &ScheduleOptions {
+            floor: None,
+            columns: vec!["name".into(), "Area".into()],
+        },
+    );
+    assert_eq!(rooms.columns, vec!["Name", "Area"]);
+    assert_eq!(rooms.rows.len(), 1);
+
+    let csv = doors.export(TableFormat::Csv);
+    assert!(csv.starts_with("Label,Qty,Type,Width,Height"));
+    assert!(
+        doors
+            .export(TableFormat::Xml)
+            .contains("<label>D01</label>")
+    );
+    assert!(doors.export(TableFormat::Html).contains("<th>Label</th>"));
+    assert!(doors.export(TableFormat::Txt).contains("Door Schedule"));
+
+    // Placed schedules validate their columns.
+    assert!(
+        s.apply(&commands(r#"[{"op": "add_schedule", "schedule_kind": "doors", "position": [0,0], "columns": ["Nope"]}]"#))
+            .is_err()
+    );
 }
