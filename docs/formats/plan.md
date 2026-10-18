@@ -90,20 +90,46 @@ Offsets below are from `Curran-Accessible-Bath-Sink.plan` unless stated.
   running to the end of the file.
   **[inf]** These are the plan's linked textures and documents. In a `.caproj` they resolve to `Assets/<name>`.
 
-## 2. Units and coordinates — open
+## 2. Units and coordinates — partly decoded
 
-Needs sample pairs `01`/`02`/`03` from [README.md](README.md).
+**[obs]** Lengths are IEEE-754 little-endian `f64` values in **inches**, and they are not aligned to 8 bytes.
+Between two undo snapshots that differ only by one "Edge Move" of a wall, a single `f64` changed
+from 458.4737 to 466.4737 (+8"). The next two moves took it to 521.4737 and then -2.5263.
+**[inf]** That value is one wall end's X coordinate.
+
+## 2a. Undo snapshots: the sample source that works with the trial
+
+The X18 trial can't save plans, but every edit writes a snapshot to
+`%TEMP%\undo_<project>_<pid>_<n>.undoplan`. Each snapshot is the plan state *before* the action it names.
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | u32 | length, 28 |
+| 4 | 28 | `Chief Architect Undo Archive` |
+| 32 | u8 | 0 |
+| 33 | u16 | version, `0x101A` (same as X18 `.plan`) |
+| 35 | u16 | 0 |
+| 37 | u32 | action name length *n* |
+| 41 | *n* | action name, e.g. `EditBehavior: Create Wall`, `EditBehavior: Edge Move` |
+
+**[obs]** 184 of 222 sampled 48-byte windows of the empty-plan snapshot occur verbatim in the archived empty
+`.plan`, so the object encoding is the `.plan` data region's. Snapshots are about 100 KB, not 7.6 MB, because they
+omit thumbnails and library resources. Snapshot pairs are therefore one-change diffs:
+make a change, then any other undoable edit, and the second edit's snapshot holds the first edit's result.
+Chief probably deletes them on exit, so copy them out of `%TEMP%` while it's running.
+
+Corpus so far (`samples/x18/undo/`, git-ignored): 1 empty → 2 one wall → 3–6 the same wall after edge moves.
 
 ## 3. Object records (walls, rooms, doors, windows, …) — open
 
-The index and data region hold them, but locating a wall's coordinates needs the controlled samples
-(one wall, then the same wall moved 1"). Large real plans have too many objects to isolate fields by inspection.
+Next: find the wall record around the changed coordinate (other end point, thickness, wall type reference) by
+diffing snapshots 1→2 (wall created) and 2→3 (moved with a dimension).
 
 ## 4. Next steps
 
 1. Build the `.caproj` unpacker and the header/thumbnail/index/trailer parsers in
    `housecraft-io-ca` from sections 0–1.5. These are low risk, and the thumbnail and asset list are useful on their own.
-2. Create the controlled sample corpus (requires Chief Architect or its trial) to decode units and wall records.
+2. Grow the undo-snapshot corpus (section 2a) to decode wall, door, window and room records.
 3. Compare the 2021 layout (no header record) once the 2025+ layout is understood.
 
 ## 5. Mapping to HouseCraft
