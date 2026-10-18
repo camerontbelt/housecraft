@@ -118,7 +118,24 @@ omit thumbnails and library resources. Snapshot pairs are therefore one-change d
 make a change, then any other undoable edit, and the second edit's snapshot holds the first edit's result.
 Chief probably deletes them on exit, so copy them out of `%TEMP%` while it's running.
 
-Corpus so far (`samples/x18/undo/`, git-ignored): 1 empty → 2 one wall → 3–6 the same wall after edge moves.
+Corpus so far (`samples/x18/undo/`, git-ignored; each row is the state before the named action):
+
+| Snapshots | State |
+|---|---|
+| 1 | empty plan |
+| 2–6 | one 10' wall, before a dimension move and four edge moves |
+| 7 | before a second wall |
+| 10–14 | both walls, moved apart and joined again; the first wall ends at x 2", y 0 |
+| 15 | before a door |
+| 16 | door added |
+| 17 | window added |
+| 18, 21, 24, 27 | a separate rectangle of walls being drawn; 27 has it closed (room created) |
+| 8–9, 19–20, 22–23, 25–26 | tiny "Modify Lights" / "Modify Construction Lines" bookkeeping (~2 KB) |
+
+**[obs]** In snapshot 2 the wall appears to be stored in at least three places (offsets ~1400, ~29260, ~56550).
+Near 29260 are the doubles 120.0 (the 10' length), 109.125 (Chief's default 9'-1 1/8" wall height, twice
+per entry), and four 89-byte entries each holding a pair such as (-3.4737, 123.4737). **[inf]** These are
+corner or extent records of the wall's 3D faces; they are not yet tied to fields.
 
 ## 3. Object records (walls, rooms, doors, windows, …) — open
 
