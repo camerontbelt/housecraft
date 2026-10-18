@@ -7,6 +7,7 @@
 pub mod electrical;
 pub mod math;
 pub mod mesh;
+pub mod piers;
 pub mod roof;
 pub mod rooms;
 pub mod skeleton;

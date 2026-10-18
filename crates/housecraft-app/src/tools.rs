@@ -118,7 +118,7 @@ impl Family {
             Family::Cabinets => "Cabinet Tools",
             Family::Stairs => "Stair Tools",
             Family::Roofs => "Roof Tools",
-            Family::Electrical => "Electrical Tools",
+            Family::Electrical => "Electrical, Plumbing and HVAC",
             Family::Dimensions => "Dimension Tools",
             Family::Text => "Text Tools",
             Family::Cad => "CAD Tools",
@@ -207,6 +207,13 @@ impl Family {
                 Tool::Electrical(ElectricalKind::CeilingFan),
                 Tool::Electrical(ElectricalKind::SmokeDetector),
                 Tool::Electrical(ElectricalKind::JunctionBox),
+                Tool::Electrical(ElectricalKind::HoseBibb),
+                Tool::Electrical(ElectricalKind::FloorDrain),
+                Tool::Electrical(ElectricalKind::GasOutlet),
+                Tool::Electrical(ElectricalKind::SupplyRegister),
+                Tool::Electrical(ElectricalKind::ReturnGrille),
+                Tool::Electrical(ElectricalKind::Thermostat),
+                Tool::Electrical(ElectricalKind::ExhaustFan),
                 Tool::ConnectSwitch,
             ],
             Family::Cabinets | Family::Cameras => &[],
@@ -347,6 +354,7 @@ impl Tool {
                 "Click the bottom of the stair, then click in the direction it climbs."
             }
             Tool::Electrical(k) if k.on_wall() => "Click near a wall to place it on the wall face.",
+            Tool::Electrical(ElectricalKind::FloorDrain) => "Click to place it in the floor.",
             Tool::Electrical(_) => "Click to place it on the ceiling.",
             Tool::ConnectSwitch => {
                 "Click a switch, then click fixtures to wire or unwire them. Shared fixtures make 3-way and 4-way switches."

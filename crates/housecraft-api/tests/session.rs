@@ -1083,3 +1083,59 @@ fn roof_styles_set_every_wall_and_build() {
         assert!(floor.auto_roof, "{style} keeps rebuilding");
     }
 }
+
+#[test]
+fn pier_and_beam_foundation() {
+    let mut s = boxed();
+    apply(
+        &mut s,
+        r#"[{"op": "build_foundation", "kind": "piers", "pier_spacing": "6'"}]"#,
+    );
+    let doc = s.document();
+    let fnd = doc.floors_by_elevation()[0];
+    assert_eq!(doc.walls_on(fnd.id).count(), 0, "piers, not stem walls");
+    let l = housecraft_api::geom::piers::layout(doc, fnd).unwrap();
+    // 20' x 30': perimeter piers at most 6' apart plus interior girders.
+    assert!(l.piers.len() >= 20, "{} piers", l.piers.len());
+    assert!(l.beams.len() > 4, "perimeter beams plus girders");
+    assert!(l.top > l.bottom);
+    let mesh = housecraft_api::geom::mesh::build(doc, None);
+    assert!(mesh.parts.iter().any(|p| p.object == fnd.id));
+    // Spacing is bounded.
+    assert!(
+        s.apply(&commands(
+            r#"[{"op": "build_foundation", "kind": "piers", "pier_spacing": "1'"}]"#
+        ))
+        .is_err()
+    );
+}
+
+#[test]
+fn plumbing_and_hvac_symbols() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_electrical", "electrical_kind": "hose_bibb", "at": ["-1'","10'"]},
+            {"op": "add_electrical", "electrical_kind": "floor_drain", "at": ["10'","10'"]},
+            {"op": "add_electrical", "electrical_kind": "thermostat", "at": ["1'","20'"]},
+            {"op": "add_electrical", "electrical_kind": "supply_register", "at": ["10'","20'"]},
+            {"op": "add_electrical", "electrical_kind": "exhaust_fan", "at": ["5'","25'"]}]"#,
+    );
+    let doc = s.document();
+    let bibb = doc.get::<Electrical>(out.created[0]).unwrap();
+    // Snapped to the outside face of the west wall, facing west.
+    assert!(bibb.position.x().mm() < 0.0);
+    assert!(
+        (bibb.rotation.rem_euclid(360.0) - 180.0).abs() < 1e-6,
+        "{}",
+        bibb.rotation
+    );
+    assert_eq!(bibb.electrical_kind.trade(), "Plumbing");
+    let mesh = housecraft_api::geom::mesh::build(doc, None);
+    for id in &out.created {
+        assert!(
+            mesh.parts.iter().any(|p| p.object == *id),
+            "{id:?} has no 3D"
+        );
+    }
+}

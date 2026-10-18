@@ -82,8 +82,13 @@ fn rebuild_walls(
     spec: &Foundation,
     out: &mut Outcome,
 ) -> bool {
-    let desired = desired_walls(doc, above, spec);
-    if desired.is_empty() {
+    // Piers carry beams, not walls: the foundation floor has no walls.
+    let desired = if spec.kind == FoundationKind::Piers {
+        Vec::new()
+    } else {
+        desired_walls(doc, above, spec)
+    };
+    if desired.is_empty() && spec.kind != FoundationKind::Piers {
         return false;
     }
     let footing =

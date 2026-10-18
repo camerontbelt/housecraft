@@ -287,6 +287,52 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         }
     }
 
+    if let Some(floor) = doc.get::<Floor>(opts.floor)
+        && let Some(l) = housecraft_geom::piers::layout(doc, floor)
+    {
+        let look = ctx.look(ctx.defaults.layers.walls);
+        let dashed = Stroke {
+            dash: &[2.0, 1.2],
+            width: look.stroke.width * 0.5,
+            ..look.stroke
+        };
+        for [a, b] in &l.beams {
+            let n =
+                perp((*b - *a).normalize_or_zero()) * (housecraft_geom::piers::BEAM_WIDTH / 2.0);
+            out.push(
+                None,
+                Prim::Polyline {
+                    points: vec![*a - n, *b - n, *b + n, *a + n],
+                    closed: true,
+                    stroke: dashed,
+                },
+            );
+        }
+        for p in &l.piers {
+            out.push(
+                None,
+                Prim::Polygon {
+                    points: arc_points(*p, l.diameter / 2.0, 0.0, 360.0),
+                    fill: Fill::Poche,
+                },
+            );
+            let h = l.footing / 2.0;
+            out.push(
+                None,
+                Prim::Polyline {
+                    points: vec![
+                        *p + DVec2::new(-h, -h),
+                        *p + DVec2::new(h, -h),
+                        *p + DVec2::new(h, h),
+                        *p + DVec2::new(-h, h),
+                    ],
+                    closed: true,
+                    stroke: dashed,
+                },
+            );
+        }
+    }
+
     let regions = rooms::detect(doc, opts.floor);
     for room in doc.rooms_on(opts.floor) {
         let look = ctx.look(room.layer);
@@ -713,6 +759,60 @@ fn electrical_symbol(
         K::JunctionBox => {
             circle(out, p, r * 1.2);
             text(out, p, "J", r * 1.4);
+        }
+        K::HoseBibb | K::GasOutlet | K::Thermostat => {
+            let c = p + n * r;
+            circle(out, c, r);
+            let label = match e.electrical_kind {
+                K::HoseBibb => "HB",
+                K::GasOutlet => "G",
+                _ => "T",
+            };
+            text(out, c + n * r * 2.0, label, r * 1.1);
+        }
+        K::FloorDrain => {
+            circle(out, p, r * 1.0);
+            for k in [-0.5, 0.0, 0.5] {
+                let o = DVec2::Y * r * k;
+                let w = r * (1.0 - k * k).sqrt();
+                line(out, p + o - DVec2::X * w, p + o + DVec2::X * w);
+            }
+            text(out, p - DVec2::Y * r * 2.0, "FD", r * 1.0);
+        }
+        K::SupplyRegister | K::ExhaustFan => {
+            let (w, d) = if e.electrical_kind == K::ExhaustFan {
+                (r * 2.4, r * 2.4)
+            } else {
+                (r * 2.6, r * 1.1)
+            };
+            let (u, v) = (n * (w / 2.0), t * (d / 2.0));
+            let pts = vec![p - u - v, p + u - v, p + u + v, p - u + v];
+            out.push(
+                id,
+                Prim::Polyline {
+                    points: pts.clone(),
+                    closed: true,
+                    stroke,
+                },
+            );
+            line(out, pts[0], pts[2]);
+            line(out, pts[1], pts[3]);
+            if e.electrical_kind == K::ExhaustFan {
+                text(out, p + n * r * 2.2, "EF", r * 1.0);
+            }
+        }
+        K::ReturnGrille => {
+            let (u, v) = (t * r * 2.5, n * r * 0.5);
+            let c = p + n * r * 0.6;
+            out.push(
+                id,
+                Prim::Polyline {
+                    points: vec![c - u - v, c + u - v, c + u + v, c - u + v],
+                    closed: true,
+                    stroke,
+                },
+            );
+            text(out, c + n * r * 1.8, "RA", r * 1.0);
         }
     }
 }

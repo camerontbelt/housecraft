@@ -240,6 +240,57 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
         K::SmokeDetector => {
             mesh.prism(&disc(p, 65.0, 12), ceiling - 40.0, ceiling, DEVICE_COLOR);
         }
+        K::HoseBibb | K::GasOutlet => {
+            let zc = z.unwrap_or(z0 + 450.0);
+            let color = if e.electrical_kind == K::GasOutlet {
+                [0.85, 0.75, 0.2, 1.0]
+            } else {
+                [0.72, 0.55, 0.25, 1.0]
+            };
+            mesh.prism(
+                &rect(p + out * 40.0, along, 40.0, 80.0),
+                zc - 20.0,
+                zc + 20.0,
+                color,
+            );
+        }
+        K::FloorDrain => {
+            mesh.prism(&disc(p, 75.0, 16), z0, z0 + 3.0, [0.35, 0.35, 0.37, 1.0]);
+        }
+        K::SupplyRegister => {
+            mesh.prism(
+                &rect(p, out, 250.0, 100.0),
+                ceiling - 8.0,
+                ceiling,
+                DEVICE_COLOR,
+            );
+        }
+        K::ReturnGrille => {
+            let zc = z.unwrap_or(z0 + 300.0);
+            mesh.prism(
+                &rect(p + out * 4.0, along, 500.0, 8.0),
+                zc - 150.0,
+                zc + 150.0,
+                DEVICE_COLOR,
+            );
+        }
+        K::Thermostat => {
+            let zc = z.unwrap_or(z0 + 1500.0);
+            mesh.prism(
+                &rect(p + out * 12.0, along, 100.0, 24.0),
+                zc - 50.0,
+                zc + 50.0,
+                DEVICE_COLOR,
+            );
+        }
+        K::ExhaustFan => {
+            mesh.prism(
+                &rect(p, DVec2::X, 250.0, 250.0),
+                ceiling - 12.0,
+                ceiling,
+                DEVICE_COLOR,
+            );
+        }
         K::JunctionBox => {
             mesh.prism(
                 &rect(p, DVec2::X, 100.0, 100.0),
@@ -538,6 +589,35 @@ fn vaulted_ceiling(doc: &Document, floor: Id, room_poly: &[DVec2], mesh: &mut Me
 
 fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
     let z0 = floor.elevation.mm();
+    if let Some(l) = crate::piers::layout(doc, floor) {
+        mesh.begin(floor.id, Category::Foundation);
+        let beam_bottom = l.top - crate::piers::BEAM_DEPTH;
+        for p in &l.piers {
+            mesh.prism(
+                &disc(*p, l.diameter / 2.0, 16),
+                l.bottom,
+                beam_bottom,
+                CONCRETE_COLOR,
+            );
+            mesh.prism(
+                &rect(*p, DVec2::X, l.footing, l.footing),
+                l.bottom - l.footing_depth,
+                l.bottom,
+                CONCRETE_COLOR,
+            );
+        }
+        for [a, b] in &l.beams {
+            let d = (*b - *a).normalize_or_zero();
+            let n = crate::math::perp(d) * (crate::piers::BEAM_WIDTH / 2.0);
+            mesh.prism(
+                &ccw(vec![*a - n, *b - n, *b + n, *a + n]),
+                beam_bottom,
+                l.top,
+                STAIR_COLOR,
+            );
+        }
+        mesh.end();
+    }
     let foundation = floor.foundation.as_ref();
     let (wall_category, wall_color) = if foundation.is_some() {
         (Category::Foundation, CONCRETE_COLOR)
@@ -634,7 +714,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
         // get a concrete slab (none in a crawlspace).
         match foundation {
             Some(fd) => {
-                if fd.kind != FoundationKind::Crawlspace {
+                if !matches!(fd.kind, FoundationKind::Crawlspace | FoundationKind::Piers) {
                     mesh.begin(owner, Category::Foundation);
                     mesh.prism(
                         &region.polygon,

@@ -47,6 +47,10 @@ pub enum Command {
         /// Keep the foundation in step with the floor above (default true).
         #[serde(default = "yes")]
         auto_rebuild: bool,
+        /// Pier foundations: spacing along the beams (default 6').
+        pier_spacing: Option<Length>,
+        /// Pier foundations: pier diameter (default 12").
+        pier_diameter: Option<Length>,
     },
     /// Build a roof over a floor's exterior walls (default: the top storey).
     /// Each wall's `roof` settings choose gable or hip, pitch and overhang.
@@ -585,6 +589,8 @@ impl Command {
                 footing_depth,
                 slab_thickness,
                 auto_rebuild,
+                pier_spacing,
+                pier_diameter,
             } => {
                 let inch = Length::from_inches;
                 let spec = Foundation {
@@ -593,6 +599,7 @@ impl Command {
                         FoundationKind::Slab => inch(4.0),
                         FoundationKind::Crawlspace => inch(30.0),
                         FoundationKind::Basement => inch(96.0),
+                        FoundationKind::Piers => inch(24.0),
                     }),
                     wall_thickness: wall_thickness.unwrap_or(inch(8.0)),
                     footing_width: footing_width.unwrap_or(match kind {
@@ -605,7 +612,12 @@ impl Command {
                     }),
                     slab_thickness: slab_thickness.unwrap_or(inch(4.0)),
                     auto_rebuild: *auto_rebuild,
+                    pier_spacing: pier_spacing.unwrap_or(Length::from_feet(6.0)),
+                    pier_diameter: pier_diameter.unwrap_or(inch(12.0)),
                 };
+                if spec.pier_spacing.mm() < Length::from_feet(2.0).mm() {
+                    return invalid("pier_spacing must be at least 2'");
+                }
                 crate::foundation::build(doc, spec, &mut out)?;
             }
             Command::SetRoofStyle {

@@ -39,6 +39,8 @@ pub enum FoundationKind {
     Crawlspace,
     /// Full-height walls on footings around a slab; a habitable level.
     Basement,
+    /// Round piers on pad footings carrying beams under the floor.
+    Piers,
 }
 
 /// How a foundation floor was built, so it can be rebuilt when the floor above changes.
@@ -53,6 +55,19 @@ pub struct Foundation {
     pub slab_thickness: Length,
     /// Regenerate the foundation walls whenever the floor above changes outline.
     pub auto_rebuild: bool,
+    /// Pier foundations: centre-to-centre spacing along the beams.
+    #[serde(default = "pier_spacing")]
+    pub pier_spacing: Length,
+    #[serde(default = "pier_diameter")]
+    pub pier_diameter: Length,
+}
+
+fn pier_spacing() -> Length {
+    Length::from_feet(6.0)
+}
+
+fn pier_diameter() -> Length {
+    Length::from_inches(12.0)
 }
 
 /// A concrete footing centred under a wall.
@@ -62,7 +77,6 @@ pub struct Footing {
     pub depth: Length,
 }
 
-/// 3/4" subfloor on 11 7/8" I-joists.
 /// A typical framed floor: finish, subfloor and 2x12 joists (12 5/8" total).
 pub fn default_platform() -> Vec<WallLayer> {
     let layer = |name: &str, inches: f64, material: &str| WallLayer {
@@ -77,6 +91,7 @@ pub fn default_platform() -> Vec<WallLayer> {
     ]
 }
 
+/// 3/4" subfloor on 11 7/8" I-joists.
 pub fn default_floor_structure() -> Length {
     Length::from_inches(12.625)
 }
@@ -172,10 +187,19 @@ pub enum ElectricalKind {
     CeilingFan,
     SmokeDetector,
     JunctionBox,
+    // Plumbing.
+    HoseBibb,
+    FloorDrain,
+    GasOutlet,
+    // HVAC.
+    SupplyRegister,
+    ReturnGrille,
+    Thermostat,
+    ExhaustFan,
 }
 
 impl ElectricalKind {
-    pub const ALL: [ElectricalKind; 11] = [
+    pub const ALL: [ElectricalKind; 18] = [
         ElectricalKind::Outlet,
         ElectricalKind::GfciOutlet,
         ElectricalKind::Outlet240,
@@ -187,6 +211,13 @@ impl ElectricalKind {
         ElectricalKind::CeilingFan,
         ElectricalKind::SmokeDetector,
         ElectricalKind::JunctionBox,
+        ElectricalKind::HoseBibb,
+        ElectricalKind::FloorDrain,
+        ElectricalKind::GasOutlet,
+        ElectricalKind::SupplyRegister,
+        ElectricalKind::ReturnGrille,
+        ElectricalKind::Thermostat,
+        ElectricalKind::ExhaustFan,
     ];
 
     pub fn name(self) -> &'static str {
@@ -202,6 +233,27 @@ impl ElectricalKind {
             ElectricalKind::CeilingFan => "Ceiling Fan",
             ElectricalKind::SmokeDetector => "Smoke Detector",
             ElectricalKind::JunctionBox => "Junction Box",
+            ElectricalKind::HoseBibb => "Hose Bibb",
+            ElectricalKind::FloorDrain => "Floor Drain",
+            ElectricalKind::GasOutlet => "Gas Outlet",
+            ElectricalKind::SupplyRegister => "Supply Register",
+            ElectricalKind::ReturnGrille => "Return Air Grille",
+            ElectricalKind::Thermostat => "Thermostat",
+            ElectricalKind::ExhaustFan => "Exhaust Fan",
+        }
+    }
+
+    /// Trade the symbol belongs to, for grouping in menus and lists.
+    pub fn trade(self) -> &'static str {
+        match self {
+            ElectricalKind::HoseBibb | ElectricalKind::FloorDrain | ElectricalKind::GasOutlet => {
+                "Plumbing"
+            }
+            ElectricalKind::SupplyRegister
+            | ElectricalKind::ReturnGrille
+            | ElectricalKind::Thermostat
+            | ElectricalKind::ExhaustFan => "HVAC",
+            _ => "Electrical",
         }
     }
 
@@ -219,17 +271,26 @@ impl ElectricalKind {
                 | ElectricalKind::Switch
                 | ElectricalKind::Dimmer
                 | ElectricalKind::WallLight
+                | ElectricalKind::HoseBibb
+                | ElectricalKind::GasOutlet
+                | ElectricalKind::ReturnGrille
+                | ElectricalKind::Thermostat
         )
     }
 
-    /// Typical mounting height to the centre of the device; `None` for
-    /// ceiling-mounted fixtures, which sit at the room's ceiling.
+    /// Typical mounting height to the centre of the device (0 = in the
+    /// floor); `None` for ceiling-mounted fixtures, which sit at the ceiling.
     pub fn default_height(self) -> Option<Length> {
         Some(Length::from_inches(match self {
             ElectricalKind::Outlet | ElectricalKind::GfciOutlet => 12.0,
             ElectricalKind::Outlet240 => 18.0,
             ElectricalKind::Switch | ElectricalKind::Dimmer => 48.0,
             ElectricalKind::WallLight => 72.0,
+            ElectricalKind::HoseBibb => 18.0,
+            ElectricalKind::GasOutlet => 12.0,
+            ElectricalKind::ReturnGrille => 12.0,
+            ElectricalKind::Thermostat => 60.0,
+            ElectricalKind::FloorDrain => 0.0,
             _ => return None,
         }))
     }

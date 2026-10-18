@@ -1549,11 +1549,13 @@ fn foundation_dialog(app: &mut App, ctx: &Context) {
                 ui.radio_value(&mut d.kind, FoundationKind::Slab, "Slab");
                 ui.radio_value(&mut d.kind, FoundationKind::Crawlspace, "Crawlspace / stem wall");
                 ui.radio_value(&mut d.kind, FoundationKind::Basement, "Basement");
+                ui.radio_value(&mut d.kind, FoundationKind::Piers, "Pier and beam");
             });
             let hint = match d.kind {
                 FoundationKind::Slab => "4\"",
                 FoundationKind::Crawlspace => "30\"",
                 FoundationKind::Basement => "8'",
+                FoundationKind::Piers => "24\"",
             };
             egui::Grid::new("foundation_grid").num_columns(2).show(ui, |ui| {
                 ui.label(if d.kind == FoundationKind::Slab { "Slab thickness" } else { "Wall height" });
@@ -1582,6 +1584,8 @@ fn foundation_dialog(app: &mut App, ctx: &Context) {
                     footing_depth: dp,
                     slab_thickness: None,
                     auto_rebuild: d.auto_rebuild,
+                    pier_spacing: None,
+                    pier_diameter: None,
                 });
             }
         });
