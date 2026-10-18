@@ -43,8 +43,8 @@ fn sane(v: f64) -> bool {
 /// | +0x00, +0x08 | start x, y | inches |
 /// | +0x10, +0x18 | unit direction | |
 /// | +0x20 | length | start + direction × length = end |
-/// | +0x71, +0x79 | layer heights | first of a list of layer entries |
-/// | +0x81, +0x89 | layer span along the wall | starts at −thickness/2 |
+/// | +0x71, +0x79 | heights | first of the wall's vertical profile entries |
+/// | +0x81, +0x89 | span along the wall | starts at −thickness/2 |
 pub fn wall_at(b: &[u8], o: usize) -> Option<WallRecord> {
     let (dx, dy) = (f64_at(b, o + DIR)?, f64_at(b, o + DIR + 8)?);
     if !(sane(dx) && sane(dy) && (dx * dx + dy * dy - 1.0).abs() < 1e-9) {
