@@ -192,6 +192,7 @@ pub(crate) fn new_document(name: String) -> Document {
         },
         roof: RoofDefaults::default(),
         stair: StairDefaults::default(),
+        exterior_stair: StairDefaults::exterior(),
     });
     doc.settings.active_default_set = defaults;
 

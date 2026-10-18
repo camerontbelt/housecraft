@@ -386,6 +386,7 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 c.positive(id, "max_riser", st.max_riser);
                 c.positive(id, "tread_depth", st.tread_depth);
                 c.positive(id, "railing_height", st.railing_height);
+                c.non_negative(id, "tread_overhang", st.tread_overhang);
                 if let Some(r) = st.rise {
                     c.positive(id, "rise", r);
                 }

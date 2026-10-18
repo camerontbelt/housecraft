@@ -626,19 +626,29 @@ impl Command {
                 if !direction.is_finite() {
                     return invalid("direction must be a number of degrees");
                 }
+                // Stairs starting outside the building use the exterior defaults.
+                let inside = housecraft_geom::rooms::detect(doc, floor)
+                    .footprints
+                    .iter()
+                    .any(|f| {
+                        housecraft_geom::math::point_in_polygon(housecraft_geom::v2(*start), f)
+                    });
+                let sd = if inside { &d.stair } else { &d.exterior_stair };
                 let mut stair = Stair {
                     id: Id(0),
                     floor,
                     start: *start,
                     direction: *direction,
-                    width: width.unwrap_or(d.stair.width),
+                    width: width.unwrap_or(sd.width),
                     shape: *shape,
                     rise: *rise,
-                    max_riser: d.stair.max_riser,
-                    tread_depth: d.stair.tread_depth,
-                    railing_left: railing_left.unwrap_or(d.stair.railing_left),
-                    railing_right: railing_right.unwrap_or(d.stair.railing_right),
-                    railing_height: d.stair.railing_height,
+                    max_riser: sd.max_riser,
+                    tread_depth: sd.tread_depth,
+                    railing_left: railing_left.unwrap_or(sd.railing_left),
+                    railing_right: railing_right.unwrap_or(sd.railing_right),
+                    railing_height: sd.railing_height,
+                    tread_overhang: sd.tread_overhang,
+                    stringers: sd.stringers,
                     stairwell: *stairwell,
                     layer: d.layers.stairs.unwrap_or(d.layers.walls),
                 };

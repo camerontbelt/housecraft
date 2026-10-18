@@ -835,62 +835,65 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                 ui.end_row();
                             });
                     });
-                egui::CollapsingHeader::new("Stairs")
-                    .default_open(true)
-                    .show(ui, |ui| {
-                        egui::Grid::new("stair_defaults")
-                            .num_columns(2)
-                            .show(ui, |ui| {
-                                len_row(
-                                    ui,
-                                    doc,
-                                    &mut app.bufs,
-                                    "Width",
-                                    ("stair", "width"),
-                                    d.stair.width,
-                                    |v| commands.push(p(json!({"stair": {"width": v}}))),
-                                );
-                                len_row(
-                                    ui,
-                                    doc,
-                                    &mut app.bufs,
-                                    "Maximum riser",
-                                    ("stair", "riser"),
-                                    d.stair.max_riser,
-                                    |v| commands.push(p(json!({"stair": {"max_riser": v}}))),
-                                );
-                                len_row(
-                                    ui,
-                                    doc,
-                                    &mut app.bufs,
-                                    "Tread depth",
-                                    ("stair", "tread"),
-                                    d.stair.tread_depth,
-                                    |v| commands.push(p(json!({"stair": {"tread_depth": v}}))),
-                                );
-                                len_row(
-                                    ui,
-                                    doc,
-                                    &mut app.bufs,
-                                    "Railing height",
-                                    ("stair", "rail"),
-                                    d.stair.railing_height,
-                                    |v| commands.push(p(json!({"stair": {"railing_height": v}}))),
-                                );
-                                ui.label("Railings");
-                                ui.horizontal(|ui| {
-                                    let (mut l, mut r) =
-                                        (d.stair.railing_left, d.stair.railing_right);
-                                    if ui.checkbox(&mut l, "Left").changed() {
-                                        commands.push(p(json!({"stair": {"railing_left": l}})));
+                for (title, key, sd) in [
+                    ("Stairs", "stair", &d.stair),
+                    ("Exterior Stairs", "exterior_stair", &d.exterior_stair),
+                ] {
+                    egui::CollapsingHeader::new(title)
+                        .default_open(key == "stair")
+                        .show(ui, |ui| {
+                            if key != "stair" {
+                                ui.weak("Used for stairs that start outside the building.");
+                            }
+                            egui::Grid::new(("stair_defaults", key))
+                                .num_columns(2)
+                                .show(ui, |ui| {
+                                    for (label, field, value) in [
+                                        ("Width", "width", sd.width),
+                                        ("Maximum riser", "max_riser", sd.max_riser),
+                                        ("Tread depth", "tread_depth", sd.tread_depth),
+                                        ("Railing height", "railing_height", sd.railing_height),
+                                    ] {
+                                        len_row(
+                                            ui,
+                                            doc,
+                                            &mut app.bufs,
+                                            label,
+                                            (key, field),
+                                            value,
+                                            |v| commands.push(p(json!({ key: { field: v } }))),
+                                        );
                                     }
-                                    if ui.checkbox(&mut r, "Right").changed() {
-                                        commands.push(p(json!({"stair": {"railing_right": r}})));
+                                    ui.label("Nosing overhang");
+                                    if let Some(v) = app.bufs.length(
+                                        ui,
+                                        doc,
+                                        egui::Id::unique(("defaults", key, "overhang")),
+                                        sd.tread_overhang,
+                                    ) && v.mm() >= 0.0
+                                    {
+                                        commands.push(p(json!({ key: { "tread_overhang": v } })));
                                     }
+                                    ui.end_row();
+                                    ui.label("Railings");
+                                    ui.horizontal(|ui| {
+                                        let (mut l, mut r) = (sd.railing_left, sd.railing_right);
+                                        if ui.checkbox(&mut l, "Left").changed() {
+                                            commands.push(p(json!({ key: { "railing_left": l } })));
+                                        }
+                                        if ui.checkbox(&mut r, "Right").changed() {
+                                            commands
+                                                .push(p(json!({ key: { "railing_right": r } })));
+                                        }
+                                        let mut st = sd.stringers;
+                                        if ui.checkbox(&mut st, "Stringers").changed() {
+                                            commands.push(p(json!({ key: { "stringers": st } })));
+                                        }
+                                    });
+                                    ui.end_row();
                                 });
-                                ui.end_row();
-                            });
-                    });
+                        });
+                }
                 egui::CollapsingHeader::new("Rooms")
                     .default_open(true)
                     .show(ui, |ui| {

@@ -15,6 +15,8 @@ pub struct Step {
     /// Riser number (1 = first step up).
     pub index: u32,
     pub landing: bool,
+    /// The tread's nosing strip projecting past the riser (empty if none).
+    pub nosing: Vec<DVec2>,
 }
 
 #[derive(Debug, Clone)]
@@ -29,6 +31,8 @@ pub struct StairGeom {
     pub rails: Vec<Vec<DVec3>>,
     /// Treads per flight, for labels.
     pub flights: Vec<u32>,
+    /// Top edges of the side stringers, one per side of each flight.
+    pub stringers: Vec<[DVec3; 2]>,
 }
 
 impl StairGeom {
@@ -77,7 +81,10 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
     let mut rails = Vec::new();
     let mut walk = vec![DVec3::new(origin.x, origin.y, base_z)];
     let mut flights = Vec::new();
+    let mut stringers = Vec::new();
     let mut riser = 0u32;
+    let overhang = stair.tread_overhang.mm().max(0.0);
+    let stringer_inset = 19.0;
 
     // Lay out one flight of `n` treads starting at `start`, travelling `fdir`.
     let mut flight = |start: DVec2,
@@ -94,10 +101,32 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
                 z: base_z + *riser as f64 * r,
                 index: *riser,
                 landing: false,
+                nosing: if overhang > 0.0 {
+                    quad(
+                        start,
+                        fdir,
+                        i as f64 * d - overhang,
+                        i as f64 * d,
+                        half,
+                        half,
+                    )
+                } else {
+                    Vec::new()
+                },
             });
         }
         let end = start + fdir * n as f64 * d;
         walk.push(DVec3::new(end.x, end.y, base_z + *riser as f64 * r));
+        if stair.stringers && n > 0 {
+            for sign in [1.0, -1.0] {
+                let off = perp(fdir) * (half - stringer_inset) * sign;
+                let (a, b) = (start + off, end + off);
+                stringers.push([
+                    DVec3::new(a.x, a.y, base_z + (first + 1) as f64 * r),
+                    DVec3::new(b.x, b.y, base_z + *riser as f64 * r),
+                ]);
+            }
+        }
         // Rails rise with the nosings: from the first riser to the last tread.
         for (enabled, sign) in [(stair.railing_left, 1.0), (stair.railing_right, -1.0)] {
             if enabled && n > 0 {
@@ -137,6 +166,7 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
                         z: landing_z,
                         index: riser,
                         landing: true,
+                        nosing: Vec::new(),
                     });
                     let center = end + dir * half;
                     walk.push(DVec3::new(center.x, center.y, landing_z));
@@ -156,6 +186,7 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
                         z: landing_z,
                         index: riser,
                         landing: true,
+                        nosing: Vec::new(),
                     });
                     let shift = perp(dir) * side * (w + g);
                     // Walk across the landing: up the first flight's axis, over, then back.
@@ -177,6 +208,7 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
         walk,
         rails,
         flights,
+        stringers,
     }
 }
 
@@ -202,6 +234,8 @@ mod tests {
             railing_left: true,
             railing_right: true,
             railing_height: d.stair.railing_height,
+            tread_overhang: d.stair.tread_overhang,
+            stringers: true,
             stairwell: true,
             layer: d.layers.walls,
         };

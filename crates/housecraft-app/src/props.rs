@@ -439,6 +439,17 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             if let Some(l) = ed.length(ui, "Tread depth", "tread_depth", s.tread_depth) {
                 ed.out.push(patch(id, json!({ "tread_depth": l })));
             }
+            if let Some(l) = ed.length(ui, "Nosing overhang", "tread_overhang", s.tread_overhang)
+                && l.mm() >= 0.0
+            {
+                ed.out.push(patch(id, json!({ "tread_overhang": l })));
+            }
+            Ed::label(ui, "Stringers");
+            let mut st = s.stringers;
+            if ui.checkbox(&mut st, "Side stringers").changed() {
+                ed.out.push(patch(id, json!({ "stringers": st })));
+            }
+            ui.end_row();
             Ed::label(ui, "Risers");
             ui.label(format!(
                 "{} at {}",

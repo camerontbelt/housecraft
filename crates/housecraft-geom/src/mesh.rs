@@ -53,6 +53,7 @@ pub const CONCRETE_COLOR: [f32; 4] = [0.68, 0.68, 0.66, 1.0];
 pub const ROOF_COLOR: [f32; 4] = [0.36, 0.34, 0.33, 1.0];
 pub const SOFFIT_COLOR: [f32; 4] = [0.9, 0.89, 0.86, 1.0];
 pub const STAIR_COLOR: [f32; 4] = [0.68, 0.52, 0.36, 1.0];
+pub const STRINGER_COLOR: [f32; 4] = [0.58, 0.44, 0.30, 1.0];
 pub const RAIL_COLOR: [f32; 4] = [0.95, 0.95, 0.93, 1.0];
 pub const DEVICE_COLOR: [f32; 4] = [0.96, 0.95, 0.92, 1.0];
 pub const LAMP_COLOR: [f32; 4] = [1.0, 0.93, 0.62, 1.0];
@@ -271,6 +272,19 @@ fn stair_mesh(doc: &Document, stair: &housecraft_model::Stair, mesh: &mut Mesh) 
     let g = crate::stairs::geometry(doc, stair);
     for step in &g.steps {
         mesh.prism(&ccw(step.poly.clone()), g.base_z, step.z, STAIR_COLOR);
+        if !step.nosing.is_empty() {
+            mesh.prism(
+                &ccw(step.nosing.clone()),
+                step.z - 25.0,
+                step.z,
+                STAIR_COLOR,
+            );
+        }
+    }
+    // Stringers: boards under each side, their top edge just above the nosings.
+    for [a, b] in &g.stringers {
+        let lift = DVec3::Z * 20.0;
+        sloped_board(*a + lift, *b + lift, 19.0, 300.0, STRINGER_COLOR, mesh);
     }
     let spacing = 4.0 * 25.4;
     for rail in &g.rails {
@@ -331,6 +345,34 @@ fn rail_segment(a: DVec3, b: DVec3, spacing: f64, along_stair: bool, mesh: &mut 
         ];
         mesh.prism(&square, bottom, top, RAIL_COLOR);
     }
+}
+
+/// A board along a->b (top edge), `half` thick either side, `depth` deep below.
+fn sloped_board(a: DVec3, b: DVec3, half: f64, depth: f64, color: [f32; 4], mesh: &mut Mesh) {
+    let flat = (b - a).truncate();
+    if flat.length() < 1.0 {
+        return;
+    }
+    let side = crate::math::perp(flat.normalize()) * half;
+    let at = |p: DVec3, s: f64, dz: f64| DVec3::new(p.x + side.x * s, p.y + side.y * s, p.z + dz);
+    let (al, ar, bl, br) = (
+        at(a, 1.0, 0.0),
+        at(a, -1.0, 0.0),
+        at(b, 1.0, 0.0),
+        at(b, -1.0, 0.0),
+    );
+    let (alb, arb, blb, brb) = (
+        at(a, 1.0, -depth),
+        at(a, -1.0, -depth),
+        at(b, 1.0, -depth),
+        at(b, -1.0, -depth),
+    );
+    mesh.polygon(&[ar, br, bl, al], color);
+    mesh.polygon(&[alb, blb, brb, arb], color);
+    mesh.polygon(&[al, bl, blb, alb], color);
+    mesh.polygon(&[arb, brb, br, ar], color);
+    mesh.polygon(&[al, alb, arb, ar], color);
+    mesh.polygon(&[br, brb, blb, bl], color);
 }
 
 fn ccw(mut poly: Vec<DVec2>) -> Vec<DVec2> {

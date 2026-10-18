@@ -750,6 +750,21 @@ fn stair_symbol(
                 stroke: if beyond { dashed } else { thin },
             },
         );
+        // Overhang dash: the nosing's front edge ahead of the riser line.
+        if let [p0, _, _, p3] = step.nosing[..] {
+            out.push(
+                Some(stair.id),
+                Prim::Polyline {
+                    points: vec![p0, p3],
+                    closed: false,
+                    stroke: Stroke {
+                        width: thin.width * 0.7,
+                        dash: &[0.8, 0.6],
+                        ..thin
+                    },
+                },
+            );
+        }
     }
     // Break line: a zig-zag across the tread at the cut.
     if here && let Some(step) = g.steps.iter().rfind(|s| s.index <= cut_riser && !s.landing) {

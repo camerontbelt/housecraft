@@ -938,3 +938,36 @@ fn door_sizes_by_type_and_new_styles() {
         .is_err()
     );
 }
+
+#[test]
+fn exterior_stairs_use_exterior_defaults_and_have_nosings() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_stair", "start": ["10'","5'"], "direction": 90, "rise": "8'"},
+            {"op": "add_stair", "start": ["30'","5'"], "direction": 90, "rise": "3'"}]"#,
+    );
+    let doc = s.document();
+    let inside = doc.get::<Stair>(out.created[0]).unwrap();
+    let outside = doc.get::<Stair>(out.created[1]).unwrap();
+    assert_eq!(inside.width, Length::from_inches(36.0));
+    assert_eq!(
+        outside.width,
+        Length::from_inches(42.0),
+        "exterior defaults"
+    );
+    assert!(outside.railing_left && outside.railing_right);
+    let g = housecraft_api::geom::stairs::geometry(doc, inside);
+    assert!(
+        g.steps
+            .iter()
+            .filter(|s| !s.landing)
+            .all(|s| s.nosing.len() == 4)
+    );
+    assert_eq!(g.stringers.len(), 2);
+    let g = housecraft_api::geom::stairs::geometry(doc, outside);
+    assert!(
+        g.steps.iter().all(|s| s.nosing.is_empty()),
+        "exterior: no nosing"
+    );
+}

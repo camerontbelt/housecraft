@@ -304,6 +304,9 @@ pub struct DefaultSet {
     pub roof: RoofDefaults,
     #[serde(default)]
     pub stair: StairDefaults,
+    /// Used for stairs that start outside the building.
+    #[serde(default = "StairDefaults::exterior")]
+    pub exterior_stair: StairDefaults,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -314,6 +317,35 @@ pub struct StairDefaults {
     pub railing_height: Length,
     pub railing_left: bool,
     pub railing_right: bool,
+    #[serde(default = "stair_overhang")]
+    pub tread_overhang: Length,
+    #[serde(default = "stair_stringers")]
+    pub stringers: bool,
+}
+
+fn stair_overhang() -> Length {
+    Length::from_inches(1.0)
+}
+
+fn stair_stringers() -> bool {
+    true
+}
+
+impl StairDefaults {
+    /// Typical exterior stairs (decks, porches): wider, deeper treads,
+    /// rails both sides, no nosing.
+    pub fn exterior() -> Self {
+        StairDefaults {
+            width: Length::from_inches(42.0),
+            max_riser: Length::from_inches(7.5),
+            tread_depth: Length::from_inches(11.0),
+            railing_height: Length::from_inches(36.0),
+            railing_left: true,
+            railing_right: true,
+            tread_overhang: Length::ZERO,
+            stringers: true,
+        }
+    }
 }
 
 impl Default for StairDefaults {
@@ -325,6 +357,8 @@ impl Default for StairDefaults {
             railing_height: Length::from_inches(36.0),
             railing_left: false,
             railing_right: true,
+            tread_overhang: stair_overhang(),
+            stringers: true,
         }
     }
 }

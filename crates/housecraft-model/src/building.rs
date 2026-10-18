@@ -259,6 +259,12 @@ pub struct Stair {
     pub railing_left: bool,
     pub railing_right: bool,
     pub railing_height: Length,
+    /// How far each tread's nosing projects past the riser below it.
+    #[serde(default = "one_inch")]
+    pub tread_overhang: Length,
+    /// Side stringers under the treads.
+    #[serde(default = "yes")]
+    pub stringers: bool,
     /// Cut the floor platform above (and the ceiling below) over the stair.
     pub stairwell: bool,
     pub layer: Id,
@@ -455,6 +461,14 @@ impl OpeningKind {
     pub fn is_door(self) -> bool {
         matches!(self, OpeningKind::Door(_))
     }
+}
+
+fn one_inch() -> Length {
+    Length::from_inches(1.0)
+}
+
+fn yes() -> bool {
+    true
 }
 
 fn ninety() -> f64 {
