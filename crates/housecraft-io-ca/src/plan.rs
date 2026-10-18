@@ -17,7 +17,7 @@ pub struct WallRecord {
     /// Height from the first profile entry (both stored heights are equal so
     /// far); `None` where the entry stores 0, as some joined walls do.
     pub height: Option<f64>,
-    /// Overall thickness, from where the first layer's span starts before the start point.
+    /// Overall thickness, from where the first profile entry's span starts before the start point.
     pub thickness: f64,
 }
 
