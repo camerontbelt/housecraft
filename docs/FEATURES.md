@@ -6,6 +6,9 @@ Source: https://cloud.chiefarchitect.com/1/pdf/marketing/x18-detailed-feature-li
 
 **Pri:** P0 MVP · P1 credible v1 · P2 parity · P3 later/optional · ✗ out of scope (vendor-specific service).
 **P0 status (2026-10-17):** all 29 P0 items are implemented; five are partial (◐) as noted in their rows.
+**M3 status (2026-10-18):** foundations, roofs, ceilings, stairs and railings, more door and window types,
+electrical, remodel phases, reference floors, north and sun are in. 24 of the M3 P1 items are done or partial
+(4 ✓, 20 ◐ as noted in their rows); the M3 P2/P3 items are not started.
 
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
@@ -111,7 +114,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-12 | Duplicate saved view copies its active layer set (X18+) | P2 | M1 |
 | PRJ-13 | Default Sets per drawing type (kitchen, framing, electrical…) | P1 | M1 |
 | PRJ-14 | Multi-floor structures | P0 | M0 ✓ |
-| PRJ-15 | Insert/exchange floors above/below | P1 | M3 |
+| PRJ-15 | Insert/exchange floors above/below | P1 | M3 ✓ |
 | PRJ-16 | Layers: create, assign, style, group into Layer Sets | P0 | M1 ✓ |
 | PRJ-17 | Fill style by layer (X18+) | P2 | M1 |
 | PRJ-18 | Select all on layer | P1 | M1 |
@@ -142,11 +145,11 @@ These come from reading the whole list and change the architecture, not just the
 | RM-04 | Room polygon tool (preset shapes) | P2 | M3 |
 | RM-05 | Room molding polylines; 3D molding polylines (stacked profiles) | P2 | M5 |
 | RM-06 | Room polyline (perimeter for area, materials, slabs, moldings) | P1 | M1 |
-| RM-07 | Layered floor & ceiling platforms (finish, structure, sub-layers) | P1 | M3 |
+| RM-07 | Layered floor & ceiling platforms (finish, structure, sub-layers) | P1 | M3 ◐ one structure thickness per floor; layered finish/sub-layers later |
 | RM-08 | Floor material regions (inlays without room boundaries) | P2 | M5 |
 | RM-09 | Raised floor platforms (auto-framed) | P2 | M6 |
 | RM-10 | Conditioned/unconditioned spaces → insulation in materials list | P2 | M4 |
-| RM-11 | Multi-select edit rooms (type, vaulted, heights, platform) | P1 | M3 |
+| RM-11 | Multi-select edit rooms (type, vaulted, heights, platform) | P1 | M3 ✓ |
 | RM-12 | Object Information Panel (custom fields) for rooms | P1 | M1 |
 | RM-13 | Room label dimension formats | P1 | M1 |
 
@@ -157,7 +160,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-01 | Draw/edit walls in 2D and 3D: interior, exterior, railing, pony, half, curved, angled, raked, stepped | P0 | M1 ✓ straight walls / M3 (rest) |
 | WL-02 | Layered wall types: wood, stucco, ICF, SIPS, glass, railings, partitions | P0 | M0 ✓ (layers) |
 | WL-03 | Pony walls (upper/lower types, caps, framing, edge line) | P2 | M3 |
-| WL-04 | Railings: newels, balusters, panels, handrails, shoe, offsets | P1 | M3 |
+| WL-04 | Railings: newels, balusters, panels, handrails, shoe, offsets | P1 | M3 ◐ railing walls with rail, balusters, height, spacing; newels, panels, shoe later |
 | WL-05 | Newel positioning rules and manual newel editing | P2 | M3 |
 | WL-06 | Raked & stepped walls; stepped foundations | P2 | M3 |
 | WL-07 | Wall type editor; layers feed materials list | P0 | M1 ✓ |
@@ -165,7 +168,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-09 | Multiple main (structural) layers for ICF/SIP connections | P2 | M3 |
 | WL-10 | Wall niches | P2 | M3 |
 | WL-11 | Partition walls (don't cut structural layers) | P2 | M3 |
-| WL-12 | Remodel layers: new / existing / demolition | P1 | M3 |
+| WL-12 | Remodel layers: new / existing / demolition | P1 | M3 ◐ status on walls/openings/electrical, phase views; rooms still split by demolished walls |
 | WL-13 | Wall hatching (labels, copy/paste, shear wall marking) | P2 | M4 |
 | WL-14 | Wall definitions in library | P1 | M5 |
 | WL-15 | Corner boards & quoins (auto/manual) | P2 | M5 |
@@ -209,11 +212,11 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | DW-01 | Parametric doors/doorways/windows incl. arched, shaped, mulled; hardware library | P0 | M1 ✓ basic / M3 (arched, shaped, mulled, hardware) |
-| DW-02 | Door types: interior, exterior, sliding, barn, pocket, bifold, atrium, fixed, double, shower, garage | P1 | M3 |
-| DW-03 | Window types: fixed, single/double hung, slider, casement, corner, recessed, louvered, bay, box, pass-through | P1 | M3 |
-| DW-04 | Defaults per door type | P1 | M3 |
+| DW-02 | Door types: interior, exterior, sliding, barn, pocket, bifold, atrium, fixed, double, shower, garage | P1 | M3 ◐ hinged, double, sliding, pocket, bifold, barn, garage, doorway; atrium, fixed, shower later |
+| DW-03 | Window types: fixed, single/double hung, slider, casement, corner, recessed, louvered, bay, box, pass-through | P1 | M3 ◐ fixed, single/double hung, slider, casement, awning, hopper; corner, bay, box, recessed later |
+| DW-04 | Defaults per door type | P1 | M3 ◐ typical sizes for double and garage doors; full per-type default sets later |
 | DW-05 | Door glass per side; glass garage panels | P2 | M3 |
-| DW-06 | Opening indicators; show open/partial in 3D and plan | P1 | M3 |
+| DW-06 | Opening indicators; show open/partial in 3D and plan | P1 | M3 ◐ open % shown in 3D (swing, slide, roll-up); plan always shows the full swing |
 | DW-07 | Multi-panel / accordion / stacking doors | P2 | M3 |
 | DW-08 | Bay/box/bow windows as editable groups incl. roofs and platforms | P2 | M3 |
 | DW-09 | Explode bay/box/bow into components | P3 | M3 |
@@ -231,15 +234,15 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| RF-01 | Automatic roofs: gable, hip, shed, Dutch gable, gambrel, mansard; per-eave pitch/overhang/returns; auto-rebuild | P1 | M3 |
+| RF-01 | Automatic roofs: gable, hip, shed, Dutch gable, gambrel, mansard; per-eave pitch/overhang/returns; auto-rebuild | P1 | M3 ◐ hip, gable, shed via per-wall settings; per-eave pitch/overhang; auto-rebuild; Dutch gable, gambrel, mansard later |
 | RF-02 | Auto dormers (floating & structural): eyebrow, gable, hip, shed, gambrel, mansard, barrel, hip-curved | P2 | M3 |
-| RF-03 | Roof options: raised plate/energy heel, curved, fascia, gutters, exposed rafters, returns | P1 | M3 |
+| RF-03 | Roof options: raised plate/energy heel, curved, fascia, gutters, exposed rafters, returns | P1 | M3 ◐ raised plate/heel; curved, fascia, gutters, rafters, returns later |
 | RF-04 | Roof pivot locks (rafter/truss/remodel) | P2 | M3 |
-| RF-05 | Draw/edit roof planes in 2D and 3D | P1 | M3 |
+| RF-05 | Draw/edit roof planes in 2D and 3D | P1 | M3 ◐ draw roof planes in 2D; 3D editing later |
 | RF-06 | Ridge caps with profiles | P2 | M3 |
 | RF-07 | Rafter spacing per plane | P2 | M6 |
 | RF-08 | Skylights with framing; shape editor | P2 | M3 |
-| RF-09 | Automatic ceilings; manual cathedral, tray, coffered, barrel | P1 | M3 |
+| RF-09 | Automatic ceilings; manual cathedral, tray, coffered, barrel | P1 | M3 ◐ automatic flat, vaulted and tray ceilings; coffered, barrel later |
 | RF-10 | Tray ceiling tool (slope, moldings, rope lights) | P2 | M3 |
 | RF-11 | Layered roof assemblies (SIP roofs) | P2 | M3 |
 | RF-12 | Gutters & frieze moldings with custom profiles | P2 | M3 |
@@ -250,30 +253,30 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| ST-01 | Stair tool: rise/run/width/treads/overhang/stringers/railings/brackets; riser & tread settings | P1 | M3 |
-| ST-02 | One-click auto stairs/ramps between platforms or terrain; L and U shapes | P1 | M3 |
+| ST-01 | Stair tool: rise/run/width/treads/overhang/stringers/railings/brackets; riser & tread settings | P1 | M3 ◐ rise, run, width, tread depth, railings; stringers, overhang, brackets later |
+| ST-02 | One-click auto stairs/ramps between platforms or terrain; L and U shapes | P1 | M3 ◐ straight, L and U tools with automatic riser count; auto-connect and ramps later |
 | ST-03 | Curved, flared, starter treads, winders, walk line | P2 | M3 |
 | ST-04 | Wrap-around stairs | P3 | M3 |
 | ST-05 | Mixed-width stair sections | P3 | M3 |
 | ST-06 | Break/disconnect/edit stair sections | P2 | M3 |
 | ST-07 | Split landings for L/U | P2 | M3 |
 | ST-08 | Stringer/riser/trim component control | P2 | M3 |
-| ST-09 | Auto stairwell (cut platform) | P1 | M3 |
+| ST-09 | Auto stairwell (cut platform) | P1 | M3 ✓ |
 | ST-10 | ADA ramps | P2 | M3 |
 | ST-11 | Custom landings and auto-connect | P2 | M3 |
-| ST-12 | Stair railing styles; plan display of balusters | P1 | M3 |
+| ST-12 | Stair railing styles; plan display of balusters | P1 | M3 ◐ handrails and balusters in 3D, baluster dots in plan; styles later |
 | ST-13 | Custom newels & balusters (library/import) | P2 | M5 |
-| ST-14 | Stair defaults interior/exterior | P1 | M3 |
+| ST-14 | Stair defaults interior/exterior | P1 | M3 ◐ one set of stair defaults; separate interior/exterior later |
 | ST-15 | Stairs/ramps saved to library | P2 | M5 |
-| ST-16 | Plan display: overhang dashes, stringers, cut/break line, floors above/below | P1 | M3 |
+| ST-16 | Plan display: overhang dashes, stringers, cut/break line, floors above/below | P1 | M3 ◐ break line, dashed treads above the cut, UP/DN, floor above; overhang dashes, stringers later |
 | ST-17 | Handrail returns & extensions | P2 | M3 |
 
 ## 11. Foundations
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| FD-01 | Slab, pier, crawlspace, full basement, stem walls, footings, post & beam, grade beam | P1 | M3 |
-| FD-02 | Auto-rebuild foundation from floor 1 | P1 | M3 |
+| FD-01 | Slab, pier, crawlspace, full basement, stem walls, footings, post & beam, grade beam | P1 | M3 ◐ slab, crawlspace/stem wall, basement, footings; piers, post & beam, grade beam later |
+| FD-02 | Auto-rebuild foundation from floor 1 | P1 | M3 ✓ |
 | FD-03 | Round piers / square pads | P2 | M3 |
 | FD-04 | Monolithic slabs with ledges and garage curbs | P2 | M3 |
 | FD-05 | Footings under bearing walls; stepped footings | P2 | M3 |
@@ -349,7 +352,7 @@ These come from reading the whole list and change the architecture, not just the
 | LY-03 | Layer eyedropper & painter | P2 | M1 |
 | LY-04 | Layer hider (click to hide) | P1 | M1 |
 | LY-05 | Edit an object's layer properties from the toolbar | P2 | M1 |
-| LY-06 | Reference displays: multiple reference floors/layer sets, draw order | P1 | M3 |
+| LY-06 | Reference displays: multiple reference floors/layer sets, draw order | P1 | M3 ◐ any one reference floor; multiple references, layer sets, draw order later |
 | LY-07 | Reference display from other plan files (2D and 3D ghosting) | P2 | M8 |
 | LY-08 | 3D reference display styles | P3 | M7 |
 | LY-09 | Dockable layer display options panel | P1 | GUI |
@@ -386,7 +389,7 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| EL-01 | Electrical, plumbing, HVAC symbols; circuits/wiring with auto 3-way/4-way; auto-orient to slopes | P1 | M3 |
+| EL-01 | Electrical, plumbing, HVAC symbols; circuits/wiring with auto 3-way/4-way; auto-orient to slopes | P1 | M3 ◐ electrical symbols, switch wiring with automatic 3-way/4-way; plumbing, HVAC, slope orientation later |
 | EL-02 | Auto-place outlets by room type (GFCI) | P2 | M3 |
 | EL-03 | Light fixtures emit light in renders | P1 | M5 |
 | EL-04 | Rope lighting along paths | P3 | M7 |
@@ -399,7 +402,7 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| SITE-01 | North pointer, sun angles from lat/long/date/time; 2D and 3D shadows | P1 | M3 |
+| SITE-01 | North pointer, sun angles from lat/long/date/time; 2D and 3D shadows | P1 | M3 ◐ north pointer, sun from latitude/date/solar time, 3D shadows; 2D shadows later |
 | SITE-02 | Copy sun angles for studies | P3 | M7 |
 | SITE-03 | Bearing/angle display formats (azimuth, quadrant, DMS) | P1 | M1 |
 | SITE-04 | Terrain model from elevation data: smoothing, triangulation, skirt, contours | P2 | M6 |
