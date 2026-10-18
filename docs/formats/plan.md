@@ -155,12 +155,21 @@ Located by shape (the surrounding object framing isn't understood yet). Offsets 
 | +0x00, +0x08 | f64 ×2 | start x, y (inches) | point-to-point move took (2, −2.53) → (−116, 38.47) |
 | +0x10, +0x18 | f64 ×2 | unit direction | (1, 0) and (0, 1) / (0, −1) / (−1, 0) on the four rectangle sides |
 | +0x20 | f64 | length | 120 for the 10' wall; start + direction × length = the other wall's start where walls join |
-| +0x71, +0x79 | f64 ×2 | first layer entry: heights | 109.125 (9'-1 1/8") for default walls; 113.73 after a room formed; 0 in one joined wall |
-| +0x81, +0x89 | f64 ×2 | first layer entry: span along the wall | starts at −thickness/2: −3.474 (6.9475" exterior), −2.25 (4.5" interior) |
+| +0x2e | u16 | number of profile entries (4 in the exterior L, 6 in the room's walls) | equals the entry count; repeated at +0x48 |
+| +0x71, +0x79 | f64 ×2 | first profile entry: heights | 109.125 (9'-1 1/8") for default walls; 113.73 after a room formed; 0 in one joined wall |
+| +0x81, +0x89 | f64 ×2 | first profile entry: span along the wall | starts at −thickness/2: −3.474 (6.9475" exterior), −2.25 (4.5" interior) |
 
-**[obs]** Layer entries repeat with an 89-byte (0x59) stride, four for the default exterior wall, each repeating the
-span. Walls in a closed rectangle are stored clockwise around their interior (end of one = start of the next).
-**[open]** wall type reference, per-layer materials, which side is exterior, the record header/id.
+**[obs]** The entries repeat with an 89-byte (0x59) stride and each repeats the span. They are not material layers:
+a room wall's entries carry heights 113.73, 0, −12.625 (the 12 5/8" floor platform below) and 109.125, so
+**[inf]** they describe the wall's vertical profile (top, floor, platform bottom, ceiling).
+Walls in a closed rectangle are stored clockwise around their interior (end of one = start of the next).
+
+**[obs]** Wall types are stored inline: the name `Siding-6` follows the first exterior wall record by 0x1c7 bytes and
+`Interior-4` the first interior one by 0x279, with layer materials nearby (`Drywall`, `5100 - Drywall`). Each name
+appears once per plan copy, so **[inf]** a type is written in full at its first use and later walls refer to it.
+The room's walls also carry a 16-byte id at +0x5b (different per wall; zero in the exterior L, which bounds no room).
+**[open]** how later walls reference their type; whether the +0x5b id is the wall's own or its room's; which side
+is exterior.
 
 ### 3.2 Door and window records — hypotheses
 
