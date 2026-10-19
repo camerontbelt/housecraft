@@ -70,6 +70,31 @@ impl TailCut {
     }
 }
 
+/// The webbing of roof trusses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TrussType {
+    /// A flat bottom chord with Fink (W) webs.
+    #[default]
+    Common,
+    /// The bottom chord rises to the middle (a vaulted ceiling).
+    Scissor,
+    /// A room down the middle: posts and a ceiling tie, webs outside them.
+    Attic,
+}
+
+impl TrussType {
+    pub const ALL: [TrussType; 3] = [TrussType::Common, TrussType::Scissor, TrussType::Attic];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            TrussType::Common => "Common (Fink)",
+            TrussType::Scissor => "Scissor",
+            TrussType::Attic => "Attic",
+        }
+    }
+}
+
 /// How joists meet over a bearing wall.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -337,6 +362,15 @@ pub struct FramingDefaults {
     /// What wall studs and plates are made of (steel studs and tracks).
     #[serde(default)]
     pub wall_material: FramingMaterial,
+    #[serde(default)]
+    pub truss_type: TrussType,
+    /// Openings closer than this share one header.
+    #[serde(default = "combine_headers")]
+    pub combine_headers: Length,
+}
+
+fn combine_headers() -> Length {
+    Length::from_inches(16.0)
 }
 
 fn post_spacing() -> Length {
@@ -378,6 +412,8 @@ impl Default for FramingDefaults {
             eave_blocking: false,
             joist_splice: JoistSplice::Continuous,
             wall_material: FramingMaterial::Lumber,
+            truss_type: TrussType::Common,
+            combine_headers: combine_headers(),
         }
     }
 }

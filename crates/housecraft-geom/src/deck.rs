@@ -133,6 +133,21 @@ pub fn parts(doc: &Document, deck: &Deck) -> Option<DeckParts> {
                 }
             }
         }
+        // Blocking across the joists: mid-span, and every 8' on longer runs.
+        if deck.blocking {
+            let across: Vec<f64> = inner.iter().map(|p| p.dot(n)).collect();
+            let (nlo, nhi) = (across.iter().copied().fold(f64::MAX, f64::min), across.iter().copied().fold(f64::MIN, f64::max));
+            let rows = ((nhi - nlo) / (96.0 * IN)).ceil().max(2.0) as usize;
+            for r in 1..rows {
+                let at = nlo + (nhi - nlo) * r as f64 / rows as f64;
+                let o = n * at;
+                for (t0, t1) in clip_line(&inner, o, u) {
+                    if t1 - t0 > 100.0 {
+                        push(&mut parts, FramingRole::Blocking, (o + u * t0).extend(joist_z), (o + u * t1).extend(joist_z), t, jd, 0.0);
+                    }
+                }
+            }
+        }
     }
     // Beams run along the planks, under the joists: from the side the
     // joists bear on (the ledger, or an inset beam) across at most the

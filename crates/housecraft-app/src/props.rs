@@ -1370,6 +1370,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ("Curved", "curved", "Round the outline into a curve", dk.curved),
                 ("Border", "border", "Picture-frame border board", dk.border),
                 ("Ledger", "ledger", "Fasten to the house where it touches", dk.ledger),
+                ("Blocking", "blocking", "Rows of blocking between the joists", dk.blocking),
                 ("Railing", "railing", "Railing round the free edges", dk.railing),
                 ("Covered", "covered", "Roof over it on posts", dk.covered),
             ] {

@@ -247,7 +247,7 @@ These come from reading the whole list and change the architecture, not just the
 | RF-04 | Roof pivot locks (rafter/truss/remodel) | P2 | M3 ◐ roof plane Change Pitch, keeping the eave or the ridge in place; no per-plane locks for trusses or remodels |
 | RF-05 | Draw/edit roof planes in 2D and 3D | P1 | M3 ◐ draw roof planes in 2D; 3D editing later |
 | RF-06 | Ridge caps with profiles | P2 | M3 ◐ ridge caps along every ridge and hip (Default Settings > Roofs); one cap profile |
-| RF-07 | Rafter spacing per plane | P2 | M6 ◐ Rafter Spacing in a roof plane's specification; an automatic roof rebuilt from walls goes back to the default |
+| RF-07 | Rafter spacing per plane | P2 | M6 ✓ Rafter Spacing in a roof plane's specification, kept when an automatic roof rebuilds (skylights too) |
 | RF-08 | Skylights with framing; shape editor | P2 | M3 ◐ Skylight tool: curb skylights in roof planes, shown in plan; no framing or shape editor, and rebuilding an automatic roof drops them |
 | RF-09 | Automatic ceilings; manual cathedral, tray, coffered, barrel | P1 | M3 ✓ |
 | RF-10 | Tray ceiling tool (slope, moldings, rope lights) | P2 | M3 ✓ tray ceilings with inset and rise, straight or sloped sides, and an optional rope light in the cove |
@@ -301,16 +301,16 @@ These come from reading the whole list and change the architecture, not just the
 | FR-07 | Framing materials: lumber, steel, LVL, PSL, VSL; custom types and shapes | P2 | M6 ◐ lumber, LVL, PSL, VSL and steel members; no custom section shapes |
 | FR-08 | EasyFrame panelization export (.EZF) | P3 | M8 |
 | FR-09 | Roof framing: rafters, ridges, lookouts, blocking, valley fill, rafter tails | P2 | M6 ◐ rafters and ridges, lookouts at rakes, eave (frieze) blocking, purlins, square/plumb/bevelled tails; no valley fill |
-| FR-10 | Auto-build trusses; auto-fit floor/ceiling/roof trusses (scissor, attic, girder, hip, energy heel…) | P2 | M6 ◐ trusses fitted under the roof (common, stepped-down at hips) with Fink webs and heels; no scissor, attic, girder or energy-heel types |
+| FR-10 | Auto-build trusses; auto-fit floor/ceiling/roof trusses (scissor, attic, girder, hip, energy heel…) | P2 | M6 ◐ trusses fitted under the roof (stepped down at hips): common (Fink), scissor and attic types; no girder or energy-heel types |
 | FR-11 | Truss rebuild tool; truss details with labels | P3 | M6 ✓ Build Roof Framing rebuilds trusses; Truss Detail draws one with its member sizes |
 | FR-12 | Truss chords/webbing in materials list (X18+) | P3 | M6 ✓ truss chords and webs in the cut list and buy list |
 | FR-13 | Horizontal roof framing (battens, purlins) | P3 | M6 ✓ purlins across rafters at a set spacing |
 | FR-14 | Decorative end profiles | P3 | M6 ◐ rafter tails cut square, plumb or bevelled; shaped profiles later |
 | FR-15 | Post & beam tools | P2 | M6 ◐ Post and Beam tools (6x6 posts, 2-ply beams); no automatic post-and-beam layout |
 | FR-16 | Multi-ply beams/posts/girders (X18+) | P3 | M6 ✓ members can be 1–4 plies |
-| FR-17 | Wall framing options: plates, studs, bridging, knee walls; steel C/U channels; rim joists | P2 | M6 ◐ stud spacing, 1–3 top plates, mid-height blocking, rim joists, steel studs and tracks; no knee-wall option |
+| FR-17 | Wall framing options: plates, studs, bridging, knee walls; steel C/U channels; rim joists | P2 | M6 ✓ stud spacing, 1–3 top plates, mid-height blocking, rim joists, steel studs and tracks; knee and raked walls frame to their sloping tops |
 | FR-18 | Balloon framing | P3 | M6 ✓ studs run through stacked walls, floors hung on ribbons |
-| FR-19 | Header controls (cripples, rotated, flush, combined) | P2 | M6 ◐ headers sized by span, or per opening: own depth, flush to the plates (no cripples); no rotated or combined headers |
+| FR-19 | Header controls (cripples, rotated, flush, combined) | P2 | M6 ◐ headers sized by span, per-opening depth or flush, and close openings share one header; no rotated headers |
 | FR-20 | Framing per wall-type layer (furred basement walls) | P3 | M6 ✓ wall-type layers named Furring get their own plates and studs |
 | FR-21 | Horizontal wall framing (girts) for pole/timber buildings | P3 | M6 ✓ posts-and-girts wall framing (post and girt spacing) |
 | FR-22 | Per-opening framing (box/built-up headers, trimmers, sills) | P2 | M6 ✓ king and jack studs, headers, cripples above and below, rough sills |
@@ -321,7 +321,7 @@ These come from reading the whole list and change the architecture, not just the
 | FR-27 | Bearing walls (butt/lap framing) | P2 | M6 ✓ bearing walls get footings; floor and ceiling joists run continuous, butt or lap over them |
 | FR-28 | Platform holes with auto framing | P2 | M6 ✓ joists stop at stairwell holes, with headers |
 | FR-29 | Tray ceiling framing | P3 | M6 ✓ joists inside a tray step up by its rise, blocking frames the step |
-| FR-30 | Deck framing: planks, borders, beams, joists, posts, footings, blocking; auto-rebuild | P2 | M6 ◐ decks rebuild themselves: planks, border, joists, rims, ledger, beams, posts, footings, railings; no blocking |
+| FR-30 | Deck framing: planks, borders, beams, joists, posts, footings, blocking; auto-rebuild | P2 | M6 ✓ decks rebuild themselves: planks, border, joists, rims, ledger, beams, posts, footings, railings, optional blocking rows |
 | FR-31 | Deck ledger controls (X18+) | P3 | M6 ◐ a ledger is used automatically where a deck meets the house (on/off per deck) |
 | FR-32 | Deck beam controls | P3 | M6 ◐ beam inset and largest joist span set where beams go; no per-beam editing |
 

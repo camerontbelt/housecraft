@@ -42,6 +42,9 @@ pub struct Deck {
     /// (no beam or posts there).
     #[serde(default = "yes")]
     pub ledger: bool,
+    /// Rows of blocking between the joists (at mid-span, and every 8' on long spans).
+    #[serde(default)]
+    pub blocking: bool,
     /// A railing round the free edges.
     #[serde(default = "yes")]
     pub railing: bool,
@@ -79,6 +82,7 @@ impl Deck {
             max_span: Length::from_feet(10.0),
             post_spacing: Length::from_feet(8.0),
             ledger: true,
+            blocking: false,
             railing: true,
             railing_height: i(36.0),
             covered: false,
@@ -93,6 +97,7 @@ impl Deck {
             railing: false,
             border: false,
             ledger: false,
+            blocking: false,
             joist_depth: Length::from_inches(5.5),
             color: Color::rgb(200, 180, 150),
             ..Deck::new(floor, layer, outline, height)

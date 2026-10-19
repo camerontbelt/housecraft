@@ -1300,6 +1300,18 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                         len_row(ui, doc, &mut app.bufs, "Truss spacing", ("framing", "truss_spacing"), f.truss_spacing, |v| {
                             commands.push(p(json!({"framing": {"truss_spacing": v}})))
                         });
+                        ui.label("Truss type");
+                        ui.horizontal(|ui| {
+                            for t in TrussType::ALL {
+                                if ui.selectable_label(f.truss_type == t, t.name()).clicked() {
+                                    commands.push(p(json!({"framing": {"truss_type": t}})));
+                                }
+                            }
+                        });
+                        ui.end_row();
+                        len_row(ui, doc, &mut app.bufs, "Share headers closer than", ("framing", "combine_headers"), f.combine_headers, |v| {
+                            commands.push(p(json!({"framing": {"combine_headers": v}})))
+                        });
                         ui.label("Mid-height blocking");
                         let mut b = f.wall_blocking;
                         if ui.checkbox(&mut b, "").changed() {

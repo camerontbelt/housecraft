@@ -2752,3 +2752,56 @@ fn backsplashes_stop_under_windows_and_shutters_take_a_layer() {
     s.apply(&[Command::Update { id: win, set: patch(serde_json::json!({"details": {"shutters": {"style": "louvered", "color": "#283c32", "layer": layer.0}}})) }]).unwrap();
     assert_eq!(s.document().get::<Opening>(win).unwrap().details.shutters.as_ref().unwrap().layer, Some(layer));
 }
+
+#[test]
+fn truss_types_raked_walls_shared_headers_deck_blocking_kept_rafter_spacing() {
+    let count = |s: &Session, r: FramingRole| s.document().iter::<FramingMember>().filter(|m| m.role == r).count();
+    let set_framing = |s: &mut Session, v: serde_json::Value| {
+        let id = s.document().settings.active_default_set;
+        s.apply(&[Command::Update { id, set: patch(serde_json::json!({ "framing": v })) }]).unwrap();
+    };
+    // Scissor trusses: the bottom chord rises.
+    let mut s = boxed();
+    let w = walls(&s);
+    for wall in [w[1].id, w[3].id] {
+        s.apply(&[Command::Update { id: wall, set: patch(serde_json::json!({"roof": {"gable": true}})) }]).unwrap();
+    }
+    apply(&mut s, r#"[{"op": "build_roof"}]"#);
+    set_framing(&mut s, serde_json::json!({"trusses": true, "truss_type": "scissor"}));
+    apply(&mut s, r#"[{"op": "build_framing", "parts": {"walls": false, "floors": false, "ceilings": false}}]"#);
+    let z_lo = s.document().iter::<FramingMember>().filter(|m| m.role == FramingRole::Chord).map(|m| m.a.mm()[2].min(m.b.mm()[2])).fold(f64::MAX, f64::min);
+    let rising = s.document().iter::<FramingMember>().filter(|m| m.role == FramingRole::Chord && (m.a.mm()[2] - m.b.mm()[2]).abs() > 100.0 && m.a.mm()[2].min(m.b.mm()[2]) < z_lo + 10.0).count();
+    assert!(rising > 4, "scissor bottom chords slope: {rising}");
+    set_framing(&mut s, serde_json::json!({"truss_type": "attic"}));
+    apply(&mut s, r#"[{"op": "build_framing", "parts": {"walls": false, "floors": false, "ceilings": false}}]"#);
+    assert!(count(&s, FramingRole::Web) > 8);
+
+    // Rafter spacing survives the roof rebuilding itself.
+    let plane = s.document().iter::<RoofPlane>().find(|r| !r.gable).unwrap().id;
+    s.apply(&[Command::Update { id: plane, set: patch(serde_json::json!({"rafter_spacing": "12\""})) }]).unwrap();
+    s.apply(&[Command::Update { id: w[0].id, set: patch(serde_json::json!({"height": "9'"})) }]).unwrap();
+    assert!(s.document().iter::<RoofPlane>().any(|r| r.rafter_spacing.is_some_and(|l| (l.inches() - 12.0).abs() < 0.01)));
+
+    // A raked (knee) wall's studs stop under its sloping top.
+    let mut s = boxed();
+    let w = walls(&s)[0].id;
+    s.apply(&[Command::Update { id: w, set: patch(serde_json::json!({"shape": {"top": [{"along": 0, "height": "4'"}, {"along": "30'", "height": "8'"}]}})) }]).unwrap();
+    // Two windows 10" apart share one header.
+    apply(&mut s, &format!(r#"[{{"op": "add_window", "wall": {w}, "position": "12'", "width": "2'", "height": "2'", "sill": "1'"}}, {{"op": "add_window", "wall": {w}, "position": "14'10\"", "width": "2'", "height": "2'", "sill": "1'"}}]"#, w = w.0));
+    apply(&mut s, &format!(r#"[{{"op": "build_framing", "hosts": [{}], "parts": {{"floors": false, "ceilings": false, "roofs": false}}}}]"#, w.0));
+    let doc = s.document();
+    let studs: Vec<&FramingMember> = doc.iter::<FramingMember>().filter(|m| m.host == Some(w) && m.role == FramingRole::Stud).collect();
+    let short = studs.iter().map(|m| m.length().mm()).fold(f64::MAX, f64::min);
+    let tall = studs.iter().map(|m| m.length().mm()).fold(0.0, f64::max);
+    assert!(short < 4.0 * 304.8 && tall > 7.0 * 304.8, "{short} {tall}");
+    assert_eq!(doc.iter::<FramingMember>().filter(|m| m.host == Some(w) && m.role == FramingRole::Header).count(), 1);
+
+    // Deck blocking.
+    let mut s = boxed();
+    let out = apply(&mut s, r#"[{"op": "add_deck", "points": [["30'",0],["46'",0],["46'","20'"],["30'","20'"]], "height": "3'"}]"#);
+    let deck = out.created[0];
+    s.apply(&[Command::Update { id: deck, set: patch(serde_json::json!({"blocking": true})) }]).unwrap();
+    let dk = s.document().get::<Deck>(deck).unwrap().clone();
+    let parts = housecraft_api::geom::deck::parts(s.document(), &dk).unwrap();
+    assert!(parts.members.iter().any(|m| m.role == FramingRole::Blocking));
+}

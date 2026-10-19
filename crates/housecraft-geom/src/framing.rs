@@ -92,10 +92,24 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
     };
     let len = g.length;
     let openings: Vec<&Opening> = doc.openings_in(wall.id).filter(|o| o.renovation != Renovation::Demolish).collect();
-    let spans: Vec<(f64, f64, &Opening)> = openings
+    let mut spans: Vec<(f64, f64, &Opening)> = openings
         .iter()
         .filter_map(|o| opening_spans(g, &[*o]).first().map(|(a, b)| (a.min(*b), a.max(*b), *o)))
         .collect();
+    spans.sort_by(|x, y| x.0.total_cmp(&y.0));
+    // Openings close together with their heads level share one header.
+    let combine = d.combine_headers.mm();
+    let head_of = |o: &Opening| o.sill.mm() + o.height.mm();
+    let mut header_groups: Vec<(f64, f64, f64)> = Vec::new(); // (from, to, head)
+    for (a, b, o) in &spans {
+        match header_groups.last_mut() {
+            Some(last) if combine > 0.0 && *a - last.1 < combine && (head_of(o) - last.2).abs() < 25.0 => {
+                last.1 = last.1.max(*b);
+                last.2 = last.2.max(head_of(o));
+            }
+            _ => header_groups.push((*a, *b, head_of(o))),
+        }
+    }
     // Plates: the bottom plate stops at door openings.
     let mut bottom_runs = vec![(0.0, len)];
     for (a, b, o) in &spans {
@@ -119,9 +133,25 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
         for (s, e) in bottom_runs {
             push(FramingRole::BottomPlate, at(s, z0 + t / 2.0), at(e, z0 + t / 2.0), t, core, 90.0);
         }
-        for k in 0..d.top_plates.max(1) {
-            let z = z0 + h - t * (k as f64 + 0.5);
-            push(FramingRole::TopPlate, at(0.0, z), at(len, z), t, core, 90.0);
+        if wall.shape.top.is_empty() || above.is_some() {
+            for k in 0..d.top_plates.max(1) {
+                let z = z0 + h - t * (k as f64 + 0.5);
+                push(FramingRole::TopPlate, at(0.0, z), at(len, z), t, core, 90.0);
+            }
+        } else {
+            // Plates along the raked top, piece by piece between its points.
+            let mut us: Vec<f64> = wall.shape.top.iter().map(|p| p.along.mm().clamp(0.0, len)).collect();
+            us.push(0.0);
+            us.push(len);
+            us.sort_by(f64::total_cmp);
+            us.dedup_by(|a, b| (*a - *b).abs() < 1.0);
+            let top = |u: f64| z0 + wall.shape.top_at(u, h);
+            for w in us.windows(2) {
+                for k in 0..d.top_plates.max(1) {
+                    let dz = t * (k as f64 + 0.5);
+                    push(FramingRole::TopPlate, at(w[0], top(w[0] + 0.5) - dz), at(w[1], top(w[1] - 0.5) - dz), t, core, 90.0);
+                }
+            }
         }
     }
     if let Some(z) = ribbon {
@@ -171,9 +201,14 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
     }
     studs.sort_by(|a, b| a.total_cmp(b));
     studs.dedup_by(|a, b| (*a - *b).abs() < t * 0.9);
+    // Raked and stepped tops (knee walls under a roof): studs stop under
+    // the top, and the top plates follow it.
+    let base_h = doc.wall_height(wall).map_or(floor.ceiling_height.mm(), |h| h.mm());
+    let raked = !wall.shape.top.is_empty() && !upper_of_balloon && above.is_none();
+    let stud_top_at = |u: f64| if raked { z0 + wall.shape.top_at(u, base_h) - top_plates * t } else { stud_top };
     if !upper_of_balloon {
         for u in studs.iter().copied().filter(|u| !blocked(*u)) {
-            push(FramingRole::Stud, at(u, stud_bottom), at(u, stud_top), t, core, across);
+            push(FramingRole::Stud, at(u, stud_bottom), at(u, stud_top_at(u)), t, core, across);
         }
     }
     if d.wall_blocking && !upper_of_balloon {
@@ -207,14 +242,19 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
             push(FramingRole::JackStud, at(jack, stud_bottom), at(jack, head), t, core, across);
             push(FramingRole::KingStud, at(king, stud_bottom), at(king, stud_top), t, core, across);
         }
-        push(
-            FramingRole::Header,
-            at(a - t, (head + header_top) / 2.0),
-            at(b + t, (head + header_top) / 2.0),
-            core,
-            header_top - head,
-            0.0,
-        );
+        // One header over a group of openings, drawn with its first one.
+        if let Some(group) = header_groups.iter().find(|g| (g.0 - a).abs() < 0.5) {
+            let (ga, gb) = (group.0, group.1);
+            let head = z0 + group.2;
+            push(
+                FramingRole::Header,
+                at(ga - t, (head + header_top) / 2.0),
+                at(gb + t, (head + header_top) / 2.0),
+                core,
+                header_top - head,
+                0.0,
+            );
+        }
         let inside: Vec<f64> = {
             let mut v = Vec::new();
             let mut u = (a / spacing).ceil() * spacing;
@@ -1028,7 +1068,20 @@ pub fn roof_trusses(doc: &Document, d: &FramingDefaults, floor: &Floor) -> Vec<M
                         out.push(Member { role, a, b, width: t, depth: chord, rotation, host: floor.id, floor: floor.id });
                     }
                 };
-                push(&mut out, FramingRole::Chord, e0.extend(z_bottom), e1.extend(z_bottom), 0.0);
+                let top_at = |f: f64| at(f).unwrap_or(e0.lerp(e1, f).extend(z_bottom));
+                // Scissor: the bottom chord rises halfway to the top at mid-span.
+                let peak = top_at(0.5).z;
+                let bottom_z = |f: f64| match d.truss_type {
+                    TrussType::Scissor => z_bottom + (peak - z_bottom - chord * 1.5).max(0.0) * 0.5 * (1.0 - (2.0 * f - 1.0).abs()),
+                    _ => z_bottom,
+                };
+                if d.truss_type == TrussType::Scissor {
+                    for (f0, f1) in [(0.0, 0.5), (0.5, 1.0)] {
+                        push(&mut out, FramingRole::Chord, e0.lerp(e1, f0).extend(bottom_z(f0)), e0.lerp(e1, f1).extend(bottom_z(f1)), 0.0);
+                    }
+                } else {
+                    push(&mut out, FramingRole::Chord, e0.extend(z_bottom), e1.extend(z_bottom), 0.0);
+                }
                 for w in top.windows(2) {
                     push(&mut out, FramingRole::Chord, w[0], w[1], 0.0);
                 }
@@ -1039,11 +1092,39 @@ pub fn roof_trusses(doc: &Document, d: &FramingDefaults, floor: &Floor) -> Vec<M
                         push(&mut out, FramingRole::Web, end.truncate().extend(z_bottom + chord / 2.0), end, across);
                     }
                 }
-                // Fink webs.
-                let top_at = |f: f64| at(f).unwrap_or(e0.lerp(e1, f).extend(z_bottom));
-                let bottom_at = |f: f64| e0.lerp(e1, f).extend(z_bottom + chord / 2.0);
-                for (b, tp) in [(1.0 / 3.0, 0.25), (1.0 / 3.0, 0.5), (2.0 / 3.0, 0.5), (2.0 / 3.0, 0.75)] {
-                    push(&mut out, FramingRole::Web, bottom_at(b), top_at(tp), 0.0);
+                let bottom_at = |f: f64| e0.lerp(e1, f).extend(bottom_z(f) + chord / 2.0);
+                match d.truss_type {
+                    // Fink webs.
+                    TrussType::Common => {
+                        for (b, tp) in [(1.0 / 3.0, 0.25), (1.0 / 3.0, 0.5), (2.0 / 3.0, 0.5), (2.0 / 3.0, 0.75)] {
+                            push(&mut out, FramingRole::Web, bottom_at(b), top_at(tp), 0.0);
+                        }
+                    }
+                    // A king post and two struts off the rising chord.
+                    TrussType::Scissor => {
+                        push(&mut out, FramingRole::Web, bottom_at(0.5), top_at(0.5), 0.0);
+                        for (b, tp) in [(0.25, 0.4), (0.75, 0.6)] {
+                            push(&mut out, FramingRole::Web, bottom_at(b), top_at(tp), 0.0);
+                        }
+                    }
+                    // A room 1/4–3/4 across: posts up to a ceiling tie about
+                    // 7'6" over the floor (or under the roof), webs outside.
+                    TrussType::Attic => {
+                        let tie_z = (z_bottom + 90.0 * IN).min(top_at(0.3).z - chord);
+                        for f in [0.25, 0.75] {
+                            let p = e0.lerp(e1, f);
+                            if top_at(f).z - z_bottom > chord * 2.0 {
+                                push(&mut out, FramingRole::Web, p.extend(z_bottom + chord / 2.0), top_at(f), 0.0);
+                            }
+                        }
+                        if tie_z > z_bottom + 60.0 * IN {
+                            let (a, b) = (e0.lerp(e1, 0.3), e0.lerp(e1, 0.7));
+                            push(&mut out, FramingRole::Chord, a.extend(tie_z), b.extend(tie_z), 0.0);
+                        }
+                        for (b, tp) in [(0.1, 0.18), (0.9, 0.82)] {
+                            push(&mut out, FramingRole::Web, bottom_at(b), top_at(tp), 0.0);
+                        }
+                    }
                 }
             }
         }

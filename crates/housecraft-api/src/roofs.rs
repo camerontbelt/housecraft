@@ -71,11 +71,34 @@ fn regenerate(doc: &mut Document, floor: Id, out: &mut Outcome) -> usize {
         doc.remove(r.id);
         out.deleted.push(r.id);
     }
+    // What was set on the old planes carries over to the new plane in the
+    // same place and pitch: rafter spacing, and skylights still inside it.
+    let plan = |o: &[Point3]| -> Vec<housecraft_geom::DVec2> {
+        o.iter().map(|p| {
+            let [x, y, _] = p.mm();
+            housecraft_geom::DVec2::new(x, y)
+        }).collect()
+    };
     for g in &generated {
+        let outline = to_points(&g.outline);
+        let poly = plan(&outline);
+        let c = housecraft_geom::math::centroid(&poly);
+        let old = existing
+            .iter()
+            .filter(|r| r.gable == g.gable && (r.pitch - g.pitch).abs() < 0.5)
+            .filter(|r| housecraft_geom::math::point_in_polygon(c, &plan(&r.outline)) || housecraft_geom::math::point_in_polygon(housecraft_geom::math::centroid(&plan(&r.outline)), &poly))
+            .min_by(|a, b| {
+                let d = |r: &RoofPlane| housecraft_geom::math::centroid(&plan(&r.outline)).distance(c);
+                d(a).total_cmp(&d(b))
+            });
+        let rafter_spacing = old.and_then(|r| r.rafter_spacing);
+        let skylights: Vec<Skylight> = old.map_or(Vec::new(), |r| {
+            r.skylights.iter().filter(|s| housecraft_geom::math::point_in_polygon(housecraft_geom::v2(s.center), &poly)).cloned().collect()
+        });
         out.created.push(doc.insert(RoofPlane {
             id: Id(0),
             floor,
-            outline: to_points(&g.outline),
+            outline,
             pitch: g.pitch,
             thickness: if g.gable {
                 Length::ZERO
@@ -85,8 +108,8 @@ fn regenerate(doc: &mut Document, floor: Id, out: &mut Outcome) -> usize {
             gable: g.gable,
             auto: true,
             layer,
-            skylights: Vec::new(),
-            rafter_spacing: None,
+            skylights,
+            rafter_spacing,
         }));
     }
     generated.len()
