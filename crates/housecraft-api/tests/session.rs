@@ -2195,3 +2195,28 @@ fn trusses_posts_and_beams() {
     assert_eq!(beam.size_name(), "2-ply 2x10");
     assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
 }
+
+#[test]
+fn match_properties_copies_settings_not_placement() {
+    let mut s = boxed();
+    let w = walls(&s);
+    let out = apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_window", "wall": {a}, "position": "5'", "width": "4'"}},
+                {{"op": "add_window", "wall": {b}, "position": "3'"}}]"#,
+            a = w[0].id.0,
+            b = w[1].id.0
+        ),
+    );
+    let (src, dst) = (out.created[0], out.created[1]);
+    s.apply(&[Command::MatchProperties { from: src, to: vec![dst] }]).unwrap();
+    let doc = s.document();
+    let (a, b) = (doc.get::<Opening>(src).unwrap(), doc.get::<Opening>(dst).unwrap());
+    assert_eq!(a.width, b.width);
+    assert_eq!(b.wall, w[1].id, "stays in its own wall");
+    assert!((b.position.feet() - 3.0).abs() < 1e-9, "stays where it was");
+    // Different kinds don't match.
+    let err = s.apply(&[Command::MatchProperties { from: src, to: vec![w[0].id] }]).unwrap_err();
+    assert!(err.to_string().contains("can't match"), "{err}");
+}

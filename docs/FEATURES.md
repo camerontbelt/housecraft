@@ -111,7 +111,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-02 | Recent files with pinning | P2 | M1 |
 | PRJ-03 | Space-planner room boxes: drag room bubbles, convert to walls | P2 | M3 |
 | PRJ-04 | Plan Check: egress, roof, wall layout review | P2 | M4 |
-| PRJ-05 | Rotate and mirror (flip) entire plan | P1 | M1 |
+| PRJ-05 | Rotate and mirror (flip) entire plan | P1 | M1 ✓ Edit > Entire Plan: Reverse Plan, rotate 90° either way (all floors) |
 | PRJ-06 | Zoom to selection | P0 | M1 ✓ |
 | PRJ-07 | Free viewer app for clients (read-only) | P1 | web build |
 | PRJ-08 | Managed projects (auto-organized storage, no broken links) | P2 | M8 |
@@ -124,7 +124,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-15 | Insert/exchange floors above/below | P1 | M3 ✓ |
 | PRJ-16 | Layers: create, assign, style, group into Layer Sets | P0 | M1 ✓ |
 | PRJ-17 | Fill style by layer (X18+) | P2 | M1 |
-| PRJ-18 | Select all on layer | P1 | M1 |
+| PRJ-18 | Select all on layer | P1 | M1 ✓ Edit > Select All on Layer |
 | PRJ-19 | Time tracker per project/client/task with export | P3 | M8 |
 | PRJ-20 | Plan database / portfolio | P3 | M8 |
 | PRJ-21 | R-values for walls, roofs, ceilings, platforms | P2 | M3 |
@@ -171,7 +171,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-05 | Newel positioning rules and manual newel editing | P2 | M3 |
 | WL-06 | Raked & stepped walls; stepped foundations | P2 | M3 |
 | WL-07 | Wall type editor; layers feed materials list | P0 | M1 ✓ |
-| WL-08 | Match properties (wall to wall) | P1 | M1 |
+| WL-08 | Match properties (wall to wall) | P1 | M1 ✓ Match Properties button on the edit toolbar: click other walls to copy type, height, layer and settings |
 | WL-09 | Multiple main (structural) layers for ICF/SIP connections | P2 | M3 |
 | WL-10 | Wall niches | P2 | M3 |
 | WL-11 | Partition walls (don't cut structural layers) | P2 | M3 |
@@ -340,11 +340,11 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-09 | 3D solids and faces; extrude/revolve; polyline boolean ops | P2 | M5 ✓ CAD > Shapes and Solids: join, intersect and subtract closed shapes; extrude or revolve them into 3D solids |
 | CAD-10 | 3D solid tool with defaults | P2 | M5 ✓ 3D Solid tool draws a box, cylinder, cone or sphere; shape, height and colour in Default Settings |
 | CAD-11 | Solid booleans across plan/elevation; fillet/chamfer solid edges | P3 | M5 ◐ cut shapes before extruding (plan booleans); no 3D solid booleans or edge fillets yet |
-| CAD-12 | Regular polygon tool | P1 | M1 |
+| CAD-12 | Regular polygon tool | P1 | M1 ✓ CAD > Regular Polygon: centre, then a corner; sides set in the Tool Palette |
 | CAD-13 | Fillet all / chamfer all | P2 | M1 |
 | CAD-14 | CAD-to-Walls (DWG lines → walls, windows, doors) | P2 | M4 |
 | CAD-15 | Library of structural CAD details | P3 | M8 (own content) |
-| CAD-16 | Align / distribute | P1 | M1 |
+| CAD-16 | Align / distribute | P1 | M1 ✓ edit toolbar and Edit > Edit Objects > Align and Distribute: edges, centres, even spacing |
 | CAD-17 | CAD details & blocks with insertion points; save to library | P1 | M4 ✓ |
 | CAD-18 | CAD detail from any view | P1 | M4 ✓ |
 | CAD-19 | Copy CAD details between plans | P2 | M4 |
@@ -357,7 +357,7 @@ These come from reading the whole list and change the architecture, not just the
 | LY-01 | Layer sets per drawing type; quick swap | P0 | M1 ✓ |
 | LY-02 | Layer management: weight, color, style; materials-list inclusion | P0 | M1 ✓ (materials list itself: M4) |
 | LY-03 | Layer eyedropper & painter | P2 | M1 |
-| LY-04 | Layer hider (click to hide) | P1 | M1 |
+| LY-04 | Layer hider (click to hide) | P1 | M1 ✓ CAD Tools > Layer Hider: click objects to hide their layers |
 | LY-05 | Edit an object's layer properties from the toolbar | P2 | M1 |
 | LY-06 | Reference displays: multiple reference floors/layer sets, draw order | P1 | M3 ◐ several reference floors; reference layer sets and draw order later |
 | LY-07 | Reference display from other plan files (2D and 3D ghosting) | P2 | M8 |
@@ -459,8 +459,8 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-19 | Screen-capture image as material | P3 | M5 |
 | MAT-20 | 3D cladding from moldings (board & batten, lap, standing seam) (X18+) | P2 | M5 ✓ |
 | MAT-21 | Style palettes (save and apply finish sets) | P2 | M5 ✓ save and apply styles (materials, door style, hardware) |
-| MAT-22 | Center object between two objects | P1 | M1 |
-| MAT-23 | Match / apply properties across same-type items | P1 | M1 |
+| MAT-22 | Center object between two objects | P1 | M1 ✓ Center Object button: then click a wall or line to centre along it, or an object to centre on it |
+| MAT-23 | Match / apply properties across same-type items | P1 | M1 ✓ Match Properties works for any kind of object; placement and facing are kept |
 | MAT-24 | Import custom 3D symbols | P1 | M5 ◐ OBJ (with MTL colours) and STL models stored in the plan, placed and stretched like cabinets, paintable; glTF, DAE and SKP later |
 | MAT-25 | Smart symbols (sinks cut counters, wall-hung items, light fixtures emit) | P2 | M5 ✓ symbols can behave as sinks (cut countertops), wall-hung (hang at a set height) or light fixtures (light the 3D view) |
 | MAT-26 | Convert selection to symbol object | P2 | M5 ✓ Library > Convert Selection to Symbol keeps the 3D look in one symbol |

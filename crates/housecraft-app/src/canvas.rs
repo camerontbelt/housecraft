@@ -74,6 +74,10 @@ pub struct PlanState {
     cache: Option<Cache>,
     /// Objects under the last click, for Select Next Object.
     candidates: Vec<Id>,
+    /// What the next click picks for an edit button (instead of selecting).
+    pub pick: Option<Pick>,
+    /// Sides for the Regular Polygon tool.
+    pub polygon_sides: u32,
     text_prompt: Option<(DVec2, String)>,
     temp_dim_edit: Option<(Id, String, bool)>,
     /// The switch being wired by the Connect Electrical tool.
@@ -110,6 +114,8 @@ impl PlanState {
             drag: None,
             cache: None,
             candidates: Vec::new(),
+            pick: None,
+            polygon_sides: 6,
             text_prompt: None,
             temp_dim_edit: None,
             wiring: None,
@@ -727,6 +733,69 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
 
     if resp.clicked()
         && let Some(c) = app.plan.cursor
+        && let Some(pick) = app.plan.pick.clone()
+    {
+        let hit = hit_test(doc, cache, c, tol).into_iter().next();
+        if let Some(target) = hit {
+            match pick {
+                Pick::Match(from) => {
+                    if doc.kind_of(target) == doc.kind_of(from) {
+                        commands.push(Command::MatchProperties { from, to: vec![target] });
+                    }
+                }
+                Pick::Center(ids) => {
+                    let center = |set: &[Id]| object_bounds(cache, set).map(|(lo, hi)| (lo + hi) / 2.0);
+                    if let Some(at) = center(&ids) {
+                        // Along a wall or line: slide to its middle; on anything
+                        // else, to the middle of what was clicked.
+                        let edge = doc.get::<Wall>(target).map(|w| (v2(w.start), v2(w.end))).or_else(|| {
+                            doc.get::<housecraft_api::model::Cad>(target).and_then(|cad| match cad.shape {
+                                Shape::Line { a, b, .. } => Some((v2(a), v2(b))),
+                                _ => None,
+                            })
+                        });
+                        let d = match edge {
+                            Some((a, b)) => {
+                                let dir = (b - a).normalize_or_zero();
+                                dir * ((a + b) / 2.0 - at).dot(dir)
+                            }
+                            None => center(&[target]).map_or(DVec2::ZERO, |m| m - at),
+                        };
+                        if d.length() > 0.5 {
+                            commands.push(Command::Transform {
+                                ids,
+                                transform: TransformOp::Translate {
+                                    dx: Length::from_mm(d.x),
+                                    dy: Length::from_mm(d.y),
+                                },
+                                copies: 0,
+                            });
+                        }
+                    }
+                    app.plan.pick = None;
+                }
+                Pick::HideLayer => {
+                    if let Some(layer) = doc.layer_of(target) {
+                        app.selection.retain(|id| doc.layer_of(*id) != Some(layer));
+                        commands.push(Command::SetLayerDisplay {
+                            layer_set: app.plan.layer_set,
+                            layer,
+                            visible: Some(false),
+                            color: None,
+                            line_weight: None,
+                            line_style: None,
+                        });
+                    }
+                }
+            }
+        }
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+            app.plan.pick = None;
+        }
+        return;
+    }
+    if resp.clicked()
+        && let Some(c) = app.plan.cursor
     {
         let hits = hit_test(doc, cache, c, tol);
         app.plan.candidates = hits.clone();
@@ -747,8 +816,51 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
         app.open_object();
     }
     if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-        app.selection.clear();
+        if app.plan.pick.take().is_none() {
+            app.selection.clear();
+        }
         app.plan.drag = None;
+    }
+}
+
+/// What the next plan click is for, after an edit button.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Pick {
+    /// Match Properties: each click copies this object's properties.
+    Match(Id),
+    /// Center Object: one click on a wall, line or object centres these.
+    Center(Vec<Id>),
+    /// Layer Hider: each click hides the layer of what was clicked.
+    HideLayer,
+}
+
+impl Pick {
+    /// Status-bar instructions while waiting for the click.
+    pub fn hint(&self) -> &'static str {
+        match self {
+            Pick::Match(_) => "Match Properties: click each object of the same kind to copy onto. Esc ends.",
+            Pick::Center(_) => "Center Object: click a wall or line to centre along, or an object to centre on. Esc cancels.",
+            Pick::HideLayer => "Layer Hider: click objects to hide their layers. Esc ends.",
+        }
+    }
+}
+
+/// Model-space bounds of everything drawn for `ids`.
+fn object_bounds(cache: &Cache, ids: &[Id]) -> Option<(DVec2, DVec2)> {
+    housecraft_api::geom::math::bounds(
+        cache
+            .drawing
+            .items
+            .iter()
+            .filter(|i| i.object.is_some_and(|o| ids.contains(&o)))
+            .flat_map(|i| prim_points(&i.prim)),
+    )
+}
+
+impl PlanState {
+    /// Bounds of what is drawn for `ids` in the plan (once drawn).
+    pub fn bounds_of(&self, ids: &[Id]) -> Option<(DVec2, DVec2)> {
+        object_bounds(self.cache.as_ref()?, ids)
     }
 }
 
@@ -853,6 +965,7 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
         return;
     }
 
+    let app_sides = app.plan.polygon_sides;
     let pending = &mut app.plan.pending;
     if let Some(p) = click {
         match tool {
@@ -1130,6 +1243,24 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                             },
                         ));
                     }
+                }
+            }
+            Tool::RegularPolygon => {
+                if let Some(c) = pending.pop() {
+                    let r = c.distance(p);
+                    if r > 0.5 {
+                        let n = app_sides.max(3);
+                        let a0 = (p - c).to_angle();
+                        let points = (0..n)
+                            .map(|i| {
+                                let a = a0 + i as f64 * std::f64::consts::TAU / n as f64;
+                                pt(c + DVec2::from_angle(a) * r)
+                            })
+                            .collect();
+                        commands.push(cad(floor, Shape::Polyline { points, closed: true }));
+                    }
+                } else {
+                    pending.push(p);
                 }
             }
             Tool::Point => commands.push(cad(floor, Shape::Point { at: pt(p) })),

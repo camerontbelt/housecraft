@@ -310,6 +310,48 @@ pub(crate) fn update(
     Ok(())
 }
 
+/// Fields Match Properties leaves alone: identity, host, placement and facing.
+const PLACEMENT_KEYS: &[&str] = &[
+    "id", "kind", "floor", "wall", "host", "name", "label", "text", "position", "offset", "at",
+    "center", "start", "end", "a", "b", "points", "eye", "target", "rotation", "angle", "facing",
+    "hinge", "swing_in", "room", "camera", "mark", "elevation",
+];
+
+/// A point or a list of points: `[x, y]`, `[x, y, z]` or nested lists of them.
+fn is_geometry(v: &serde_json::Value) -> bool {
+    match v {
+        serde_json::Value::Array(a) if (a.len() == 2 || a.len() == 3) && a.iter().all(|x| x.is_number()) => true,
+        serde_json::Value::Array(a) => !a.is_empty() && a.iter().all(is_geometry),
+        _ => false,
+    }
+}
+
+pub(crate) fn match_properties(
+    doc: &mut Document,
+    from: Id,
+    to: &[Id],
+    out: &mut Outcome,
+) -> Result<(), ApiError> {
+    let source = doc.object(from).ok_or(ApiError::NotFound(from))?;
+    let kind = source.kind();
+    let value = serde_json::to_value(source).expect("objects serialize");
+    let set: serde_json::Map<String, serde_json::Value> = value
+        .as_object()
+        .expect("objects are JSON objects")
+        .iter()
+        .filter(|(k, v)| !PLACEMENT_KEYS.contains(&k.as_str()) && !is_geometry(v))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    for id in to.iter().filter(|id| **id != from) {
+        let target = doc.kind_of(*id).ok_or(ApiError::NotFound(*id))?;
+        if target != kind {
+            return invalid(format!("can't match a {target} to a {kind}"));
+        }
+        update(doc, *id, &set, out)?;
+    }
+    Ok(())
+}
+
 fn to_transform(op: &TransformOp) -> Result<Transform2, ApiError> {
     Ok(match op {
         TransformOp::Translate { dx, dy } => Transform2::translate(DVec2::new(dx.mm(), dy.mm())),

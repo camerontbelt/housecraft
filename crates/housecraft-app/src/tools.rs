@@ -25,6 +25,7 @@ pub enum Tool {
     Box,
     Circle,
     Arc,
+    RegularPolygon,
     Ellipse,
     Spline,
     Point,
@@ -298,6 +299,7 @@ impl Family {
                 Tool::Box,
                 Tool::Circle,
                 Tool::Arc,
+                Tool::RegularPolygon,
                 Tool::Ellipse,
                 Tool::Spline,
                 Tool::Point,
@@ -420,6 +422,7 @@ impl Tool {
             Tool::Box => "Rectangular Polyline",
             Tool::Circle => "Circle",
             Tool::Arc => "Arc",
+            Tool::RegularPolygon => "Regular Polygon",
             Tool::Ellipse => "Ellipse",
             Tool::Spline => "Spline",
             Tool::Point => "Point",
@@ -504,6 +507,7 @@ impl Tool {
             Tool::Box => Icon::Box,
             Tool::Circle => Icon::Circle,
             Tool::Arc => Icon::Arc,
+            Tool::RegularPolygon => Icon::Polygon,
             Tool::Ellipse => Icon::Ellipse,
             Tool::Spline => Icon::Spline,
             Tool::Point => Icon::Point,
@@ -579,6 +583,9 @@ impl Tool {
             Tool::Circle => "Click the centre, then a point on the circle.",
             Tool::Arc => {
                 "Click the centre, the start point, then the end point (counter-clockwise)."
+            }
+            Tool::RegularPolygon => {
+                "Click the centre, then a corner. Set the number of sides in the Tool Palette."
             }
             Tool::Ellipse => "Click two opposite corners of the bounding box.",
             Tool::Point => "Click to place a point.",

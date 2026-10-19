@@ -13,6 +13,8 @@ use housecraft_api::{Command, Outcome, Session};
 use serde::{Deserialize, Serialize};
 
 use crate::canvas::PlanState;
+use housecraft_api::geom::DVec2;
+use housecraft_api::units::{Length, Point2};
 use crate::dialogs::Dialogs;
 use crate::icons::{self, Icon};
 use crate::snap::SnapSettings;
@@ -1008,6 +1010,115 @@ impl App {
         }
     }
 
+    /// Wait for a plan click for an edit button (see [`crate::canvas::Pick`]).
+    pub fn start_pick(&mut self, pick: crate::canvas::Pick) {
+        self.mode = Mode::Plan;
+        self.plan.pick = Some(pick);
+    }
+
+    /// Select everything on this floor on the layers of the selected objects.
+    pub fn select_on_layer(&mut self) {
+        let floor = self.plan.floor;
+        let doc = self.doc();
+        let layers: Vec<Id> = self.selection.iter().filter_map(|id| doc.layer_of(*id)).collect();
+        let picked: Vec<Id> = doc
+            .objects
+            .keys()
+            .copied()
+            .filter(|id| {
+                doc.floor_of(*id) == Some(floor)
+                    && doc.kind_of(*id).is_some_and(|k| k.is_placed())
+                    && doc.layer_of(*id).is_some_and(|l| layers.contains(&l))
+            })
+            .collect();
+        let n = picked.len();
+        self.selection = picked;
+        self.info(format!("{n} objects selected"));
+    }
+
+    /// Line up or space out the selection by their drawn extents; aligning
+    /// goes to the first object selected, distributing keeps the outer two.
+    pub fn align(&mut self, how: Align) {
+        let boxes: Vec<(Id, DVec2, DVec2)> = self
+            .selection
+            .iter()
+            .filter_map(|id| self.plan.bounds_of(&[*id]).map(|(lo, hi)| (*id, lo, hi)))
+            .collect();
+        let Some(&(_, rlo, rhi)) = boxes.first() else {
+            return;
+        };
+        let mut moves: Vec<(Id, DVec2)> = Vec::new();
+        if how.is_distribute() {
+            let x = how == Align::DistributeHorizontally;
+            let axis = |v: DVec2| if x { v.x } else { v.y };
+            let mut sorted = boxes.clone();
+            sorted.sort_by(|a, b| axis((a.1 + a.2) / 2.0).total_cmp(&axis((b.1 + b.2) / 2.0)));
+            let (first, last) = (sorted[0], sorted[sorted.len() - 1]);
+            let total: f64 = sorted.iter().map(|b| axis(b.2 - b.1)).sum();
+            let gap = (axis(last.2) - axis(first.1) - total) / (sorted.len() - 1) as f64;
+            let mut at = axis(first.2) + gap;
+            for b in &sorted[1..sorted.len() - 1] {
+                let d = at - axis(b.1);
+                moves.push((b.0, if x { DVec2::new(d, 0.0) } else { DVec2::new(0.0, d) }));
+                at += axis(b.2 - b.1) + gap;
+            }
+        } else {
+            for &(id, lo, hi) in &boxes[1..] {
+                let d = match how {
+                    Align::Left => DVec2::new(rlo.x - lo.x, 0.0),
+                    Align::Right => DVec2::new(rhi.x - hi.x, 0.0),
+                    Align::CentersVertically => DVec2::new((rlo.x + rhi.x - lo.x - hi.x) / 2.0, 0.0),
+                    Align::Top => DVec2::new(0.0, rhi.y - hi.y),
+                    Align::Bottom => DVec2::new(0.0, rlo.y - lo.y),
+                    Align::CentersHorizontally => DVec2::new(0.0, (rlo.y + rhi.y - lo.y - hi.y) / 2.0),
+                    _ => DVec2::ZERO,
+                };
+                moves.push((id, d));
+            }
+        }
+        let commands: Vec<Command> = moves
+            .into_iter()
+            .filter(|(_, d)| d.length() > 0.5)
+            .map(|(id, d)| Command::Transform {
+                ids: vec![id],
+                transform: housecraft_api::TransformOp::Translate {
+                    dx: Length::from_mm(d.x),
+                    dy: Length::from_mm(d.y),
+                },
+                copies: 0,
+            })
+            .collect();
+        if !commands.is_empty() {
+            self.run(commands);
+        }
+    }
+
+    /// Mirror the whole plan left to right, or turn it by `angle` degrees,
+    /// about the middle of the current floor's drawing (every floor moves).
+    pub fn transform_plan(&mut self, mirror: bool, angle: f64) {
+        let doc = self.doc();
+        let ids: Vec<Id> = doc
+            .objects
+            .keys()
+            .copied()
+            .filter(|id| {
+                doc.kind_of(*id).is_some_and(|k| k.is_placed() && k != ObjectKind::Opening && k != ObjectKind::Room)
+            })
+            .collect();
+        let center = self
+            .plan
+            .bounds_of(&ids)
+            .map_or(DVec2::ZERO, |(lo, hi)| (lo + hi) / 2.0);
+        let c = Point2::from_mm(center.x, center.y);
+        let transform = if mirror {
+            housecraft_api::TransformOp::Mirror { a: c, b: Point2::from_mm(center.x, center.y + 1000.0) }
+        } else {
+            housecraft_api::TransformOp::Rotate { center: c, angle }
+        };
+        self.run1(Command::Transform { ids, transform, copies: 0 });
+        self.plan.fit_requested = true;
+    }
+
     pub fn select_all(&mut self) {
         let floor = self.plan.floor;
         let doc = self.doc();
@@ -1339,6 +1450,9 @@ impl App {
                 if item(ui, "Select Same Type", "Ctrl+J", has_sel) {
                     self.select_same_type();
                 }
+                if item(ui, "Select All on Layer", "", has_sel) {
+                    self.select_on_layer();
+                }
                 if item(ui, "Open Object", "Ctrl+E", has_sel) {
                     self.open_object();
                 }
@@ -1362,6 +1476,32 @@ impl App {
                     if item(ui, "Trim / Extend to Second Object", "", two) {
                         let (id, boundary) = (self.selection[0], self.selection[1]);
                         self.run1(Command::ExtendTo { id, boundary });
+                    }
+                    ui.separator();
+                    if item(ui, "Match Properties", "", self.selection.len() == 1) {
+                        self.start_pick(crate::canvas::Pick::Match(self.selection[0]));
+                    }
+                    if item(ui, "Center Object", "", has_sel) {
+                        self.start_pick(crate::canvas::Pick::Center(self.selection.clone()));
+                    }
+                    ui.menu_button("Align and Distribute", |ui| {
+                        for a in Align::ALL {
+                            let need = if a.is_distribute() { 3 } else { 2 };
+                            if item(ui, a.name(), "", self.selection.len() >= need) {
+                                self.align(a);
+                            }
+                        }
+                    });
+                });
+                ui.menu_button("Entire Plan", |ui| {
+                    if item(ui, "Reverse Plan (mirror left to right)", "", true) {
+                        self.transform_plan(true, 0.0);
+                    }
+                    if item(ui, "Rotate Plan 90° Clockwise", "", true) {
+                        self.transform_plan(false, -90.0);
+                    }
+                    if item(ui, "Rotate Plan 90° Counter-clockwise", "", true) {
+                        self.transform_plan(false, 90.0);
                     }
                 });
                 ui.separator();
@@ -2311,6 +2451,20 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                 self.set_tool(*tool);
             }
         }
+        if self.plan.tool == Tool::RegularPolygon {
+            ui.horizontal(|ui| {
+                ui.label("Sides");
+                ui.add(egui::DragValue::new(&mut self.plan.polygon_sides).range(3..=64));
+            });
+        }
+        if self.palette == Family::Cad
+            && palette_row(ui, Icon::LayerHider, "Layer Hider", self.plan.pick == Some(crate::canvas::Pick::HideLayer))
+                .on_hover_text("Click objects in the plan to hide their layers")
+                .clicked()
+        {
+            self.set_tool(Tool::Select);
+            self.start_pick(crate::canvas::Pick::HideLayer);
+        }
         if self.palette == Family::Dimensions
             && palette_row(ui, Icon::AutoDimension, "Auto Exterior Dimensions", false)
                 .on_hover_text("Auto Exterior Dimensions (Shift+A)")
@@ -2448,6 +2602,28 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
             }
             if icons::button(ui, Icon::MultiCopy, false, true, "Multiple Copy…").clicked() {
                 t.open_multiple();
+            }
+            ui.separator();
+            if icons::button(ui, Icon::MatchProperties, false, n == 1, "Match Properties: click others to copy onto")
+                .clicked()
+            {
+                self.start_pick(crate::canvas::Pick::Match(self.selection[0]));
+            }
+            if icons::button(ui, Icon::CenterObject, false, true, "Center Object: then click a wall, line or object")
+                .clicked()
+            {
+                self.start_pick(crate::canvas::Pick::Center(self.selection.clone()));
+            }
+            if n >= 2 {
+                let r = icons::button(ui, Icon::AlignLeft, false, true, "Align and Distribute");
+                egui::Popup::menu(&r).show(|ui| {
+                    for a in Align::ALL {
+                        let need = if a.is_distribute() { 3 } else { 2 };
+                        if item(ui, a.name(), "", n >= need) {
+                            self.align(a);
+                        }
+                    }
+                });
             }
             let line_like = kind.is_some_and(|k| matches!(k, ObjectKind::Cad | ObjectKind::Wall));
             if line_like {
@@ -3069,6 +3245,10 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                     ui.visuals().text_color()
                 };
                 ui.label(RichText::new(msg).color(color));
+            } else if self.mode == Mode::Plan
+                && let Some(pick) = &self.plan.pick
+            {
+                ui.strong(pick.hint());
             } else if self.mode == Mode::Plan {
                 ui.weak(self.plan.tool.hint());
             }
@@ -3356,5 +3536,48 @@ impl RenderExport {
             _ => (1920, 1080),
         };
         RenderExport { kind, w, h, samples: 24, latitude: 40.0, day: 172, start: 6.0, end: 20.0, step: 30.0 }
+    }
+}
+
+/// Edit > Edit Objects > Align and Distribute.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Align {
+    Left,
+    CentersVertically,
+    Right,
+    Top,
+    CentersHorizontally,
+    Bottom,
+    DistributeHorizontally,
+    DistributeVertically,
+}
+
+impl Align {
+    pub const ALL: [Align; 8] = [
+        Align::Left,
+        Align::CentersVertically,
+        Align::Right,
+        Align::Top,
+        Align::CentersHorizontally,
+        Align::Bottom,
+        Align::DistributeHorizontally,
+        Align::DistributeVertically,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Align::Left => "Align Left Edges",
+            Align::CentersVertically => "Align Centers on a Vertical Line",
+            Align::Right => "Align Right Edges",
+            Align::Top => "Align Top Edges",
+            Align::CentersHorizontally => "Align Centers on a Horizontal Line",
+            Align::Bottom => "Align Bottom Edges",
+            Align::DistributeHorizontally => "Distribute Evenly Left to Right",
+            Align::DistributeVertically => "Distribute Evenly Bottom to Top",
+        }
+    }
+
+    pub fn is_distribute(self) -> bool {
+        matches!(self, Align::DistributeHorizontally | Align::DistributeVertically)
     }
 }

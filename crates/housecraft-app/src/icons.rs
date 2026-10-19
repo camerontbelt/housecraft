@@ -67,6 +67,11 @@ pub enum Icon {
     Chamfer,
     Extend,
     SelectNext,
+    Polygon,
+    MatchProperties,
+    CenterObject,
+    AlignLeft,
+    LayerHider,
     Layers,
     Library,
 }
@@ -387,6 +392,40 @@ pub fn paint(p: &Painter, rect: Rect, icon: Icon, ink: Color32) {
         Icon::Box => rect_line(0.1, 0.2, 0.9, 0.8, s),
         Icon::Circle => circle((0.5, 0.5), 0.4, s),
         Icon::Arc => arc((0.5, 0.8), 0.42, 10.0, 170.0, s),
+        Icon::Polygon => {
+            let pts: Vec<(f32, f32)> = (0..6)
+                .map(|i| {
+                    let a = (30.0 + i as f32 * 60.0f32).to_radians();
+                    (0.5 + 0.42 * a.cos(), 0.5 + 0.42 * a.sin())
+                })
+                .collect();
+            poly(&pts, true, s);
+        }
+        Icon::MatchProperties => {
+            // A dropper: bulb up right, tip down left, with a drop of colour.
+            line((0.2, 0.8), (0.62, 0.38), Stroke::new(w * 2.2, ink));
+            dot((0.72, 0.28), 0.14, ink);
+            dot((0.14, 0.9), 0.07, GOLD);
+        }
+        Icon::CenterObject => {
+            line((0.08, 0.15), (0.08, 0.85), s);
+            line((0.92, 0.15), (0.92, 0.85), s);
+            rect_fill(0.36, 0.3, 0.64, 0.7, GLASS);
+            line((0.12, 0.5), (0.34, 0.5), thin);
+            line((0.66, 0.5), (0.88, 0.5), thin);
+        }
+        Icon::AlignLeft => {
+            line((0.12, 0.08), (0.12, 0.92), s);
+            rect_fill(0.16, 0.18, 0.86, 0.4, GLASS);
+            rect_fill(0.16, 0.58, 0.6, 0.8, GLASS);
+        }
+        Icon::LayerHider => {
+            // An eye with a slash through it.
+            arc((0.5, 0.9), 0.55, 40.0, 140.0, s);
+            arc((0.5, 0.1), 0.55, 220.0, 320.0, s);
+            dot((0.5, 0.5), 0.1, ink);
+            line((0.15, 0.85), (0.85, 0.15), Stroke::new(w * 1.4, RED));
+        }
         Icon::Ellipse => {
             let n = 24;
             let pts: Vec<(f32, f32)> = (0..n)
