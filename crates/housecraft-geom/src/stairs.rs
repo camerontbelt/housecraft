@@ -238,6 +238,8 @@ mod tests {
             stringers: true,
             stairwell: true,
             layer: d.layers.walls,
+            baluster: None,
+            newel: None,
         };
         (doc, s)
     }

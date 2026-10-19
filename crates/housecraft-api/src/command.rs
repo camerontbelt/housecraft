@@ -320,9 +320,14 @@ pub enum Command {
         triangles: Vec<[u32; 3]>,
         #[serde(default)]
         groups: Vec<SymbolGroup>,
+        #[serde(default)]
+        behavior: SymbolBehavior,
     },
+    /// Make the selected objects one 3D symbol (they are replaced by a
+    /// placed copy of it).
+    ConvertToSymbol { ids: Vec<Id>, name: String },
     /// Place a 3D symbol at its imported size; it backs onto a nearby wall
-    /// when `facing` is unset.
+    /// when `facing` is unset (wall-hung symbols at their hanging height).
     AddSymbol {
         floor: Option<Id>,
         def: Id,
@@ -824,6 +829,7 @@ impl Command {
             Command::PlaceObject { .. } => "place_object",
             Command::AddPicture { .. } => "add_picture",
             Command::AddSymbolDef { .. } => "add_symbol_def",
+            Command::ConvertToSymbol { .. } => "convert_to_symbol",
             Command::AddSymbol { .. } => "add_symbol",
             Command::ReplaceWith { .. } => "replace_with",
             Command::PaintMaterial { .. } => "paint_material",
@@ -1085,6 +1091,8 @@ impl Command {
                     stringers: sd.stringers,
                     stairwell: *stairwell,
                     layer: d.layers.stairs.unwrap_or(d.layers.walls),
+                    baluster: None,
+                    newel: None,
                 };
                 // Split L and U stairs evenly when asked to.
                 let risers =
@@ -1499,6 +1507,7 @@ impl Command {
                 positions,
                 triangles,
                 groups,
+                behavior,
             } => {
                 if triangles.is_empty() {
                     return invalid("a 3D symbol needs at least one triangle");
@@ -1509,8 +1518,10 @@ impl Command {
                     positions: positions.clone(),
                     triangles: triangles.clone(),
                     groups: groups.clone(),
+                    behavior: behavior.clone(),
                 }));
             }
+            Command::ConvertToSymbol { ids, name } => crate::symbols::convert(doc, ids, name, &mut out)?,
             Command::AddSymbol {
                 floor,
                 def,
@@ -1519,10 +1530,16 @@ impl Command {
                 elevation,
             } => {
                 let floor = ops::resolve_floor(doc, *floor)?;
-                let size = expect::<SymbolDef>(doc, *def)?.size();
+                let sd = expect::<SymbolDef>(doc, *def)?;
+                let size = sd.size();
                 if size.iter().any(|s| *s <= 0.0) {
                     return invalid("the symbol is flat; it needs width, depth and height");
                 }
+                let hung = match sd.behavior {
+                    SymbolBehavior::WallHung { height } => Some(height),
+                    _ => None,
+                };
+                let elevation = &elevation.or(hung);
                 let template = serde_json::json!({
                     "def": def,
                     "width": Length::from_mm(size[0]),

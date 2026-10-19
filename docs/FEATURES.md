@@ -272,9 +272,9 @@ These come from reading the whole list and change the architecture, not just the
 | ST-10 | ADA ramps | P2 | M3 |
 | ST-11 | Custom landings and auto-connect | P2 | M3 |
 | ST-12 | Stair railing styles; plan display of balusters | P1 | M3 ◐ handrails and balusters in 3D, baluster dots in plan; styles later |
-| ST-13 | Custom newels & balusters (library/import) | P2 | M5 |
+| ST-13 | Custom newels & balusters (library/import) | P2 | M5 ✓ any 3D symbol as the stair's balusters and newel posts |
 | ST-14 | Stair defaults interior/exterior | P1 | M3 ✓ |
-| ST-15 | Stairs/ramps saved to library | P2 | M5 |
+| ST-15 | Stairs/ramps saved to library | P2 | M5 ✓ Add Selected saves stairs (and solids, symbols) to the library; groups carry their symbols |
 | ST-16 | Plan display: overhang dashes, stringers, cut/break line, floors above/below | P1 | M3 ◐ break line, dashed treads above the cut, overhang dashes, UP/DN, floor above; stringer lines later |
 | ST-17 | Handrail returns & extensions | P2 | M3 |
 
@@ -462,8 +462,8 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-22 | Center object between two objects | P1 | M1 |
 | MAT-23 | Match / apply properties across same-type items | P1 | M1 |
 | MAT-24 | Import custom 3D symbols | P1 | M5 ◐ OBJ (with MTL colours) and STL models stored in the plan, placed and stretched like cabinets, paintable; glTF, DAE and SKP later |
-| MAT-25 | Smart symbols (sinks cut counters, wall-hung items, light fixtures emit) | P2 | M5 |
-| MAT-26 | Convert selection to symbol object | P2 | M5 |
+| MAT-25 | Smart symbols (sinks cut counters, wall-hung items, light fixtures emit) | P2 | M5 ✓ symbols can behave as sinks (cut countertops), wall-hung (hang at a set height) or light fixtures (light the 3D view) |
+| MAT-26 | Convert selection to symbol object | P2 | M5 ✓ Library > Convert Selection to Symbol keeps the 3D look in one symbol |
 | MAT-27 | Custom molding profiles; stacked, flipped, rotated, centered | P2 | M5 ✓ |
 | MAT-28 | Edit molding polylines from library (X18+) | P3 | M5 ◐ custom profiles made from CAD shapes and edited per molding; library storage later |
 | MAT-29 | Distributed regions/paths with randomized variation | P3 | M6 |
@@ -566,7 +566,7 @@ These come from reading the whole list and change the architecture, not just the
 | IO-05 | Image import: BMP, JPG, GIF, TIFF, PNG, metafiles, WEBP; transparency color | P1 | M5 ◐ PNG, JPEG, BMP and TIFF pictures with a transparency colour, in plans, views, details and layouts (SVG embeds them); GIF, WebP, metafiles and pictures in PDF/PNG exports later |
 | IO-06 | High-resolution image export, transparent background | P1 | M7 ✓ |
 | IO-07 | Import/export settings objects (views, default sets, layer sets, hotkeys, wall types, line styles, macros, scripts) | P2 | M5 |
-| IO-08 | 3D mass import → library objects | P2 | M5 |
+| IO-08 | 3D mass import → library objects | P2 | M5 ✓ Library Browser > Import 3D Models… adds every OBJ/STL in a folder as library symbols |
 | IO-09 | Textures → materials in bulk | P2 | M5 ✓ Import Textures… makes a material per image in a folder |
 | IO-10 | Terrain survey import | P2 | M6 |
 | IO-11 | Settings migration between versions | P3 | M8 |

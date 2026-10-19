@@ -885,7 +885,9 @@ pub fn cabinet_mesh(doc: &Document, c: &Cabinet, mesh: &mut Mesh) {
         let zt = z0 + h;
         let tt = top.thickness.mm();
         let holes: Vec<Vec<DVec2>> = sink_hole(c).into_iter().collect();
-        counter_slab(b.mesh, &outline, &holes, zt, zt + tt, top.edge);
+        let mut cuts = holes.clone();
+        cuts.extend(sink_symbol_holes(doc, c.floor, &outline));
+        counter_slab(b.mesh, &outline, &cuts, zt, zt + tt, top.edge);
         if let Some(hole) = holes.first() {
             // The sink bowl under the cut-out.
             b.mesh.prism(hole, zt - 8.0 * IN, zt - 7.5 * IN, Surface::Hardware);
@@ -921,8 +923,27 @@ pub fn countertop_mesh(doc: &Document, t: &Countertop, mesh: &mut Mesh) {
     };
     let top = floor.elevation.mm() + t.height.mm();
     let outline: Vec<DVec2> = t.points.iter().map(|p| v2(*p)).collect();
-    let holes: Vec<Vec<DVec2>> = t.holes.iter().map(hole_outline).collect();
+    let mut holes: Vec<Vec<DVec2>> = t.holes.iter().map(hole_outline).collect();
+    holes.extend(sink_symbol_holes(doc, t.floor, &outline));
     counter_slab(mesh, &outline, &holes, top - t.thickness.mm(), top, t.edge);
+}
+
+/// Cut-outs for sink symbols standing inside `outline` on `floor`: each
+/// symbol's footprint, an inch in so the rim rests on the counter.
+pub fn sink_symbol_holes(doc: &Document, floor: Id, outline: &[DVec2]) -> Vec<Vec<DVec2>> {
+    doc.iter::<Symbol>()
+        .filter(|s| s.floor == floor)
+        .filter(|s| {
+            doc.get::<SymbolDef>(s.def)
+                .is_some_and(|d| d.behavior == housecraft_model::SymbolBehavior::Sink)
+        })
+        .map(|s| symbol_outline(doc, s))
+        .filter(|hull| hull.len() >= 3 && crate::math::point_in_polygon(crate::math::centroid(hull), outline))
+        .map(|hull| {
+            let inset = inset_polygon(&hull, IN);
+            if inset.len() >= 3 { inset } else { hull }
+        })
+        .collect()
 }
 
 /// A countertop hole's outline in plan (counter-clockwise).

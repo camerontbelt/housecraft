@@ -1038,6 +1038,10 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
                 t.style = None;
             }
             Object::Electrical(e) => e.controls.retain(|c| !doomed.contains(c)),
+            Object::Stair(s) => {
+                s.baluster = s.baluster.filter(|b| !doomed.contains(b));
+                s.newel = s.newel.filter(|n| !doomed.contains(n));
+            }
             Object::DefaultSet(d) => d.materials.retain(|_, m| !doomed.contains(m)),
             Object::StylePalette(st) => st.materials.retain(|_, m| !doomed.contains(m)),
             // Moldings using a deleted profile fall back to a flat board.
@@ -1087,11 +1091,38 @@ pub(crate) fn insert_objects(
                 .map_err(|e| ApiError::Invalid(format!("invalid object: {e}")))
         })
         .collect::<Result<_, _>>()?;
-    // Walls first so their doors and windows can be re-pointed.
-    parsed.sort_by_key(|o| !matches!(o, Object::Wall(_)));
+    // Symbol definitions and walls first so the symbols, stairs, doors and
+    // windows using them can be re-pointed.
+    parsed.sort_by_key(|o| match o {
+        Object::SymbolDef(_) => 0,
+        Object::Wall(_) => 1,
+        _ => 2,
+    });
     let mut remap = std::collections::BTreeMap::new();
     for object in parsed {
         let old = object.id();
+        // A symbol already in the plan is reused rather than duplicated.
+        if let Object::SymbolDef(def) = &object
+            && let Some(same) = doc.iter::<SymbolDef>().find(|d| {
+                d.name == def.name && d.positions == def.positions && d.triangles == def.triangles
+            })
+        {
+            remap.insert(old, same.id);
+            continue;
+        }
+        let re = |id: Id| *remap.get(&id).unwrap_or(&id);
+        let object = match object {
+            Object::Symbol(mut s) => {
+                s.def = re(s.def);
+                Object::Symbol(s)
+            }
+            Object::Stair(mut s) => {
+                s.baluster = s.baluster.map(re);
+                s.newel = s.newel.map(re);
+                Object::Stair(s)
+            }
+            o => o,
+        };
         let mut object = match object {
             Object::Opening(mut o) => {
                 o.wall = *remap.get(&o.wall).unwrap_or(&o.wall);

@@ -419,6 +419,7 @@ impl App {
                         positions: def.positions,
                         triangles: def.triangles,
                         groups: def.groups,
+                        behavior: def.behavior,
                     }) && let Some(id) = out.created.first()
                     {
                         self.set_tool(Tool::PlaceSymbol(*id));
@@ -1231,6 +1232,16 @@ impl App {
             ui.menu_button("Library", |ui| {
                 if item(ui, "Library Browser", "", true) {
                     self.side_tab = SideTab::Library;
+                }
+                if item(ui, "Convert Selection to Symbol", "", !self.selection.is_empty()) {
+                    let n = self.doc().count::<SymbolDef>() + 1;
+                    if let Some(out) = self.run1(Command::ConvertToSymbol {
+                        ids: self.selection.clone(),
+                        name: format!("Symbol {n}"),
+                    }) {
+                        self.selection = out.created.iter().copied().skip(1).collect();
+                        self.info("Made a symbol; rename it or add it to the library from its specification");
+                    }
                 }
             });
             ui.menu_button("3D", |ui| {

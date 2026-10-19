@@ -274,6 +274,7 @@ fn finish(raw: Raw, name: &str, opts: ImportOptions) -> Result<SymbolDef, Error>
         positions: pts,
         triangles: raw.triangles,
         groups: raw.groups,
+        behavior: Default::default(),
     })
 }
 

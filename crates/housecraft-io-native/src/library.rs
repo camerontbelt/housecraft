@@ -34,8 +34,11 @@ pub enum LibraryKind {
     /// An [`Appliance`] template.
     Appliance,
     /// Several plan objects kept together (a whole kitchen run): `data` is
-    /// `{"objects": [...]}` with positions relative to the group's corner.
+    /// `{"objects": [...], "origin": [x, y]}`; placing puts `origin` at the
+    /// click (older groups have no origin and are drawn from (0, 0)).
     Group,
+    /// A 3D [`SymbolDef`] (without its id).
+    Symbol,
 }
 
 impl LibraryKind {
@@ -47,6 +50,7 @@ impl LibraryKind {
             LibraryKind::Cabinet => "cabinet",
             LibraryKind::Appliance => "appliance",
             LibraryKind::Group => "group",
+            LibraryKind::Symbol => "symbol",
         }
     }
 
@@ -58,6 +62,7 @@ impl LibraryKind {
             LibraryKind::Cabinet => "cabinets",
             LibraryKind::Appliance => "appliances",
             LibraryKind::Group => "groups",
+            LibraryKind::Symbol => "symbols",
         }
     }
 }
@@ -454,6 +459,28 @@ pub fn item_from_object(doc: &Document, id: Id) -> Option<LibraryItem> {
             LibraryKind::WallType,
             strip_id(w),
         ),
+        Object::Symbol(s) => {
+            let def = doc.get::<SymbolDef>(s.def)?;
+            return Some(symbol_item(def, "My Library/Symbols"));
+        }
+        Object::SymbolDef(def) => return Some(symbol_item(def, "My Library/Symbols")),
+        Object::Stair(s) => {
+            let mut item = group_from_objects(doc, &[s.id])?;
+            item.name = match s.shape {
+                StairShape::Straight => "Straight Stair",
+                StairShape::L { .. } => "L-shaped Stair",
+                StairShape::U { .. } => "U-shaped Stair",
+            }
+            .into();
+            item.category = "My Library/Stairs".into();
+            return Some(item);
+        }
+        Object::Solid(_) => {
+            let mut item = group_from_objects(doc, &[id])?;
+            item.name = "3D Solid".into();
+            item.category = "My Library/Solids".into();
+            return Some(item);
+        }
         Object::BlockRef(b) => {
             let block = doc.get::<Block>(b.block)?;
             let shapes: Vec<DetailShape> = doc
@@ -488,12 +515,29 @@ pub fn item_from_object(doc: &Document, id: Id) -> Option<LibraryItem> {
     })
 }
 
-/// A group item from several plan objects: cabinets, appliances,
-/// countertops, backsplashes and symbols, moved so the group's bottom-left
-/// corner is the origin.
+/// Where an object sits, for finding a group's corner.
+fn anchors(o: &Object) -> Vec<housecraft_units::Point2> {
+    match o {
+        Object::Cabinet(c) => vec![c.position],
+        Object::Appliance(a) => vec![a.position],
+        Object::Symbol(s) => vec![s.position],
+        Object::Countertop(t) => t.points.clone(),
+        Object::Backsplash(b) => b.points.clone(),
+        Object::Stair(s) => vec![s.start],
+        Object::Solid(x) => match &x.shape {
+            SolidShape::Extrude { points, .. } => points.clone(),
+            SolidShape::Revolve { center, .. } => vec![*center],
+        },
+        _ => Vec::new(),
+    }
+}
+
+/// A group item from plan objects (cabinets, appliances, countertops,
+/// backsplashes, symbols, stairs and solids), with the 3D symbols they use.
+/// Its `origin` is the group's lower-left corner; placing puts that corner
+/// at the click.
 pub fn group_from_objects(doc: &Document, ids: &[Id]) -> Option<LibraryItem> {
-    use housecraft_units::Point2;
-    let mut objects: Vec<Object> = ids
+    let objects: Vec<Object> = ids
         .iter()
         .filter_map(|id| doc.object(*id))
         .filter(|o| {
@@ -504,52 +548,91 @@ pub fn group_from_objects(doc: &Document, ids: &[Id]) -> Option<LibraryItem> {
                     | ObjectKind::Countertop
                     | ObjectKind::Backsplash
                     | ObjectKind::Symbol
+                    | ObjectKind::Stair
+                    | ObjectKind::Solid
             )
         })
         .cloned()
         .collect();
-    if objects.len() < 2 {
+    if objects.is_empty() {
         return None;
     }
-    // The lowest x and y of any reference point.
-    let points = |o: &Object| -> Vec<Point2> {
-        match o {
-            Object::Cabinet(c) => vec![c.position],
-            Object::Appliance(a) => vec![a.position],
-            Object::Symbol(s) => vec![s.position],
-            Object::Countertop(t) => t.points.clone(),
-            Object::Backsplash(b) => b.points.clone(),
-            _ => Vec::new(),
-        }
-    };
-    let all: Vec<Point2> = objects.iter().flat_map(points).collect();
+    let all: Vec<_> = objects.iter().flat_map(anchors).collect();
     let min_x = all.iter().map(|p| p.x().mm()).fold(f64::MAX, f64::min);
     let min_y = all.iter().map(|p| p.y().mm()).fold(f64::MAX, f64::min);
-    let shift = |p: &mut Point2| {
-        *p = Point2(
-            Length::from_mm(p.x().mm() - min_x),
-            Length::from_mm(p.y().mm() - min_y),
-        )
-    };
-    for o in &mut objects {
-        match o {
-            Object::Cabinet(c) => shift(&mut c.position),
-            Object::Appliance(a) => shift(&mut a.position),
-            Object::Symbol(s) => shift(&mut s.position),
-            Object::Countertop(t) => t.points.iter_mut().for_each(shift),
-            Object::Backsplash(b) => b.points.iter_mut().for_each(shift),
-            _ => {}
+    // The symbols they use travel with them.
+    let mut defs: Vec<Id> = Vec::new();
+    for o in &objects {
+        let used = match o {
+            Object::Symbol(s) => vec![Some(s.def)],
+            Object::Stair(s) => vec![s.baluster, s.newel],
+            _ => Vec::new(),
+        };
+        for d in used.into_iter().flatten() {
+            if !defs.contains(&d) {
+                defs.push(d);
+            }
         }
     }
+    let mut all_objects: Vec<Object> = defs
+        .iter()
+        .filter_map(|d| doc.object(*d))
+        .cloned()
+        .collect();
     let n = objects.len();
+    all_objects.extend(objects);
     Some(LibraryItem {
         name: format!("Group of {n}"),
         category: "My Library/Groups".into(),
         kind: LibraryKind::Group,
         tags: Vec::new(),
-        data: json!({ "objects": objects }),
+        data: json!({
+            "objects": all_objects,
+            "origin": [Length::from_mm(min_x), Length::from_mm(min_y)],
+        }),
         source: Source::BuiltIn,
     })
+}
+
+/// A library item for a 3D symbol.
+pub fn symbol_item(def: &SymbolDef, category: &str) -> LibraryItem {
+    LibraryItem {
+        name: def.name.clone(),
+        category: category.into(),
+        kind: LibraryKind::Symbol,
+        tags: Vec::new(),
+        data: strip_id(def),
+        source: Source::BuiltIn,
+    }
+}
+
+/// Library items for every OBJ and STL model in a folder (not its
+/// subfolders), under `category`; files that can't be read are listed
+/// with their error.
+pub fn import_models(
+    dir: &Path,
+    category: &str,
+) -> (Vec<LibraryItem>, Vec<(PathBuf, String)>) {
+    let mut files: Vec<PathBuf> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.extension()
+                .is_some_and(|e| matches!(e.to_string_lossy().to_lowercase().as_str(), "obj" | "stl"))
+        })
+        .collect();
+    files.sort();
+    let mut items = Vec::new();
+    let mut failed = Vec::new();
+    for f in files {
+        match crate::symbols::read_model(&f, Default::default()) {
+            Ok(def) => items.push(symbol_item(&def, category)),
+            Err(e) => failed.push((f, e.to_string())),
+        }
+    }
+    (items, failed)
 }
 
 /// A parsed library search.

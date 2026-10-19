@@ -1181,12 +1181,12 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 }
             }
             Tool::PlaceGroup => {
-                if let Some(objects) = &group {
+                if let Some((objects, origin)) = &group {
                     commands.push(Command::InsertObjects {
                         objects: objects.clone(),
                         floor,
-                        dx: Length::from_mm(p.x),
-                        dy: Length::from_mm(p.y),
+                        dx: Length::from_mm(p.x - origin[0]),
+                        dy: Length::from_mm(p.y - origin[1]),
                     });
                 }
             }

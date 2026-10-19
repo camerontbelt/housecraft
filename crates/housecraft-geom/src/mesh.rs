@@ -542,6 +542,28 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         mesh.begin(s.id, Category::Cabinet);
         crate::cabinets::symbol_mesh(doc, s, &mut mesh);
         mesh.end();
+        // Light fixture symbols light the room from near their top.
+        if let Some(def) = doc.get::<housecraft_model::SymbolDef>(s.def)
+            && let housecraft_model::SymbolBehavior::Light { light } = &def.behavior
+            && light.on
+            && light.lumens > 0.0
+            && let Some(floor) = doc.get::<Floor>(s.floor)
+        {
+            let hull = crate::cabinets::symbol_outline(doc, s);
+            if hull.len() >= 3 {
+                let c = crate::math::centroid(&hull);
+                let z = floor.elevation.mm() + s.elevation.mm() + s.height.mm() * 0.85;
+                let [r, g, b] = light.rgb();
+                mesh.lights.push(MeshLight {
+                    object: s.id,
+                    position: to_m(c.extend(z)),
+                    color: [r as f32, g as f32, b as f32],
+                    intensity: (light.lumens / 800.0 * light.dimmer) as f32,
+                    shadows: light.shadows,
+                    spread: 0,
+                });
+            }
+        }
     }
     for x in doc.iter::<housecraft_model::Solid>() {
         if only_floor.is_some_and(|f| f != x.floor) {
@@ -752,16 +774,58 @@ fn stair_mesh(doc: &Document, stair: &housecraft_model::Stair, mesh: &mut Mesh) 
         sloped_board(*a + lift, *b + lift, 19.0, 300.0, Surface::Stringer, mesh);
     }
     let spacing = 4.0 * 25.4;
+    let def = |id: Option<Id>| id.and_then(|i| doc.get::<housecraft_model::SymbolDef>(i));
+    let (baluster, newel) = (def(stair.baluster), def(stair.newel));
     for rail in &g.rails {
         for w in rail.windows(2) {
-            rail_segment(w[0], w[1], spacing, true, mesh);
+            rail_segment(w[0], w[1], spacing, true, baluster, mesh);
+        }
+        // Newel posts at each end, a little above the rail.
+        if let Some(newel) = newel {
+            for p in [rail.first(), rail.last()].into_iter().flatten() {
+                let base = p.z - stair.railing_height.mm();
+                symbol_post(newel, p.truncate(), base, p.z + 75.0, mesh);
+            }
+        }
+    }
+}
+
+/// A 3D symbol standing at `c` from `z0` to `z1`, scaled evenly to that
+/// height, in the railing's look.
+fn symbol_post(def: &housecraft_model::SymbolDef, c: DVec2, z0: f64, z1: f64, mesh: &mut Mesh) {
+    let (lo, hi) = def.bounds();
+    let h = (hi[2] - lo[2]) as f64;
+    if h <= 0.0 || z1 - z0 < 1.0 {
+        return;
+    }
+    let k = (z1 - z0) / h;
+    let mid = DVec2::new((lo[0] + hi[0]) as f64 / 2.0, (lo[1] + hi[1]) as f64 / 2.0);
+    let look = mesh.look(Surface::Railing);
+    for tri in &def.triangles {
+        let pts: Vec<DVec3> = tri
+            .iter()
+            .filter_map(|i| def.positions.get(*i as usize))
+            .map(|p| {
+                let q = (DVec2::new(p[0] as f64, p[1] as f64) - mid) * k;
+                DVec3::new(c.x + q.x, c.y + q.y, z0 + (p[2] - lo[2]) as f64 * k)
+            })
+            .collect();
+        if pts.len() == 3 {
+            mesh.polygon_look(&pts, look);
         }
     }
 }
 
 /// A handrail between two 3D points with balusters dropping `drop_to_stair`
 /// (stairs: to the tread surface below the rail) or to `z0` for level railings.
-fn rail_segment(a: DVec3, b: DVec3, spacing: f64, along_stair: bool, mesh: &mut Mesh) {
+fn rail_segment(
+    a: DVec3,
+    b: DVec3,
+    spacing: f64,
+    along_stair: bool,
+    baluster: Option<&housecraft_model::SymbolDef>,
+    mesh: &mut Mesh,
+) {
     let flat = (b - a).truncate();
     let len = flat.length();
     if len < 1.0 {
@@ -801,6 +865,10 @@ fn rail_segment(a: DVec3, b: DVec3, spacing: f64, along_stair: bool, mesh: &mut 
             continue;
         }
         let c = p.truncate();
+        if let Some(def) = baluster {
+            symbol_post(def, c, bottom, top, mesh);
+            continue;
+        }
         let q = 15.0;
         let square = vec![
             c + DVec2::new(-q, -q),
@@ -1069,6 +1137,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                 DVec3::new(g.end.x, g.end.y, h),
                 r.baluster_spacing.mm(),
                 false,
+                None,
                 mesh,
             );
             // Bottom rail so the balusters have something to stand on.

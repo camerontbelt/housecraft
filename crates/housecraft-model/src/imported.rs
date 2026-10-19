@@ -4,7 +4,7 @@ use housecraft_units::{Length, Point2};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{Color, Id, Renovation};
+use crate::{Color, Id, LightSettings, Renovation};
 
 /// An image placed on a floor plan, view or CAD detail (a traced survey, a
 /// logo, a photo).
@@ -47,6 +47,45 @@ pub struct SymbolGroup {
     pub name: String,
 }
 
+/// What a symbol does besides being drawn (a "smart" symbol).
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum SymbolBehavior {
+    #[default]
+    Plain,
+    /// Cuts its outline out of countertops it sits in.
+    Sink,
+    /// Hangs on a wall: placed against the nearest wall with its bottom
+    /// `height` above the floor.
+    WallHung { height: Length },
+    /// A light fixture that lights the 3D view.
+    Light { light: LightSettings },
+}
+
+impl SymbolBehavior {
+    pub fn name(&self) -> &'static str {
+        match self {
+            SymbolBehavior::Plain => "Plain",
+            SymbolBehavior::Sink => "Sink (cuts countertops)",
+            SymbolBehavior::WallHung { .. } => "Wall-hung",
+            SymbolBehavior::Light { .. } => "Light fixture",
+        }
+    }
+
+    /// A light fixture with typical settings.
+    pub fn light() -> Self {
+        SymbolBehavior::Light {
+            light: LightSettings {
+                on: true,
+                lumens: 800.0,
+                dimmer: 1.0,
+                kelvin: 2700.0,
+                shadows: false,
+            },
+        }
+    }
+}
+
 /// An imported 3D model, stored in the plan so the file is self-contained.
 /// Coordinates are millimetres: x across, y front to back (the front faces
 /// −y), z up, with the origin at the centre of the bottom of the back.
@@ -58,6 +97,8 @@ pub struct SymbolDef {
     pub triangles: Vec<[u32; 3]>,
     #[serde(default)]
     pub groups: Vec<SymbolGroup>,
+    #[serde(default)]
+    pub behavior: SymbolBehavior,
 }
 
 impl SymbolDef {

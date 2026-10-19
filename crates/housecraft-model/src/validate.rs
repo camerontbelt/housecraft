@@ -461,6 +461,9 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
             }
             Object::Stair(st) => {
+                for s in [st.baluster, st.newel].into_iter().flatten() {
+                    c.reference(id, "symbol", s, K::SymbolDef);
+                }
                 c.reference(id, "floor", st.floor, K::Floor);
                 c.reference(id, "layer", st.layer, K::Layer);
                 c.positive(id, "width", st.width);

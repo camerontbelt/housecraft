@@ -1939,3 +1939,95 @@ fn shapes_combine_and_become_solids() {
     );
     assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
 }
+
+#[test]
+fn symbols_convert_cut_counters_light_rooms_and_dress_stairs() {
+    let mut s = boxed();
+    // A cabinet becomes a symbol of the same size in the same place.
+    let cab = apply(&mut s, r#"[{"op": "add_cabinet", "cabinet_kind": "base", "at": ["5'","10'"], "facing": 0}]"#).created[0];
+    let before = housecraft_api::geom::mesh::build(s.document(), None);
+    let bounds = |m: &housecraft_api::geom::mesh::Mesh, id: Id| {
+        let mut lo = [f32::MAX; 3];
+        let mut hi = [f32::MIN; 3];
+        for part in m.parts.iter().filter(|p| p.object == id) {
+            for i in &m.indices[part.first_index as usize..(part.first_index + part.index_count) as usize] {
+                let p = m.positions[*i as usize];
+                for k in 0..3 {
+                    lo[k] = lo[k].min(p[k]);
+                    hi[k] = hi[k].max(p[k]);
+                }
+            }
+        }
+        (lo, hi)
+    };
+    let (lo0, hi0) = bounds(&before, cab);
+    let out = apply(&mut s, &format!(r#"[{{"op": "convert_to_symbol", "ids": [{}], "name": "Vanity"}}]"#, cab.0));
+    let (def, sym) = (out.created[0], out.created[1]);
+    assert!(s.document().get::<Cabinet>(cab).is_none());
+    let after = housecraft_api::geom::mesh::build(s.document(), None);
+    let (lo1, hi1) = bounds(&after, sym);
+    for k in 0..3 {
+        assert!((lo0[k] - lo1[k]).abs() < 0.002 && (hi0[k] - hi1[k]).abs() < 0.002, "{lo0:?} {hi0:?} vs {lo1:?} {hi1:?}");
+    }
+    // As a sink, it cuts a counter it stands in.
+    let top = apply(
+        &mut s,
+        r#"[{"op": "add_countertop", "points": [["2'","8'"], ["8'","8'"], ["8'","12'"], ["2'","12'"]]}]"#,
+    )
+    .created[0];
+    let tris = |s: &Session| {
+        let m = housecraft_api::geom::mesh::build(s.document(), None);
+        m.parts.iter().filter(|p| p.object == top).map(|p| p.index_count).sum::<u32>()
+    };
+    let plain = tris(&s);
+    apply(&mut s, &format!(r#"[{{"op": "update", "id": {}, "set": {{"behavior": {{"type": "sink"}}}}}}]"#, def.0));
+    assert!(tris(&s) > plain, "the counter has a hole");
+    // As a light, it lights the room.
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "update", "id": {}, "set": {{"behavior": {{"type": "light", "light": {{"on": true, "lumens": 1600}}}}}}}}]"#,
+            def.0
+        ),
+    );
+    let m = housecraft_api::geom::mesh::build(s.document(), None);
+    assert!(m.lights.iter().any(|l| l.object == sym && (l.intensity - 2.0).abs() < 1e-3));
+    // Wall-hung symbols hang at their height.
+    apply(
+        &mut s,
+        &format!(r#"[{{"op": "update", "id": {}, "set": {{"behavior": {{"type": "wall_hung", "height": "4'"}}}}}}]"#, def.0),
+    );
+    let hung = apply(&mut s, &format!(r#"[{{"op": "add_symbol", "def": {}, "at": ["10'","1'"]}}]"#, def.0)).created[0];
+    assert_eq!(s.document().get::<Symbol>(hung).unwrap().elevation, Length::from_feet(4.0));
+    // A stair dressed with the symbol as balusters and newels.
+    let stair = apply(&mut s, r#"[{"op": "add_stair", "start": ["15'","5'"], "direction": 90}]"#).created[0];
+    let plain = housecraft_api::geom::mesh::build(s.document(), None);
+    let count = |m: &housecraft_api::geom::mesh::Mesh| {
+        m.parts.iter().filter(|p| p.object == stair).map(|p| p.index_count).sum::<u32>()
+    };
+    apply(
+        &mut s,
+        &format!(r#"[{{"op": "update", "id": {}, "set": {{"baluster": {}, "newel": {}}}}}]"#, stair.0, def.0, def.0),
+    );
+    assert!(count(&housecraft_api::geom::mesh::build(s.document(), None)) > count(&plain));
+    // Pasting the symbol's definition again reuses it.
+    let doc = s.document();
+    let objects = vec![
+        serde_json::to_value(doc.object(def).unwrap()).unwrap(),
+        serde_json::to_value(doc.object(hung).unwrap()).unwrap(),
+    ];
+    let out = s
+        .apply(&[housecraft_api::Command::InsertObjects {
+            objects,
+            floor: None,
+            dx: Length::from_feet(2.0),
+            dy: Length::ZERO,
+        }])
+        .unwrap();
+    assert_eq!(out.created.len(), 1, "only the placed symbol is new");
+    assert_eq!(s.document().count::<SymbolDef>(), 1);
+    // Deleting the symbol drops the stair's custom parts.
+    apply(&mut s, &format!(r#"[{{"op": "delete", "ids": [{}]}}]"#, def.0));
+    assert_eq!(s.document().get::<Stair>(stair).unwrap().baluster, None);
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
+}

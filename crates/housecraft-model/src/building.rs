@@ -439,6 +439,11 @@ pub struct Stair {
     /// Cut the floor platform above (and the ceiling below) over the stair.
     pub stairwell: bool,
     pub layer: Id,
+    /// Custom baluster and newel post shapes: 3D symbols scaled to fit.
+    #[serde(default)]
+    pub baluster: Option<Id>,
+    #[serde(default)]
+    pub newel: Option<Id>,
 }
 
 impl WallType {

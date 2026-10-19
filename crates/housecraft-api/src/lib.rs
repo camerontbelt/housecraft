@@ -18,6 +18,7 @@ mod rooms;
 pub mod schedule;
 mod session;
 mod solids;
+mod symbols;
 mod views;
 
 pub use command::{Command, DetailText, PaintScope, LengthAnchor, Outcome, ShapeOp, TransformOp};

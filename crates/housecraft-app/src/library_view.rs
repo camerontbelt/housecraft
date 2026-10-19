@@ -17,8 +17,8 @@ pub struct LibraryState {
     items: Option<Vec<LibraryItem>>,
     /// The cabinet or appliance template being placed.
     pub placing: Option<(ObjectKind, Value, String)>,
-    /// A group of objects being placed (relative to its corner).
-    pub group: Option<Vec<Value>>,
+    /// A group of objects being placed, and its corner.
+    pub group: Option<(Vec<Value>, [f64; 2])>,
 }
 
 impl LibraryState {
@@ -38,11 +38,12 @@ impl LibraryState {
     }
 }
 
-/// A group item's objects ready for this plan: on its cabinet layer.
-fn group_objects(app: &App, item: &LibraryItem) -> Vec<Value> {
+/// A group item's objects ready for this plan (on this plan's layers for
+/// their kind), and the group's corner in mm.
+fn group_objects(app: &App, item: &LibraryItem) -> (Vec<Value>, [f64; 2]) {
     let d = app.doc().active_defaults();
-    let layer = d.layers.cabinets.unwrap_or(d.layers.cad);
-    item.data
+    let objects = item
+        .data
         .get("objects")
         .and_then(Value::as_array)
         .cloned()
@@ -52,11 +53,43 @@ fn group_objects(app: &App, item: &LibraryItem) -> Vec<Value> {
             if let Some(m) = o.as_object_mut()
                 && m.contains_key("layer")
             {
+                let layer = match m.get("kind").and_then(Value::as_str) {
+                    Some("stair") => d.layers.stairs.unwrap_or(d.layers.walls),
+                    Some("solid") => d.layers.cad,
+                    _ => d.layers.cabinets.unwrap_or(d.layers.cad),
+                };
                 m.insert("layer".into(), json!(layer));
             }
             o
         })
-        .collect()
+        .collect();
+    let origin = item
+        .data
+        .get("origin")
+        .and_then(|v| serde_json::from_value::<[housecraft_api::units::Length; 2]>(v.clone()).ok())
+        .map_or([0.0, 0.0], |[x, y]| [x.mm(), y.mm()]);
+    (objects, origin)
+}
+
+/// The plan's copy of a library symbol (added if it isn't there yet).
+fn ensure_symbol(app: &mut App, item: &LibraryItem) -> Option<Id> {
+    let mut v = item.data.clone();
+    let m = v.as_object_mut()?;
+    m.insert("id".into(), json!(0));
+    let def: SymbolDef = serde_json::from_value(v).ok()?;
+    if let Some(same) = app.doc().iter::<SymbolDef>().find(|d| {
+        d.name == def.name && d.positions == def.positions && d.triangles == def.triangles
+    }) {
+        return Some(same.id);
+    }
+    app.run1(Command::AddSymbolDef {
+        name: def.name,
+        positions: def.positions,
+        triangles: def.triangles,
+        groups: def.groups,
+        behavior: def.behavior,
+    })
+    .and_then(|o| o.created.first().copied())
 }
 
 fn kind_of(item: &LibraryItem) -> Option<ObjectKind> {
@@ -112,6 +145,12 @@ fn activate(app: &mut App, item: &LibraryItem) {
         LibraryKind::Group => {
             app.library.group = Some(group_objects(app, item));
             app.set_tool(Tool::PlaceGroup);
+        }
+        LibraryKind::Symbol => {
+            if let Some(def) = ensure_symbol(app, item) {
+                app.set_tool(Tool::PlaceSymbol(def));
+                app.info(format!("Click in the plan to place {}", item.name));
+            }
         }
         LibraryKind::Material => {
             if let Some(id) = ensure_in_plan(app, item) {
@@ -173,7 +212,11 @@ fn item_row(app: &mut App, ui: &mut Ui, item: &LibraryItem, show_category: bool)
         })
         .inner;
     let hint = match item.kind {
-        LibraryKind::Cabinet | LibraryKind::Appliance | LibraryKind::Block | LibraryKind::Group => {
+        LibraryKind::Cabinet
+        | LibraryKind::Appliance
+        | LibraryKind::Block
+        | LibraryKind::Group
+        | LibraryKind::Symbol => {
             "Click, then click in the plan to place it"
         }
         LibraryKind::Material => "Click to paint with it in 3D",
@@ -254,7 +297,9 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         }
         if ui
             .add_enabled(!selected.is_empty(), egui::Button::new("Add Selected"))
-            .on_hover_text("Save the selected cabinets, appliances, blocks, materials or wall types in your library")
+            .on_hover_text(
+                "Save the selected cabinets, appliances, symbols, stairs, solids, blocks, materials or wall types in your library",
+            )
             .clicked()
             && let Some(dir) = library::library_dir()
         {
@@ -266,6 +311,27 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             }
             app.library.refresh();
             app.info(format!("Added {saved} item{} to your library", if saved == 1 { "" } else { "s" }));
+        }
+        if ui
+            .button("Import 3D Models…")
+            .on_hover_text("Add every OBJ and STL model in a folder to your library as symbols")
+            .clicked()
+            && let Some(folder) = rfd::FileDialog::new().pick_folder()
+            && let Some(dir) = library::library_dir()
+        {
+            let name = folder.file_name().map_or("Models".into(), |f| f.to_string_lossy().into_owned());
+            let (items, failed) = library::import_models(&folder, &format!("My Library/Imported/{name}"));
+            let saved = items.iter().filter(|i| library::save_item(&dir, i).is_ok()).count();
+            app.library.refresh();
+            if failed.is_empty() {
+                app.info(format!("Added {saved} models to your library"));
+            } else {
+                app.error(format!(
+                    "Added {saved} models; {} could not be read (first: {})",
+                    failed.len(),
+                    failed[0].1
+                ));
+            }
         }
         if ui.button("Import…").clicked()
             && let Some(path) = rfd::FileDialog::new()

@@ -696,6 +696,50 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 fmt(doc, Length::from_mm(h))
             ));
             ui.end_row();
+            Ed::label(ui, "Behaves as");
+            let mut b = s.behavior.clone();
+            egui::ComboBox::from_id_salt(ed.key("behavior"))
+                .selected_text(b.name())
+                .show_ui(ui, |ui| {
+                    for choice in [
+                        SymbolBehavior::Plain,
+                        SymbolBehavior::Sink,
+                        SymbolBehavior::WallHung { height: Length::from_inches(48.0) },
+                        SymbolBehavior::light(),
+                    ] {
+                        let same = std::mem::discriminant(&choice) == std::mem::discriminant(&b);
+                        if ui.selectable_label(same, choice.name()).clicked() && !same {
+                            b = choice;
+                        }
+                    }
+                });
+            ui.end_row();
+            match &mut b {
+                SymbolBehavior::WallHung { height } => {
+                    if let Some(h) = ed.length(ui, "Hanging Height", "behavior.height", *height) {
+                        *height = h;
+                    }
+                }
+                SymbolBehavior::Light { light } => {
+                    if let Some(l) = ed.number(ui, "Lumens", "behavior.lumens", light.lumens)
+                        && l >= 0.0
+                    {
+                        light.lumens = l;
+                    }
+                    if let Some(k) = ed.number(ui, "Colour Temperature (K)", "behavior.kelvin", light.kelvin)
+                        && (1000.0..=12000.0).contains(&k)
+                    {
+                        light.kelvin = k;
+                    }
+                    Ed::label(ui, "");
+                    ui.checkbox(&mut light.on, "On");
+                    ui.end_row();
+                }
+                _ => {}
+            }
+            if b != s.behavior {
+                ed.out.push(patch(id, json!({ "behavior": b })));
+            }
         }
         Object::Symbol(s) => {
             ed.pick::<SymbolDef>(ui, "Model", "def", Some(s.def), None);
@@ -1183,6 +1227,8 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ed.pick::<Layer>(ui, "Layer", "layer", Some(e.layer), None);
         }
         Object::Stair(s) => {
+            ed.pick::<SymbolDef>(ui, "Baluster Symbol", "baluster", s.baluster, Some("Square (default)"));
+            ed.pick::<SymbolDef>(ui, "Newel Post Symbol", "newel", s.newel, Some("None"));
             let g = housecraft_api::geom::stairs::geometry(doc, s);
             Ed::label(ui, "Shape");
             let names = ["Straight", "L-shaped", "U-shaped"];
