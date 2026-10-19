@@ -182,6 +182,10 @@ pub struct App {
     /// A screen capture on its way (3D > Material from View): the image
     /// slot, and the 3D view's rect and scale when it was asked for.
     pub capture: Option<(CaptureSlot, egui::Rect, f32)>,
+    /// The eyedropper: the material to colour and, once clicked, where.
+    pub eyedrop: Option<(Id, Option<egui::Pos2>)>,
+    /// A capture for the eyedropper on its way.
+    pub eyedrop_capture: Option<(CaptureSlot, egui::Pos2, f32, Id)>,
     pub status: Option<(String, bool)>,
     pub pending: Option<Pending>,
     quit_confirmed: bool,
@@ -246,6 +250,8 @@ impl App {
             clipboard_layout: None,
             materials_layer_set: None,
             capture: None,
+            eyedrop: None,
+            eyedrop_capture: None,
             status: None,
             pending: None,
             quit_confirmed: false,
@@ -907,7 +913,8 @@ impl App {
         else {
             return;
         };
-        match housecraft_io_native::library::export_settings(self.doc(), &path) {
+        let hotkeys = serde_json::to_value(&self.prefs.hotkeys).unwrap_or_default();
+        match housecraft_io_native::library::export_settings_with(self.doc(), &path, hotkeys) {
             Ok(n) => self.info(format!("Exported {n} settings")),
             Err(e) => self.error(format!("Export failed: {e}")),
         }
@@ -929,8 +936,41 @@ impl App {
                 return;
             }
         };
-        let commands = settings_commands(self.doc(), &objects);
-        let n = objects.len();
+        let mut commands = settings_commands(self.doc(), &objects);
+        let mut n = objects.len();
+        if let Ok((plan, hotkeys)) = housecraft_io_native::library::read_plan_settings(&path) {
+            let doc = self.doc();
+            for (name, text) in plan.macros {
+                commands.push(Command::SetMacro { name, text: Some(text) });
+                n += 1;
+            }
+            for lt in plan.line_types.into_iter().filter(|l| !doc.settings.line_types.iter().any(|x| x.name == l.name)) {
+                commands.push(Command::SetLineType { index: None, line_type: lt });
+                n += 1;
+            }
+            for hp in plan.hatch_patterns.into_iter().filter(|h| !doc.settings.hatch_patterns.iter().any(|x| x.name == h.name)) {
+                commands.push(Command::SetHatchPattern { index: None, pattern: hp });
+                n += 1;
+            }
+            // Named dimension styles use this plan's dimension text style.
+            let text_style = doc.active_defaults().dimensions.text_style;
+            for mut ds in plan.dimension_styles {
+                ds.defaults.text_style = text_style;
+                commands.push(Command::SetDimensionStyle { name: ds.name, defaults: Some(ds.defaults) });
+                n += 1;
+            }
+            for p in plan.auto_dim_presets {
+                commands.push(Command::SetAutoDimPreset { name: p.name, dims: Some(p.dims) });
+                n += 1;
+            }
+            if let Ok(keys) = serde_json::from_value::<Vec<UserHotkey>>(hotkeys) {
+                for k in keys {
+                    self.prefs.hotkeys.retain(|h| h.keys != k.keys);
+                    self.prefs.hotkeys.push(k);
+                    n += 1;
+                }
+            }
+        }
         if self.run(commands).is_some() {
             self.info(format!("Imported {n} settings"));
         }
@@ -2595,6 +2635,21 @@ impl App {
                 if item(ui, "Add Subfloor Marker", "", true) {
                     self.add_subfloor_marker();
                 }
+                let lot = self.selection.iter().copied().find(|id| {
+                    self.doc().get::<Cad>(*id).is_some_and(|c| matches!(c.shape, Shape::Polyline { closed: true, .. }))
+                });
+                ui.add_enabled_ui(lot.is_some(), |ui| {
+                    ui.menu_button("Subdivide Selected Lot", |ui| {
+                        for n in 2..=8u32 {
+                            if ui.button(format!("{n} lots of equal area")).clicked()
+                                && let Some(lot) = lot
+                            {
+                                self.run1(Command::SubdivideLot { lot, count: n, angle: None });
+                                ui.close();
+                            }
+                        }
+                    });
+                });
                 ui.menu_button("Site", |ui| {
                     for tool in Tool::SITE {
                         if tool_item(ui, tool) {
@@ -2896,10 +2951,10 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                         ("Deck", housecraft_api::CadTarget::Deck),
                         ("Molding", housecraft_api::CadTarget::Molding),
                         ("Sidewalk", housecraft_api::CadTarget::SiteFeature {
-                            feature: SiteKind::Road { style: RoadStyle::Sidewalk, width: Length::from_feet(4.0), thickness: Length::from_inches(4.0), curbs: false },
+                            feature: SiteKind::Road { style: RoadStyle::Sidewalk, width: Length::from_feet(4.0), thickness: Length::from_inches(4.0), curbs: false, median: Length::ZERO, cul_de_sac: Length::ZERO },
                         }),
                         ("Driveway", housecraft_api::CadTarget::SiteFeature {
-                            feature: SiteKind::Road { style: RoadStyle::Driveway, width: Length::from_feet(12.0), thickness: Length::from_inches(4.0), curbs: false },
+                            feature: SiteKind::Road { style: RoadStyle::Driveway, width: Length::from_feet(12.0), thickness: Length::from_inches(4.0), curbs: false, median: Length::ZERO, cul_de_sac: Length::ZERO },
                         }),
                         ("Solid (8' tall)", housecraft_api::CadTarget::Solid { height: Some(Length::from_feet(8.0)) }),
                     ];
@@ -4118,7 +4173,8 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
 
     /// A requested screen capture has arrived: crop it to the 3D view, save
     /// it as an image and make a material that uses it.
-    fn finish_capture(&mut self) {
+    fn finish_capture(&mut self, ctx: &egui::Context) {
+        self.finish_eyedrop(ctx);
         let Some((slot, rect, ppp)) = &self.capture else { return };
         let img = match slot.lock() {
             Ok(mut g) => g.take(),
@@ -4253,6 +4309,45 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
         if let Some(out) = self.run1(Command::AddElevationShapes { floor: Some(self.plan.floor), shapes: vec![shape] }) {
             self.selection = out.created;
             self.info("Subfloor marker added: the ground there sits 8\" under the subfloor (change it in its specification)");
+        }
+    }
+
+    /// The eyedropper: arm it from a material's specification, take a
+    /// capture when the 3D view is clicked, then read that pixel.
+    fn finish_eyedrop(&mut self, ctx: &egui::Context) {
+        let armed: Option<Id> = ctx.data_mut(|d| d.remove_temp::<u64>(egui::Id::unique("eyedrop_material"))).map(Id);
+        if let Some(m) = armed {
+            self.eyedrop = Some((m, None));
+            self.mode = Mode::ThreeD;
+            self.info("Click in the 3D view on the colour to pick");
+        }
+        if let Some((m, Some(pos))) = self.eyedrop {
+            let slot: CaptureSlot = std::sync::Arc::new(std::sync::Mutex::new(None));
+            let s2 = slot.clone();
+            let c2 = ctx.clone();
+            ctx.request_screenshot(move |img| {
+                if let Ok(mut g) = s2.lock() {
+                    *g = Some(img);
+                }
+                c2.request_repaint();
+            });
+            self.eyedrop_capture = Some((slot, pos, ctx.pixels_per_point(), m));
+            self.eyedrop = None;
+        }
+        let Some((slot, pos, ppp, m)) = &self.eyedrop_capture else { return };
+        let img = match slot.lock() {
+            Ok(mut g) => g.take(),
+            Err(_) => None,
+        };
+        let Some(img) = img else { return };
+        let (pos, ppp, m) = (*pos, *ppp, *m);
+        self.eyedrop_capture = None;
+        let [w, h] = img.size;
+        let (x, y) = (((pos.x * ppp) as usize).min(w.saturating_sub(1)), ((pos.y * ppp) as usize).min(h.saturating_sub(1)));
+        let c = img.pixels[y * w + x];
+        let color = housecraft_api::model::Color::rgb(c.r(), c.g(), c.b());
+        if self.run1(Command::Update { id: m, set: serde_json::json!({ "color": color }).as_object().cloned().unwrap_or_default() }).is_some() {
+            self.info(format!("Picked {}", serde_json::to_value(color).ok().and_then(|v| v.as_str().map(String::from)).unwrap_or_default()));
         }
     }
 
@@ -4574,7 +4669,7 @@ fn palette_row(ui: &mut Ui, icon: Icon, name: &str, selected: bool) -> egui::Res
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
-        self.finish_capture();
+        self.finish_capture(&ctx);
         // Intercept window close to offer saving.
         if ctx.input(|i| i.viewport().close_requested())
             && !self.quit_confirmed

@@ -2853,3 +2853,28 @@ fn cabinet_accessories_corners_legs_pilasters_and_clipped_stiles() {
     let shared = lowest_near(&s, a, 11.0 * 304.8 - 10.0);
     assert!(open_end < 1.0 && shared > 50.0, "{open_end} {shared}");
 }
+
+#[test]
+fn curbs_medians_cul_de_sacs_and_lot_subdivision() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_site_feature", "points": [["40'",0],["40'","60'"]], "feature": {"type": "road", "style": "road", "width": "30'", "thickness": "6\"", "curbs": true, "median": "6'", "cul_de_sac": "40'"}},
+            {"op": "add_site_feature", "points": [["-10'",0],["-10'","30'"]], "feature": {"type": "curb", "height": "6\"", "width": "6\""}},
+            {"op": "add_cad", "shape": {"shape": "polyline", "points": [["100'",0],["200'",0],["200'","50'"],["100'","50'"]], "closed": true}}]"#,
+    );
+    let (road, curb, lot) = (out.created[0], out.created[1], out.created[2]);
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    let top = |id: Id| mesh.faces.iter().filter(|f| mesh.parts[f.part].object == id).flat_map(|f| f.points.iter().map(|p| p.z)).fold(f64::MIN, f64::max);
+    let reach = |id: Id| mesh.faces.iter().filter(|f| mesh.parts[f.part].object == id).flat_map(|f| f.points.iter().map(|p| p.y)).fold(f64::MIN, f64::max);
+    assert!(top(road) > 150.0, "median stands up: {}", top(road));
+    assert!(reach(road) > 95.0 * 304.8, "the turnaround reaches past the road's end: {}", reach(road));
+    assert!((top(curb) - 6.0 * 25.4).abs() < 30.0, "6\" over the ground: {}", top(curb));
+    let out = s.apply(&[Command::SubdivideLot { lot, count: 4, angle: None }]).unwrap();
+    let doc = s.document();
+    let lines = out.created.iter().filter(|id| doc.get::<Cad>(**id).is_some()).count();
+    let labels: Vec<&Text> = out.created.iter().filter_map(|id| doc.get::<Text>(*id)).collect();
+    assert_eq!(lines, 3);
+    assert_eq!(labels.len(), 4);
+    assert!(labels.iter().all(|t| t.text.contains("1250 sq ft")), "{:?}", labels.iter().map(|t| &t.text).collect::<Vec<_>>());
+}

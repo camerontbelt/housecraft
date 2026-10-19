@@ -162,10 +162,20 @@ pub(crate) fn feature(f: &SiteFeature, stroke: Stroke, out: &mut Drawing) {
             outline.extend(r.into_iter().rev());
             line(out, f.id, outline, true, stroke);
         }
-        SiteKind::Road { style, width, curbs, .. } => {
+        SiteKind::Road { style, width, curbs, median, cul_de_sac, .. } => {
             let (l, r) = sides(&pts, width.mm() / 2.0);
             line(out, f.id, l, false, stroke);
             line(out, f.id, r, false, stroke);
+            if median.mm() > 10.0 {
+                let (l, r) = sides(&pts, median.mm() / 2.0);
+                line(out, f.id, l, false, thin);
+                line(out, f.id, r, false, thin);
+            }
+            if cul_de_sac.mm() > width.mm() / 2.0
+                && let Some(end) = pts.last().copied()
+            {
+                line(out, f.id, arc_points(end, cul_de_sac.mm(), 0.0, 360.0), true, stroke);
+            }
             if *curbs {
                 let (l, r) = sides(&pts, width.mm() / 2.0 + 150.0);
                 line(out, f.id, l, false, thin);
@@ -201,6 +211,11 @@ pub(crate) fn feature(f: &SiteFeature, stroke: Stroke, out: &mut Drawing) {
         }
         SiteKind::RopeLight { .. } => {
             line(out, f.id, pts.clone(), false, Stroke { dash: &[0.6, 0.6], ..stroke });
+        }
+        SiteKind::Curb { width, .. } => {
+            let (l, r) = sides(&pts, width.mm() / 2.0);
+            line(out, f.id, l, false, stroke);
+            line(out, f.id, r, false, stroke);
         }
         SiteKind::Grass { .. } => {
             line(out, f.id, pts.clone(), true, Stroke { dash: &[1.0, 1.0], ..thin });

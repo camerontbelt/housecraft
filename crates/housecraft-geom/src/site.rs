@@ -114,7 +114,7 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, mes
                 mesh.prism_look(&quad, bottom, top.mm().max(bottom + 10.0), concrete);
             }
         }
-        SiteKind::Road { style, width, thickness, curbs } => {
+        SiteKind::Road { style, width, thickness, curbs, median, cul_de_sac } => {
             let s = along(&pts, false, 500.0);
             let surface = pick(match style {
                 housecraft_model::RoadStyle::Road => look(Color::rgb(70, 70, 72), 1.0, 0.9),
@@ -122,6 +122,19 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, mes
             });
             let t = thickness.mm().max(20.0);
             strip(&s, width.mm() / 2.0, -t, 30.0, z, surface, mesh);
+            // A raised median down the middle.
+            if median.mm() > 10.0 {
+                strip(&s, median.mm() / 2.0, 30.0, 180.0, z, concrete, mesh);
+            }
+            // A round turnaround at the far end.
+            let r = cul_de_sac.mm();
+            if r > width.mm() / 2.0
+                && let Some(end) = pts.last().copied()
+            {
+                let disc: Vec<DVec2> = (0..32).map(|i| end + DVec2::from_angle(i as f64 / 32.0 * std::f64::consts::TAU) * r).collect();
+                let zc = z(end);
+                mesh.prism_look(&disc, zc - t, zc + 30.0, surface);
+            }
             if *curbs {
                 let half = width.mm() / 2.0;
                 for side in [1.0, -1.0] {
@@ -133,6 +146,10 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, mes
                     strip(&offset, 75.0, -t, 150.0, z, concrete, mesh);
                 }
             }
+        }
+        SiteKind::Curb { height, width } => {
+            let s = along(&pts, false, 300.0);
+            strip(&s, width.mm() / 2.0, -150.0, height.mm(), z, concrete, mesh);
         }
         SiteKind::Fence { style, height, post_spacing, gates } => {
             let h = height.mm();

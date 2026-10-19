@@ -1299,6 +1299,13 @@ fn pick_hit(
 pub fn show(app: &mut App, ui: &mut Ui) {
     let (rect, resp) = ui.allocate_exact_size(ui.available_size(), Sense::click_and_drag());
     app.view3d.last_rect = Some(rect);
+    // The eyedropper takes the click.
+    if let Some((_, pos @ None)) = &mut app.eyedrop
+        && resp.clicked()
+    {
+        *pos = resp.interact_pointer_pos();
+        return;
+    }
     let v = &mut app.view3d;
     // The revision the mesh shows (a click below may change the document).
     let mesh_rev = app.rev;

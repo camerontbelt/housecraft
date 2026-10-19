@@ -413,14 +413,14 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-02 | Copy sun angles for studies | P3 | M7 ✓ a camera can keep its own sun angle (sun studies) |
 | SITE-03 | Bearing/angle display formats (azimuth, quadrant, DMS) | P1 | M1 ◐ Preferences > Angles: decimal, DMS, bearings or azimuth for angular dimensions and line/wall directions; plot-plan labels keep the bearing as typed |
 | SITE-04 | Terrain model from elevation data: smoothing, triangulation, skirt, contours | P2 | M6 ✓ terrain from elevation data: trend plane plus distance blending, smoothing passes, building cut-out, skirt, contours |
-| SITE-05 | Plot plans, site plans, subdivisions from bearings, distances and setbacks | P2 | M6 ◐ Terrain > Plot Plan from Bearings: lot lines from bearings and distances, labelled, with a setback line; no multi-lot subdivisions |
+| SITE-05 | Plot plans, site plans, subdivisions from bearings, distances and setbacks | P2 | M6 ✓ Terrain > Plot Plan from Bearings (labelled lot lines, setback) and Subdivide Selected Lot into equal-area lots |
 | SITE-06 | Terrain import: text/GPS/GPX, DWG/DXF | P2 | M6 ◐ text/CSV x,y,z and GPX survey points; DXF survey drawings (contours, 3D break lines, spot points); no DWG |
 | SITE-07 | Elevation splines, lines, regions, points; subfloor marker; clear terrain | P2 | M6 ✓ elevation points, lines (smooth splines), flat regions, a subfloor marker that follows the building; Clear Terrain |
 | SITE-08 | Terrain elevation labels | P2 | M6 ✓ spot heights and major contours labelled in plan |
 | SITE-09 | Terrain modifiers: hills, valleys, elevated and flat regions | P2 | M6 ✓ hills, valleys and flat (elevated) regions |
 | SITE-10 | Retaining walls and terrain breaks | P2 | M6 ✓ retaining walls hold the ground at their top; break lines (heights per point) the ground follows |
-| SITE-11 | Stepping stones, streams, curbing, garden beds | P3 | M6 ◐ stepping stones, streams and raised garden beds; curbing comes with roads |
-| SITE-12 | Roads, medians, striping, curbs, gutters, driveways, sidewalks, cul-de-sacs | P2 | M6 ◐ roads (curbs, gutters, centre striping), driveways and sidewalks that follow the ground; no medians or cul-de-sacs |
+| SITE-11 | Stepping stones, streams, curbing, garden beds | P3 | M6 ✓ stepping stones, streams, raised garden beds and a Curb tool |
+| SITE-12 | Roads, medians, striping, curbs, gutters, driveways, sidewalks, cul-de-sacs | P2 | M6 ✓ roads (curbs, gutters, centre striping, raised medians, cul-de-sac turnarounds), driveways and sidewalks that follow the ground |
 | SITE-13 | Road/driveway/sidewalk volumes in materials list | P3 | M6 ✓ paving area and base volume in the materials list |
 | SITE-14 | Auto plan footprint CAD detail for site plans | P2 | M6 ✓ Terrain > Site Plan Detail makes a CAD detail of the lot, footprints, site work and plants |
 | SITE-15 | Deck designer (straight, curved, polygon, covered) | P2 | M6 ✓ Deck tool: straight, polygon or curved outlines, optional cover on posts |
@@ -441,7 +441,7 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-01 | Edit any architectural object in 2D or 3D | P0 | M1 ✓ (select and edit from 3D; direct 3D dragging later) |
 | MAT-02 | Object painter / eyedropper with attribute choice and scope | P2 | M5 ✓ Object Painter tool: Alt+click source, tick properties, click or paint the whole floor |
 | MAT-03 | Material painter with scope; default painter (reset) | P1 | M5 ✓ |
-| MAT-04 | Material eyedropper; color chooser from image | P2 | M5 ◐ colour from an image's average; no on-screen eyedropper |
+| MAT-04 | Material eyedropper; color chooser from image | P2 | M5 ✓ colour from an image's average, or picked from the 3D view (Pick colour from 3D view) |
 | MAT-05 | Adjust-material scoping (whole plan vs copy for subset) | P2 | M5 ✓ Copy for Selection gives chosen objects their own copy |
 | MAT-06 | Fill styles: pattern scale/angle/offset/transparency; gradients; fill painter | P1 | M1 ◐ fill styles per layer or shape: solid (with opacity), hatch, crosshatch, dots, with spacing, angle and colour; no gradients, offset or fill painter |
 | MAT-07 | Parametric herringbone/grid patterns | P2 | M5 ✓ grid, running bond, herringbone and basketweave tile patterns |
@@ -565,7 +565,7 @@ These come from reading the whole list and change the architecture, not just the
 | IO-04 | 3D import: DXF, DWG, OBJ, 3DS, SKP, STL, DAE; 3D export: DXF, DWG, 3DS, STL, DAE (+ glTF/OBJ/IFC for us) | P1→P3 | M5/M8 |
 | IO-05 | Image import: BMP, JPG, GIF, TIFF, PNG, metafiles, WEBP; transparency color | P1 | M5 ◐ PNG, JPEG, BMP and TIFF pictures with a transparency colour, in plans, views, details and layouts (SVG embeds them); GIF, WebP, metafiles and pictures in PDF/PNG exports later |
 | IO-06 | High-resolution image export, transparent background | P1 | M7 ✓ |
-| IO-07 | Import/export settings objects (views, default sets, layer sets, hotkeys, wall types, line styles, macros, scripts) | P2 | M5 ◐ File > Export/Import Settings: wall types, room types, text styles, layers, materials, molding profiles (not views, default sets, hotkeys or macros) |
+| IO-07 | Import/export settings objects (views, default sets, layer sets, hotkeys, wall types, line styles, macros, scripts) | P2 | M5 ◐ File > Export/Import Settings: wall types, room types, text styles, layers, materials, molding profiles, macros, line styles, hatch patterns, dimension styles, auto-dimension presets and hotkeys (not views, default sets or layer sets) |
 | IO-08 | 3D mass import → library objects | P2 | M5 ✓ Library Browser > Import 3D Models… adds every OBJ/STL in a folder as library symbols |
 | IO-09 | Textures → materials in bulk | P2 | M5 ✓ Import Textures… makes a material per image in a folder |
 | IO-10 | Terrain survey import | P2 | M6 ✓ Terrain > Import Survey Points… (x,y,z text or GPX) |

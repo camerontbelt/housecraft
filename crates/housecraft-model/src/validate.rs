@@ -828,6 +828,10 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                             c.issue(id, "lumens can't be negative");
                         }
                     }
+                    SiteKind::Curb { height, width } => {
+                        c.positive(id, "height", *height);
+                        c.positive(id, "width", *width);
+                    }
                     SiteKind::Grass { length, density, .. } => {
                         c.positive(id, "length", *length);
                         if !(*density > 0.0 && *density <= 5000.0) {

@@ -521,6 +521,10 @@ pub enum Command {
     /// Add elevation data shapes (contours, points, break lines… e.g. read
     /// from a survey drawing) on `floor`.
     AddElevationShapes { floor: Option<Id>, shapes: Vec<ElevationShape> },
+    /// Divide closed lot outline `lot` (a CAD shape) into `count` lots of
+    /// equal area by lines at `angle` degrees (across the lot's long side
+    /// when `None`), each lot labelled with its number and area.
+    SubdivideLot { lot: Id, count: u32, angle: Option<f64> },
     /// Remove the terrain and all elevation data.
     ClearTerrain,
     /// Build (or rebuild) automatic framing on `floor` (every floor when
@@ -1214,6 +1218,7 @@ impl Command {
             Command::AddElevationData { .. } => "add_elevation_data",
             Command::ImportTerrainPoints { .. } => "import_terrain_points",
             Command::AddElevationShapes { .. } => "add_elevation_shapes",
+            Command::SubdivideLot { .. } => "subdivide_lot",
             Command::ClearTerrain => "clear_terrain",
             Command::BuildFraming { .. } => "build_framing",
             Command::ClearFraming { .. } => "clear_framing",
@@ -2684,6 +2689,7 @@ impl Command {
                     color: Color::rgb(80, 130, 60),
                 }));
             }
+            Command::SubdivideLot { lot, count, angle } => crate::site::subdivide(doc, *lot, *count, *angle, &mut out)?,
             Command::AddElevationShapes { floor, shapes } => {
                 for shape in shapes {
                     let o = Command::AddElevationData { floor: *floor, shape: shape.clone() }.apply(doc)?;

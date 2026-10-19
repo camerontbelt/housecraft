@@ -3,6 +3,7 @@
 use housecraft_units::DisplayUnit;
 
 use crate::ApiError;
+use housecraft_model::{Cad, Document, Id, Justify, Shape, Text};
 
 /// Survey points as (x, y, elevation) in mm: text with one "x, y, z" per
 /// line in `unit`, or a GPX file's track points and waypoints (latitude,
@@ -197,4 +198,117 @@ pub(crate) fn site_plan(doc: &housecraft_model::Document) -> (Vec<housecraft_mod
         });
     }
     (shapes, texts)
+}
+
+/// Split a closed lot into `count` equal-area lots with parallel lines.
+pub(crate) fn subdivide(doc: &mut Document, lot: Id, count: u32, angle: Option<f64>, out: &mut crate::Outcome) -> Result<(), ApiError> {
+    use housecraft_geom::math::{centroid, shape_polylines, signed_area};
+    use housecraft_geom::DVec2;
+    let cad = doc.get::<Cad>(lot).cloned().ok_or(ApiError::NotFound(lot))?;
+    let Some((poly, true)) = shape_polylines(&cad.shape).into_iter().next() else {
+        return Err(ApiError::Invalid("the lot must be a closed outline".into()));
+    };
+    if !(2..=200).contains(&count) {
+        return Err(ApiError::Invalid("divide into 2 to 200 lots".into()));
+    }
+    // Lot lines run across the longest side by default.
+    let dir = match angle {
+        Some(a) => DVec2::from_angle(a.to_radians()),
+        None => {
+            let n = poly.len();
+            let (a, b) = (0..n).map(|i| (poly[i], poly[(i + 1) % n])).max_by(|x, y| x.0.distance(x.1).total_cmp(&y.0.distance(y.1))).expect("edges");
+            let along = (b - a).normalize_or_zero();
+            DVec2::new(-along.y, along.x)
+        }
+    };
+    // Offsets across the lines; area on the low side of each offset.
+    let across = DVec2::new(-dir.y, dir.x);
+    let proj: Vec<f64> = poly.iter().map(|p| p.dot(across)).collect();
+    let (lo, hi) = (proj.iter().copied().fold(f64::MAX, f64::min), proj.iter().copied().fold(f64::MIN, f64::max));
+    let clip_below = |t: f64| -> Vec<DVec2> {
+        let n = poly.len();
+        let mut res = Vec::new();
+        for i in 0..n {
+            let (p, q) = (poly[i], poly[(i + 1) % n]);
+            let (fp, fq) = (t - p.dot(across), t - q.dot(across));
+            if fp >= 0.0 {
+                res.push(p);
+            }
+            if (fp >= 0.0) != (fq >= 0.0) {
+                res.push(p + (q - p) * (fp / (fp - fq)));
+            }
+        }
+        res
+    };
+    let area = |t: f64| { let c = clip_below(t); if c.len() < 3 { 0.0 } else { signed_area(&c).abs() } };
+    let total = signed_area(&poly).abs();
+    let mut cuts = Vec::new();
+    for k in 1..count {
+        let want = total * k as f64 / count as f64;
+        let (mut a, mut b) = (lo, hi);
+        for _ in 0..60 {
+            let m = (a + b) / 2.0;
+            if area(m) < want { a = m } else { b = m }
+        }
+        cuts.push((a + b) / 2.0);
+    }
+    let floor = cad.floor;
+    let d = doc.defaults_for(floor).clone();
+    for t in &cuts {
+        let o = across * *t;
+        for (t0, t1) in housecraft_geom::framing::clip_line(&poly, o, dir) {
+            out.created.push(doc.insert(Cad {
+                id: Id(0),
+                floor,
+                layer: cad.layer,
+                shape: Shape::Line { a: housecraft_geom::pt(o + dir * t0), b: housecraft_geom::pt(o + dir * t1), arrow_start: false, arrow_end: false },
+                color: None,
+                fill: None,
+                fill_style: None,
+            }));
+        }
+    }
+    // Labels: "Lot n" and its area, in each strip.
+    let mut bounds = vec![lo - 1.0];
+    bounds.extend(cuts.iter().copied());
+    bounds.push(hi + 1.0);
+    for k in 0..count as usize {
+        let below = clip_below(bounds[k + 1]);
+        let above_poly: Vec<DVec2> = {
+            let n = below.len();
+            let mut res = Vec::new();
+            for i in 0..n {
+                let (p, q) = (below[i], below[(i + 1) % n]);
+                let (fp, fq) = (p.dot(across) - bounds[k], q.dot(across) - bounds[k]);
+                if fp >= 0.0 {
+                    res.push(p);
+                }
+                if (fp >= 0.0) != (fq >= 0.0) {
+                    res.push(p + (q - p) * (fp / (fp - fq)));
+                }
+            }
+            res
+        };
+        if above_poly.len() < 3 {
+            continue;
+        }
+        let a = signed_area(&above_poly).abs();
+        out.created.push(doc.insert(Text {
+            id: Id(0),
+            floor,
+            layer: d.layers.text,
+            position: housecraft_geom::pt(centroid(&above_poly)),
+            text: format!("Lot {}\n{}", k + 1, housecraft_units::format_area(a, doc.settings.display_unit)),
+            style: None,
+            rotation: 0.0,
+            justify: Justify::Center,
+            height: None,
+            bold: None,
+            color: None,
+            leaders: Vec::new(),
+            border: false,
+            wrap: None,
+        }));
+    }
+    Ok(())
 }

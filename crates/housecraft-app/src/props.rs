@@ -1403,7 +1403,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     len(ui, ed, "Top Elevation", "feature.top", top);
                     len(ui, ed, "Thickness", "feature.thickness", thickness);
                 }
-                SiteKind::Road { style, width, thickness, curbs } => {
+                SiteKind::Road { style, width, thickness, curbs, median, cul_de_sac } => {
                     Ed::label(ui, "Type");
                     ui.horizontal(|ui| {
                         for s in [RoadStyle::Road, RoadStyle::Driveway, RoadStyle::Sidewalk] {
@@ -1416,6 +1416,12 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     Ed::label(ui, "");
                     ui.checkbox(curbs, "Curbs and gutters");
                     ui.end_row();
+                    len(ui, ed, "Median (0: none)", "feature.median", median);
+                    len(ui, ed, "Cul-de-sac Radius (0: none)", "feature.cul_de_sac", cul_de_sac);
+                }
+                SiteKind::Curb { height, width } => {
+                    len(ui, ed, "Height", "feature.height", height);
+                    len(ui, ed, "Width", "feature.width", width);
                 }
                 SiteKind::Fence { style, height, post_spacing, gates } => {
                     Ed::label(ui, "Style");
@@ -2020,6 +2026,15 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 && let Some(c) = crate::images::average_color(&f)
             {
                 ed.out.push(patch(id, json!({ "color": c })));
+            }
+            ui.end_row();
+            Ed::label(ui, "");
+            if ui
+                .button("Pick colour from 3D view")
+                .on_hover_text("Then click anywhere in the 3D view: the colour under the cursor becomes this material's")
+                .clicked()
+            {
+                ui.ctx().data_mut(|d| d.insert_temp(egui::Id::unique("eyedrop_material"), id.0));
             }
             ui.end_row();
             ed.opt_length(ui, "Texture Width", "texture_width", m.texture_width, Some(Length::from_feet(4.0)));

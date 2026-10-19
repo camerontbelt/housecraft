@@ -188,7 +188,15 @@ pub enum SiteKind {
         thickness: Length,
         #[serde(default)]
         curbs: bool,
+        /// A raised median down the middle this wide (0: none).
+        #[serde(default)]
+        median: Length,
+        /// A round turnaround of this radius at the road's end (0: none).
+        #[serde(default)]
+        cul_de_sac: Length,
     },
+    /// A concrete curb along a path.
+    Curb { height: Length, width: Length },
     /// A fence whose posts follow the ground.
     Fence {
         style: FenceStyle,
@@ -234,6 +242,7 @@ impl SiteKind {
             SiteKind::Stream { .. } => "Stream",
             SiteKind::RopeLight { .. } => "Rope Light",
             SiteKind::Grass { .. } => "Grass",
+            SiteKind::Curb { .. } => "Curb",
         }
     }
 
@@ -252,7 +261,7 @@ impl SiteKind {
             RoadStyle::Driveway => (12.0, 4.0, false),
             RoadStyle::Sidewalk => (4.0, 4.0, false),
         };
-        SiteKind::Road { style, width: Length::from_feet(w), thickness: Length::from_inches(t), curbs }
+        SiteKind::Road { style, width: Length::from_feet(w), thickness: Length::from_inches(t), curbs, median: Length::ZERO, cul_de_sac: Length::ZERO }
     }
     pub fn fence() -> Self {
         SiteKind::Fence {
@@ -273,6 +282,9 @@ impl SiteKind {
     }
     pub fn rope_light() -> Self {
         SiteKind::RopeLight { height: Length::from_inches(84.0), lumens_per_foot: 60.0, kelvin: 2700.0 }
+    }
+    pub fn curb() -> Self {
+        SiteKind::Curb { height: Length::from_inches(6.0), width: Length::from_inches(6.0) }
     }
     pub fn grass() -> Self {
         SiteKind::Grass { length: Length::from_inches(4.0), density: 400.0, color: Color::rgb(95, 145, 60) }

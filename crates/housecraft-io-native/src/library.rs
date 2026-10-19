@@ -885,18 +885,61 @@ pub const SETTINGS_KINDS: [ObjectKind; 6] = [
     ObjectKind::MoldingProfile,
 ];
 
-/// The plan's shareable settings as a `.hcsettings` file.
+/// Plan-wide settings shared along with the objects: text macros, line
+/// styles, hatch patterns, named dimension styles, auto-dimension presets.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PlanSettings {
+    pub macros: std::collections::BTreeMap<String, String>,
+    pub line_types: Vec<LineType>,
+    pub hatch_patterns: Vec<HatchPattern>,
+    pub dimension_styles: Vec<DimensionStyle>,
+    pub auto_dim_presets: Vec<NamedAutoDims>,
+}
+
+impl PlanSettings {
+    pub fn of(doc: &Document) -> Self {
+        let s = &doc.settings;
+        PlanSettings {
+            macros: s.macros.clone(),
+            line_types: s.line_types.clone(),
+            hatch_patterns: s.hatch_patterns.clone(),
+            dimension_styles: s.dimension_styles.clone(),
+            auto_dim_presets: s.auto_dim_presets.clone(),
+        }
+    }
+
+    pub fn count(&self) -> usize {
+        self.macros.len() + self.line_types.len() + self.hatch_patterns.len() + self.dimension_styles.len() + self.auto_dim_presets.len()
+    }
+}
+
+/// The plan's shareable settings as a `.hcsettings` file (with the app's
+/// hotkeys when given).
 pub fn export_settings(doc: &Document, path: &Path) -> Result<usize, Error> {
+    export_settings_with(doc, path, Value::Null)
+}
+
+pub fn export_settings_with(doc: &Document, path: &Path, hotkeys: Value) -> Result<usize, Error> {
     let objects: Vec<&Object> = doc
         .objects
         .values()
         .filter(|o| SETTINGS_KINDS.contains(&o.kind()))
         .collect();
+    let plan = PlanSettings::of(doc);
     std::fs::write(
         path,
-        serde_json::to_vec_pretty(&json!({ "housecraft_settings": 1, "objects": objects })).map_err(corrupt)?,
+        serde_json::to_vec_pretty(&json!({ "housecraft_settings": 1, "objects": objects, "plan": plan, "hotkeys": hotkeys })).map_err(corrupt)?,
     )?;
-    Ok(objects.len())
+    Ok(objects.len() + plan.count())
+}
+
+/// The plan-wide settings and hotkeys in a `.hcsettings` file (empty for
+/// older files).
+pub fn read_plan_settings(path: &Path) -> Result<(PlanSettings, Value), Error> {
+    let v: Value = serde_json::from_slice(&std::fs::read(path)?).map_err(corrupt)?;
+    let plan = v.get("plan").cloned().map(serde_json::from_value).transpose().map_err(corrupt)?.unwrap_or_default();
+    Ok((plan, v.get("hotkeys").cloned().unwrap_or(Value::Null)))
 }
 
 /// The settings in a `.hcsettings` file. Layers lose their text style
@@ -1342,5 +1385,25 @@ mod fill_tests {
         save_shortcuts(&dir, &["Fills/Hatch Patterns".to_string()]).unwrap();
         assert_eq!(load_shortcuts(&dir), ["Fills/Hatch Patterns"]);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[cfg(test)]
+mod plan_settings_tests {
+    use super::*;
+
+    #[test]
+    fn settings_files_carry_macros_patterns_and_hotkeys() {
+        let mut doc = Document::new("a");
+        doc.settings.macros.insert("builder".into(), "Acme".into());
+        doc.settings.hatch_patterns.push(HatchPattern { name: "Brick".into(), lines: vec![HatchLine::default()] });
+        let path = std::env::temp_dir().join(format!("hc-settings-{}.hcsettings", std::process::id()));
+        let n = export_settings_with(&doc, &path, json!([{"keys": "G W", "tool": "Straight Exterior Wall"}])).unwrap();
+        assert!(n >= 2);
+        let (plan, keys) = read_plan_settings(&path).unwrap();
+        assert_eq!(plan.macros["builder"], "Acme");
+        assert_eq!(plan.hatch_patterns[0].name, "Brick");
+        assert_eq!(keys[0]["keys"], "G W");
+        let _ = std::fs::remove_file(&path);
     }
 }

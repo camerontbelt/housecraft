@@ -412,6 +412,7 @@ pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
             }
             SiteKind::RopeLight { .. } => t.add("Site", "Rope light", Measure::Length, run, f.id),
             SiteKind::Grass { .. } => t.add("Site", "Lawn", Measure::Area, housecraft_geom::math::signed_area(&pts).abs(), f.id),
+            SiteKind::Curb { .. } => t.add("Site", "Concrete curb", Measure::Length, pts.windows(2).map(|w| w[0].distance(w[1])).sum::<f64>(), f.id),
             SiteKind::Stream { .. } => {}
         }
     }

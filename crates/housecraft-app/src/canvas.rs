@@ -1573,6 +1573,7 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
             | Tool::GardenBed
             | Tool::SteppingStones
             | Tool::Stream
+            | Tool::Curb
             | Tool::Deck
             | Tool::RaisedPlatform
             | Tool::RopeLight
