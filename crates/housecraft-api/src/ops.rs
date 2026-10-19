@@ -466,7 +466,7 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
                     }
                 };
                 match &mut st.shape {
-                    StairShape::L { turn, .. } | StairShape::U { turn, .. } => flip(turn),
+                    StairShape::L { turn, .. } | StairShape::U { turn, .. } | StairShape::Curved { turn, .. } => flip(turn),
                     StairShape::Straight => {}
                 }
                 // Mirroring also swaps which side each railing is on.

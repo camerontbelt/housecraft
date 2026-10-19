@@ -159,6 +159,11 @@ pub enum StairShape {
         #[serde(default)]
         gap: Length,
     },
+    /// Curves the whole way up around a centre `radius` from the inside edge.
+    Curved {
+        turn: Turn,
+        radius: Length,
+    },
 }
 
 /// Remodel status: what is there now, what is being added, what comes out.
@@ -449,6 +454,33 @@ pub struct Stair {
     pub baluster: Option<Id>,
     #[serde(default)]
     pub newel: Option<Id>,
+    /// Open risers, starter tread, winders, ramps and rail ends.
+    #[serde(default, skip_serializing_if = "StairExtras::is_plain")]
+    pub extras: StairExtras,
+}
+
+/// Stair options beyond the basic flight.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct StairExtras {
+    /// Treads only, no riser boards (stringers carry them).
+    pub open_risers: bool,
+    /// A wider, round-ended bottom step.
+    pub starter: bool,
+    /// L stairs: three winder treads turn the corner instead of a landing.
+    pub winders: bool,
+    /// A ramp (1:12 slope, a 5' landing every 30" of rise) instead of steps.
+    pub ramp: bool,
+    /// Handrails run on level this far past the top and bottom.
+    pub rail_extension: Length,
+    /// Handrail ends turn down (returns).
+    pub rail_return: bool,
+}
+
+impl StairExtras {
+    pub fn is_plain(&self) -> bool {
+        *self == StairExtras::default()
+    }
 }
 
 impl WallType {

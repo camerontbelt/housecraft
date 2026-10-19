@@ -262,21 +262,21 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | ST-01 | Stair tool: rise/run/width/treads/overhang/stringers/railings/brackets; riser & tread settings | P1 | M3 ◐ rise, run, width, treads, nosing, stringers, railings; brackets later |
 | ST-02 | One-click auto stairs/ramps between platforms or terrain; L and U shapes | P1 | M3 ◐ straight, L and U tools with automatic riser count; auto-connect and ramps later |
-| ST-03 | Curved, flared, starter treads, winders, walk line | P2 | M3 |
+| ST-03 | Curved, flared, starter treads, winders, walk line | P2 | M3 ◐ curved stairs (wedge treads round a centre), a wide round-ended starter step, winders in place of an L landing, and the walk line; no flared flights |
 | ST-04 | Wrap-around stairs | P3 | M3 |
 | ST-05 | Mixed-width stair sections | P3 | M3 |
 | ST-06 | Break/disconnect/edit stair sections | P2 | M3 |
 | ST-07 | Split landings for L/U | P2 | M3 |
-| ST-08 | Stringer/riser/trim component control | P2 | M3 |
+| ST-08 | Stringer/riser/trim component control | P2 | M3 ◐ open risers (tread boards on the stringers) and stringers on or off; no separate riser or skirt trim control |
 | ST-09 | Auto stairwell (cut platform) | P1 | M3 ✓ |
-| ST-10 | ADA ramps | P2 | M3 |
+| ST-10 | ADA ramps | P2 | M3 ✓ stair Style > Ramp: 1:12 runs rising at most 30", 5' landings between, rails both sides |
 | ST-11 | Custom landings and auto-connect | P2 | M3 |
 | ST-12 | Stair railing styles; plan display of balusters | P1 | M3 ◐ handrails and balusters in 3D, baluster dots in plan; styles later |
 | ST-13 | Custom newels & balusters (library/import) | P2 | M5 ✓ any 3D symbol as the stair's balusters and newel posts |
 | ST-14 | Stair defaults interior/exterior | P1 | M3 ✓ |
 | ST-15 | Stairs/ramps saved to library | P2 | M5 ✓ Add Selected saves stairs (and solids, symbols) to the library; groups carry their symbols |
 | ST-16 | Plan display: overhang dashes, stringers, cut/break line, floors above/below | P1 | M3 ◐ break line, dashed treads above the cut, overhang dashes, UP/DN, floor above; stringer lines later |
-| ST-17 | Handrail returns & extensions | P2 | M3 |
+| ST-17 | Handrail returns & extensions | P2 | M3 ✓ handrail extensions past the top and bottom, and returns turning the rail ends down |
 
 ## 11. Foundations
 

@@ -505,6 +505,11 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 );
                 match st.shape {
                     StairShape::Straight => {}
+                    StairShape::Curved { radius, .. } => {
+                        if radius.mm() < 100.0 {
+                            c.issue(id, "a curved stair needs an inside radius of at least 100 mm");
+                        }
+                    }
                     StairShape::L { first_treads, .. } | StairShape::U { first_treads, .. } => {
                         if first_treads == 0 {
                             c.issue(id, "the first flight needs at least one tread");

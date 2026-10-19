@@ -1955,11 +1955,12 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ed.pick::<SymbolDef>(ui, "Newel Post Symbol", "newel", s.newel, Some("None"));
             let g = housecraft_api::geom::stairs::geometry(doc, s);
             Ed::label(ui, "Shape");
-            let names = ["Straight", "L-shaped", "U-shaped"];
+            let names = ["Straight", "L-shaped", "U-shaped", "Curved"];
             let current = match s.shape {
                 StairShape::Straight => 0,
                 StairShape::L { .. } => 1,
                 StairShape::U { .. } => 2,
+                StairShape::Curved { .. } => 3,
             };
             let mut chosen = current;
             egui::ComboBox::from_id_salt(ed.key("shape"))
@@ -1975,6 +1976,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 let v = match chosen {
                     0 => json!({"type": "straight"}),
                     1 => json!({"type": "l", "turn": "right", "first_treads": half}),
+                    3 => json!({"type": "curved", "turn": "right", "radius": Length::from_feet(4.0)}),
                     _ => {
                         json!({"type": "u", "turn": "right", "first_treads": half, "gap": Length::ZERO})
                     }
@@ -2013,6 +2015,40 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 {
                     ed.out.push(patch(id, json!({ "shape": { "gap": l } })));
                 }
+            }
+            if let StairShape::Curved { turn, radius } = s.shape {
+                Ed::label(ui, "Turn");
+                let mut t = turn;
+                ui.horizontal(|ui| {
+                    ui.radio_value(&mut t, Turn::Left, "Left");
+                    ui.radio_value(&mut t, Turn::Right, "Right");
+                });
+                ui.end_row();
+                if t != turn {
+                    ed.out.push(patch(id, json!({ "shape": { "turn": t } })));
+                }
+                if let Some(l) = ed.length(ui, "Inside radius", "radius", radius) {
+                    ed.out.push(patch(id, json!({ "shape": { "radius": l } })));
+                }
+            }
+            // Ramps, winders, open risers, starter step, rail ends.
+            let mut x = s.extras.clone();
+            Ed::label(ui, "Style");
+            ui.vertical(|ui| {
+                ui.checkbox(&mut x.ramp, "Ramp (1:12, landings every 30\" of rise)");
+                if matches!(s.shape, StairShape::L { .. }) {
+                    ui.checkbox(&mut x.winders, "Winders instead of the landing");
+                }
+                ui.checkbox(&mut x.open_risers, "Open risers");
+                ui.checkbox(&mut x.starter, "Starter step (wide, round ends)");
+                ui.checkbox(&mut x.rail_return, "Handrail returns");
+            });
+            ui.end_row();
+            if let Some(l) = ed.length(ui, "Handrail extension", "rail_ext", x.rail_extension) {
+                x.rail_extension = l;
+            }
+            if x != s.extras {
+                ed.out.push(patch(id, json!({ "extras": x })));
             }
             if let Some(l) = ed.length(ui, "Width", "width", s.width) {
                 ed.out.push(patch(id, json!({ "width": l })));

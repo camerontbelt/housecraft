@@ -331,6 +331,7 @@ pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> S
                         StairShape::Straight => "Straight",
                         StairShape::L { .. } => "L-shaped",
                         StairShape::U { .. } => "U-shaped",
+                        StairShape::Curved { .. } => "Curved",
                     }
                     .into(),
                 );

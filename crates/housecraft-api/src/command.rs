@@ -1405,6 +1405,7 @@ impl Command {
                     layer: d.layers.stairs.unwrap_or(d.layers.walls),
                     baluster: None,
                     newel: None,
+                    extras: Default::default(),
                 };
                 // Split L and U stairs evenly when asked to.
                 let risers =

@@ -17,6 +17,9 @@ pub struct Step {
     pub landing: bool,
     /// The tread's nosing strip projecting past the riser (empty if none).
     pub nosing: Vec<DVec2>,
+    /// Ramps: the height at the bottom edge (the top surface slopes from
+    /// there up to `z` at the far edge).
+    pub low_z: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -56,7 +59,7 @@ fn quad(origin: DVec2, dir: DVec2, from: f64, to: f64, left: f64, right: f64) ->
 pub fn tread_count(risers: u32, shape: &StairShape) -> u32 {
     let treads = risers.saturating_sub(1);
     match shape {
-        StairShape::Straight => treads,
+        StairShape::Straight | StairShape::Curved { .. } => treads,
         // The landing takes one tread's place.
         _ => treads.saturating_sub(1),
     }
@@ -101,6 +104,7 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
                 z: base_z + *riser as f64 * r,
                 index: *riser,
                 landing: false,
+                low_z: None,
                 nosing: if overhang > 0.0 {
                     quad(
                         start,
@@ -143,10 +147,47 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
     };
 
     let total = tread_count(risers, &stair.shape);
+    if stair.extras.ramp {
+        return ramp(stair, rise, base_z, origin, dir, half);
+    }
     match stair.shape {
         StairShape::Straight => {
             flight(origin, dir, total, &mut riser, &mut steps, &mut walk);
             flights.push(total);
+        }
+        StairShape::Curved { turn, radius } => {
+            // Wedge treads round a centre on the turning side; the tread depth
+            // is measured on the walk line (the middle of the stair).
+            let side = if turn == Turn::Left { 1.0 } else { -1.0 };
+            let inner = radius.mm().max(100.0);
+            let centre = origin + perp(dir) * side * (inner + half);
+            let a0 = (origin - centre).to_angle();
+            let step_a = d / (inner + half) * side;
+            let at = |a: f64, rr: f64| centre + DVec2::from_angle(a) * rr;
+            let n = total;
+            for i in 0..n {
+                riser += 1;
+                let (a, b) = (a0 + step_a * i as f64, a0 + step_a * (i + 1) as f64);
+                steps.push(Step {
+                    poly: vec![at(a, inner), at(a, inner + w), at(b, inner + w), at(b, inner)],
+                    z: base_z + riser as f64 * r,
+                    index: riser,
+                    landing: false,
+                    nosing: Vec::new(),
+                    low_z: None,
+                });
+            }
+            walk.clear();
+            for k in 0..=n * 4 {
+                let a = a0 + step_a * k as f64 / 4.0;
+                walk.push(at(a, inner + half).extend(base_z + (k as f64 / 4.0).min(n as f64) * r));
+            }
+            for (enabled, rr) in [(stair.railing_left, if side > 0.0 { inner + inset } else { inner + w - inset }), (stair.railing_right, if side > 0.0 { inner + w - inset } else { inner + inset })] {
+                if enabled && n > 0 {
+                    rails.push((0..=n * 4).map(|k| at(a0 + step_a * k as f64 / 4.0, rr).extend(base_z + r + (k as f64 / 4.0) * r + rail_h)).collect());
+                }
+            }
+            flights.push(n);
         }
         StairShape::L { turn, first_treads }
         | StairShape::U {
@@ -160,6 +201,45 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
             let landing_z = base_z + riser as f64 * r;
             let rest = total - k;
             match stair.shape {
+                StairShape::L { .. } if stair.extras.winders => {
+                    // Three winders fanning from the inside corner of the turn.
+                    let pivot = end + perp(dir) * side * half;
+                    let corners = [end - perp(dir) * side * half, end + dir * w - perp(dir) * side * half, end + dir * w + perp(dir) * side * half];
+                    // Points on the outer boundary at 0°, 30°, 60° and 90° round the pivot.
+                    let boundary_at = |k: usize| -> DVec2 {
+                        let ang = std::f64::consts::FRAC_PI_6 * k as f64;
+                        let ray = -perp(dir) * side * ang.cos() + dir * ang.sin();
+                        let mut best = corners[0];
+                        for e in [(corners[0], corners[1]), (corners[1], corners[2])] {
+                            if let Some(p) = crate::math::line_intersection(pivot, ray, e.0, e.1 - e.0) {
+                                let t = (p - e.0).dot(e.1 - e.0) / (e.1 - e.0).length_squared();
+                                if (-1e-6..=1.0 + 1e-6).contains(&t) && (p - pivot).dot(ray) > 0.0 {
+                                    best = p;
+                                }
+                            }
+                        }
+                        best
+                    };
+                    for k in 0..3 {
+                        let (p0, p1) = (boundary_at(k), boundary_at(k + 1));
+                        let mut poly = vec![pivot, p0];
+                        if k == 1 {
+                            poly.push(corners[1]);
+                        }
+                        poly.push(p1);
+                        poly.retain(|_| true);
+                        let z = base_z + riser as f64 * r;
+                        steps.push(Step { poly, z, index: riser, landing: false, nosing: Vec::new(), low_z: None });
+                        if k < 2 {
+                            riser += 1;
+                        }
+                    }
+                    let center = end + dir * half;
+                    walk.push(DVec3::new(center.x, center.y, base_z + riser as f64 * r));
+                    let dir2 = perp(dir) * side;
+                    let start2 = center + dir2 * half;
+                    flight(start2, dir2, rest.saturating_sub(2), &mut riser, &mut steps, &mut walk);
+                }
                 StairShape::L { .. } => {
                     steps.push(Step {
                         poly: quad(end, dir, 0.0, w, half, half),
@@ -167,6 +247,7 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
                         index: riser,
                         landing: true,
                         nosing: Vec::new(),
+                        low_z: None,
                     });
                     let center = end + dir * half;
                     walk.push(DVec3::new(center.x, center.y, landing_z));
@@ -187,6 +268,7 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
                         index: riser,
                         landing: true,
                         nosing: Vec::new(),
+                        low_z: None,
                     });
                     let shift = perp(dir) * side * (w + g);
                     // Walk across the landing: up the first flight's axis, over, then back.
@@ -195,12 +277,38 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
                     }
                     flight(end + shift, -dir, rest, &mut riser, &mut steps, &mut walk);
                 }
-                StairShape::Straight => unreachable!(),
+                StairShape::Straight | StairShape::Curved { .. } => unreachable!(),
             }
             flights.push(rest);
         }
     }
-    StairGeom {
+    // A starter step: the bottom tread wider, with round ends.
+    if stair.extras.starter
+        && let Some(first) = steps.first_mut()
+        && !first.landing
+        && first.poly.len() == 4
+    {
+        let (a, b, c, e) = (first.poly[0], first.poly[1], first.poly[2], first.poly[3]);
+        let across = (e - a).normalize_or_zero();
+        let along = (b - a).normalize_or_zero();
+        let depth = a.distance(b);
+        let grow = 150.0;
+        let mut poly = Vec::new();
+        // Right end: a half round beyond the stringer.
+        let rc = (a + b) / 2.0 - across * grow;
+        for k in 0..=6 {
+            let ang = std::f64::consts::PI * k as f64 / 6.0;
+            poly.push(rc + along * (-depth / 2.0 * ang.cos()) - across * (depth / 2.0 * ang.sin()));
+        }
+        let lc = (e + c) / 2.0 + across * grow;
+        for k in 0..=6 {
+            let ang = std::f64::consts::PI * k as f64 / 6.0;
+            poly.push(lc + along * (depth / 2.0 * ang.cos()) + across * (depth / 2.0 * ang.sin()));
+        }
+        first.poly = poly;
+        first.nosing.clear();
+    }
+    let mut g = StairGeom {
         risers,
         riser_height: r,
         base_z,
@@ -209,7 +317,79 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
         rails,
         flights,
         stringers,
+    };
+    rail_ends(stair, &mut g.rails);
+    g
+}
+
+/// Level extensions past each end of the rails, and returns turning down.
+fn rail_ends(stair: &Stair, rails: &mut [Vec<DVec3>]) {
+    let ext = stair.extras.rail_extension.mm();
+    for rail in rails.iter_mut() {
+        if rail.len() < 2 {
+            continue;
+        }
+        if ext > 1.0 {
+            let (a, b) = (rail[0], rail[1]);
+            let back = (a - b).truncate().normalize_or_zero();
+            rail.insert(0, (a.truncate() + back * ext).extend(a.z));
+            let (y, z) = (rail[rail.len() - 2], rail[rail.len() - 1]);
+            let on = (z - y).truncate().normalize_or_zero();
+            rail.push((z.truncate() + on * ext).extend(z.z));
+        }
+        if stair.extras.rail_return {
+            let first = rail[0];
+            rail.insert(0, first - DVec3::Z * 120.0);
+            let last = rail[rail.len() - 1];
+            rail.push(last - DVec3::Z * 120.0);
+        }
     }
+}
+
+/// A ramp: runs at 1:12 rising at most 30" each, with 5' landings between,
+/// rails both sides.
+fn ramp(stair: &Stair, rise: f64, base_z: f64, origin: DVec2, dir: DVec2, half: f64) -> StairGeom {
+    let max_rise = 762.0;
+    let landing = 1524.0;
+    let runs = (rise / max_rise).ceil().max(1.0) as u32;
+    let each = rise / runs as f64;
+    let mut steps = Vec::new();
+    let mut at = 0.0;
+    let mut z = base_z;
+    let mut walk = vec![origin.extend(base_z)];
+    let mut rail_pts: Vec<(f64, f64)> = vec![(0.0, base_z)];
+    for k in 0..runs {
+        let run = each * 12.0;
+        steps.push(Step {
+            poly: quad(origin, dir, at, at + run, half, half),
+            z: z + each,
+            index: k * 2 + 1,
+            landing: false,
+            nosing: Vec::new(),
+            low_z: Some(z),
+        });
+        at += run;
+        z += each;
+        rail_pts.push((at, z));
+        walk.push((origin + dir * at).extend(z));
+        if k + 1 < runs {
+            steps.push(Step { poly: quad(origin, dir, at, at + landing, half, half), z, index: k * 2 + 2, landing: true, nosing: Vec::new(), low_z: None });
+            at += landing;
+            rail_pts.push((at, z));
+            walk.push((origin + dir * at).extend(z));
+        }
+    }
+    let rail_h = stair.railing_height.mm().max(864.0);
+    let mut rails = Vec::new();
+    for (enabled, sign) in [(stair.railing_left, 1.0), (stair.railing_right, -1.0)] {
+        if enabled {
+            let off = perp(dir) * (half - 50.0) * sign;
+            rails.push(rail_pts.iter().map(|(u, zz)| (origin + dir * *u + off).extend(zz + rail_h)).collect());
+        }
+    }
+    let mut g = StairGeom { risers: runs, riser_height: each, base_z, steps, walk, rails, flights: vec![runs], stringers: Vec::new() };
+    rail_ends(stair, &mut g.rails);
+    g
 }
 
 #[cfg(test)]
@@ -240,6 +420,7 @@ mod tests {
             layer: d.layers.walls,
             baluster: None,
             newel: None,
+            extras: Default::default(),
         };
         (doc, s)
     }
@@ -282,5 +463,28 @@ mod tests {
         // Second flight runs back south beside the first, on the left (west).
         assert!(last.poly.iter().all(|p| p.x < 0.0));
         assert!(last.poly.iter().map(|p| p.y).fold(f64::MAX, f64::min) < 1.0);
+    }
+
+    #[test]
+    fn curved_winders_ramps_and_rail_ends() {
+        let (doc, s) = stair(StairShape::Curved { turn: Turn::Left, radius: Length::from_feet(3.0) });
+        let g = geometry(&doc, &s);
+        assert_eq!(g.steps.len(), 13);
+        // Each wedge is wider outside than inside.
+        let w = &g.steps[0].poly;
+        assert!(w[1].distance(w[2]) > w[0].distance(w[3]));
+        let (doc, mut s) = stair(StairShape::L { turn: Turn::Right, first_treads: 5 });
+        s.extras.winders = true;
+        let g = geometry(&doc, &s);
+        assert_eq!(g.steps.iter().filter(|s| s.landing).count(), 0, "winders, not a landing");
+        assert_eq!(g.steps.last().unwrap().index, g.risers - 1, "every riser still used");
+        let (doc, mut s) = stair(StairShape::Straight);
+        s.extras.ramp = true;
+        s.extras.rail_extension = Length::from_inches(12.0);
+        let g = geometry(&doc, &s);
+        // 108" of rise: four runs of 27" with three landings between.
+        assert_eq!(g.steps.iter().filter(|s| s.low_z.is_some()).count(), 4);
+        assert_eq!(g.steps.iter().filter(|s| s.landing).count(), 3);
+        assert!(g.rails.iter().all(|r| r.len() >= 9), "landings, runs and extensions");
     }
 }

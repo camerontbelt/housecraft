@@ -842,7 +842,23 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
 fn stair_mesh(doc: &Document, stair: &housecraft_model::Stair, mesh: &mut Mesh) {
     let g = crate::stairs::geometry(doc, stair);
     for step in &g.steps {
-        mesh.prism(&ccw(step.poly.clone()), g.base_z, step.z, Surface::Stair);
+        if let Some(low) = step.low_z {
+            // A ramp run: the top slopes from the bottom edge to the far edge.
+            let p = &step.poly;
+            let tops = [low, step.z, step.z, low];
+            let at = |i: usize, z: f64| p[i].extend(z);
+            mesh.polygon(&[at(0, tops[0]), at(1, tops[1]), at(2, tops[2]), at(3, tops[3])], Surface::Stair);
+            mesh.polygon(&[at(3, g.base_z), at(2, g.base_z), at(1, g.base_z), at(0, g.base_z)], Surface::Stair);
+            for i in 0..4 {
+                let j = (i + 1) % 4;
+                mesh.polygon(&[at(i, g.base_z), at(j, g.base_z), at(j, tops[j]), at(i, tops[i])], Surface::Stair);
+                mesh.polygon(&[at(i, g.base_z), at(i, tops[i]), at(j, tops[j]), at(j, g.base_z)], Surface::Stair);
+            }
+            continue;
+        }
+        // Open risers: just the tread board (landings stay solid).
+        let bottom = if stair.extras.open_risers && !step.landing { step.z - 38.0 } else { g.base_z };
+        mesh.prism(&ccw(step.poly.clone()), bottom, step.z, Surface::Stair);
         if !step.nosing.is_empty() {
             mesh.prism(
                 &ccw(step.nosing.clone()),
