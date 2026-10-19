@@ -233,6 +233,46 @@ pub enum Command {
     },
     /// Add a page to a layout.
     AddLayoutPage { layout: Id, name: Option<String> },
+    /// Rename `layout`'s pages `{prefix}{n}` from `start` (A-1, A-2…).
+    NumberPages {
+        layout: Id,
+        #[serde(default = "page_prefix")]
+        prefix: String,
+        #[serde(default = "one")]
+        start: u32,
+    },
+    /// Delete the boxes on `layout` (one page, or all when `page` is
+    /// `None`) that show `kind` ("plan", "view", "detail", "schedule",
+    /// "materials_list", "revisions", "sheet_index", "text"), or every box.
+    DeleteLayoutBoxes {
+        layout: Id,
+        page: Option<u32>,
+        kind: Option<String>,
+    },
+    /// Freeze layout box `id` into a line drawing: a new CAD detail holding
+    /// `shapes` and `texts` (the box's drawing as plain linework, which can
+    /// then be edited), shown in the box at the scale it had (`scale`).
+    ConvertBoxToLines {
+        id: Id,
+        scale: f64,
+        #[serde(default)]
+        shapes: Vec<DetailShape>,
+        #[serde(default)]
+        texts: Vec<DetailText>,
+    },
+    /// Client, designer and custom project fields.
+    SetProjectInfo { info: ProjectInfo },
+    /// Record a revision (numbered after the last; dated today unless given).
+    AddRevision {
+        description: String,
+        #[serde(default)]
+        by: String,
+        date: Option<String>,
+    },
+    /// Remove revision `number`.
+    DeleteRevision { number: u32 },
+    /// Stamp text across every layout page (`None`: no watermark).
+    SetWatermark { watermark: Option<Watermark> },
     /// Place a view on a layout page. Position and size are paper
     /// millimetres from the sheet's bottom-left; omitted ones fill the next
     /// free quarter of the page. `scale` 0 or omitted fits a standard scale.
@@ -1150,6 +1190,13 @@ impl Command {
             Command::SetViewDefaults { .. } => "set_view_defaults",
             Command::AddLayout { .. } => "add_layout",
             Command::AddLayoutPage { .. } => "add_layout_page",
+            Command::NumberPages { .. } => "number_pages",
+            Command::ConvertBoxToLines { .. } => "convert_box_to_lines",
+            Command::DeleteLayoutBoxes { .. } => "delete_layout_boxes",
+            Command::SetProjectInfo { .. } => "set_project_info",
+            Command::AddRevision { .. } => "add_revision",
+            Command::DeleteRevision { .. } => "delete_revision",
+            Command::SetWatermark { .. } => "set_watermark",
             Command::SendToLayout { .. } => "send_to_layout",
             Command::AddSectionView { .. } => "add_section_view",
             Command::AutoElevations { .. } => "auto_elevations",
@@ -1667,7 +1714,69 @@ impl Command {
                     paper_height: paper_height.unwrap_or(Length::from_inches(24.0)),
                     pages: (1..=pages).map(|n| format!("A-{n}")).collect(),
                     title_block: true,
+                    titles: Vec::new(),
+                    templates: Vec::new(),
                 }));
+            }
+            Command::NumberPages { layout, prefix, start } => {
+                let l = doc.get_mut::<Layout>(*layout).ok_or(ApiError::NotFound(*layout))?;
+                for (i, p) in l.pages.iter_mut().enumerate() {
+                    *p = format!("{prefix}{}", *start as usize + i);
+                }
+                out.modified.push(*layout);
+            }
+            Command::DeleteLayoutBoxes { layout, page, kind } => {
+                crate::ops::expect::<Layout>(doc, *layout)?;
+                let doomed: Vec<Id> = doc
+                    .iter::<LayoutBox>()
+                    .filter(|b| b.layout == *layout && page.is_none_or(|p| b.page == p))
+                    .filter(|b| kind.as_deref().is_none_or(|k| crate::layouts::source_kind(&b.source) == k))
+                    .map(|b| b.id)
+                    .collect();
+                for id in doomed {
+                    doc.remove(id);
+                    out.deleted.push(id);
+                }
+            }
+            Command::ConvertBoxToLines { id, scale, shapes, texts } => {
+                let b = crate::ops::expect::<LayoutBox>(doc, *id)?.clone();
+                let name = format!("{} (lines)", b.label.clone().unwrap_or_else(|| crate::layouts::source_name(doc, &b.source)));
+                let made = Command::AddCadDetail { name, shapes: shapes.clone(), texts: texts.clone() }.apply(doc)?;
+                let detail = made.created[0];
+                out.merge(made);
+                let bx = doc.get_mut::<LayoutBox>(*id).ok_or(ApiError::NotFound(*id))?;
+                bx.source = LayoutSource::Detail { detail };
+                if *scale > 0.0 {
+                    bx.scale = *scale;
+                }
+                out.modified.push(*id);
+            }
+            Command::SetProjectInfo { info } => {
+                doc.settings.project = info.clone();
+            }
+            Command::AddRevision { description, by, date } => {
+                let number = doc.settings.revisions.iter().map(|r| r.number).max().unwrap_or(0) + 1;
+                doc.settings.revisions.push(Revision {
+                    number,
+                    date: date.clone().unwrap_or_else(crate::layouts::today),
+                    description: description.clone(),
+                    by: by.clone(),
+                });
+            }
+            Command::DeleteRevision { number } => {
+                let before = doc.settings.revisions.len();
+                doc.settings.revisions.retain(|r| r.number != *number);
+                if doc.settings.revisions.len() == before {
+                    return Err(ApiError::Invalid(format!("no revision {number}")));
+                }
+            }
+            Command::SetWatermark { watermark } => {
+                if let Some(w) = watermark
+                    && !(w.height.mm() > 0.0 && (0.0..=1.0).contains(&w.darkness))
+                {
+                    return Err(ApiError::Invalid("watermark height must be positive and darkness 0–1".into()));
+                }
+                doc.settings.watermark = watermark.clone();
             }
             Command::AddLayoutPage { layout, name } => {
                 let l = doc
@@ -3226,4 +3335,8 @@ impl Command {
 
 fn orbit_seconds() -> f64 {
     20.0
+}
+
+fn page_prefix() -> String {
+    "A-".into()
 }

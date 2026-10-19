@@ -171,6 +171,9 @@ pub struct App {
     pub table_this_floor: bool,
     pub drawing_view: crate::drawing_view::DrawingViewState,
     pub clipboard: Vec<serde_json::Value>,
+    /// The clipboard holds layout boxes (copied from a layout page), and
+    /// the file and plan they came from.
+    pub clipboard_layout: Option<(Option<PathBuf>, String)>,
     pub status: Option<(String, bool)>,
     pub pending: Option<Pending>,
     quit_confirmed: bool,
@@ -232,6 +235,7 @@ impl App {
             table_this_floor: false,
             drawing_view: Default::default(),
             clipboard: Vec::new(),
+            clipboard_layout: None,
             status: None,
             pending: None,
             quit_confirmed: false,
@@ -1023,6 +1027,11 @@ impl App {
     }
 
     pub fn copy(&mut self) {
+        if let Mode::Drawing(_) = self.mode {
+            self.copy_layout_boxes();
+            return;
+        }
+        self.clipboard_layout = None;
         let doc = self.doc();
         let mut ids: Vec<Id> = self.selection.clone();
         // Bring doors and windows along with their walls.
@@ -1061,6 +1070,83 @@ impl App {
         ));
     }
 
+    /// Copy the selected layout boxes with the CAD details and views they
+    /// show (used when pasting into another plan).
+    fn copy_layout_boxes(&mut self) {
+        let doc = self.doc();
+        let boxes: Vec<&LayoutBox> = self.selection.iter().filter_map(|id| doc.get::<LayoutBox>(*id)).collect();
+        if boxes.is_empty() {
+            return;
+        }
+        let mut ids: Vec<Id> = boxes.iter().map(|b| b.id).collect();
+        for b in &boxes {
+            let sheet = match b.source {
+                LayoutSource::Detail { detail } => Some(detail),
+                LayoutSource::View { view } => Some(view),
+                _ => None,
+            };
+            if let Some(sheet) = sheet {
+                ids.push(sheet);
+                ids.extend(doc.objects.keys().filter(|id| doc.floor_of(**id) == Some(sheet)));
+            }
+        }
+        ids.sort();
+        ids.dedup();
+        let n = boxes.len();
+        let clip: Vec<serde_json::Value> = ids.iter().filter_map(|id| housecraft_api::query::get_object(doc, *id)).collect();
+        let origin = (self.path.clone(), doc.name.clone());
+        self.clipboard = clip;
+        self.clipboard_layout = Some(origin);
+        self.info(format!("Copied {n} layout box{}", if n == 1 { "" } else { "es" }));
+    }
+
+    /// Paste copied layout boxes onto layout page `page`. From this same
+    /// plan they show the same views; from another plan, the CAD details
+    /// and views come along and plans show this plan's floors.
+    fn paste_layout_boxes(&mut self, layout: Id, page: usize, in_place: bool) {
+        let doc = self.doc();
+        let same = self.clipboard_layout.as_ref().is_some_and(|(p, name)| *p == self.path && *name == doc.name);
+        let first_floor = doc.floors_by_elevation().iter().find(|f| f.foundation.is_none()).map(|f| f.id);
+        let offset = if in_place { 0.0 } else { 10.0 };
+        let objects: Vec<serde_json::Value> = self
+            .clipboard
+            .iter()
+            .filter_map(|v| {
+                let mut v = v.clone();
+                if v.get("kind").and_then(|k| k.as_str()) != Some("layout_box") {
+                    return (!same).then_some(v);
+                }
+                v["layout"] = serde_json::json!(layout.0);
+                v["page"] = serde_json::json!(page);
+                for key in ["x", "y"] {
+                    let at = v[key].as_f64().unwrap_or(0.0);
+                    v[key] = serde_json::json!(at + offset);
+                }
+                // A plan from another file shows this one's matching floor.
+                if !same
+                    && v["source"]["type"] == "plan"
+                    && let Some(f) = first_floor
+                {
+                    let floor = v["source"]["floor"].as_u64().map(Id);
+                    if floor.is_none_or(|f| doc.get::<Floor>(f).is_none()) {
+                        v["source"]["floor"] = serde_json::json!(f.0);
+                        v["source"]["layer_set"] = serde_json::Value::Null;
+                    }
+                }
+                Some(v)
+            })
+            .collect();
+        if let Some(out) = self.run1(Command::InsertObjects {
+            objects,
+            floor: None,
+            dx: housecraft_api::units::Length::ZERO,
+            dy: housecraft_api::units::Length::ZERO,
+        }) {
+            let doc = self.doc();
+            self.selection = out.created.into_iter().filter(|id| doc.get::<LayoutBox>(*id).is_some()).collect();
+        }
+    }
+
     pub fn cut(&mut self) {
         self.copy();
         self.delete_selection();
@@ -1071,6 +1157,21 @@ impl App {
     pub fn paste(&mut self, in_place: bool) {
         if self.clipboard.is_empty() {
             return;
+        }
+        match (self.mode, self.clipboard_layout.is_some()) {
+            (Mode::Drawing(crate::drawing_view::DrawingSource::Layout(layout, page)), true) => {
+                self.paste_layout_boxes(layout, page, in_place);
+                return;
+            }
+            (_, true) => {
+                self.info("Layout boxes paste onto a layout page");
+                return;
+            }
+            (Mode::Drawing(_), false) => {
+                self.info("Paste plan objects in a plan or drafting view");
+                return;
+            }
+            _ => {}
         }
         let (dx, dy) = if in_place {
             (0.0, 0.0)
@@ -1626,19 +1727,28 @@ impl App {
         }
     }
 
-    /// Bring a DXF drawing's lines, arcs, circles and text in on this floor.
+    /// Bring a DXF drawing's lines, arcs, circles and text in on this
+    /// floor (or the sheet being drafted on). PDFs come in the same way,
+    /// first page, at 1/4" = 1'-0" (1:50 metric) or `scale`.
     fn import_dxf(&mut self, path: &std::path::Path) {
-        let text = match std::fs::read(path) {
-            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+        let bytes = match std::fs::read(path) {
+            Ok(b) => b,
             Err(e) => {
                 self.error(format!("Could not read {}: {e}", path.display()));
                 return;
             }
         };
-        let d = match housecraft_io_native::dxf::read(&text, None) {
+        let is_pdf = path.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf"));
+        let read = if is_pdf {
+            let scale = if crate::util::input_unit(self.doc()) == housecraft_api::units::LengthUnit::Inches { 48.0 } else { 50.0 };
+            housecraft_io_native::pdf::read(&bytes, 0, scale)
+        } else {
+            housecraft_io_native::dxf::read(&String::from_utf8_lossy(&bytes), None)
+        };
+        let d = match read {
             Ok(d) => d,
             Err(e) => {
-                self.error(format!("Could not read the DXF: {e}"));
+                self.error(format!("Could not read {}: {e}", path.display()));
                 return;
             }
         };
@@ -1844,6 +1954,9 @@ impl App {
                 if item(ui, "Save as Template…", "", true) {
                     self.template_name = Some(self.doc().name.clone());
                 }
+                if item(ui, "Project Information…", "", true) {
+                    self.dialogs.project = Some(self.doc().settings.project.clone());
+                }
                 if item(ui, "Show Auto-Archive Folder", "", true)
                     && let Some(dir) = self.archive_dir()
                 {
@@ -1903,6 +2016,43 @@ impl App {
                             });
                         }
                     });
+                    if let Mode::Drawing(crate::drawing_view::DrawingSource::Layout(id, page)) = self.mode {
+                        if item(ui, "Add Revision Table", "", true) {
+                            self.send_to_layout(id, page as u32, LayoutSource::Revisions);
+                        }
+                        if item(ui, "Add Sheet Index", "", true) {
+                            self.send_to_layout(id, page as u32, LayoutSource::SheetIndex { layout: id });
+                        }
+                        if item(ui, "Number Pages A-1, A-2…", "", true) {
+                            self.run1(Command::NumberPages { layout: id, prefix: "A-".into(), start: 1 });
+                        }
+                        ui.menu_button("Delete Boxes", |ui| {
+                            let kinds = [
+                                ("All", None),
+                                ("Plans", Some("plan")),
+                                ("Elevations and Sections", Some("view")),
+                                ("CAD Details", Some("detail")),
+                                ("Schedules", Some("schedule")),
+                                ("Notes", Some("text")),
+                            ];
+                            for (pages, whole) in [("On This Page", false), ("On Every Page", true)] {
+                                ui.menu_button(pages, |ui| {
+                                    for (label, kind) in kinds {
+                                        if ui.button(label).clicked() {
+                                            if let Some(out) = self.run1(Command::DeleteLayoutBoxes {
+                                                layout: id,
+                                                page: (!whole).then_some(page as u32),
+                                                kind: kind.map(String::from),
+                                            }) {
+                                                self.info(format!("{} box(es) deleted", out.deleted.len()));
+                                            }
+                                            ui.close();
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
                     if let Mode::Drawing(crate::drawing_view::DrawingSource::Layout(id, page)) =
                         self.mode
                         && item(ui, "Add Notes Box", "", true)
@@ -1932,6 +2082,11 @@ impl App {
                             .pick_file()
                     {
                         self.symbol_import = Some((path, Default::default()));
+                    }
+                    if item(ui, "PDF Drawing (vector)…", "", true)
+                        && let Some(path) = rfd::FileDialog::new().add_filter("PDF", &["pdf"]).pick_file()
+                    {
+                        self.import_dxf(&path);
                     }
                     if item(ui, "DXF Drawing (2D)…", "", true)
                         && let Some(path) = rfd::FileDialog::new().add_filter("DXF drawing", &["dxf"]).pick_file()

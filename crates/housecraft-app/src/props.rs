@@ -839,14 +839,45 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.end_row();
             Ed::label(ui, "Pages");
             ui.vertical(|ui| {
+                ui.weak("Sheet · title · template page drawn underneath");
                 for (i, name) in l.pages.iter().enumerate() {
-                    let key = ed.key(&format!("page_{i}"));
-                    if let Some(t) = ed.bufs.text(ui, key, name, 140.0) {
-                        let mut pages = l.pages.clone();
-                        pages[i] = t;
-                        ed.out.push(patch(id, json!({ "pages": pages })));
-                    }
+                    ui.horizontal(|ui| {
+                        let key = ed.key(&format!("page_{i}"));
+                        if let Some(t) = ed.bufs.text(ui, key, name, 50.0) {
+                            let mut pages = l.pages.clone();
+                            pages[i] = t;
+                            ed.out.push(patch(id, json!({ "pages": pages })));
+                        }
+                        let key = ed.key(&format!("title_{i}"));
+                        if let Some(t) = ed.bufs.text(ui, key, l.title(i), 120.0) {
+                            let mut titles = l.titles.clone();
+                            titles.resize(l.pages.len(), String::new());
+                            titles[i] = t;
+                            ed.out.push(patch(id, json!({ "titles": titles })));
+                        }
+                        let current = l.template(i);
+                        let mut chosen = current;
+                        egui::ComboBox::from_id_salt(ed.key(&format!("template_{i}")))
+                            .width(60.0)
+                            .selected_text(current.map_or("None".to_string(), |t| l.pages[t].clone()))
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(&mut chosen, None, "None");
+                                for (t, p) in l.pages.iter().enumerate().filter(|(t, _)| *t != i) {
+                                    ui.selectable_value(&mut chosen, Some(t), p);
+                                }
+                            });
+                        if chosen != current {
+                            let mut templates = l.templates.clone();
+                            templates.resize(l.pages.len(), None);
+                            templates[i] = chosen.map(|t| t as u32);
+                            ed.out.push(patch(id, json!({ "templates": templates })));
+                        }
+                    });
                 }
+                ui.weak(format!(
+                    "Page macros: {}",
+                    housecraft_draft::macros::PAGE_MACROS.iter().map(|(m, _)| format!("{{{m}}}")).collect::<Vec<_>>().join(" ")
+                ));
                 if ui.button("Add Page").clicked() {
                     ed.out.push(Command::AddLayoutPage {
                         layout: id,
@@ -858,8 +889,49 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
         }
         Object::LayoutBox(b) => {
             Ed::label(ui, "Shows");
-            ui.label(housecraft_api::layouts::source_name(doc, &b.source));
+            if housecraft_api::layouts::is_drawing(&b.source) {
+                // Relink: show another plan, view or detail in the same box.
+                let mut sources: Vec<LayoutSource> = doc
+                    .floors_by_elevation()
+                    .iter()
+                    .map(|f| LayoutSource::Plan { floor: f.id, layer_set: None, phase: Default::default() })
+                    .collect();
+                sources.extend(doc.iter::<SectionView>().map(|v| LayoutSource::View { view: v.id }));
+                sources.extend(doc.iter::<CadDetail>().map(|d| LayoutSource::Detail { detail: d.id }));
+                let mut chosen = b.source.clone();
+                egui::ComboBox::from_id_salt(ed.key("relink"))
+                    .selected_text(housecraft_api::layouts::source_name(doc, &b.source))
+                    .show_ui(ui, |ui| {
+                        for s in sources {
+                            let name = housecraft_api::layouts::source_name(doc, &s);
+                            ui.selectable_value(&mut chosen, s, name);
+                        }
+                    });
+                if chosen != b.source {
+                    ed.out.push(patch(id, json!({ "source": chosen, "center": null })));
+                }
+            } else {
+                ui.label(housecraft_api::layouts::source_name(doc, &b.source));
+            }
             ui.end_row();
+            if housecraft_api::layouts::is_drawing(&b.source) {
+                Ed::label(ui, "Line Drawing");
+                if ui
+                    .button("Convert to Lines")
+                    .on_hover_text("Freeze this box into a CAD detail of plain lines you can edit; it stops following the model")
+                    .clicked()
+                    && let Some(d) = housecraft_draft::layout::box_model_drawing(doc, &b.source)
+                {
+                    let (shapes, texts) = housecraft_draft::layout::to_linework(&d);
+                    ed.out.push(Command::ConvertBoxToLines {
+                        id,
+                        scale: housecraft_draft::layout::box_scale(doc, b),
+                        shapes,
+                        texts,
+                    });
+                }
+                ui.end_row();
+            }
             for (label, field, value) in [
                 ("Left (paper)", "x", b.x),
                 ("Bottom (paper)", "y", b.y),
@@ -870,12 +942,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     ed.out.push(patch(id, json!({ field: v })));
                 }
             }
-            if !matches!(
-                b.source,
-                LayoutSource::Schedule { .. }
-                    | LayoutSource::MaterialsList
-                    | LayoutSource::Text { .. }
-            ) {
+            if housecraft_api::layouts::is_drawing(&b.source) {
                 Ed::label(ui, "Scale");
                 let imperial =
                     crate::util::input_unit(doc) == housecraft_api::units::LengthUnit::Inches;

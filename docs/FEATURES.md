@@ -128,18 +128,18 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-19 | Time tracker per project/client/task with export | P3 | M8 |
 | PRJ-20 | Plan database / portfolio | P3 | M8 |
 | PRJ-21 | R-values for walls, roofs, ceilings, platforms | P2 | M3 ◐ R-values per wall-type layer (total shown on walls) and for the roof in Default Settings; no energy totals |
-| PRJ-22 | Client & designer info with macros and custom fields | P2 | M4 |
+| PRJ-22 | Client & designer info with macros and custom fields | P2 | M4 ✓ File > Project Information: client/designer fields and custom fields, each a text macro; shown in the title block |
 | PRJ-23 | Layout files: sheets with scaled, live-linked views; title-block templates; reorder pages | P1 | M4 ◐ sheets in the plan file with live scaled views, title block, several pages; separate .layout files, title-block templates, page reordering later |
 | PRJ-24 | Layout viewports: polyline cropping with breaks/curves; pan/zoom; rotate | P1 | M4 ◐ rectangular crop with a set centre; polyline crops, in-box pan/zoom, rotation later |
 | PRJ-25 | Layout box spec: defaults, multi-line labels, relink, rescale, change layer set; multi-edit | P1 | M4 ◐ position, size, scale, caption, notes text; relink, change layer set and multi-edit later |
-| PRJ-26 | Multiple layout files open at once; copy between them | P2 | M4 |
-| PRJ-27 | Edit line views on layout; rescale; relink | P2 | M4 |
+| PRJ-26 | Multiple layout files open at once; copy between them | P2 | M4 ◐ layout boxes copy and paste between plans (their CAD details and views come along); one plan open at a time |
+| PRJ-27 | Edit line views on layout; rescale; relink | P2 | M4 ✓ box scale, relink to another plan/view/detail, Convert to Lines (an editable CAD detail) |
 | PRJ-28 | Multiple pages per layout | P1 | M4 ✓ |
-| PRJ-29 | Per-page template pages | P2 | M4 |
-| PRJ-30 | Revision tracking and revision tables | P2 | M4 |
-| PRJ-31 | Sheet index / table of contents from page attributes | P2 | M4 |
-| PRJ-32 | Page macros (label, auto-numbering, title) | P2 | M4 |
-| PRJ-33 | Bulk delete by object type in layouts | P3 | M4 |
+| PRJ-29 | Per-page template pages | P2 | M4 ✓ each page can draw another page underneath, with its own page macros |
+| PRJ-30 | Revision tracking and revision tables | P2 | M4 ✓ revisions in Project Information; Add Revision Table; latest revision in the title block and {revision} |
+| PRJ-31 | Sheet index / table of contents from page attributes | P2 | M4 ✓ Add Sheet Index (sheet numbers and page titles) |
+| PRJ-32 | Page macros (label, auto-numbering, title) | P2 | M4 ✓ {sheet} {page} {page_count} {page_title} {layout}; page titles; Number Pages |
+| PRJ-33 | Bulk delete by object type in layouts | P3 | M4 ✓ Delete Boxes by kind, this page or every page |
 | PRJ-34 | Home Designer plan share | ✗ | — |
 
 ## 5. Rooms
@@ -534,7 +534,7 @@ These come from reading the whole list and change the architecture, not just the
 | TXT-09 | Object labels with macros | P1 | M1 ✓ Default Settings > Object Labels: templates for doors, windows, cabinets, fixtures with {width} {size} {type} {code}…; per-object label or - to hide |
 | TXT-10 | Label formatting (justify, border, wrap) | P1 | M1 ◐ border and wrap width for notes and labels, justify for notes; labels are always centred |
 | TXT-11 | Per-view label hide (X18+) | P2 | M1 |
-| TXT-12 | Auto labels for layout boxes | P2 | M4 |
+| TXT-12 | Auto labels for layout boxes | P2 | M4 ✓ drawing boxes numbered per page; plan callouts read number/sheet |
 | TXT-13 | Text styles per layer/default/object | P0 | M1 ✓ |
 | TXT-14 | Default sets for annotation | P1 | M1 ✓ default sets carry the text style, dimension defaults or style, label templates and layers for annotation; plan views and camera default sets pick them |
 | TXT-15 | Annotations on 3D views | P2 | M7 ✓ 3D > Notes and Dimensions: notes pinned to the model, shown for one camera or all |
@@ -551,7 +551,7 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | PRN-01 | Print to PDF | P0 | M1 ✓ |
-| PRN-02 | Watermarks (text/image; also on walkthroughs) | P3 | M4 |
+| PRN-02 | Watermarks (text/image; also on walkthroughs) | P3 | M4 ◐ text watermark on every layout page (macros allowed); image and walkthrough watermarks later |
 | PRN-03 | Print preview with line weights | P1 | M4 ◐ the layout page view previews sheets with line weights; a plan print preview later |
 | PRN-04 | Drawing sheet setup and paper scaling | P1 | M4 ◐ layout sheet size and per-box scales; plan PDF paper and scale options |
 
@@ -560,7 +560,7 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | IO-01 | Export materials list: Excel, CSV, TXT, HTML | P1 | M4 ◐ CSV, text, XML and HTML; native Excel (.xlsx) later |
-| IO-02 | Import PDF into plans/layouts/details (vector + raster) | P2 | M4 |
+| IO-02 | Import PDF into plans/layouts/details (vector + raster) | P2 | M4 ◐ File > Import > PDF: vector linework and text (incl. Unicode-mapped fonts) at a drawing scale; raster images skipped |
 | IO-03 | DXF/DWG import & export (2D) | P1 | M1 (DXF) / M8 (DWG) ◐ DXF (R12) export of plans, views and details from File > Export and the CLI; DXF import of lines, polylines, arcs, circles and text onto matching layers (blocks and hatches skipped); no DWG |
 | IO-04 | 3D import: DXF, DWG, OBJ, 3DS, SKP, STL, DAE; 3D export: DXF, DWG, 3DS, STL, DAE (+ glTF/OBJ/IFC for us) | P1→P3 | M5/M8 |
 | IO-05 | Image import: BMP, JPG, GIF, TIFF, PNG, metafiles, WEBP; transparency color | P1 | M5 ◐ PNG, JPEG, BMP and TIFF pictures with a transparency colour, in plans, views, details and layouts (SVG embeds them); GIF, WebP, metafiles and pictures in PDF/PNG exports later |

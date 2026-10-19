@@ -22,6 +22,17 @@ fn imperial(doc: &Document) -> bool {
 /// The drawing a box shows, in its own units: model millimetres for plans
 /// and views (`true`), paper millimetres for tables and notes (`false`).
 fn source_drawing(doc: &Document, s: &LayoutSource) -> (Drawing, bool) {
+    source_drawing_on(doc, s, None)
+}
+
+fn table_box(table: &housecraft_api::schedule::ScheduleTable, stroke: Stroke) -> Drawing {
+    let mut d = Drawing::default();
+    table_drawing(table, DVec2::ZERO, 2.5, stroke, Ink::Default, None, &mut d);
+    d
+}
+
+/// As [`source_drawing`], with page macros filled for `page` = (layout, index).
+fn source_drawing_on(doc: &Document, s: &LayoutSource, page: Option<(&Layout, usize)>) -> (Drawing, bool) {
     let paper_stroke = Stroke {
         ink: Ink::Default,
         width: 0.25,
@@ -99,9 +110,15 @@ fn source_drawing(doc: &Document, s: &LayoutSource) -> (Drawing, bool) {
             );
             (d, false)
         }
+        LayoutSource::Revisions => (table_box(&housecraft_api::layouts::revision_table(doc), paper_stroke), false),
+        LayoutSource::SheetIndex { layout } => (table_box(&housecraft_api::layouts::sheet_index(doc, *layout), paper_stroke), false),
         LayoutSource::Text { text } => {
             let mut d = Drawing::default();
-            for (i, line) in crate::macros::expand(doc, text).lines().enumerate() {
+            let text = match page {
+                Some((l, p)) => crate::macros::expand_page(doc, l, p, text),
+                None => crate::macros::expand(doc, text),
+            };
+            for (i, line) in text.lines().enumerate() {
                 d.push(
                     None,
                     Prim::Text {
@@ -119,6 +136,52 @@ fn source_drawing(doc: &Document, s: &LayoutSource) -> (Drawing, bool) {
             (d, false)
         }
     }
+}
+
+/// The model drawing a box shows (plans, elevations, details), in model
+/// millimetres; `None` for tables and notes.
+pub fn box_model_drawing(doc: &Document, s: &LayoutSource) -> Option<Drawing> {
+    let (d, model) = source_drawing(doc, s);
+    model.then_some(d)
+}
+
+/// A drawing as plain CAD linework and text, for a CAD detail.
+pub fn to_linework(d: &Drawing) -> (Vec<DetailShape>, Vec<housecraft_api::DetailText>) {
+    let pt = |p: DVec2| housecraft_units::Point2::from_mm(p.x, p.y);
+    let color = |ink: Ink| match ink {
+        Ink::Color(c) => Some(c),
+        _ => None,
+    };
+    let (mut shapes, mut texts) = (Vec::new(), Vec::new());
+    for item in &d.items {
+        match &item.prim {
+            Prim::Polyline { points, closed, stroke } if points.len() >= 2 => shapes.push(DetailShape {
+                shape: Shape::Polyline { points: points.iter().map(|p| pt(*p)).collect(), closed: *closed },
+                color: color(stroke.ink),
+                fill: None,
+            }),
+            Prim::Polygon { points, fill } if points.len() >= 3 => {
+                let c = match fill {
+                    crate::Fill::Ink(ink) => color(*ink),
+                    _ => None,
+                };
+                shapes.push(DetailShape {
+                    shape: Shape::Polyline { points: points.iter().map(|p| pt(*p)).collect(), closed: true },
+                    color: c,
+                    fill: c,
+                })
+            }
+            Prim::Text { at, text, height, rotation, justify, .. } => texts.push(housecraft_api::DetailText {
+                position: pt(*at),
+                text: text.clone(),
+                height: Some(housecraft_units::Length::from_mm(*height)),
+                rotation: *rotation,
+                justify: *justify,
+            }),
+            _ => {}
+        }
+    }
+    (shapes, texts)
 }
 
 /// Clip a segment to the rectangle `lo..hi` (Liang–Barsky).
@@ -197,9 +260,38 @@ pub fn box_scale(doc: &Document, b: &LayoutBox) -> f64 {
     standard_scale(needed, imperial(doc))
 }
 
-/// Render page `page` of `layout`.
+/// Render page `page` of `layout`: its template page's boxes, then its own.
 pub fn layout_page(doc: &Document, layout: &Layout, page: usize) -> Drawing {
     let mut out = Drawing::default();
+    if let Some(t) = layout.template(page) {
+        page_boxes(doc, layout, t, page, &mut out);
+    }
+    page_boxes(doc, layout, page, page, &mut out);
+    if layout.title_block {
+        title_block(doc, layout, page, &mut out);
+    }
+    if let Some(w) = &doc.settings.watermark {
+        let g = (255.0 * (1.0 - w.darkness.clamp(0.0, 1.0))).round() as u8;
+        out.push(
+            None,
+            Prim::Text {
+                at: DVec2::new(layout.paper_width.mm(), layout.paper_height.mm()) / 2.0,
+                text: crate::macros::expand_page(doc, layout, page, &w.text),
+                height: w.height.mm(),
+                rotation: w.angle,
+                justify: Justify::Center,
+                middle: true,
+                bold: true,
+                ink: Ink::Color(Color::rgb(g, g, g)),
+            },
+        );
+    }
+    out
+}
+
+/// Draw the boxes of page `from` onto page `page` (they differ for a
+/// template page, whose page macros follow the page it is drawn under).
+fn page_boxes(doc: &Document, layout: &Layout, from: usize, page: usize, out: &mut Drawing) {
     let thin = Stroke {
         ink: Ink::Default,
         width: 0.18,
@@ -207,9 +299,9 @@ pub fn layout_page(doc: &Document, layout: &Layout, page: usize) -> Drawing {
     };
     for b in doc
         .iter::<LayoutBox>()
-        .filter(|b| b.layout == layout.id && b.page as usize == page)
+        .filter(|b| b.layout == layout.id && b.page as usize == from)
     {
-        let (d, model) = source_drawing(doc, &b.source);
+        let (d, model) = source_drawing_on(doc, &b.source, Some((layout, page)));
         let lo = DVec2::new(b.x.mm(), b.y.mm());
         let hi = lo + DVec2::new(b.width.mm(), b.height.mm());
         let scale = if model { box_scale(doc, b) } else { 1.0 };
@@ -310,16 +402,42 @@ pub fn layout_page(doc: &Document, layout: &Layout, page: usize) -> Drawing {
                 }
             }
         }
-        // Caption: name and scale under the box.
+        // Caption: number, name and scale under the box.
         let caption = b
             .label
-            .clone()
-            .unwrap_or_else(|| source_name(doc, &b.source));
+            .as_deref()
+            .map_or_else(|| source_name(doc, &b.source), |l| crate::macros::expand_page(doc, layout, page, l));
         let caption_y = lo.y - 4.0;
+        let mut text_x = lo.x;
+        if let Some(n) = housecraft_api::layouts::box_number(doc, b).filter(|_| from == page) {
+            let c = DVec2::new(lo.x + 3.2, caption_y + 1.0);
+            out.push(
+                id,
+                Prim::Polyline {
+                    points: housecraft_geom::math::arc_points(c, 3.2, 0.0, 360.0),
+                    closed: true,
+                    stroke: Stroke { width: 0.35, ..thin },
+                },
+            );
+            out.push(
+                id,
+                Prim::Text {
+                    at: c,
+                    text: n.to_string(),
+                    height: 3.0,
+                    rotation: 0.0,
+                    justify: Justify::Center,
+                    middle: true,
+                    bold: true,
+                    ink: Ink::Default,
+                },
+            );
+            text_x += 8.5;
+        }
         out.push(
             id,
             Prim::Text {
-                at: DVec2::new(lo.x, caption_y),
+                at: DVec2::new(text_x, caption_y),
                 text: caption.to_uppercase(),
                 height: 3.0,
                 rotation: 0.0,
@@ -347,7 +465,7 @@ pub fn layout_page(doc: &Document, layout: &Layout, page: usize) -> Drawing {
             out.push(
                 id,
                 Prim::Text {
-                    at: DVec2::new(lo.x, caption_y - 5.0),
+                    at: DVec2::new(text_x, caption_y - 5.0),
                     text: format!("Scale: {}", scale_label(scale, imperial(doc))),
                     height: 2.2,
                     rotation: 0.0,
@@ -359,10 +477,6 @@ pub fn layout_page(doc: &Document, layout: &Layout, page: usize) -> Drawing {
             );
         }
     }
-    if layout.title_block {
-        title_block(doc, layout, page, &mut out);
-    }
-    out
 }
 
 fn title_block(doc: &Document, layout: &Layout, page: usize, out: &mut Drawing) {
@@ -435,12 +549,23 @@ fn title_block(doc: &Document, layout: &Layout, page: usize, out: &mut Drawing) 
         true,
         Justify::Right,
     );
+    // The page's title and the designer, mid-strip.
+    let title = layout.title(page);
+    if !title.is_empty() {
+        text(out, (lo.x + hi.x) / 2.0, mid + 3.0, title.to_uppercase(), 4.0, true, Justify::Center);
+    }
+    let p = &doc.settings.project;
+    let who: Vec<&str> = [p.client.as_str(), p.designer.as_str(), p.company.as_str()].into_iter().filter(|s| !s.is_empty()).collect();
+    if !who.is_empty() {
+        text(out, (lo.x + hi.x) / 2.0, mid - 4.0, who.join("  ·  "), 2.5, false, Justify::Center);
+    }
+    let rev = doc.settings.revisions.last().map_or(String::new(), |r| format!("  ·  Rev {}", r.number));
     text(
         out,
         hi.x - 5.0,
         mid - 5.0,
         format!(
-            "Sheet {} of {}  ·  {}",
+            "Sheet {} of {}  ·  {}{rev}",
             page + 1,
             layout.pages.len(),
             crate::macros::today()

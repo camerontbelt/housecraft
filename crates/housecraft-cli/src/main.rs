@@ -61,7 +61,8 @@ enum Cmd {
         #[arg(long)]
         dry_run: bool,
     },
-    /// Bring a DXF drawing's lines, arcs, circles and text into a plan as CAD.
+    /// Bring a DXF drawing's lines, arcs, circles and text into a plan as
+    /// CAD; a .pdf file's vector linework and text come in the same way.
     ImportDxf {
         path: PathBuf,
         dxf: PathBuf,
@@ -71,6 +72,12 @@ enum Cmd {
         /// Millimetres per DXF unit, overriding the file's units (25.4 = inches).
         #[arg(long)]
         unit_mm: Option<f64>,
+        /// PDF: the page to import, from 0.
+        #[arg(long, default_value_t = 0)]
+        page: usize,
+        /// PDF: the drawing's scale, model units per paper unit (48 = 1/4" = 1'-0"; 1 = paper size).
+        #[arg(long, default_value_t = 1.0)]
+        scale: f64,
     },
     /// Draw a floor plan to SVG, PDF, PNG or DXF (chosen by the output extension).
     Export {
@@ -387,10 +394,16 @@ fn main() -> Result<()> {
             )?;
             println!("{}", saved.display());
         }
-        Cmd::ImportDxf { path, dxf, floor, unit_mm } => {
+        Cmd::ImportDxf { path, dxf, floor, unit_mm, page, scale } => {
             let mut doc = load(&path)?;
-            let text = std::fs::read_to_string(&dxf).with_context(|| format!("reading {}", dxf.display()))?;
-            let d = housecraft_io_native::dxf::read(&text, unit_mm).map_err(anyhow::Error::msg)?;
+            let bytes = std::fs::read(&dxf).with_context(|| format!("reading {}", dxf.display()))?;
+            let is_pdf = dxf.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf"));
+            let d = if is_pdf {
+                housecraft_io_native::pdf::read(&bytes, page, scale)
+            } else {
+                housecraft_io_native::dxf::read(&String::from_utf8_lossy(&bytes), unit_mm)
+            }
+            .map_err(anyhow::Error::msg)?;
             let floor = match floor {
                 Some(f) => Some(PlanOptions::resolve(&doc, Some(&f), None).map_err(anyhow::Error::msg)?.floor),
                 None => None,

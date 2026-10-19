@@ -282,6 +282,94 @@ pub struct Settings {
     /// Named dimension defaults.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dimension_styles: Vec<DimensionStyle>,
+    /// Client, designer and custom project fields (text macros).
+    #[serde(default)]
+    pub project: ProjectInfo,
+    /// Revisions issued, oldest first.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub revisions: Vec<Revision>,
+    /// Text stamped across every layout page.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub watermark: Option<Watermark>,
+}
+
+/// Who the plan is for and who drew it. Each field is a text macro of the
+/// same name (`{client}`, `{designer_phone}`); `custom` fields too.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct ProjectInfo {
+    pub client: String,
+    pub client_address: String,
+    pub client_phone: String,
+    pub client_email: String,
+    pub designer: String,
+    pub company: String,
+    pub designer_address: String,
+    pub designer_phone: String,
+    pub designer_email: String,
+    pub license: String,
+    pub custom: BTreeMap<String, String>,
+}
+
+impl ProjectInfo {
+    /// The built-in fields as (macro name, label, value).
+    pub fn fields(&self) -> [(&'static str, &'static str, &String); 10] {
+        [
+            ("client", "Client", &self.client),
+            ("client_address", "Client Address", &self.client_address),
+            ("client_phone", "Client Phone", &self.client_phone),
+            ("client_email", "Client Email", &self.client_email),
+            ("designer", "Designer", &self.designer),
+            ("company", "Company", &self.company),
+            ("designer_address", "Designer Address", &self.designer_address),
+            ("designer_phone", "Designer Phone", &self.designer_phone),
+            ("designer_email", "Designer Email", &self.designer_email),
+            ("license", "License", &self.license),
+        ]
+    }
+
+    /// The value of macro `name`, built-in or custom.
+    pub fn get(&self, name: &str) -> Option<&String> {
+        self.fields().into_iter().find(|f| f.0 == name).map(|f| f.2).or_else(|| self.custom.get(name))
+    }
+}
+
+/// One issued revision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Revision {
+    pub number: u32,
+    /// YYYY-MM-DD.
+    pub date: String,
+    pub description: String,
+    #[serde(default)]
+    pub by: String,
+}
+
+/// A watermark: large pale text across the page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Watermark {
+    pub text: String,
+    /// Letter height on paper.
+    #[serde(default = "watermark_height")]
+    pub height: Length,
+    /// Degrees counter-clockwise.
+    #[serde(default = "watermark_angle")]
+    pub angle: f64,
+    /// 0 (invisible) to 1 (black).
+    #[serde(default = "watermark_darkness")]
+    pub darkness: f64,
+}
+
+fn watermark_height() -> Length {
+    Length::from_mm(40.0)
+}
+
+fn watermark_angle() -> f64 {
+    30.0
+}
+
+fn watermark_darkness() -> f64 {
+    0.15
 }
 
 /// Camera default sets: the default set (dimension, text and layer
@@ -373,6 +461,9 @@ impl Document {
                 angle_format: Default::default(),
                 object_info: BTreeMap::new(),
                 dimension_styles: Vec::new(),
+                project: ProjectInfo::default(),
+                revisions: Vec::new(),
+                watermark: None,
             },
             next_id: 1,
             objects: BTreeMap::new(),

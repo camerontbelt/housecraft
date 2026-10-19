@@ -11,6 +11,27 @@ pub const MACROS: &[(&str, &str)] = &[
     ("living_area", "Total living area"),
     ("floors", "Number of above-ground floors"),
     ("rooms", "Number of rooms"),
+    ("client", "Client (Project Information)"),
+    ("client_address", "Client's address"),
+    ("client_phone", "Client's phone"),
+    ("client_email", "Client's email"),
+    ("designer", "Designer"),
+    ("company", "Designer's company"),
+    ("designer_address", "Designer's address"),
+    ("designer_phone", "Designer's phone"),
+    ("designer_email", "Designer's email"),
+    ("license", "Designer's license number"),
+    ("revision", "Latest revision number"),
+    ("revision_date", "Latest revision's date"),
+];
+
+/// Macros for layout pages (notes boxes, captions and template pages).
+pub const PAGE_MACROS: &[(&str, &str)] = &[
+    ("sheet", "This page's sheet number (A-3)"),
+    ("page", "This page's number"),
+    ("page_count", "How many pages the layout has"),
+    ("page_title", "This page's title"),
+    ("layout", "The layout's name"),
 ];
 
 /// Macros for object labels, filled from the labelled object.
@@ -146,12 +167,34 @@ fn value(doc: &Document, name: &str) -> Option<String> {
             .count()
             .to_string(),
         "rooms" => doc.iter::<housecraft_model::Room>().count().to_string(),
-        _ => return None,
+        "revision" => doc.settings.revisions.last().map_or("0".into(), |r| r.number.to_string()),
+        "revision_date" => doc.settings.revisions.last().map_or(String::new(), |r| r.date.clone()),
+        other => doc.settings.project.get(other)?.clone(),
     })
+}
+
+/// Fill page macros (`{sheet}`, `{page}`…) for page `page` of `layout`,
+/// then the document's macros.
+pub fn expand_page(doc: &Document, layout: &housecraft_model::Layout, page: usize, text: &str) -> String {
+    let page_value = |name: &str| -> Option<String> {
+        Some(match name {
+            "sheet" => layout.pages.get(page)?.clone(),
+            "page" => (page + 1).to_string(),
+            "page_count" => layout.pages.len().to_string(),
+            "page_title" => layout.title(page).to_string(),
+            "layout" => layout.name.clone(),
+            _ => return None,
+        })
+    };
+    expand_with(doc, text, &page_value)
 }
 
 /// Replace every known `{macro}` in `text`; unknown ones are left as typed.
 pub fn expand(doc: &Document, text: &str) -> String {
+    expand_with(doc, text, &|_| None)
+}
+
+fn expand_with(doc: &Document, text: &str, extra: &dyn Fn(&str) -> Option<String>) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(open) = rest.find('{') {
@@ -160,7 +203,7 @@ pub fn expand(doc: &Document, text: &str) -> String {
         match after.find('}') {
             Some(close) => {
                 let name = &after[..close];
-                match value(doc, name.trim()) {
+                match extra(name.trim()).or_else(|| value(doc, name.trim())) {
                     Some(v) => out.push_str(&v),
                     None => {
                         out.push('{');

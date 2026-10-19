@@ -1286,7 +1286,7 @@ pub(crate) fn insert_objects(
     // windows using them can be re-pointed.
     parsed.sort_by_key(|o| match o {
         Object::Layer(_) | Object::WallType(_) | Object::TextStyle(_) | Object::RoomType(_) => -1,
-        Object::SymbolDef(_) => 0,
+        Object::SymbolDef(_) | Object::CadDetail(_) | Object::SectionView(_) | Object::Block(_) => 0,
         Object::Wall(_) => 1,
         _ => 2,
     });
@@ -1321,11 +1321,22 @@ pub(crate) fn insert_objects(
             object
         } else {
             let mut v = serde_json::to_value(&object).expect("objects serialize");
-            for key in ["layer", "wall_type", "style", "room_type", "text_style"] {
+            // `floor` too: drafting on a CAD detail or view pasted along.
+            for key in ["layer", "wall_type", "style", "room_type", "text_style", "floor", "block"] {
                 if let Some(n) = v.get(key).and_then(|n| n.as_u64())
                     && let Some(new) = remap.get(&Id(n))
                 {
                     v[key] = serde_json::json!(new.0);
+                }
+            }
+            // A layout box showing a detail or view pasted along.
+            if let Some(src) = v.get_mut("source") {
+                for key in ["view", "detail"] {
+                    if let Some(n) = src.get(key).and_then(|n| n.as_u64())
+                        && let Some(new) = remap.get(&Id(n))
+                    {
+                        src[key] = serde_json::json!(new.0);
+                    }
                 }
             }
             serde_json::from_value(v).map_err(|e| ApiError::Invalid(format!("invalid object: {e}")))?

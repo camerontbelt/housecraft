@@ -198,6 +198,11 @@ pub struct Dialogs {
     pub layers: bool,
     pub text_styles: bool,
     pub line_styles: bool,
+    /// Project Information being edited (open while `Some`).
+    pub project: Option<ProjectInfo>,
+    /// Custom field name, revision description and "by" being typed.
+    pub new_project_field: String,
+    pub new_revision: (String, String),
     /// Name and pattern being typed for a new line style.
     pub new_line_type: (String, String),
     pub room_types: bool,
@@ -268,6 +273,7 @@ pub fn show(app: &mut App, ctx: &Context) {
     );
     save_view_dialog(app, ctx);
     line_styles_dialog(app, ctx);
+    project_dialog(app, ctx);
     shortcuts_dialog(app, ctx);
     about_dialog(app, ctx);
 }
@@ -1772,6 +1778,152 @@ fn line_styles_dialog(app: &mut App, ctx: &Context) {
         });
     });
     app.dialogs.line_styles = open;
+    if !commands.is_empty() {
+        app.run(commands);
+    }
+}
+
+/// File > Project Information: client and designer fields (text macros),
+/// custom fields, revisions and the layout watermark.
+fn project_dialog(app: &mut App, ctx: &Context) {
+    let Some(mut info) = app.dialogs.project.take() else {
+        return;
+    };
+    let mut open = true;
+    let mut commands = Vec::new();
+    let mut apply = false;
+    egui::Window::new("Project Information").open(&mut open).resizable(true).default_width(520.0).show(ctx, |ui| {
+        let doc = app.session.document();
+        ui.label("Each field fills its text macro: type {client} or {designer_phone} in any text, label or layout note.");
+        egui::Grid::new("project_fields").num_columns(3).show(ui, |ui| {
+            let ProjectInfo {
+                client,
+                client_address,
+                client_phone,
+                client_email,
+                designer,
+                company,
+                designer_address,
+                designer_phone,
+                designer_email,
+                license,
+                custom,
+            } = &mut info;
+            for (label, key, value) in [
+                ("Client", "client", client),
+                ("Client Address", "client_address", client_address),
+                ("Client Phone", "client_phone", client_phone),
+                ("Client Email", "client_email", client_email),
+                ("Designer", "designer", designer),
+                ("Company", "company", company),
+                ("Designer Address", "designer_address", designer_address),
+                ("Designer Phone", "designer_phone", designer_phone),
+                ("Designer Email", "designer_email", designer_email),
+                ("License", "license", license),
+            ] {
+                ui.label(label);
+                ui.add_sized([260.0, 20.0], egui::TextEdit::singleline(value));
+                ui.weak(format!("{{{key}}}"));
+                ui.end_row();
+            }
+            let mut remove = None;
+            for (name, value) in custom.iter_mut() {
+                ui.label(name.as_str());
+                ui.add_sized([260.0, 20.0], egui::TextEdit::singleline(value));
+                ui.horizontal(|ui| {
+                    ui.weak(format!("{{{name}}}"));
+                    if ui.small_button("✕").on_hover_text("Remove this field").clicked() {
+                        remove = Some(name.clone());
+                    }
+                });
+                ui.end_row();
+            }
+            if let Some(r) = remove {
+                custom.remove(&r);
+            }
+        });
+        ui.horizontal(|ui| {
+            let name = &mut app.dialogs.new_project_field;
+            ui.add(egui::TextEdit::singleline(name).hint_text("New field, e.g. permit_number").desired_width(200.0));
+            let key: String = name.trim().to_lowercase().replace(' ', "_");
+            if ui.add_enabled(!key.is_empty() && info.get(&key).is_none(), egui::Button::new("Add Field")).clicked() {
+                info.custom.insert(key, String::new());
+                name.clear();
+            }
+        });
+        ui.horizontal(|ui| {
+            if ui.button("Save").clicked() {
+                apply = true;
+            }
+            if info != doc.settings.project {
+                ui.weak("Unsaved changes");
+            }
+        });
+        ui.separator();
+        ui.strong("Revisions");
+        egui::Grid::new("revisions").striped(true).num_columns(5).show(ui, |ui| {
+            for h in ["Rev", "Date", "Description", "By", ""] {
+                ui.strong(h);
+            }
+            ui.end_row();
+            for r in &doc.settings.revisions {
+                ui.label(r.number.to_string());
+                ui.label(&r.date);
+                ui.label(&r.description);
+                ui.label(&r.by);
+                if ui.small_button("Delete").clicked() {
+                    commands.push(Command::DeleteRevision { number: r.number });
+                }
+                ui.end_row();
+            }
+        });
+        ui.horizontal(|ui| {
+            let (desc, by) = &mut app.dialogs.new_revision;
+            ui.add(egui::TextEdit::singleline(desc).hint_text("What changed").desired_width(220.0));
+            ui.add(egui::TextEdit::singleline(by).hint_text("By").desired_width(60.0));
+            if ui.add_enabled(!desc.trim().is_empty(), egui::Button::new("Add Revision")).clicked() {
+                commands.push(Command::AddRevision { description: desc.trim().to_string(), by: by.trim().to_string(), date: None });
+                desc.clear();
+            }
+        });
+        ui.weak("Layout > Add Revision Table puts this list on a page; the title block shows the latest number.");
+        ui.separator();
+        ui.strong("Watermark");
+        let current = doc.settings.watermark.clone();
+        let mut on = current.is_some();
+        let mut w = current.clone().unwrap_or(Watermark {
+            text: "PRELIMINARY".into(),
+            height: Length::from_mm(40.0),
+            angle: 30.0,
+            darkness: 0.15,
+        });
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut on, "Stamp every layout page with");
+            ui.add_enabled(on, egui::TextEdit::singleline(&mut w.text).desired_width(160.0));
+        });
+        ui.add_enabled_ui(on, |ui| {
+            ui.horizontal(|ui| {
+                let mut h = w.height.mm();
+                ui.label("Letters");
+                ui.add(egui::DragValue::new(&mut h).range(5.0..=200.0).suffix(" mm"));
+                w.height = Length::from_mm(h);
+                ui.label("Angle");
+                ui.add(egui::DragValue::new(&mut w.angle).range(-90.0..=90.0).suffix("°"));
+                ui.label("Darkness");
+                ui.add(egui::Slider::new(&mut w.darkness, 0.02..=1.0));
+            });
+        });
+        let chosen = on.then_some(w);
+        if chosen != current {
+            commands.push(Command::SetWatermark { watermark: chosen });
+        }
+    });
+    if apply {
+        commands.push(Command::SetProjectInfo { info: info.clone() });
+    }
+    if open {
+        app.dialogs.project = Some(info);
+    }
     if !commands.is_empty() {
         app.run(commands);
     }

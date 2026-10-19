@@ -1264,29 +1264,48 @@ fn section_callout(doc: &Document, v: &SectionView, stroke: Stroke, text: f64, o
                 stroke,
             },
         );
-        let side = dir * r * 0.9;
+        // The arrow caps the marker, leaving its middle free for the
+        // layout reference.
+        let side = dir * r * 0.8;
+        let base = c + look * r * 0.6;
         out.push(
             id,
             Prim::Polygon {
-                points: vec![c + look * r * 1.9, c + side, c - side],
+                points: vec![c + look * r * 1.9, base + side, base - side],
                 fill: Fill::Ink(stroke.ink),
             },
         );
-        // The layout page the view is placed on, inside the marker.
-        if let Some(page) = &placed {
-            out.push(
-                id,
-                Prim::Text {
-                    at: c,
-                    text: page.clone(),
-                    height: text * 0.6,
-                    rotation: 0.0,
-                    justify: Justify::Center,
-                    middle: true,
-                    bold: true,
-                    ink: stroke.ink,
-                },
-            );
+        // Where the view is placed: its box number over the layout page.
+        if let Some((number, page)) = &placed {
+            let lines: Vec<(DVec2, &str)> = match number {
+                Some(n) => vec![(c + DVec2::Y * r * 0.42, n.as_str()), (c - DVec2::Y * r * 0.42, page.as_str())],
+                None => vec![(c, page.as_str())],
+            };
+            if number.is_some() {
+                out.push(
+                    id,
+                    Prim::Polyline {
+                        points: vec![c - DVec2::X * r, c + DVec2::X * r],
+                        closed: false,
+                        stroke,
+                    },
+                );
+            }
+            for (at, t) in lines {
+                out.push(
+                    id,
+                    Prim::Text {
+                        at,
+                        text: t.to_string(),
+                        height: text * 0.55,
+                        rotation: 0.0,
+                        justify: Justify::Center,
+                        middle: true,
+                        bold: true,
+                        ink: stroke.ink,
+                    },
+                );
+            }
         }
     }
     let mid = (a + b) / 2.0;
@@ -1307,15 +1326,17 @@ fn section_callout(doc: &Document, v: &SectionView, stroke: Stroke, text: f64, o
 
 /// Where `source` is placed on a layout: the page's name when it is a short
 /// sheet number like "A-3", else the page's number.
-pub fn layout_page_of(doc: &Document, source: LayoutSource) -> Option<String> {
+/// The box's number on its page comes first, when it has one.
+pub fn layout_page_of(doc: &Document, source: LayoutSource) -> Option<(Option<String>, String)> {
     let b = doc.iter::<LayoutBox>().find(|b| b.source == source)?;
     let layout = doc.get::<Layout>(b.layout)?;
     let name = layout.pages.get(b.page as usize).map(|p| p.trim()).unwrap_or("");
-    Some(if !name.is_empty() && !name.starts_with("Page") && name.chars().count() <= 6 {
+    let page = if !name.is_empty() && !name.starts_with("Page") && name.chars().count() <= 6 {
         name.to_string()
     } else {
         format!("{}", b.page + 1)
-    })
+    };
+    Some((housecraft_api::layouts::box_number(doc, b).map(|n| n.to_string()), page))
 }
 
 /// A callout: text, optionally inside a marker shape, with an optional

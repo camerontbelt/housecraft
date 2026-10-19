@@ -500,3 +500,131 @@ fn copied_views_keep_their_annotations_and_callouts_show_pages() {
     assert!(doc.iter::<Text>().any(|t| t.floor == new && t.text == "Brick veneer"));
     assert!(doc.iter::<Text>().any(|t| t.floor == view));
 }
+
+#[test]
+fn layout_pages_templates_revisions_and_project_info() {
+    use housecraft_api::model::{Layout, LayoutBox};
+    let mut s = house();
+    let floor = s.document().floors_by_elevation()[0].id;
+    let out = s
+        .apply(&[serde_json::from_value(serde_json::json!({"op": "add_layout", "name": "Permit", "pages": 3})).unwrap()])
+        .unwrap();
+    let layout = out.created[0];
+    let cmds: Vec<Command> = serde_json::from_str(&format!(
+        r#"[{{"op": "set_project_info", "info": {{"client": "J. Smith", "designer": "C. Belt", "custom": {{"permit_number": "BP-77"}}}}}},
+            {{"op": "add_revision", "description": "Issued for permit", "by": "CB", "date": "2026-10-01"}},
+            {{"op": "add_revision", "description": "Moved kitchen window", "date": "2026-10-15"}},
+            {{"op": "set_watermark", "watermark": {{"text": "DRAFT {{sheet}}"}}}},
+            {{"op": "number_pages", "layout": {l}, "prefix": "S", "start": 0}},
+            {{"op": "update", "id": {l}, "set": {{"titles": ["Cover", "Plans", "Details"], "templates": [null, 0, 0]}}}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 0, "source": {{"type": "text", "text": "{{client}} / {{permit_number}} / {{sheet}} {{page_title}} ({{page}} of {{page_count}}) rev {{revision}}"}}}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 0, "source": {{"type": "revisions"}}}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 0, "source": {{"type": "sheet_index", "layout": {l}}}}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 1, "source": {{"type": "plan", "floor": {f}}}, "x": "10", "y": "100", "width": "200", "height": "150"}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 1, "source": {{"type": "plan", "floor": {f}}}, "x": "300", "y": "300", "width": "200", "height": "150"}}]"#,
+        l = layout.0,
+        f = floor.0
+    ))
+    .unwrap();
+    s.apply(&cmds).unwrap();
+    let doc = s.document();
+    let l = doc.get::<Layout>(layout).unwrap();
+    assert_eq!(l.pages, ["S0", "S1", "S2"]);
+    let texts = |page: usize| -> Vec<String> {
+        housecraft_draft::layout::layout_page(doc, l, page)
+            .items
+            .into_iter()
+            .filter_map(|i| match i.prim {
+                Prim::Text { text, .. } => Some(text),
+                _ => None,
+            })
+            .collect()
+    };
+    let p0 = texts(0);
+    assert!(p0.iter().any(|t| t == "J. Smith / BP-77 / S0 Cover (1 of 3) rev 2"), "{p0:?}");
+    assert!(p0.iter().any(|t| t == "Moved kitchen window"));
+    assert!(p0.iter().any(|t| t == "Details"), "sheet index lists titles");
+    assert!(p0.iter().any(|t| t == "DRAFT S0"));
+    assert!(p0.iter().any(|t| t.contains("Rev 2")), "title block shows the revision");
+    // Page 1 draws the cover's notes underneath, with its own page macros.
+    let p1 = texts(1);
+    assert!(p1.iter().any(|t| t == "J. Smith / BP-77 / S1 Plans (2 of 3) rev 2"), "{p1:?}");
+    assert!(p1.iter().any(|t| t == "PLANS"), "page title in the title block");
+    // Drawing boxes are numbered top to bottom: the upper one is 1.
+    let boxes: Vec<&LayoutBox> = doc.iter::<LayoutBox>().filter(|b| b.page == 1).collect();
+    let upper = boxes.iter().max_by(|a, b| a.y.mm().total_cmp(&b.y.mm())).unwrap();
+    assert_eq!(housecraft_api::layouts::box_number(doc, upper), Some(1));
+    assert!(p1.iter().any(|t| t == "2"));
+    // Bulk delete: the plans on page 1 only.
+    let out = s
+        .apply(&[serde_json::from_value(serde_json::json!({"op": "delete_layout_boxes", "layout": layout.0, "page": 1, "kind": "plan"})).unwrap()])
+        .unwrap();
+    assert_eq!(out.deleted.len(), 2);
+    assert_eq!(s.document().iter::<LayoutBox>().count(), 3);
+}
+
+#[test]
+fn layout_box_converts_to_editable_lines() {
+    use housecraft_api::model::{Cad, LayoutBox, LayoutSource};
+    let mut s = house();
+    let floor = s.document().floors_by_elevation()[0].id;
+    let out = s
+        .apply(&[serde_json::from_value(serde_json::json!({"op": "add_layout", "name": "Set", "pages": 1})).unwrap()])
+        .unwrap();
+    let out = s
+        .apply(&[serde_json::from_value(serde_json::json!({"op": "send_to_layout", "layout": out.created[0].0, "source": {"type": "plan", "floor": floor.0}})).unwrap()])
+        .unwrap();
+    let id = out.created[0];
+    let doc = s.document();
+    let b = doc.get::<LayoutBox>(id).unwrap();
+    let scale = housecraft_draft::layout::box_scale(doc, b);
+    let d = housecraft_draft::layout::box_model_drawing(doc, &b.source).unwrap();
+    let (shapes, texts) = housecraft_draft::layout::to_linework(&d);
+    assert!(!shapes.is_empty() && !texts.is_empty());
+    let n = shapes.len();
+    s.apply(&[Command::ConvertBoxToLines { id, scale, shapes, texts }]).unwrap();
+    let doc = s.document();
+    let b = doc.get::<LayoutBox>(id).unwrap();
+    let LayoutSource::Detail { detail } = b.source else {
+        panic!("box shows {:?}", b.source)
+    };
+    assert_eq!(b.scale, scale);
+    assert_eq!(doc.iter::<Cad>().filter(|c| c.floor == detail).count(), n);
+}
+
+#[test]
+fn layout_boxes_paste_into_another_plan_with_their_details() {
+    use housecraft_api::model::{Cad, CadDetail, LayoutBox, LayoutSource};
+    let mut a = house();
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "add_cad_detail", "name": "Footing", "shapes": [{"shape": {"shape": "line", "a": [0,0], "b": ["2'",0]}}]},
+            {"op": "add_layout", "name": "Set", "pages": 1}]"#,
+    )
+    .unwrap();
+    let out = a.apply(&cmds).unwrap();
+    let (detail, layout) = (out.created[0], *out.created.last().unwrap());
+    let out = a
+        .apply(&[serde_json::from_value(serde_json::json!({"op": "send_to_layout", "layout": layout.0, "source": {"type": "detail", "detail": detail.0}})).unwrap()])
+        .unwrap();
+    let doc = a.document();
+    let mut clip: Vec<serde_json::Value> = vec![housecraft_api::query::get_object(doc, out.created[0]).unwrap(), housecraft_api::query::get_object(doc, detail).unwrap()];
+    clip.extend(doc.iter::<Cad>().filter(|c| c.floor == detail).map(|c| housecraft_api::query::get_object(doc, c.id).unwrap()));
+    // Another plan with its own layout.
+    let mut b = house();
+    let out = b
+        .apply(&[serde_json::from_value(serde_json::json!({"op": "add_layout", "name": "Other", "pages": 1})).unwrap()])
+        .unwrap();
+    let target = out.created[0];
+    for v in clip.iter_mut() {
+        if v["kind"] == "layout_box" {
+            v["layout"] = serde_json::json!(target.0);
+        }
+    }
+    b.apply(&[serde_json::from_value(serde_json::json!({"op": "insert_objects", "objects": clip, "dx": 0, "dy": 0})).unwrap()])
+        .unwrap();
+    let doc = b.document();
+    let bx = doc.iter::<LayoutBox>().find(|x| x.layout == target).unwrap();
+    let LayoutSource::Detail { detail: d } = bx.source else { panic!() };
+    assert_eq!(doc.get::<CadDetail>(d).unwrap().name, "Footing");
+    assert_eq!(doc.iter::<Cad>().filter(|c| c.floor == d).count(), 1);
+}

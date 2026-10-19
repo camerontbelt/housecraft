@@ -29,8 +29,98 @@ pub fn source_name(doc: &Document, s: &LayoutSource) -> String {
             .map_or("?".into(), |d| d.name.clone()),
         LayoutSource::Schedule { schedule_kind, .. } => schedule_kind.name().to_string(),
         LayoutSource::MaterialsList => "Materials List".into(),
+        LayoutSource::Revisions => "Revisions".into(),
+        LayoutSource::SheetIndex { .. } => "Sheet Index".into(),
         LayoutSource::Text { .. } => "Notes".into(),
     }
+}
+
+/// The kind of thing a box shows, as `DeleteLayoutBoxes` names it.
+pub fn source_kind(s: &LayoutSource) -> &'static str {
+    match s {
+        LayoutSource::Plan { .. } => "plan",
+        LayoutSource::View { .. } => "view",
+        LayoutSource::Detail { .. } => "detail",
+        LayoutSource::Schedule { .. } => "schedule",
+        LayoutSource::MaterialsList => "materials_list",
+        LayoutSource::Revisions => "revisions",
+        LayoutSource::SheetIndex { .. } => "sheet_index",
+        LayoutSource::Text { .. } => "text",
+    }
+}
+
+/// Whether a box shows a scaled drawing of the model (not a table or notes).
+pub fn is_drawing(s: &LayoutSource) -> bool {
+    matches!(s, LayoutSource::Plan { .. } | LayoutSource::View { .. } | LayoutSource::Detail { .. })
+}
+
+/// Boxes showing drawings are numbered on their page, top to bottom then
+/// left to right: the "1" in a "1/A-3" callout.
+pub fn box_number(doc: &Document, b: &LayoutBox) -> Option<u32> {
+    if !is_drawing(&b.source) {
+        return None;
+    }
+    let mut boxes: Vec<&LayoutBox> = doc
+        .iter::<LayoutBox>()
+        .filter(|o| o.layout == b.layout && o.page == b.page && is_drawing(&o.source))
+        .collect();
+    boxes.sort_by(|p, q| {
+        let top = |o: &LayoutBox| -(o.y.mm() + o.height.mm());
+        top(p).total_cmp(&top(q)).then(p.x.mm().total_cmp(&q.x.mm())).then(p.id.cmp(&q.id))
+    });
+    boxes.iter().position(|o| o.id == b.id).map(|i| i as u32 + 1)
+}
+
+/// The revision table.
+pub fn revision_table(doc: &Document) -> crate::schedule::ScheduleTable {
+    crate::schedule::ScheduleTable {
+        title: "Revisions".into(),
+        columns: ["Rev", "Date", "Description", "By"].map(String::from).to_vec(),
+        rows: doc
+            .settings
+            .revisions
+            .iter()
+            .map(|r| crate::schedule::ScheduleRow {
+                ids: Vec::new(),
+                cells: vec![r.number.to_string(), r.date.clone(), r.description.clone(), r.by.clone()],
+            })
+            .collect(),
+    }
+}
+
+/// The sheet index of `layout`: each page's sheet number and title.
+pub fn sheet_index(doc: &Document, layout: Id) -> crate::schedule::ScheduleTable {
+    let pages = doc.get::<Layout>(layout).map_or(Vec::new(), |l| {
+        l.pages
+            .iter()
+            .enumerate()
+            .map(|(i, p)| crate::schedule::ScheduleRow {
+                ids: Vec::new(),
+                cells: vec![p.clone(), l.title(i).to_string()],
+            })
+            .collect()
+    });
+    crate::schedule::ScheduleTable {
+        title: "Sheet Index".into(),
+        columns: vec!["Sheet".into(), "Title".into()],
+        rows: pages,
+    }
+}
+
+/// Today's date (UTC) as YYYY-MM-DD.
+pub fn today() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    let z = (secs / 86_400) as i64 + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    format!("{:04}-{m:02}-{d:02}", yoe + era * 400 + i64::from(m <= 2))
 }
 
 /// Place a box on a layout page; unspecified position and size take the

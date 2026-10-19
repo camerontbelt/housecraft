@@ -345,6 +345,25 @@ pub struct Layout {
     /// Draw a border and title block on every page.
     #[serde(default = "yes")]
     pub title_block: bool,
+    /// Page titles ("Floor Plans"), by page; the pages' names are their
+    /// sheet numbers.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub titles: Vec<String>,
+    /// The template page each page draws underneath its own boxes, by page.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub templates: Vec<Option<u32>>,
+}
+
+impl Layout {
+    /// Page `page`'s title, or "" when it has none.
+    pub fn title(&self, page: usize) -> &str {
+        self.titles.get(page).map_or("", |t| t.as_str())
+    }
+
+    /// The template page under page `page`, if any (never itself).
+    pub fn template(&self, page: usize) -> Option<usize> {
+        self.templates.get(page).copied().flatten().map(|t| t as usize).filter(|t| *t != page && *t < self.pages.len())
+    }
 }
 
 fn yes() -> bool {
@@ -377,6 +396,12 @@ pub enum LayoutSource {
         floor: Option<Id>,
     },
     MaterialsList,
+    /// The plan's revision table.
+    Revisions,
+    /// A sheet index: every page of `layout` with its title.
+    SheetIndex {
+        layout: Id,
+    },
     /// Free text (notes); `{macros}` are filled in.
     Text {
         text: String,
