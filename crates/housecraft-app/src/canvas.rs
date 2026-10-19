@@ -1258,6 +1258,21 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 }
             }
             Tool::Text => app.plan.text_prompt = Some((p, String::new())),
+            Tool::Solid => {
+                if let Some(a) = pending.pop() {
+                    if (a.x - p.x).abs() > 1.0 && (a.y - p.y).abs() > 1.0 {
+                        let s = &doc.active_defaults().solids;
+                        commands.push(Command::AddSolid {
+                            floor,
+                            shape: s.preset.shape(pt(a), pt(p), s.height),
+                            elevation: Length::ZERO,
+                            color: None,
+                        });
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
             Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => {
                 if let Some(a) = pending.pop() {
                     if a.distance(p) > 1.0 {

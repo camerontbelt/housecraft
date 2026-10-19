@@ -64,6 +64,8 @@ pub enum Tool {
     WallRegion,
     /// Copy chosen properties from one object to others.
     ObjectPainter,
+    /// Draw a 3D solid (box, cylinder, cone or sphere) in a rectangle.
+    Solid,
 }
 
 /// The shapes offered by the stair tools.
@@ -226,6 +228,7 @@ impl Family {
                 Tool::FloorRegion,
                 Tool::WallRegion,
                 Tool::ObjectPainter,
+                Tool::Solid,
                 Tool::CrossBox,
                 Tool::BlockingBox,
                 Tool::Insulation,
@@ -369,6 +372,7 @@ impl Tool {
             Tool::FloorRegion => "Floor Material Region",
             Tool::WallRegion => "Wall Material Region",
             Tool::ObjectPainter => "Object Painter",
+            Tool::Solid => "3D Solid",
             Tool::PlaceGroup => "Place Group",
         }
     }
@@ -402,7 +406,7 @@ impl Tool {
             Tool::Spline => Icon::Spline,
             Tool::Point => Icon::Point,
             Tool::MoldingPolyline | Tool::FloorRegion => Icon::Polyline,
-            Tool::WallRegion => Icon::Box,
+            Tool::WallRegion | Tool::Solid => Icon::Box,
             Tool::ObjectPainter => Icon::Select,
             Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => Icon::Box,
             Tool::Callout | Tool::Marker | Tool::RevisionCloud => Icon::Text,
@@ -509,6 +513,9 @@ impl Tool {
                 "Click along the path with the molding on your right; double-click or Enter to finish."
             }
             Tool::FloorRegion => "Click the corners of the region; double-click or Enter to finish.",
+            Tool::Solid => {
+                "Click two opposite corners; the shape and height come from Default Settings > 3D Solids."
+            }
             Tool::WallRegion => "Click the two ends of the region on one side of a wall.",
             Tool::ObjectPainter => {
                 "Alt+click an object to copy from, tick what to copy, then click objects to paint them."

@@ -312,6 +312,8 @@ pub struct DefaultSet {
     pub exterior_stair: StairDefaults,
     #[serde(default)]
     pub cabinets: crate::CabinetDefaults,
+    #[serde(default)]
+    pub solids: crate::SolidDefaults,
     /// Default material for each surface role (empty: built-in colours).
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub materials: crate::SurfaceMaterials,

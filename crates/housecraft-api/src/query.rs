@@ -251,6 +251,10 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         ),
         Object::Appliance(a) => format!("{} {} wide", a.appliance_kind.name(), fmt(a.width)),
         Object::Backsplash(b) => format!("backsplash {} high", fmt(b.height)),
+        Object::Solid(x) => match &x.shape {
+            SolidShape::Extrude { height, .. } => format!("solid {} high", fmt(*height)),
+            SolidShape::Revolve { sweep, .. } => format!("revolved solid, {sweep}°"),
+        },
         Object::MoldingProfile(p) => format!("molding profile {:?}", p.name),
         Object::MaterialRegion(r) => format!(
             "{} region of {}",

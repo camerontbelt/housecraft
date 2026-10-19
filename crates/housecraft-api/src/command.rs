@@ -21,6 +21,18 @@ pub enum PaintScope {
     Plan,
 }
 
+/// How [`Command::CadBoolean`] combines shapes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ShapeOp {
+    /// Join them into one outline.
+    Union,
+    /// Keep only where they all overlap.
+    Intersect,
+    /// Cut the others out of the first.
+    Subtract,
+}
+
 /// Text for [`Command::AddCadDetail`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct DetailText {
@@ -374,6 +386,23 @@ pub enum Command {
         ids: Vec<Id>,
         surface: Option<Surface>,
     },
+    /// Add a 3D solid; an unset colour comes from the solid defaults.
+    AddSolid {
+        floor: Option<Id>,
+        shape: SolidShape,
+        #[serde(default)]
+        elevation: Length,
+        color: Option<Color>,
+    },
+    /// Join, intersect or cut closed CAD shapes (the first is cut by the
+    /// rest); closed polylines replace them.
+    CadBoolean { ids: Vec<Id>, operation: ShapeOp },
+    /// Turn closed CAD shapes on a floor plan into solids pushed up by
+    /// `height` (the solid default when unset); they replace the shapes.
+    ExtrudeCad { ids: Vec<Id>, height: Option<Length> },
+    /// Turn a CAD polyline into a solid turned about a vertical axis through
+    /// its leftmost point: each point's x is a radius and y a height.
+    RevolveCad { id: Id, sweep: Option<f64> },
     /// Add a patch of `material` on a floor (any outline) or on a wall face.
     AddMaterialRegion {
         floor: Option<Id>,
@@ -777,6 +806,10 @@ impl Command {
             Command::AddCadDetail { .. } => "add_cad_detail",
             Command::AddMaterial { .. } => "add_material",
             Command::AddMaterialRegion { .. } => "add_material_region",
+            Command::AddSolid { .. } => "add_solid",
+            Command::CadBoolean { .. } => "cad_boolean",
+            Command::ExtrudeCad { .. } => "extrude_cad",
+            Command::RevolveCad { .. } => "revolve_cad",
             Command::SaveStyle { .. } => "save_style",
             Command::ApplyStyle { .. } => "apply_style",
             Command::CopyMaterialFor { .. } => "copy_material_for",
@@ -1646,6 +1679,25 @@ impl Command {
                 }
                 out.created.push(doc.insert(m));
             }
+            Command::AddSolid {
+                floor,
+                shape,
+                elevation,
+                color,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                out.created.push(doc.insert(Solid {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.cad,
+                    shape: shape.clone(),
+                    elevation: *elevation,
+                    color: color.unwrap_or(d.solids.color),
+                }));
+            }
+            Command::CadBoolean { ids, operation } => crate::solids::cad_boolean(doc, ids, *operation, &mut out)?,
+            Command::ExtrudeCad { ids, height } => crate::solids::extrude(doc, &d, ids, *height, &mut out)?,
+            Command::RevolveCad { id, sweep } => crate::solids::revolve(doc, &d, *id, *sweep, &mut out)?,
             Command::AddMaterialRegion {
                 floor,
                 material,

@@ -204,6 +204,24 @@ pub(crate) fn appliance(a: &Appliance, stroke: Stroke, text: f64, ink: Ink, out:
     }
 }
 
+pub(crate) fn solid(x: &Solid, stroke: Stroke, out: &mut Drawing) {
+    let outline = housecraft_geom::solid::footprint(x);
+    if outline.len() >= 3 {
+        line(out, x.id, outline, true, stroke);
+    }
+    if let SolidShape::Revolve { center, profile, .. } = &x.shape {
+        // Any inner radius (a ring or a hollow) shows as a second circle.
+        let inner = profile.iter().map(|p| p[0].mm()).fold(f64::MAX, f64::min);
+        if inner > 1.0 {
+            let c = v2(*center);
+            let ring: Vec<DVec2> = (0..32)
+                .map(|i| c + DVec2::from_angle(i as f64 / 32.0 * std::f64::consts::TAU) * inner)
+                .collect();
+            line(out, x.id, ring, true, stroke);
+        }
+    }
+}
+
 pub(crate) fn backsplash(b: &Backsplash, stroke: Stroke, out: &mut Drawing) {
     let path: Vec<DVec2> = b.points.iter().map(|p| v2(*p)).collect();
     if path.len() < 2 {

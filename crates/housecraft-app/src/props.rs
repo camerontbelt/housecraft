@@ -596,6 +596,44 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.label(format!("{} surfaces", st.materials.len()));
             ui.end_row();
         }
+        Object::Solid(x) => {
+            match &x.shape {
+                SolidShape::Extrude { height, .. } => {
+                    if let Some(h) = ed.length(ui, "Height", "shape.height", *height) {
+                        let mut shape = x.shape.clone();
+                        if let SolidShape::Extrude { height, .. } = &mut shape {
+                            *height = h;
+                        }
+                        ed.out.push(patch(id, json!({ "shape": shape })));
+                    }
+                }
+                SolidShape::Revolve { profile, sweep, .. } => {
+                    Ed::label(ui, "Profile");
+                    ui.label(format!("{} points", profile.len()));
+                    ui.end_row();
+                    if let Some(a) = ed.number(ui, "Sweep (°)", "shape.sweep", *sweep)
+                        && a > 0.0
+                        && a <= 360.0
+                    {
+                        let mut shape = x.shape.clone();
+                        if let SolidShape::Revolve { sweep, .. } = &mut shape {
+                            *sweep = a;
+                        }
+                        ed.out.push(patch(id, json!({ "shape": shape })));
+                    }
+                }
+            }
+            if let Some(e) = ed.length(ui, "Elevation", "elevation", x.elevation) {
+                ed.out.push(patch(id, json!({ "elevation": e })));
+            }
+            Ed::label(ui, "Colour");
+            let mut c32 = to_color32(x.color);
+            if ui.color_edit_button_srgba(&mut c32).changed() {
+                ed.out.push(patch(id, json!({ "color": from_color32(c32) })));
+            }
+            ui.end_row();
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(x.layer), None);
+        }
         Object::Backsplash(bs) => {
             for (label, field, v) in [
                 ("Height", "height", bs.height),

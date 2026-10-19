@@ -337,9 +337,9 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-06 | Detailing primitives: cross box, blocking box, insulation | P1 | M4 ✓ |
 | CAD-07 | Convert 2D CAD into smart objects (solids, moldings, counters, slabs, roads, terrain, …) | P2 | M4 |
 | CAD-08 | Multiple copy at preset increments | P1 | M1 |
-| CAD-09 | 3D solids and faces; extrude/revolve; polyline boolean ops | P2 | M5 |
-| CAD-10 | 3D solid tool with defaults | P2 | M5 |
-| CAD-11 | Solid booleans across plan/elevation; fillet/chamfer solid edges | P3 | M5 |
+| CAD-09 | 3D solids and faces; extrude/revolve; polyline boolean ops | P2 | M5 ✓ CAD > Shapes and Solids: join, intersect and subtract closed shapes; extrude or revolve them into 3D solids |
+| CAD-10 | 3D solid tool with defaults | P2 | M5 ✓ 3D Solid tool draws a box, cylinder, cone or sphere; shape, height and colour in Default Settings |
+| CAD-11 | Solid booleans across plan/elevation; fillet/chamfer solid edges | P3 | M5 ◐ cut shapes before extruding (plan booleans); no 3D solid booleans or edge fillets yet |
 | CAD-12 | Regular polygon tool | P1 | M1 |
 | CAD-13 | Fillet all / chamfer all | P2 | M1 |
 | CAD-14 | CAD-to-Walls (DWG lines → walls, windows, doors) | P2 | M4 |

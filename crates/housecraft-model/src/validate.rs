@@ -691,6 +691,34 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     }
                 }
             }
+            Object::Solid(x) => {
+                c.reference(id, "floor", x.floor, K::Floor);
+                c.reference(id, "layer", x.layer, K::Layer);
+                match &x.shape {
+                    SolidShape::Extrude { points, height } => {
+                        c.positive(id, "height", *height);
+                        if points.len() < 3 {
+                            c.issue(id, "an extruded solid needs at least three points");
+                        }
+                        let flat: Vec<f64> = points.iter().flat_map(|p| p.mm()).collect();
+                        c.finite(id, "points", &flat);
+                    }
+                    SolidShape::Revolve { center, profile, sweep } => {
+                        if profile.len() < 2 {
+                            c.issue(id, "a revolved solid needs at least two profile points");
+                        }
+                        if profile.iter().any(|p| p[0].mm() < 0.0) {
+                            c.issue(id, "profile radii can't be negative");
+                        }
+                        if !(*sweep > 0.0 && *sweep <= 360.0) {
+                            c.issue(id, "sweep must be more than 0 and at most 360 degrees");
+                        }
+                        let flat: Vec<f64> =
+                            profile.iter().flatten().map(|l| l.mm()).chain(center.mm()).collect();
+                        c.finite(id, "profile", &flat);
+                    }
+                }
+            }
             Object::Backsplash(b) => {
                 c.reference(id, "floor", b.floor, K::Floor);
                 c.reference(id, "layer", b.layer, K::Layer);

@@ -376,6 +376,7 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_molding_profile", "name": "P", "points": [[0,0],[10,0],[0,10]]}},
                 {{"op": "save_style", "name": "S"}},
                 {{"op": "add_molding_polyline", "points": [["1'","2'"], ["3'","2'"]], "stack": [{{"height": 50, "depth": 10}}]}},
+                {{"op": "add_solid", "shape": {{"type": "extrude", "points": [[0,0],[1000,0],[0,1000]], "height": 500}}}},
                 {{"op": "add_picture", "path": "x.png", "position": [0,0], "width": "1'"}},
                 {{"op": "add_symbol_def", "name": "S", "positions": [[0,0,0],[1,0,0],[0,-1,0],[0,0,1]], "triangles": [[0,1,2],[0,1,3]]}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
@@ -1898,5 +1899,43 @@ fn textures_patterns_regions_and_styles() {
     // Deleting the wall drops its region.
     apply(&mut s, &format!(r#"[{{"op": "delete", "ids": [{}]}}]"#, wall.0));
     assert_eq!(s.document().count::<MaterialRegion>(), 1);
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
+}
+
+#[test]
+fn shapes_combine_and_become_solids() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_cad", "shape": {"shape": "polyline", "points": [[0,0],[2000,0],[2000,2000],[0,2000]], "closed": true}},
+            {"op": "add_cad", "shape": {"shape": "polyline", "points": [[1000,1000],[3000,1000],[3000,3000],[1000,3000]], "closed": true}},
+            {"op": "add_cad", "shape": {"shape": "circle", "center": [5000,5000], "radius": 300}}]"#,
+    );
+    let (a, b, circle) = (out.created[0], out.created[1], out.created[2]);
+    let joined = apply(
+        &mut s,
+        &format!(r#"[{{"op": "cad_boolean", "ids": [{}, {}], "operation": "union"}}]"#, a.0, b.0),
+    );
+    assert_eq!(joined.created.len(), 1);
+    let doc = s.document();
+    let Shape::Polyline { points, closed } = &doc.get::<Cad>(joined.created[0]).unwrap().shape else {
+        panic!("not a polyline");
+    };
+    assert!(*closed && points.len() == 8, "{points:?}");
+    let solid = apply(
+        &mut s,
+        &format!(r#"[{{"op": "extrude_cad", "ids": [{}], "height": "3'"}}]"#, joined.created[0].0),
+    );
+    let doc = s.document();
+    assert_eq!(doc.count::<Cad>(), 1, "the shape became a solid");
+    assert_eq!(doc.get::<Solid>(solid.created[0]).unwrap().shape.height(), Length::from_feet(3.0));
+    apply(&mut s, &format!(r#"[{{"op": "revolve_cad", "id": {}}}]"#, circle.0));
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    assert_eq!(mesh.parts.iter().filter(|p| s.document().kind_of(p.object) == Some(ObjectKind::Solid)).count(), 2);
+    // Solids move, copy and round-trip like other objects.
+    apply(
+        &mut s,
+        &format!(r#"[{{"op": "transform", "ids": [{}], "transform": {{"type": "translate", "dx": 100, "dy": 0}}}}]"#, solid.created[0].0),
+    );
     assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
 }

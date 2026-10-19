@@ -4,6 +4,7 @@
 //! read a [`Document`](housecraft_model::Document) and derive geometry from it.
 //! They never mutate it, so the API crate decides what to store.
 
+pub mod boolean;
 pub mod cabinets;
 pub mod electrical;
 pub mod math;
@@ -13,6 +14,7 @@ pub mod piers;
 pub mod roof;
 pub mod rooms;
 pub mod skeleton;
+pub mod solid;
 pub mod stairs;
 pub mod sun;
 pub mod sweep;

@@ -510,6 +510,12 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             crate::cabinets::molding_polyline(m, look.stroke, &mut out);
         }
     }
+    for x in doc.iter::<Solid>().filter(|x| x.floor == opts.floor) {
+        let look = ctx.look(x.layer);
+        if look.visible {
+            crate::cabinets::solid(x, look.stroke, &mut out);
+        }
+    }
     for b in doc.iter::<Backsplash>().filter(|b| b.floor == opts.floor) {
         let look = ctx.look(b.layer);
         if look.visible {

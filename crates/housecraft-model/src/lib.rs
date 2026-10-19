@@ -10,6 +10,7 @@ mod building;
 mod cabinet;
 mod display;
 mod imported;
+mod solid;
 mod material;
 mod template;
 mod trim;
@@ -28,6 +29,7 @@ pub use building::*;
 pub use cabinet::*;
 pub use display::*;
 pub use imported::*;
+pub use solid::*;
 pub use material::*;
 pub use trim::*;
 pub use validate::Issue;
@@ -169,6 +171,7 @@ objects! {
     MoldingPolyline => "molding_polyline",
     MaterialRegion => "material_region",
     StylePalette => "style_palette",
+    Solid => "solid",
 }
 
 impl fmt::Display for ObjectKind {
@@ -201,6 +204,7 @@ impl ObjectKind {
                 | ObjectKind::Symbol
                 | ObjectKind::Backsplash
                 | ObjectKind::MoldingPolyline
+                | ObjectKind::Solid
                 | ObjectKind::MaterialRegion
         )
     }
@@ -448,6 +452,7 @@ impl Document {
             Object::Symbol(s) => Some(s.floor),
             Object::Backsplash(b) => Some(b.floor),
             Object::MoldingPolyline(m) => Some(m.floor),
+            Object::Solid(x) => Some(x.floor),
             Object::MaterialRegion(r) => Some(r.floor),
             _ => None,
         }
@@ -477,6 +482,7 @@ impl Document {
             Object::Symbol(s) => Some(s.layer),
             Object::Backsplash(b) => Some(b.layer),
             Object::MoldingPolyline(m) => Some(m.layer),
+            Object::Solid(x) => Some(x.layer),
             Object::MaterialRegion(r) => Some(r.layer),
             _ => None,
         }

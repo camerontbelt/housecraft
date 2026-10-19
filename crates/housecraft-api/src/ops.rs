@@ -456,6 +456,24 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             }
             Object::MaterialRegion(r)
         }
+        Object::Solid(x) => {
+            let mut x = x.clone();
+            let k = t.scale_factor();
+            match &mut x.shape {
+                SolidShape::Extrude { points, height } => {
+                    *points = points.iter().map(|p| t.apply_point(*p)).collect();
+                    if t.is_reflection() {
+                        points.reverse();
+                    }
+                    *height = *height * k;
+                }
+                SolidShape::Revolve { center, profile, .. } => {
+                    *center = t.apply_point(*center);
+                    profile.iter_mut().flatten().for_each(|l| *l = *l * k);
+                }
+            }
+            Object::Solid(x)
+        }
         Object::MoldingPolyline(m) => {
             let mut m = m.clone();
             m.points = m.points.iter().map(|p| t.apply_point(*p)).collect();
@@ -1103,6 +1121,7 @@ pub(crate) fn insert_objects(
                 Object::Symbol(s) => s.floor = f,
                 Object::Backsplash(b) => b.floor = f,
                 Object::MoldingPolyline(m) => m.floor = f,
+                Object::Solid(x) => x.floor = f,
                 Object::MaterialRegion(r) => r.floor = f,
                 _ => {}
             }
@@ -1157,6 +1176,7 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::Symbol(s) => &mut s.floor,
             Object::Backsplash(b) => &mut b.floor,
             Object::MoldingPolyline(m) => &mut m.floor,
+            Object::Solid(x) => &mut x.floor,
             Object::MaterialRegion(r) => &mut r.floor,
             _ => continue,
         };

@@ -17,9 +17,10 @@ mod roofs;
 mod rooms;
 pub mod schedule;
 mod session;
+mod solids;
 mod views;
 
-pub use command::{Command, DetailText, PaintScope, LengthAnchor, Outcome, TransformOp};
+pub use command::{Command, DetailText, PaintScope, LengthAnchor, Outcome, ShapeOp, TransformOp};
 pub use housecraft_geom as geom;
 pub use housecraft_model as model;
 pub use housecraft_units as units;

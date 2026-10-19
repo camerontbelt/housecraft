@@ -275,6 +275,7 @@ pub(crate) fn new_document(name: String) -> Document {
         stair: StairDefaults::default(),
         exterior_stair: StairDefaults::exterior(),
         cabinets: CabinetDefaults::default(),
+        solids: Default::default(),
         materials,
     });
     doc.settings.active_default_set = defaults;

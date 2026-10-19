@@ -543,6 +543,14 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         crate::cabinets::symbol_mesh(doc, s, &mut mesh);
         mesh.end();
     }
+    for x in doc.iter::<housecraft_model::Solid>() {
+        if only_floor.is_some_and(|f| f != x.floor) {
+            continue;
+        }
+        mesh.begin(x.id, Category::Fixture);
+        crate::solid::solid_mesh(doc, x, &mut mesh);
+        mesh.end();
+    }
     for a in doc.iter::<housecraft_model::Appliance>() {
         if only_floor.is_some_and(|f| f != a.floor) || a.renovation == Renovation::Demolish {
             continue;

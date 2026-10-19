@@ -1028,6 +1028,30 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                 );
                             });
                     });
+                egui::CollapsingHeader::new("3D Solids").show(ui, |ui| {
+                    let s = &d.solids;
+                    ui.horizontal(|ui| {
+                        ui.label("Shape");
+                        for preset in SolidPreset::ALL {
+                            if ui.selectable_label(s.preset == preset, preset.name()).clicked() {
+                                commands.push(p(json!({"solids": {"preset": preset}})));
+                            }
+                        }
+                    });
+                    egui::Grid::new("solid_defaults").num_columns(2).show(ui, |ui| {
+                        len_row(ui, doc, &mut app.bufs, "Height", ("solid", "height"), s.height, |v| {
+                            commands.push(p(json!({"solids": {"height": v}})))
+                        });
+                        ui.label("Colour");
+                        let [r, g, b, a] = s.color.0;
+                        let mut c32 = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
+                        if ui.color_edit_button_srgba(&mut c32).changed() {
+                            let [r, g, b, _] = c32.to_srgba_unmultiplied();
+                            commands.push(p(json!({"solids": {"color": Color::rgb(r, g, b)}})));
+                        }
+                        ui.end_row();
+                    });
+                });
                 egui::CollapsingHeader::new("Layers for new objects").show(ui, |ui| {
                     let l = &d.layers;
                     for (label, field, value) in [

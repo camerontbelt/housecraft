@@ -1341,6 +1341,37 @@ impl App {
                         }
                     }
                 });
+                ui.menu_button("Shapes and Solids", |ui| {
+                    let cads: Vec<Id> = self
+                        .selection
+                        .iter()
+                        .copied()
+                        .filter(|id| self.doc().kind_of(*id) == Some(ObjectKind::Cad))
+                        .collect();
+                    let two = cads.len() >= 2;
+                    let mut cmd = None;
+                    for (label, op) in [
+                        ("Join Shapes", housecraft_api::ShapeOp::Union),
+                        ("Intersect Shapes", housecraft_api::ShapeOp::Intersect),
+                        ("Subtract from First Shape", housecraft_api::ShapeOp::Subtract),
+                    ] {
+                        if item(ui, label, "", two) {
+                            cmd = Some(Command::CadBoolean { ids: cads.clone(), operation: op });
+                        }
+                    }
+                    ui.separator();
+                    if item(ui, "Extrude to 3D Solid", "", !cads.is_empty()) {
+                        cmd = Some(Command::ExtrudeCad { ids: cads.clone(), height: None });
+                    }
+                    if item(ui, "Revolve to 3D Solid", "", cads.len() == 1) {
+                        cmd = Some(Command::RevolveCad { id: cads[0], sweep: None });
+                    }
+                    if let Some(c) = cmd
+                        && let Some(out) = self.run1(c)
+                    {
+                        self.selection = out.created.clone();
+                    }
+                });
                 if item(
                     ui,
                     "Make Molding Profile from Selection",
