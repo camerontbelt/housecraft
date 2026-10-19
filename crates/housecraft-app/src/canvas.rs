@@ -170,6 +170,7 @@ impl PlanState {
             Some(Object::CadDetail(d)) => {
                 housecraft_draft::detail::cad_detail(doc, d.id, Some(self.layer_set))
             }
+            Some(Object::Block(b)) => housecraft_draft::detail::cad_detail(doc, b.id, Some(self.layer_set)),
             _ => housecraft_draft::plan(doc, &opts),
         };
         let fills = drawing
@@ -338,6 +339,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         let name = match doc.object(sheet) {
             Some(Object::SectionView(v)) => v.name.clone(),
             Some(Object::CadDetail(d)) => format!("CAD Detail: {}", d.name),
+            Some(Object::Block(b)) => format!("Block: {} (changes show in every copy)", b.name),
             _ => String::new(),
         };
         let text = format!("{name}  ·  draw with the CAD, text and dimension tools  ·  F2 for plan");
@@ -891,7 +893,18 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     .filter(|(d, _)| *d <= tol)
                     .min_by(|a, b| a.0.total_cmp(&b.0))
                     .map(|(_, id)| id);
+                let template = app
+                    .library
+                    .opening
+                    .as_ref()
+                    .filter(|(t, _)| *t == tool)
+                    .map(|(_, v)| v.clone());
                 match wall {
+                    Some(wall) if template.is_some() => commands.push(Command::PlaceOpening {
+                        wall,
+                        at: pt(p),
+                        template: template.expect("checked"),
+                    }),
                     Some(wall) => commands.push(match tool {
                         Tool::Door(style) => Command::AddDoor {
                             wall,

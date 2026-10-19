@@ -19,6 +19,21 @@ pub struct LibraryState {
     pub placing: Option<(ObjectKind, Value, String)>,
     /// A group of objects being placed, and its corner.
     pub group: Option<(Vec<Value>, [f64; 2])>,
+    /// A door or window template and the tool that places it.
+    pub opening: Option<(Tool, Value)>,
+    filters: Option<Vec<library::SavedFilter>>,
+    favorites: Option<std::collections::BTreeSet<String>>,
+    /// The item being edited and its fields as text.
+    editing: Option<ItemEdit>,
+}
+
+struct ItemEdit {
+    item: LibraryItem,
+    name: String,
+    category: String,
+    tags: String,
+    data: String,
+    error: Option<String>,
 }
 
 impl LibraryState {
@@ -35,6 +50,16 @@ impl LibraryState {
     /// Re-read the user library after it changes.
     pub fn refresh(&mut self) {
         self.items = None;
+    }
+
+    fn filters(&mut self) -> &mut Vec<library::SavedFilter> {
+        self.filters
+            .get_or_insert_with(|| library::library_dir().map(|d| library::load_filters(&d)).unwrap_or_default())
+    }
+
+    fn favorites(&mut self) -> &mut std::collections::BTreeSet<String> {
+        self.favorites
+            .get_or_insert_with(|| library::library_dir().map(|d| library::load_favorites(&d)).unwrap_or_default())
     }
 }
 
@@ -56,6 +81,7 @@ fn group_objects(app: &App, item: &LibraryItem) -> (Vec<Value>, [f64; 2]) {
                 let layer = match m.get("kind").and_then(Value::as_str) {
                     Some("stair") => d.layers.stairs.unwrap_or(d.layers.walls),
                     Some("solid") => d.layers.cad,
+                Some("text" | "callout" | "schedule") => d.layers.text,
                     _ => d.layers.cabinets.unwrap_or(d.layers.cad),
                 };
                 m.insert("layer".into(), json!(layer));
@@ -106,6 +132,7 @@ fn ensure_in_plan(app: &mut App, item: &LibraryItem) -> Option<Id> {
     let doc = app.doc();
     let existing = match item.kind {
         LibraryKind::Material => doc.iter::<Material>().find(|m| m.name == item.name).map(|m| m.id),
+        LibraryKind::Molding => doc.iter::<MoldingProfile>().find(|m| m.name == item.name).map(|m| m.id),
         LibraryKind::WallType => doc.iter::<WallType>().find(|w| w.name == item.name).map(|w| w.id),
         _ => None,
     };
@@ -115,6 +142,7 @@ fn ensure_in_plan(app: &mut App, item: &LibraryItem) -> Option<Id> {
     let kind = match item.kind {
         LibraryKind::Material => "material",
         LibraryKind::WallType => "wall_type",
+        LibraryKind::Molding => "molding_profile",
         _ => return None,
     };
     let mut v = item.data.clone();
@@ -145,6 +173,24 @@ fn activate(app: &mut App, item: &LibraryItem) {
         LibraryKind::Group => {
             app.library.group = Some(group_objects(app, item));
             app.set_tool(Tool::PlaceGroup);
+        }
+        LibraryKind::Molding => {
+            if let Some(id) = ensure_in_plan(app, item) {
+                app.spec.push(id);
+                app.info(format!("{} is in the plan; use it in a molding's profile", item.name));
+            }
+        }
+        LibraryKind::Opening => {
+            let door = item.data.get("opening_kind").and_then(|k| k.get("type")) == Some(&json!("door"));
+            let tool = serde_json::from_value::<OpeningKind>(item.data.get("opening_kind").cloned().unwrap_or_default())
+                .map(|k| match k {
+                    OpeningKind::Door(s) => Tool::Door(s),
+                    OpeningKind::Window(s) => Tool::Window(s),
+                })
+                .unwrap_or(if door { Tool::Door(DoorStyle::Hinged) } else { Tool::Window(WindowStyle::DoubleHung) });
+            app.set_tool(tool);
+            app.library.opening = Some((tool, item.data.clone()));
+            app.info(format!("Click on a wall to place {}", item.name));
         }
         LibraryKind::Symbol => {
             if let Some(def) = ensure_symbol(app, item) {
@@ -199,6 +245,8 @@ fn replace(app: &mut App, item: &LibraryItem, all_identical: bool) {
 }
 
 fn item_row(app: &mut App, ui: &mut Ui, item: &LibraryItem, show_category: bool) {
+    let key = library::favorite_key(item);
+    let favorite = app.library.favorites().contains(&key);
     let resp = ui
         .horizontal(|ui| {
             let r = ui.selectable_label(false, &item.name);
@@ -206,6 +254,9 @@ fn item_row(app: &mut App, ui: &mut Ui, item: &LibraryItem, show_category: bool)
                 ui.weak(&item.category);
             }
             if item.is_user() {
+                ui.weak("·mine");
+            }
+            if favorite {
                 ui.weak("★");
             }
             r
@@ -216,9 +267,9 @@ fn item_row(app: &mut App, ui: &mut Ui, item: &LibraryItem, show_category: bool)
         | LibraryKind::Appliance
         | LibraryKind::Block
         | LibraryKind::Group
-        | LibraryKind::Symbol => {
-            "Click, then click in the plan to place it"
-        }
+        | LibraryKind::Symbol => "Click, then click in the plan to place it",
+        LibraryKind::Opening => "Click, then click on a wall to place it",
+        LibraryKind::Molding => "Click to add the profile to the plan",
         LibraryKind::Material => "Click to paint with it in 3D",
         LibraryKind::WallType => "Click to add it to the plan",
     };
@@ -237,6 +288,37 @@ fn item_row(app: &mut App, ui: &mut Ui, item: &LibraryItem, show_category: bool)
                 ui.close();
             }
         }
+        let fav_label = if favorite { "Remove from Favorites" } else { "Add to Favorites" };
+        if ui.button(fav_label).clicked() {
+            let favs = app.library.favorites();
+            if favorite {
+                favs.remove(&key);
+            } else {
+                favs.insert(key.clone());
+            }
+            let favs = favs.clone();
+            if let Some(dir) = library::library_dir()
+                && let Err(e) = library::save_favorites(&dir, &favs)
+            {
+                app.error(format!("Could not save favorites: {e}"));
+            }
+            ui.close();
+        }
+        if ui
+            .button(if item.is_user() { "Edit…" } else { "Edit a Copy…" })
+            .on_hover_text("Change its name, folder, tags and properties")
+            .clicked()
+        {
+            app.library.editing = Some(ItemEdit {
+                item: item.clone(),
+                name: item.name.clone(),
+                category: if item.is_user() { item.category.clone() } else { format!("My Library/{}", item.category) },
+                tags: item.tags.join(", "),
+                data: serde_json::to_string_pretty(&item.data).unwrap_or_default(),
+                error: None,
+            });
+            ui.close();
+        }
         if item.is_user() && ui.button("Delete from Library").clicked() {
             match library::delete_item(item) {
                 Ok(()) => app.library.refresh(),
@@ -245,6 +327,91 @@ fn item_row(app: &mut App, ui: &mut Ui, item: &LibraryItem, show_category: bool)
             ui.close();
         }
     });
+}
+
+/// The window editing a library item.
+fn edit_window(app: &mut App, ui: &mut Ui) {
+    let Some(mut e) = app.library.editing.take() else {
+        return;
+    };
+    let mut open = true;
+    let mut save = false;
+    egui::Window::new(format!("Edit Library Item: {}", e.item.name))
+        .open(&mut open)
+        .default_width(420.0)
+        .show(ui.ctx(), |ui| {
+            egui::Grid::new("lib_edit").num_columns(2).show(ui, |ui| {
+                ui.label("Name");
+                ui.text_edit_singleline(&mut e.name);
+                ui.end_row();
+                ui.label("Folder");
+                ui.text_edit_singleline(&mut e.category);
+                ui.end_row();
+                ui.label("Tags");
+                ui.text_edit_singleline(&mut e.tags).on_hover_text("Separate tags with commas");
+                ui.end_row();
+            });
+            if e.item.kind == LibraryKind::Symbol
+                && let Ok(mut v) = serde_json::from_str::<Value>(&e.data)
+            {
+                let b: SymbolBehavior = v
+                    .get("behavior")
+                    .and_then(|b| serde_json::from_value(b.clone()).ok())
+                    .unwrap_or_default();
+                ui.horizontal(|ui| {
+                    ui.label("Behaves as");
+                    for choice in [
+                        SymbolBehavior::Plain,
+                        SymbolBehavior::Sink,
+                        SymbolBehavior::WallHung { height: housecraft_api::units::Length::from_inches(48.0) },
+                        SymbolBehavior::light(),
+                    ] {
+                        let same = std::mem::discriminant(&choice) == std::mem::discriminant(&b);
+                        if ui.selectable_label(same, choice.name()).clicked() && !same
+                            && let Some(m) = v.as_object_mut()
+                        {
+                            m.insert("behavior".into(), json!(choice));
+                            e.data = serde_json::to_string_pretty(&v).unwrap_or_default();
+                        }
+                    }
+                });
+            }
+            ui.label("Properties");
+            egui::ScrollArea::vertical().max_height(300.0).show(ui, |ui| {
+                ui.add(egui::TextEdit::multiline(&mut e.data).code_editor().desired_width(f32::INFINITY));
+            });
+            if let Some(err) = &e.error {
+                ui.colored_label(ui.visuals().error_fg_color, err);
+            }
+            save = ui.button("Save").clicked();
+        });
+    if save {
+        match serde_json::from_str::<Value>(&e.data) {
+            Ok(data) => {
+                let new = LibraryItem {
+                    name: e.name.trim().to_string(),
+                    category: e.category.trim().trim_matches('/').to_string(),
+                    kind: e.item.kind,
+                    tags: e.tags.split(',').map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).collect(),
+                    data,
+                    source: Default::default(),
+                };
+                match library::library_dir().map(|d| library::update_item(&d, &e.item, &new)) {
+                    Some(Ok(_)) => {
+                        app.library.refresh();
+                        app.info(format!("Saved {}", new.name));
+                        return;
+                    }
+                    Some(Err(err)) => e.error = Some(format!("Could not save: {err}")),
+                    None => e.error = Some("No library folder".into()),
+                }
+            }
+            Err(err) => e.error = Some(format!("Properties aren't valid: {err}")),
+        }
+    }
+    if open {
+        app.library.editing = Some(e);
+    }
 }
 
 /// Items grouped into nested category folders.
@@ -275,6 +442,7 @@ fn tree(app: &mut App, ui: &mut Ui, items: &[LibraryItem], prefix: &str) {
 }
 
 pub fn show(app: &mut App, ui: &mut Ui) {
+    edit_window(app, ui);
     ui.horizontal(|ui| {
         ui.label("Search:");
         ui.add(egui::TextEdit::singleline(&mut app.library.search).desired_width(ui.available_width()))
@@ -360,6 +528,49 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             }
         }
     });
+    // Saved searches.
+    ui.horizontal_wrapped(|ui| {
+        let search = app.library.search.trim().to_string();
+        if ui
+            .add_enabled(!search.is_empty(), egui::Button::new("Save Search").small())
+            .on_hover_text("Keep this search as a button")
+            .clicked()
+        {
+            let filters = app.library.filters();
+            filters.retain(|f| f.query != search);
+            filters.push(library::SavedFilter { name: search.clone(), query: search.clone() });
+            let filters = filters.clone();
+            if let Some(dir) = library::library_dir() {
+                let _ = library::save_filters(&dir, &filters);
+            }
+        }
+        if ui
+            .add_enabled(!app.selection.is_empty(), egui::Button::new("Find Selected").small())
+            .on_hover_text("Search the library for the selected object")
+            .clicked()
+            && let Some(item) = app.selection.iter().find_map(|id| library::item_from_object(app.doc(), *id))
+        {
+            app.library.search = format!("\"{}\"", item.name);
+        }
+        let mut remove = None;
+        for (i, f) in app.library.filters().clone().into_iter().enumerate() {
+            let r = ui.small_button(&f.name).on_hover_text("Right-click to remove");
+            if r.clicked() {
+                app.library.search = f.query.clone();
+            }
+            if r.secondary_clicked() {
+                remove = Some(i);
+            }
+        }
+        if let Some(i) = remove {
+            let filters = app.library.filters();
+            filters.remove(i);
+            let filters = filters.clone();
+            if let Some(dir) = library::library_dir() {
+                let _ = library::save_filters(&dir, &filters);
+            }
+        }
+    });
     if let Some((_, _, name)) = &app.library.placing
         && app.plan.tool == Tool::PlaceTemplate
     {
@@ -370,6 +581,15 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     let items = app.library.items().to_vec();
     egui::ScrollArea::vertical().id_salt("library_items").show(ui, |ui| {
         if search.trim().is_empty() {
+            let favs = app.library.favorites().clone();
+            let starred: Vec<&LibraryItem> = items.iter().filter(|i| favs.contains(&library::favorite_key(i))).collect();
+            if !starred.is_empty() {
+                egui::CollapsingHeader::new("★ Favorites").id_salt("lib_favorites").show(ui, |ui| {
+                    for i in starred {
+                        item_row(app, ui, i, true);
+                    }
+                });
+            }
             tree(app, ui, &items, "");
             return;
         }

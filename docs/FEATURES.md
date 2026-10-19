@@ -477,18 +477,18 @@ These come from reading the whole list and change the architecture, not just the
 | LIB-03 | Catalog update service | ✗ | — (own content feed later) |
 | LIB-04 | Update catalogs on demand | ✗ | — |
 | LIB-05 | Search with AND/OR/NOT/grouping; search attributes | P1 | M5 ✓ |
-| LIB-06 | Tags, filters, favorites, saved filters | P2 | M5 |
-| LIB-07 | Edit CAD blocks in place; apply to all instances | P2 | M5 |
+| LIB-06 | Tags, filters, favorites, saved filters | P2 | M5 ✓ tags (Edit…), favourites folder, saved searches as buttons |
+| LIB-07 | Edit CAD blocks in place; apply to all instances | P2 | M5 ✓ CAD > Blocks > Edit Block opens the block; every copy updates |
 | LIB-08 | Patterns and fill styles in library | P2 | M5 |
-| LIB-09 | Notes, callouts, markers in library | P2 | M5 |
-| LIB-10 | Text in library | P3 | M5 |
+| LIB-09 | Notes, callouts, markers in library | P2 | M5 ✓ built-in notes and callouts; save your own with Add Selected |
+| LIB-10 | Text in library | P3 | M5 ✓ text saves to and places from the library |
 | LIB-11 | Library shortcuts | P3 | M5 |
 | LIB-12 | Replace from library (one or all identical) | P1 | M5 ◐ cabinets and appliances, one or all identical; blocks later |
 | LIB-13 | Library painter with scope | P2 | M5 ✓ |
-| LIB-14 | Edit parametric items stored in library | P2 | M5 |
-| LIB-15 | Edit symbol properties in library | P2 | M5 |
-| LIB-16 | Find a selected object in the library | P3 | M5 |
-| LIB-17 | Save components (doors, hardware, moldings) to library | P2 | M5 |
+| LIB-14 | Edit parametric items stored in library | P2 | M5 ✓ right-click > Edit… changes an item's name, folder, tags and properties (built-ins save an edited copy) |
+| LIB-15 | Edit symbol properties in library | P2 | M5 ✓ symbol behaviour and properties editable in the library |
+| LIB-16 | Find a selected object in the library | P3 | M5 ✓ Find Selected searches the library for the selected object |
+| LIB-17 | Save components (doors, hardware, moldings) to library | P2 | M5 ◐ doors, windows (with grilles, shutters, curtains) and molding profiles; no separate hardware items |
 | LIB-18 | Read user CA libraries (`.calib`/`.calibz`) | P2 | M8 |
 
 ## 20. Materials list & cost estimating
@@ -508,7 +508,7 @@ These come from reading the whole list and change the architecture, not just the
 | EST-11 | Custom columns from object info fields | P1 | M4 ◐ any of a schedule's built-in columns; user-defined object fields later |
 | EST-12 | Callout label shapes | P2 | M4 |
 | EST-13 | Custom mixed-type schedules; existing/new splits | P2 | M4 |
-| EST-14 | Schedules in library | P3 | M5 |
+| EST-14 | Schedules in library | P3 | M5 ✓ schedules save to and place from the library |
 | EST-15 | Polyline objects in schedules | P2 | M4 |
 | EST-16 | Find in plan from schedule | P1 | M4 ✓ |
 | EST-17 | Open object spec from schedule row | P1 | M4 ✓ |
@@ -565,7 +565,7 @@ These come from reading the whole list and change the architecture, not just the
 | IO-04 | 3D import: DXF, DWG, OBJ, 3DS, SKP, STL, DAE; 3D export: DXF, DWG, 3DS, STL, DAE (+ glTF/OBJ/IFC for us) | P1→P3 | M5/M8 |
 | IO-05 | Image import: BMP, JPG, GIF, TIFF, PNG, metafiles, WEBP; transparency color | P1 | M5 ◐ PNG, JPEG, BMP and TIFF pictures with a transparency colour, in plans, views, details and layouts (SVG embeds them); GIF, WebP, metafiles and pictures in PDF/PNG exports later |
 | IO-06 | High-resolution image export, transparent background | P1 | M7 ✓ |
-| IO-07 | Import/export settings objects (views, default sets, layer sets, hotkeys, wall types, line styles, macros, scripts) | P2 | M5 |
+| IO-07 | Import/export settings objects (views, default sets, layer sets, hotkeys, wall types, line styles, macros, scripts) | P2 | M5 ◐ File > Export/Import Settings: wall types, room types, text styles, layers, materials, molding profiles (not views, default sets, hotkeys or macros) |
 | IO-08 | 3D mass import → library objects | P2 | M5 ✓ Library Browser > Import 3D Models… adds every OBJ/STL in a folder as library symbols |
 | IO-09 | Textures → materials in bulk | P2 | M5 ✓ Import Textures… makes a material per image in a folder |
 | IO-10 | Terrain survey import | P2 | M6 |

@@ -39,6 +39,10 @@ pub enum LibraryKind {
     Group,
     /// A 3D [`SymbolDef`] (without its id).
     Symbol,
+    /// A [`MoldingProfile`] (without its id).
+    Molding,
+    /// A door or window: an [`Opening`] without its wall, place or id.
+    Opening,
 }
 
 impl LibraryKind {
@@ -51,6 +55,8 @@ impl LibraryKind {
             LibraryKind::Appliance => "appliance",
             LibraryKind::Group => "group",
             LibraryKind::Symbol => "symbol",
+            LibraryKind::Molding => "molding",
+            LibraryKind::Opening => "door or window",
         }
     }
 
@@ -63,6 +69,8 @@ impl LibraryKind {
             LibraryKind::Appliance => "appliances",
             LibraryKind::Group => "groups",
             LibraryKind::Symbol => "symbols",
+            LibraryKind::Molding => "moldings",
+            LibraryKind::Opening => "openings",
         }
     }
 }
@@ -290,6 +298,48 @@ pub fn builtin() -> Vec<LibraryItem> {
     for w in doc.iter::<WallType>() {
         out.push(item(w.name.clone(), "Walls", LibraryKind::WallType, &[], strip_id(w)));
     }
+    // General notes.
+    for (name, callout) in [
+        ("Verify All Dimensions in Field", false),
+        ("Do Not Scale Drawings", false),
+        ("Match Existing", true),
+        ("See Detail", true),
+        ("Provide Blocking", true),
+    ] {
+        let o = if callout {
+            Object::Callout(Callout {
+                id: Id(1),
+                floor: Id(1),
+                layer: Id(1),
+                text: name.into(),
+                at: housecraft_units::Point2::default(),
+                target: Some(housecraft_units::Point2(Length::from_inches(-24.0), Length::from_inches(-12.0))),
+                marker: None,
+                height: None,
+            })
+        } else {
+            Object::Text(Text {
+                id: Id(1),
+                floor: Id(1),
+                layer: Id(1),
+                position: housecraft_units::Point2::default(),
+                text: name.into(),
+                style: None,
+                rotation: 0.0,
+                justify: Default::default(),
+                height: None,
+                bold: None,
+                color: None,
+            })
+        };
+        out.push(item(
+            name.into(),
+            "Notes",
+            LibraryKind::Group,
+            &["note"],
+            json!({ "objects": [o], "origin": [0, 0] }),
+        ));
+    }
     // Standard cabinet sizes.
     let d = CabinetDefaults::default();
     let i = Length::from_inches;
@@ -481,6 +531,52 @@ pub fn item_from_object(doc: &Document, id: Id) -> Option<LibraryItem> {
             item.category = "My Library/Solids".into();
             return Some(item);
         }
+        Object::Text(t) => {
+            let mut item = group_from_objects(doc, &[id])?;
+            item.name = t.text.lines().next().unwrap_or("Text").chars().take(40).collect();
+            item.category = "My Library/Notes".into();
+            return Some(item);
+        }
+        Object::Callout(c) => {
+            let mut item = group_from_objects(doc, &[id])?;
+            item.name = c.text.lines().next().unwrap_or("Callout").chars().take(40).collect();
+            item.category = "My Library/Notes".into();
+            return Some(item);
+        }
+        Object::Schedule(s) => {
+            let mut item = group_from_objects(doc, &[id])?;
+            item.name = format!("{} Schedule", s.schedule_kind.name());
+            item.category = "My Library/Schedules".into();
+            return Some(item);
+        }
+        Object::MoldingProfile(m) => (
+            m.name.clone(),
+            "My Library/Moldings",
+            LibraryKind::Molding,
+            strip_id(m),
+        ),
+        Object::Opening(o) => {
+            let mut v = serde_json::to_value(o).ok()?;
+            if let Some(m) = v.as_object_mut() {
+                for k in ["id", "wall", "position", "layer", "renovation"] {
+                    m.remove(k);
+                }
+            }
+            let what = match o.opening_kind {
+                OpeningKind::Door(s) => format!("{} Door", s.name()),
+                OpeningKind::Window(s) => format!("{} Window", s.name()),
+            };
+            (
+                format!(
+                    "{what} {}\" x {}\"",
+                    o.width.inches().round(),
+                    o.height.inches().round()
+                ),
+                if o.opening_kind.is_door() { "My Library/Doors" } else { "My Library/Windows" },
+                LibraryKind::Opening,
+                v,
+            )
+        }
         Object::BlockRef(b) => {
             let block = doc.get::<Block>(b.block)?;
             let shapes: Vec<DetailShape> = doc
@@ -524,6 +620,9 @@ fn anchors(o: &Object) -> Vec<housecraft_units::Point2> {
         Object::Countertop(t) => t.points.clone(),
         Object::Backsplash(b) => b.points.clone(),
         Object::Stair(s) => vec![s.start],
+        Object::Text(t) => vec![t.position],
+        Object::Callout(c) => vec![c.at],
+        Object::Schedule(s) => vec![s.position],
         Object::Solid(x) => match &x.shape {
             SolidShape::Extrude { points, .. } => points.clone(),
             SolidShape::Revolve { center, .. } => vec![*center],
@@ -550,9 +649,19 @@ pub fn group_from_objects(doc: &Document, ids: &[Id]) -> Option<LibraryItem> {
                     | ObjectKind::Symbol
                     | ObjectKind::Stair
                     | ObjectKind::Solid
+                    | ObjectKind::Text
+                    | ObjectKind::Callout
+                    | ObjectKind::Schedule
             )
         })
         .cloned()
+        .map(|mut o| {
+            // Text styles belong to the plan; the new plan's are used.
+            if let Object::Text(t) = &mut o {
+                t.style = None;
+            }
+            o
+        })
         .collect();
     if objects.is_empty() {
         return None;
@@ -592,6 +701,98 @@ pub fn group_from_objects(doc: &Document, ids: &[Id]) -> Option<LibraryItem> {
         }),
         source: Source::BuiltIn,
     })
+}
+
+/// A search saved under a name.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SavedFilter {
+    pub name: String,
+    pub query: String,
+}
+
+/// The saved searches in `dir`'s library.
+pub fn load_filters(dir: &Path) -> Vec<SavedFilter> {
+    std::fs::read(dir.join("filters.json"))
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .unwrap_or_default()
+}
+
+pub fn save_filters(dir: &Path, filters: &[SavedFilter]) -> Result<(), Error> {
+    std::fs::create_dir_all(dir)?;
+    std::fs::write(dir.join("filters.json"), serde_json::to_vec_pretty(filters).map_err(corrupt)?)?;
+    Ok(())
+}
+
+/// The key a favourite is remembered by.
+pub fn favorite_key(item: &LibraryItem) -> String {
+    format!("{}|{}|{}", item.kind.name(), item.category, item.name)
+}
+
+/// The favourite items' keys in `dir`'s library.
+pub fn load_favorites(dir: &Path) -> std::collections::BTreeSet<String> {
+    std::fs::read(dir.join("favorites.json"))
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .unwrap_or_default()
+}
+
+pub fn save_favorites(dir: &Path, keys: &std::collections::BTreeSet<String>) -> Result<(), Error> {
+    std::fs::create_dir_all(dir)?;
+    std::fs::write(dir.join("favorites.json"), serde_json::to_vec_pretty(keys).map_err(corrupt)?)?;
+    Ok(())
+}
+
+/// Replace `old` with `new` in the user library (an edited built-in item
+/// is saved as a user item).
+pub fn update_item(dir: &Path, old: &LibraryItem, new: &LibraryItem) -> Result<PathBuf, Error> {
+    if let Source::User(path) = &old.source {
+        std::fs::remove_file(path)?;
+    }
+    save_item(dir, new)
+}
+
+/// Plan settings that can be shared between plans: wall types, room types,
+/// text styles, layers, materials and molding profiles.
+pub const SETTINGS_KINDS: [ObjectKind; 6] = [
+    ObjectKind::WallType,
+    ObjectKind::RoomType,
+    ObjectKind::TextStyle,
+    ObjectKind::Layer,
+    ObjectKind::Material,
+    ObjectKind::MoldingProfile,
+];
+
+/// The plan's shareable settings as a `.hcsettings` file.
+pub fn export_settings(doc: &Document, path: &Path) -> Result<usize, Error> {
+    let objects: Vec<&Object> = doc
+        .objects
+        .values()
+        .filter(|o| SETTINGS_KINDS.contains(&o.kind()))
+        .collect();
+    std::fs::write(
+        path,
+        serde_json::to_vec_pretty(&json!({ "housecraft_settings": 1, "objects": objects })).map_err(corrupt)?,
+    )?;
+    Ok(objects.len())
+}
+
+/// The settings in a `.hcsettings` file. Layers lose their text style
+/// (it belongs to the other plan).
+pub fn read_settings(path: &Path) -> Result<Vec<Object>, Error> {
+    let v: Value = serde_json::from_slice(&std::fs::read(path)?).map_err(corrupt)?;
+    let objects = v
+        .get("objects")
+        .cloned()
+        .ok_or_else(|| Error::Corrupt("not a HouseCraft settings file".into()))?;
+    let mut objects: Vec<Object> = serde_json::from_value(objects).map_err(corrupt)?;
+    objects.retain(|o| SETTINGS_KINDS.contains(&o.kind()));
+    for o in &mut objects {
+        if let Object::Layer(l) = o {
+            l.text_style = None;
+        }
+    }
+    Ok(objects)
 }
 
 /// A library item for a 3D symbol.
@@ -961,5 +1162,46 @@ mod tests {
         assert!(Query::parse("(base").is_err());
         assert!(Query::parse("\"open").is_err());
         assert_eq!(Query::parse("  ").unwrap(), Query::All);
+    }
+}
+
+#[cfg(test)]
+mod settings_tests {
+    use super::*;
+
+    #[test]
+    fn settings_round_trip_and_new_item_kinds() {
+        let doc = Document::new("s");
+        let dir = std::env::temp_dir().join(format!("hc-settings-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("x.hcsettings");
+        let n = export_settings(&doc, &path).unwrap();
+        let back = read_settings(&path).unwrap();
+        assert_eq!(back.len(), n);
+        assert!(back.iter().any(|o| o.kind() == ObjectKind::WallType));
+        assert!(back.iter().all(|o| !matches!(o, Object::Layer(l) if l.text_style.is_some())));
+        // Built-in notes are valid objects.
+        for item in builtin().iter().filter(|i| i.category == "Notes") {
+            let objects: Vec<Object> = serde_json::from_value(item.data["objects"].clone()).unwrap();
+            assert_eq!(objects.len(), 1);
+        }
+        // Favourites and saved searches persist.
+        let mut favs = std::collections::BTreeSet::new();
+        favs.insert("a|b|c".to_string());
+        save_favorites(&dir, &favs).unwrap();
+        assert_eq!(load_favorites(&dir), favs);
+        let filters = vec![SavedFilter { name: "Sinks".into(), query: "tag:sink".into() }];
+        save_filters(&dir, &filters).unwrap();
+        assert_eq!(load_filters(&dir), filters);
+        // Editing a user item replaces its file.
+        let mut item = builtin().into_iter().find(|i| i.kind == LibraryKind::Material).unwrap();
+        let p = save_item(&dir, &item).unwrap();
+        item.source = Source::User(p.clone());
+        let mut renamed = item.clone();
+        renamed.name = "Renamed".into();
+        update_item(&dir, &item, &renamed).unwrap();
+        assert!(!p.exists());
+        assert!(user_items(&dir).iter().any(|i| i.name == "Renamed"));
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

@@ -211,7 +211,10 @@ impl App {
         if self
             .plan
             .sheet
-            .is_some_and(|s| !doc.is_sheet(s) || doc.kind_of(s) == Some(ObjectKind::Floor))
+            .is_some_and(|s| {
+                let block = doc.kind_of(s) == Some(ObjectKind::Block);
+                (!doc.is_sheet(s) && !block) || doc.kind_of(s) == Some(ObjectKind::Floor)
+            })
         {
             self.plan.sheet = None;
             self.plan.fit_requested = true;
@@ -222,6 +225,7 @@ impl App {
     }
 
     pub fn set_tool(&mut self, tool: Tool) {
+        self.library.opening = None;
         self.plan.set_tool(tool);
         self.palette = tool.family();
         self.mode = Mode::Plan;
@@ -486,6 +490,45 @@ impl App {
         match self.selection.as_slice() {
             [id] => self.doc().get::<BlockRef>(*id).cloned(),
             _ => None,
+        }
+    }
+
+    /// File > Export Settings: wall types, room types, text styles, layers,
+    /// materials and molding profiles to share with other plans.
+    fn export_settings(&mut self) {
+        let Some(path) = rfd::FileDialog::new()
+            .add_filter("HouseCraft settings", &["hcsettings"])
+            .set_file_name("Settings.hcsettings")
+            .save_file()
+        else {
+            return;
+        };
+        match housecraft_io_native::library::export_settings(self.doc(), &path) {
+            Ok(n) => self.info(format!("Exported {n} settings")),
+            Err(e) => self.error(format!("Export failed: {e}")),
+        }
+    }
+
+    /// File > Import Settings: settings with a name already in the plan
+    /// replace it; the rest are added.
+    fn import_settings(&mut self) {
+        let Some(path) = rfd::FileDialog::new()
+            .add_filter("HouseCraft settings", &["hcsettings"])
+            .pick_file()
+        else {
+            return;
+        };
+        let objects = match housecraft_io_native::library::read_settings(&path) {
+            Ok(o) => o,
+            Err(e) => {
+                self.error(format!("Import failed: {e}"));
+                return;
+            }
+        };
+        let commands = settings_commands(self.doc(), &objects);
+        let n = objects.len();
+        if self.run(commands).is_some() {
+            self.info(format!("Imported {n} settings"));
         }
     }
 
@@ -969,7 +1012,14 @@ impl App {
                     if item(ui, "Export Floor Plan as SVG…", "", true) {
                         self.export("svg");
                     }
+                    ui.separator();
+                    if item(ui, "Export Settings…", "", true) {
+                        self.export_settings();
+                    }
                 });
+                if item(ui, "Import Settings…", "", true) {
+                    self.import_settings();
+                }
                 if item(ui, "Print…", "Ctrl+P", true) {
                     self.dialogs.print.open = true;
                 }
@@ -1429,6 +1479,13 @@ impl App {
                     let one = self.selected_block_ref().is_some();
                     if item(ui, "Explode Block", "", one) {
                         self.explode_block();
+                    }
+                    if item(ui, "Edit Block", "", one)
+                        && let Some(b) = self.selected_block_ref()
+                    {
+                        let block = b.block;
+                        self.open_sheet(block);
+                        self.info("Editing the block: changes show in every copy. F2 goes back to the plan.");
                     }
                     if item(ui, "Save Block to Library", "", one) {
                         self.save_block_to_library();
@@ -2734,4 +2791,42 @@ fn pick_open_path() -> Option<PathBuf> {
 #[cfg(target_arch = "wasm32")]
 pub fn pick_save_path(_name: &str, _ext: &str) -> Option<PathBuf> {
     None
+}
+
+/// Commands bringing settings from another plan in: one with the same kind
+/// and name is updated, others are added.
+fn settings_commands(doc: &Document, objects: &[Object]) -> Vec<Command> {
+    let mut commands = Vec::new();
+    let mut new = Vec::new();
+    for o in objects {
+        let Ok(mut v) = serde_json::to_value(o) else {
+            continue;
+        };
+        let name = v.get("name").and_then(|n| n.as_str()).unwrap_or_default().to_string();
+        let same = doc
+            .objects
+            .values()
+            .find(|e| e.kind() == o.kind() && serde_json::to_value(e).ok().and_then(|x| x.get("name").cloned()) == Some(serde_json::json!(name)));
+        match same {
+            Some(e) => {
+                if let Some(m) = v.as_object_mut() {
+                    m.remove("id");
+                    m.remove("kind");
+                    // Keep this plan's text style for its layers.
+                    m.remove("text_style");
+                    commands.push(Command::Update { id: e.id(), set: m.clone() });
+                }
+            }
+            None => new.push(v),
+        }
+    }
+    if !new.is_empty() {
+        commands.push(Command::InsertObjects {
+            objects: new,
+            floor: None,
+            dx: Default::default(),
+            dy: Default::default(),
+        });
+    }
+    commands
 }

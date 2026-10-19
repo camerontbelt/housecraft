@@ -2064,3 +2064,21 @@ fn window_grilles_shutters_and_plan_symbols() {
     assert_eq!(s.document().get::<Opening>(win).unwrap().details.plan_block, None);
     assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
 }
+
+#[test]
+fn doors_place_from_library_templates() {
+    let mut s = boxed();
+    let wall = walls(&s)[0].id;
+    let out = apply(
+        &mut s,
+        &format!(
+            r##"[{{"op": "place_opening", "wall": {}, "at": [0, "10'"], "template": {{"opening_kind": {{"type": "window", "style": "casement"}}, "width": "2'", "height": "5'", "sill": "2'", "hinge": "left", "swing_in": true, "details": {{"shutters": {{"style": "panel", "color": "#203040"}}}}}}}}]"##,
+            wall.0
+        ),
+    );
+    let o = s.document().get::<Opening>(out.created[0]).unwrap();
+    assert_eq!(o.width, Length::from_feet(2.0));
+    assert!(o.details.shutters.is_some());
+    assert!((o.position.mm() - Length::from_feet(10.0).mm()).abs() < 1.0);
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
+}

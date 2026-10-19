@@ -323,6 +323,14 @@ pub enum Command {
         #[serde(default)]
         behavior: SymbolBehavior,
     },
+    /// Place a door or window from a library template (an opening's
+    /// properties without its wall, place or id) at the point on `wall`
+    /// nearest `at`.
+    PlaceOpening {
+        wall: Id,
+        at: Point2,
+        template: serde_json::Value,
+    },
     /// Use CAD lines (drawn anywhere, at any size) as a window's grille:
     /// their outline is stretched over the glass.
     MuntinsFromCad { opening: Id, ids: Vec<Id> },
@@ -834,6 +842,7 @@ impl Command {
             Command::AddSymbolDef { .. } => "add_symbol_def",
             Command::ConvertToSymbol { .. } => "convert_to_symbol",
             Command::MuntinsFromCad { .. } => "muntins_from_cad",
+            Command::PlaceOpening { .. } => "place_opening",
             Command::AddSymbol { .. } => "add_symbol",
             Command::ReplaceWith { .. } => "replace_with",
             Command::PaintMaterial { .. } => "paint_material",
@@ -1526,6 +1535,30 @@ impl Command {
                 }));
             }
             Command::ConvertToSymbol { ids, name } => crate::symbols::convert(doc, ids, name, &mut out)?,
+            Command::PlaceOpening { wall, at, template } => {
+                let w = expect::<Wall>(doc, *wall)?.clone();
+                let mut v = template.clone();
+                let m = v
+                    .as_object_mut()
+                    .ok_or_else(|| ApiError::Invalid("the template must be an object".into()))?;
+                let kind: OpeningKind = serde_json::from_value(m.get("opening_kind").cloned().unwrap_or_default())
+                    .map_err(|e| ApiError::Invalid(format!("template: {e}")))?;
+                let width: Length = m
+                    .get("width")
+                    .and_then(|x| serde_json::from_value(x.clone()).ok())
+                    .unwrap_or(if kind.is_door() { d.door.width } else { d.window.width });
+                let position = ops::opening_position(&w, None, Some(*at), width)?;
+                m.insert("id".into(), serde_json::json!(0));
+                m.insert("wall".into(), serde_json::json!(wall));
+                m.insert("position".into(), serde_json::json!(position));
+                m.insert(
+                    "layer".into(),
+                    serde_json::json!(if kind.is_door() { d.layers.doors } else { d.layers.windows }),
+                );
+                let o: Opening =
+                    serde_json::from_value(v).map_err(|e| ApiError::Invalid(format!("template: {e}")))?;
+                out.created.push(doc.insert(o));
+            }
             Command::MuntinsFromCad { opening, ids } => {
                 let o = expect::<Opening>(doc, *opening)?;
                 if o.opening_kind.is_door() {
