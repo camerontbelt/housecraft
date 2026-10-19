@@ -273,6 +273,10 @@ fn pen_px(paper_mm: f64) -> f32 {
 }
 
 pub fn show(app: &mut App, ui: &mut Ui) {
+    if app.prefs.paper_canvas {
+        // Plans are drawn on white paper, as on a printed sheet.
+        *ui.visuals_mut() = egui::Visuals::light();
+    }
     let (resp, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
     let rect = resp.rect;
     app.plan.ensure_cache(app.session.document(), app.rev);
@@ -340,6 +344,9 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     }
 
     paint(app, ui, &painter, &view);
+    if app.prefs.show_axes {
+        paint_origin(&painter, &view);
+    }
     if let Some(sheet) = app.plan.sheet {
         let doc = app.session.document();
         let name = match doc.object(sheet) {
@@ -1943,30 +1950,51 @@ fn paint_grid(app: &App, painter: &Painter, view: &View, dark: bool) {
     }
     let lo = view.to_model(view.rect.left_bottom());
     let hi = view.to_model(view.rect.right_top());
-    let color = if dark {
-        Color32::from_gray(40)
+    // Graph paper: light lavender lines with a stronger line every fourth.
+    let (minor, major) = if dark {
+        (Color32::from_gray(40), Color32::from_gray(58))
     } else {
-        Color32::from_gray(236)
+        (Color32::from_rgb(232, 232, 248), Color32::from_rgb(206, 206, 238))
     };
-    let stroke = Stroke::new(1.0, color);
-    let mut x = (lo.x / step).floor() * step;
-    while x <= hi.x {
-        let s = view.to_screen(DVec2::new(x, 0.0)).x;
-        painter.line_segment(
-            [pos2(s, view.rect.top()), pos2(s, view.rect.bottom())],
-            stroke,
-        );
-        x += step;
+    let pick = |i: f64| {
+        if (i.round() as i64).rem_euclid(4) == 0 {
+            Stroke::new(1.0, major)
+        } else {
+            Stroke::new(1.0, minor)
+        }
+    };
+    let mut i = (lo.x / step).floor();
+    while i * step <= hi.x {
+        let s = view.to_screen(DVec2::new(i * step, 0.0)).x;
+        painter.line_segment([pos2(s, view.rect.top()), pos2(s, view.rect.bottom())], pick(i));
+        i += 1.0;
     }
-    let mut y = (lo.y / step).floor() * step;
-    while y <= hi.y {
-        let s = view.to_screen(DVec2::new(0.0, y)).y;
-        painter.line_segment(
-            [pos2(view.rect.left(), s), pos2(view.rect.right(), s)],
-            stroke,
-        );
-        y += step;
+    let mut j = (lo.y / step).floor();
+    while j * step <= hi.y {
+        let s = view.to_screen(DVec2::new(0.0, j * step)).y;
+        painter.line_segment([pos2(view.rect.left(), s), pos2(view.rect.right(), s)], pick(j));
+        j += 1.0;
     }
+}
+
+const AXIS_X: Color32 = Color32::from_rgb(220, 40, 40);
+const AXIS_Y: Color32 = Color32::from_rgb(40, 90, 230);
+
+/// The plan origin (red X and blue Y arms at 0,0) and an axis indicator in
+/// the lower-left corner.
+fn paint_origin(painter: &Painter, view: &View) {
+    let o = view.to_screen(DVec2::ZERO);
+    if view.rect.expand(40.0).contains(o) {
+        painter.line_segment([o, o + egui::vec2(28.0, 0.0)], Stroke::new(1.5, AXIS_X));
+        painter.line_segment([o, o - egui::vec2(0.0, 28.0)], Stroke::new(1.5, AXIS_Y));
+        painter.circle_stroke(o, 3.0, Stroke::new(1.0, Color32::from_gray(120)));
+    }
+    let c = view.rect.left_bottom() + egui::vec2(18.0, -18.0);
+    let font = egui::FontId::proportional(11.0);
+    painter.arrow(c, egui::vec2(34.0, 0.0), Stroke::new(1.5, AXIS_X));
+    painter.arrow(c, egui::vec2(0.0, -34.0), Stroke::new(1.5, AXIS_Y));
+    painter.text(c + egui::vec2(40.0, 0.0), egui::Align2::LEFT_CENTER, "X", font.clone(), AXIS_X);
+    painter.text(c + egui::vec2(0.0, -40.0), egui::Align2::CENTER_BOTTOM, "Y", font, AXIS_Y);
 }
 
 pub(crate) fn paint_fill(

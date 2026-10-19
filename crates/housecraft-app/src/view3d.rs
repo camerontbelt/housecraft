@@ -1590,6 +1590,9 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         },
     ));
     annotations(app, &painter, rect, vp);
+    if app.prefs.show_axes {
+        axes_gizmo(&painter, rect, vp, app.view3d.target);
+    }
     overlay(app, ui, rect);
     painter_bar(app, ui, rect);
 }
@@ -1663,6 +1666,31 @@ fn paint_panorama(
         }
     }
     painter.add(mesh);
+}
+
+/// Red X, blue Y and green Z arrows in the lower-left corner, turned with
+/// the view.
+fn axes_gizmo(painter: &egui::Painter, rect: Rect, vp: Mat4, target: Vec3) {
+    let screen = |p: Vec3| {
+        let c = vp * p.extend(1.0);
+        egui::vec2(c.x / c.w, -c.y / c.w)
+    };
+    let base = screen(target);
+    let c = rect.left_bottom() + egui::vec2(40.0, -40.0);
+    let font = egui::FontId::proportional(11.0);
+    for (axis, color, name) in [
+        (Vec3::X, egui::Color32::from_rgb(220, 40, 40), "X"),
+        (Vec3::Y, egui::Color32::from_rgb(40, 90, 230), "Y"),
+        (Vec3::Z, egui::Color32::from_rgb(40, 160, 70), "Z"),
+    ] {
+        let d = screen(target + axis * 0.05) - base;
+        if d.length() < 1e-6 {
+            continue;
+        }
+        let d = d.normalized() * 30.0;
+        painter.arrow(c, d, egui::Stroke::new(1.8, color));
+        painter.text(c + d * 1.25, egui::Align2::CENTER_CENTER, name, font.clone(), color);
+    }
 }
 
 /// 3D notes and dimensions over the view (the ones for this camera or all).

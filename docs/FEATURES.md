@@ -58,7 +58,7 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | VIS-01 | Perspective and orthographic cameras; named, saved, editable, copyable | P0 | M1 ✓ |
-| VIS-02 | XYZ axes indicator and project-origin marker in 2D/3D | P1 | M1 |
+| VIS-02 | XYZ axes indicator and project-origin marker in 2D/3D | P1 | M1 ✓ red X / blue Y origin marker and corner axis indicator in plan; X/Y/Z arrows in 3D (Preferences toggle) |
 | VIS-03 | Navigation: orbit, pan, dolly, tilt, walk; standard view-direction presets | P0 | M1 ✓ (orbit, pan, dolly, walk, presets) |
 | VIS-04 | Auto-hide camera-facing exterior walls while navigating small rooms | P2 | M7 ✓ option to hide walls between the camera and what it looks at |
 | VIS-05 | Cross-section slider: interactive cutaway from any side, live | P1 | M4 ✓ |
@@ -591,19 +591,19 @@ These come from reading the whole list and change the architecture, not just the
 | UI-11 | Undo history panel; multi-step undo/redo | P1 | M0 ✓ (engine) / GUI |
 | UI-12 | 3Dconnexion SpaceMouse | P3 | GUI |
 | UI-13 | Dark mode | P0 | GUI ✓ |
-| UI-14 | Virtual graph paper grid | P1 | M1 |
+| UI-14 | Virtual graph paper grid | P1 | M1 ✓ graph-paper reference grid: lavender minor lines with a stronger line every fourth |
 | UI-15 | Auto-archive backups on schedule | P1 | M1 |
 | UI-16 | Single-file project archive (`.CAPROJ` equivalent) | P2 | M8 |
 | UI-17 | Crosshair thickness | P3 | GUI |
 | UI-18 | UI themes | P3 | GUI |
 | UI-19 | Customizable toolbars and toolbar sets | P2 | GUI |
-| UI-20 | Hotkeys incl. sequential chords | P1 | GUI |
+| UI-20 | Hotkeys incl. sequential chords | P1 | GUI ◐ Help > Keyboard Shortcuts: give any tool a key or a two-key sequence ("G W"); the built-in keys can't be changed yet |
 | UI-21 | VR (OpenXR) | P3 | M8 |
 | UI-22 | Context-sensitive help | P2 | GUI |
 | UI-23 | License activation | ✗ | — |
-| UI-24 | Document tabs for open views (Dashboard, plan, 3D, layouts) under the toolbars | P1 | GUI |
-| UI-25 | Plan canvas stays white with a light lavender grid in every theme; red X / blue Y origin marker | P1 | GUI |
-| UI-26 | Typed Tool Search box in the top toolbar; floor stepper (down, floor number, up) beside the plan-view list | P1 | GUI |
+| UI-24 | Document tabs for open views (Dashboard, plan, 3D, layouts) under the toolbars | P1 | GUI ◐ tab strip under the toolbars for the plan, 3D views and layout pages, with close buttons; no Dashboard tab |
+| UI-25 | Plan canvas stays white with a light lavender grid in every theme; red X / blue Y origin marker | P1 | GUI ✓ plans stay on white paper in every theme (Preferences toggle), with lavender grid and red X / blue Y origin |
+| UI-26 | Typed Tool Search box in the top toolbar; floor stepper (down, floor number, up) beside the plan-view list | P1 | GUI ✓ Tool Search box and floor stepper (down, number, up) in the top toolbar |
 | UI-27 | Right dock order Library, Project Browser, Active Layer Display; Project Browser with filter box, Project Folders / Projects tree, Details and Preview panes | P1 | GUI |
-| UI-28 | Status bar: hint, current tool [hotkey], floor, layer, drawing group, live X/Y/Z, view size in pixels | P1 | GUI |
+| UI-28 | Status bar: hint, current tool [hotkey], floor, layer, drawing group, live X/Y/Z, view size in pixels | P1 | GUI ◐ status bar shows hint, tool [hotkey], floor, layer, X/Y/Z and view size in pixels; no drawing groups yet |
 | UI-29 | Account menu before Help; left dock titled "Tool Palette" | P2 | GUI |

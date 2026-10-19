@@ -36,6 +36,50 @@ pub struct Prefs {
     pub snap: SnapSettings,
     pub show_grid: bool,
     pub recent: Vec<String>,
+    /// Plans on white paper whatever the theme (as Chief draws them).
+    pub paper_canvas: bool,
+    /// The red X / blue Y origin marker and axis indicator.
+    pub show_axes: bool,
+    /// Your own tool shortcuts: one key or a two-key sequence.
+    pub hotkeys: Vec<UserHotkey>,
+}
+
+/// A user-assigned shortcut: `keys` is one stroke ("G", "Ctrl+Shift+L") or
+/// two separated by a space ("G W": press G, then W).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UserHotkey {
+    pub keys: String,
+    /// The tool's name as shown in the menus.
+    pub tool: String,
+}
+
+/// Normalise "ctrl+g  w" to "CTRL+G W"; `None` unless one or two strokes.
+pub fn parse_hotkey(text: &str) -> Option<String> {
+    let strokes: Vec<String> = text
+        .split_whitespace()
+        .map(|s| s.to_uppercase())
+        .collect();
+    let ok = |s: &String| {
+        let key = s.rsplit('+').next().unwrap_or("");
+        egui::Key::ALL.iter().any(|k| k.name().eq_ignore_ascii_case(key))
+    };
+    (matches!(strokes.len(), 1 | 2) && strokes.iter().all(ok)).then(|| strokes.join(" "))
+}
+
+/// Every drawing tool, once each, in toolbar order.
+pub fn all_tools() -> Vec<Tool> {
+    let mut out: Vec<Tool> = Vec::new();
+    for t in Family::TOOLBAR
+        .iter()
+        .flat_map(|f| f.tools().iter().copied())
+        .chain(Tool::TERRAIN)
+        .chain(Tool::SITE)
+    {
+        if !out.iter().any(|o| o.name() == t.name()) {
+            out.push(t);
+        }
+    }
+    out
 }
 
 impl Default for Prefs {
@@ -45,6 +89,9 @@ impl Default for Prefs {
             snap: SnapSettings::default(),
             show_grid: true,
             recent: Vec::new(),
+            paper_canvas: true,
+            show_axes: true,
+            hotkeys: Vec::new(),
         }
     }
 }
@@ -115,6 +162,14 @@ pub struct App {
     pub status: Option<(String, bool)>,
     pub pending: Option<Pending>,
     quit_confirmed: bool,
+    /// Views open as document tabs, in the order opened.
+    pub tabs: Vec<Mode>,
+    /// The Tool Search box's text.
+    tool_search: String,
+    /// The first key of a two-key shortcut, and when it was pressed.
+    chord: Option<(String, f64)>,
+    /// Size of the drawing area in points.
+    pub view_px: egui::Vec2,
 }
 
 impl App {
@@ -159,6 +214,10 @@ impl App {
             status: None,
             pending: None,
             quit_confirmed: false,
+            tabs: vec![Mode::Plan],
+            tool_search: String::new(),
+            chord: None,
+            view_px: egui::Vec2::ZERO,
         };
         app.apply_theme(&cc.egui_ctx);
         if let Some(p) = path {
@@ -1171,7 +1230,200 @@ impl App {
         self.selection.clear();
         self.spec.clear();
         self.view3d = View3d::default();
+        self.tabs = vec![Mode::Plan];
+        self.mode = Mode::Plan;
         self.changed();
+    }
+
+    /// The current floor's number: the foundation is 0, storeys from 1.
+    pub fn floor_number(&self) -> usize {
+        self.doc()
+            .floors_by_elevation()
+            .iter()
+            .filter(|f| f.foundation.is_none())
+            .position(|f| f.id == self.plan.floor)
+            .map_or(0, |i| i + 1)
+    }
+
+    /// Remember the current view as a tab; drop tabs whose layout is gone.
+    fn keep_tabs(&mut self) {
+        let doc = self.session.document();
+        self.tabs.retain(|m| match m {
+            Mode::Drawing(crate::drawing_view::DrawingSource::Layout(id, _)) => doc.object(*id).is_some(),
+            _ => true,
+        });
+        if !self.tabs.contains(&self.mode) {
+            self.tabs.push(self.mode);
+        }
+    }
+
+    fn tab_name(&self, mode: Mode) -> String {
+        let doc = self.doc();
+        match mode {
+            Mode::Plan => {
+                let floor = doc.get::<Floor>(self.plan.floor).map_or("Floor", |f| f.name.as_str());
+                let view = self
+                    .plan
+                    .view
+                    .and_then(|v| doc.get::<PlanView>(v))
+                    .map_or("Floor Plan", |v| v.name.as_str());
+                format!("{view}: {floor}")
+            }
+            Mode::ThreeD => self
+                .view3d
+                .camera
+                .and_then(|c| doc.get::<Camera>(c))
+                .map_or("3D View".to_string(), |c| format!("Camera: {}", c.name)),
+            Mode::Drawing(crate::drawing_view::DrawingSource::Layout(id, page)) => {
+                let name = doc.get::<Layout>(id).map(|l| l.name.clone()).unwrap_or_default();
+                format!("{name}: page {}", page + 1)
+            }
+        }
+    }
+
+    /// The tab strip under the toolbars: one tab per open view.
+    fn doc_tabs(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            let mut close = None;
+            for &tab in &self.tabs.clone() {
+                let active = tab == self.mode;
+                let name = self.tab_name(tab);
+                egui::Frame::new()
+                    .fill(if active { ui.visuals().extreme_bg_color } else { ui.visuals().panel_fill })
+                    .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+                    .corner_radius(egui::CornerRadius { nw: 4, ne: 4, sw: 0, se: 0 })
+                    .inner_margin(egui::Margin::symmetric(6, 2))
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            let label = if active { RichText::new(&name).strong() } else { RichText::new(&name) };
+                            if ui.add(egui::Label::new(label).sense(egui::Sense::click())).clicked() {
+                                match tab {
+                                    Mode::Plan => self.show_plan(),
+                                    other => self.mode = other,
+                                }
+                            }
+                            if tab != Mode::Plan && ui.small_button("×").on_hover_text("Close").clicked() {
+                                close = Some(tab);
+                            }
+                        });
+                    });
+            }
+            if let Some(tab) = close {
+                self.tabs.retain(|t| *t != tab);
+                if self.mode == tab {
+                    self.show_plan();
+                }
+            }
+        });
+    }
+
+    /// The Tool Search box: type part of a tool's name, Enter or click to use it.
+    fn tool_search_box(&mut self, ui: &mut Ui) {
+        let r = ui.add(
+            egui::TextEdit::singleline(&mut self.tool_search)
+                .hint_text("Tool Search")
+                .desired_width(150.0),
+        );
+        let query = self.tool_search.trim().to_lowercase();
+        if query.is_empty() {
+            return;
+        }
+        let found: Vec<Tool> = all_tools()
+            .into_iter()
+            .filter(|t| t.name().to_lowercase().contains(&query))
+            .take(12)
+            .collect();
+        let mut chosen = None;
+        if r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+            chosen = found.first().copied();
+        }
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+            self.tool_search.clear();
+            return;
+        }
+        egui::Popup::from_response(&r)
+            .open(true)
+            .close_behavior(egui::PopupCloseBehavior::IgnoreClicks)
+            .show(|ui| {
+                if found.is_empty() {
+                    ui.weak("No tool matches");
+                }
+                for t in &found {
+                    let text = match t.hotkey() {
+                        Some(k) => format!("{}    {k}", t.name()),
+                        None => t.name().to_string(),
+                    };
+                    if ui.selectable_label(false, text).clicked() {
+                        chosen = Some(*t);
+                    }
+                }
+            });
+        if let Some(t) = chosen {
+            self.tool_search.clear();
+            self.mode = Mode::Plan;
+            self.set_tool(t);
+        }
+    }
+
+    /// Your own shortcuts (Help > Keyboard Shortcuts), checked before the
+    /// built-in ones. A two-key shortcut waits up to two seconds for its
+    /// second key.
+    fn user_hotkeys(&mut self, ctx: &egui::Context) {
+        let now = ctx.input(|i| i.time);
+        if self.chord.as_ref().is_some_and(|(_, t)| now - t > 2.0) {
+            self.chord = None;
+        }
+        if self.prefs.hotkeys.is_empty() {
+            return;
+        }
+        let bindings = self.prefs.hotkeys.clone();
+        let mut chord = self.chord.clone();
+        let mut fire: Option<String> = None;
+        ctx.input_mut(|i| {
+            i.events.retain(|e| {
+                let egui::Event::Key { key, pressed: true, modifiers, repeat: false, .. } = e else {
+                    return true;
+                };
+                if matches!(key, egui::Key::Escape) {
+                    let had = chord.take().is_some();
+                    return !had;
+                }
+                let mut stroke = String::new();
+                if modifiers.command {
+                    stroke += "CTRL+";
+                }
+                if modifiers.alt {
+                    stroke += "ALT+";
+                }
+                if modifiers.shift {
+                    stroke += "SHIFT+";
+                }
+                stroke += &key.name().to_uppercase();
+                if let Some((first, _)) = chord.take() {
+                    let seq = format!("{first} {stroke}");
+                    if let Some(b) = bindings.iter().find(|b| b.keys == seq) {
+                        fire = Some(b.tool.clone());
+                    }
+                    return false;
+                }
+                if bindings.iter().any(|b| b.keys.starts_with(&format!("{stroke} "))) {
+                    chord = Some((stroke, now));
+                    return false;
+                }
+                if let Some(b) = bindings.iter().find(|b| b.keys == stroke) {
+                    fire = Some(b.tool.clone());
+                    return false;
+                }
+                true
+            });
+        });
+        self.chord = chord;
+        if let Some(name) = fire
+            && let Some(t) = all_tools().into_iter().find(|t| t.name() == name)
+        {
+            self.mode = Mode::Plan;
+            self.set_tool(t);
+        }
     }
 
     pub fn new_document(&mut self) {
@@ -2337,6 +2589,17 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                         self.dialogs.save_view = Some("New View".into());
                     }
                 });
+            // Floor stepper: down, the floor's number, up.
+            if icons::button(ui, Icon::FloorDown, false, true, "Down One Floor (Shift+M)").clicked() {
+                self.change_floor(false);
+            }
+            ui.label(RichText::new(self.floor_number().to_string()).strong())
+                .on_hover_text("Current floor (0 is the foundation)");
+            if icons::button(ui, Icon::FloorUp, false, true, "Up One Floor (Shift+N)").clicked() {
+                self.change_floor(true);
+            }
+            ui.separator();
+            self.tool_search_box(ui);
             ui.separator();
             if icons::button(ui, Icon::Defaults, false, true, "Default Settings").clicked() {
                 self.dialogs.defaults = true;
@@ -3056,6 +3319,7 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
         if ctx.egui_wants_keyboard_input() {
             return;
         }
+        self.user_hotkeys(ctx);
         use egui::{Key, KeyboardShortcut, Modifiers};
         let consume = |m: Modifiers, k: Key| {
             ctx.input_mut(|i| i.consume_shortcut(&KeyboardShortcut::new(m, k)))
@@ -3212,23 +3476,15 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
     fn status_bar(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             let tool_name = if self.mode == Mode::ThreeD {
-                "3D View"
+                "3D View".to_string()
             } else if matches!(self.mode, Mode::Drawing(_)) {
-                "Elevation / Section"
+                "Layout".to_string()
             } else {
-                self.plan.tool.name()
+                self.plan.tool.tooltip().replace(" (", " [").replace(')', "]")
             };
             ui.label(tool_name);
             ui.separator();
-            // Foundation is floor 0; storeys count from 1.
-            let floor = self
-                .doc()
-                .floors_by_elevation()
-                .iter()
-                .filter(|f| f.foundation.is_none())
-                .position(|f| f.id == self.plan.floor)
-                .map_or(0, |i| i + 1);
-            ui.label(format!("Floor: {floor}"));
+            ui.label(format!("Floor: {}", self.floor_number()));
             ui.separator();
             let layer = self
                 .selection
@@ -3245,6 +3501,8 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                     ui.visuals().text_color()
                 };
                 ui.label(RichText::new(msg).color(color));
+            } else if let Some((first, _)) = &self.chord {
+                ui.strong(format!("{first} … press the second key"));
             } else if self.mode == Mode::Plan
                 && let Some(pick) = &self.plan.pick
             {
@@ -3257,10 +3515,15 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                     && self.mode == Mode::Plan
                 {
                     let doc = self.doc();
+                    ui.monospace(format!("{:.0} x {:.0}", self.view_px.x, self.view_px.y))
+                        .on_hover_text("Drawing area size in pixels");
+                    ui.separator();
+                    let z = doc.get::<Floor>(self.plan.floor).map_or(Length::ZERO, |f| f.elevation);
                     ui.monospace(format!(
-                        "X: {}  Y: {}",
-                        crate::util::fmt(doc, housecraft_api::units::Length::from_mm(p.x)),
-                        crate::util::fmt(doc, housecraft_api::units::Length::from_mm(p.y)),
+                        "X: {}  Y: {}  Z: {}",
+                        crate::util::fmt(doc, Length::from_mm(p.x)),
+                        crate::util::fmt(doc, Length::from_mm(p.y)),
+                        crate::util::fmt(doc, z),
                     ));
                     if let Some(s) = self.plan.snap
                         && !s.kind.label().is_empty()
@@ -3373,6 +3636,8 @@ impl eframe::App for App {
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(ui));
         egui::Panel::top("toolbar_main").show(ui, |ui| self.toolbar_main(ui));
         egui::Panel::top("toolbar_build").show(ui, |ui| self.toolbar_build(ui));
+        self.keep_tabs();
+        egui::Panel::top("doc_tabs").show(ui, |ui| self.doc_tabs(ui));
         egui::Panel::bottom("status").show(ui, |ui| self.status_bar(ui));
         egui::Panel::left("tool_palette")
             .resizable(true)
@@ -3390,6 +3655,7 @@ impl eframe::App for App {
             .frame(egui::Frame::NONE)
             .show(ui, |ui| {
                 egui::Panel::bottom("edit_toolbar").show(ui, |ui| self.edit_toolbar(ui));
+                self.view_px = ui.available_size();
                 match self.mode {
                     Mode::Plan => crate::canvas::show(self, ui),
                     Mode::ThreeD => crate::view3d::show(self, ui),
@@ -3579,5 +3845,21 @@ impl Align {
 
     pub fn is_distribute(self) -> bool {
         matches!(self, Align::DistributeHorizontally | Align::DistributeVertically)
+    }
+}
+
+#[cfg(test)]
+mod hotkey_tests {
+    use super::parse_hotkey;
+
+    #[test]
+    fn hotkeys_parse_one_or_two_strokes() {
+        assert_eq!(parse_hotkey("g").as_deref(), Some("G"));
+        assert_eq!(parse_hotkey(" ctrl+shift+l ").as_deref(), Some("CTRL+SHIFT+L"));
+        assert_eq!(parse_hotkey("g  w").as_deref(), Some("G W"));
+        assert_eq!(parse_hotkey("F5").as_deref(), Some("F5"));
+        assert_eq!(parse_hotkey(""), None);
+        assert_eq!(parse_hotkey("a b c"), None);
+        assert_eq!(parse_hotkey("ctrl+nothing"), None);
     }
 }

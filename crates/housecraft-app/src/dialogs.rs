@@ -177,6 +177,8 @@ const MONTHS: [(&str, u32); 12] = [
 
 #[derive(Default)]
 pub struct Dialogs {
+    /// Keys and tool name being entered in Keyboard Shortcuts.
+    pub new_hotkey: (String, String),
     pub foundation: FoundationDialog,
     pub sun: SunDialog,
     pub print: PrintDialog,
@@ -495,7 +497,9 @@ fn prefs_dialog(app: &mut App, ctx: &Context) {
                     }
                 }
             });
-            ui.checkbox(&mut app.prefs.show_grid, "Show reference grid");
+            ui.checkbox(&mut app.prefs.show_grid, "Show reference grid (graph paper)");
+            ui.checkbox(&mut app.prefs.paper_canvas, "Plans on white paper in every theme");
+            ui.checkbox(&mut app.prefs.show_axes, "Show origin marker and X/Y/Z axes");
             ui.separator();
             ui.heading("Snapping");
             let s = &mut app.prefs.snap;
@@ -1484,10 +1488,50 @@ fn save_view_dialog(app: &mut App, ctx: &Context) {
 }
 
 fn shortcuts_dialog(app: &mut App, ctx: &Context) {
+    let mut open = app.dialogs.shortcuts;
     egui::Window::new("Keyboard Shortcuts")
-        .open(&mut app.dialogs.shortcuts)
+        .open(&mut open)
         .resizable(true)
         .show(ctx, |ui| {
+            ui.heading("Your shortcuts");
+            ui.weak("Give any tool a key, or two keys pressed one after the other (\"G W\").");
+            let mut remove = None;
+            egui::Grid::new("user_keys").striped(true).show(ui, |ui| {
+                for (i, h) in app.prefs.hotkeys.iter().enumerate() {
+                    ui.monospace(&h.keys);
+                    ui.label(&h.tool);
+                    if ui.small_button("Remove").clicked() {
+                        remove = Some(i);
+                    }
+                    ui.end_row();
+                }
+            });
+            if let Some(i) = remove {
+                app.prefs.hotkeys.remove(i);
+            }
+            let (keys, tool) = &mut app.dialogs.new_hotkey;
+            ui.horizontal(|ui| {
+                ui.add(egui::TextEdit::singleline(keys).hint_text("Keys, e.g. G W").desired_width(90.0));
+                egui::ComboBox::from_id_salt("hotkey_tool")
+                    .selected_text(if tool.is_empty() { "Choose a tool" } else { tool.as_str() })
+                    .height(400.0)
+                    .show_ui(ui, |ui| {
+                        for t in crate::app::all_tools() {
+                            ui.selectable_value(tool, t.name().to_string(), t.name());
+                        }
+                    });
+                let parsed = crate::app::parse_hotkey(keys);
+                let ok = parsed.is_some() && !tool.is_empty();
+                if ui.add_enabled(ok, egui::Button::new("Add")).clicked()
+                    && let Some(k) = parsed
+                {
+                    app.prefs.hotkeys.retain(|h| h.keys != k);
+                    app.prefs.hotkeys.push(crate::app::UserHotkey { keys: k, tool: tool.clone() });
+                    keys.clear();
+                }
+            });
+            ui.separator();
+            ui.heading("Built in");
             egui::ScrollArea::vertical().show(ui, |ui| {
                 egui::Grid::new("keys").striped(true).show(ui, |ui| {
                     for (k, what) in [
@@ -1535,6 +1579,7 @@ fn shortcuts_dialog(app: &mut App, ctx: &Context) {
                 });
             });
         });
+    app.dialogs.shortcuts = open;
 }
 
 fn about_dialog(app: &mut App, ctx: &Context) {
