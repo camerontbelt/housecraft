@@ -4,7 +4,7 @@ use housecraft_units::{Length, Point2, Point3};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{Id, Cladding, CornerTrim, RoomMolding};
+use crate::{Color, Id, Cladding, CornerTrim, RoomMolding};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Floor {
@@ -733,6 +733,135 @@ pub struct Opening {
     #[serde(default)]
     pub renovation: Renovation,
     pub layer: Id,
+    /// Grilles, shutters, curtains and a custom plan symbol (windows).
+    #[serde(default)]
+    pub details: OpeningDetails,
+}
+
+/// Grille bars dividing a window's glass.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Muntins {
+    /// Panes across and up (2 across and 3 up is six panes).
+    pub across: u32,
+    pub up: u32,
+    #[serde(default = "muntin_width")]
+    pub width: Length,
+    /// Extra bars as (from, to) points on the glass, 0–1 from its
+    /// bottom-left corner (made from CAD lines).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub custom: Vec<[[f64; 2]; 2]>,
+}
+
+fn muntin_width() -> Length {
+    Length::from_inches(0.75)
+}
+
+impl Default for Muntins {
+    fn default() -> Self {
+        Muntins {
+            across: 2,
+            up: 2,
+            width: muntin_width(),
+            custom: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ShutterStyle {
+    #[default]
+    Louvered,
+    Panel,
+    Board,
+}
+
+impl ShutterStyle {
+    pub const ALL: [ShutterStyle; 3] = [ShutterStyle::Louvered, ShutterStyle::Panel, ShutterStyle::Board];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            ShutterStyle::Louvered => "Louvered",
+            ShutterStyle::Panel => "Raised panel",
+            ShutterStyle::Board => "Board and batten",
+        }
+    }
+}
+
+/// A pair of exterior shutters beside a window.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Shutters {
+    pub style: ShutterStyle,
+    /// Each shutter's width; half the window's when unset.
+    #[serde(default)]
+    pub width: Option<Length>,
+    pub color: Color,
+}
+
+impl Default for Shutters {
+    fn default() -> Self {
+        Shutters {
+            style: ShutterStyle::Louvered,
+            width: None,
+            color: Color::rgb(40, 60, 50),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TreatmentKind {
+    #[default]
+    Curtains,
+    Blinds,
+    Shade,
+}
+
+impl TreatmentKind {
+    pub const ALL: [TreatmentKind; 3] = [TreatmentKind::Curtains, TreatmentKind::Blinds, TreatmentKind::Shade];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            TreatmentKind::Curtains => "Curtains",
+            TreatmentKind::Blinds => "Blinds",
+            TreatmentKind::Shade => "Roller shade",
+        }
+    }
+}
+
+/// Curtains, blinds or a shade on a window's room side.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct WindowTreatment {
+    pub kind: TreatmentKind,
+    pub color: Color,
+    /// 0 closed to 1 open (curtains pulled back, blinds and shades raised).
+    #[serde(default)]
+    pub open: f64,
+}
+
+impl Default for WindowTreatment {
+    fn default() -> Self {
+        WindowTreatment {
+            kind: TreatmentKind::Curtains,
+            color: Color::rgb(225, 215, 195),
+            open: 0.7,
+        }
+    }
+}
+
+/// Window extras.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
+pub struct OpeningDetails {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub muntins: Option<Muntins>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shutters: Option<Shutters>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub treatment: Option<WindowTreatment>,
+    /// A CAD block drawn in plan in place of the standard symbol,
+    /// stretched to the opening's width and the wall's thickness.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan_block: Option<Id>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

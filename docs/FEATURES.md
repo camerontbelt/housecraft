@@ -230,10 +230,10 @@ These come from reading the whole list and change the architecture, not just the
 | DW-10 | Corner windows (with/without post) | P2 | M3 |
 | DW-11 | Mulled units; mulled doors recognized in schedules | P2 | M3 |
 | DW-12 | Openings in double walls | P3 | M3 |
-| DW-13 | Custom plan symbols for symbol windows | P3 | M5 |
-| DW-14 | Custom muntins from CAD | P3 | M5 |
-| DW-15 | Window treatments (curtains, blinds) | P3 | M5 |
-| DW-16 | Shutters (parametric or symbol, own layer) | P2 | M5 |
+| DW-13 | Custom plan symbols for symbol windows | P3 | M5 ✓ any CAD block as a window's plan symbol, stretched over the opening |
+| DW-14 | Custom muntins from CAD | P3 | M5 ✓ CAD > Make Window Grille from Selection; plus across × up grids |
+| DW-15 | Window treatments (curtains, blinds) | P3 | M5 ✓ curtains, blinds and roller shades with an open amount, in plan and 3D |
+| DW-16 | Shutters (parametric or symbol, own layer) | P2 | M5 ◐ louvered, raised-panel and board shutters in plan and 3D; drawn on the window's layer, not their own |
 | DW-17 | Lintels, sills, aprons | P2 | M3 |
 | DW-18 | Glazing area and U-factor | P2 | M4 |
 

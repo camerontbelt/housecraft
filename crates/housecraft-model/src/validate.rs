@@ -170,6 +170,27 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
                 c.reference(id, "wall", o.wall, K::Wall);
                 c.reference(id, "layer", o.layer, K::Layer);
+                let dt = &o.details;
+                if let Some(b) = dt.plan_block {
+                    c.reference(id, "plan_block", b, K::Block);
+                }
+                if let Some(m) = &dt.muntins {
+                    if m.across == 0 || m.up == 0 {
+                        c.issue(id, "muntins need at least one pane across and up");
+                    }
+                    c.positive(id, "muntin width", m.width);
+                    if m.custom.iter().flatten().flatten().any(|v| !v.is_finite()) {
+                        c.issue(id, "muntin points must be finite");
+                    }
+                }
+                if let Some(w) = dt.shutters.as_ref().and_then(|s| s.width) {
+                    c.positive(id, "shutter width", w);
+                }
+                if let Some(t) = &dt.treatment
+                    && !(0.0..=1.0).contains(&t.open)
+                {
+                    c.issue(id, "a window treatment opens from 0 to 1");
+                }
                 c.positive(id, "width", o.width);
                 c.positive(id, "height", o.height);
                 c.non_negative(id, "sill", o.sill);

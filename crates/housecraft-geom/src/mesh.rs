@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use housecraft_model::{
     CeilingStyle, Document, Floor, FoundationKind, Id, Material, MaterialAssignment, Opening,
     OpeningKind, Renovation, Room, Surface,
+    ShutterStyle, TreatmentKind,
 };
 
 use crate::math::v2;
@@ -1685,6 +1686,176 @@ fn opening_mesh(g: &WallGeom, o: &Opening, z0: f64, mesh: &mut Mesh) {
             slab(mesh, 2.0 * g.half, a, b, top - frame, top, Surface::Frame);
             slab(mesh, 2.0 * g.half, a, a + frame, bottom, top, Surface::Frame);
             slab(mesh, 2.0 * g.half, b - frame, b, bottom, top, Surface::Frame);
+            window_details(g, o, z0, (a + frame, b - frame), (bottom + frame, top - frame), mesh);
+        }
+    }
+}
+
+/// A look of plain colour.
+fn color_look(c: housecraft_model::Color, shade: f32) -> Look {
+    let [r, g, b, _] = c.0;
+    let f = |v: u8| v as f32 / 255.0 * shade;
+    Look {
+        color: [f(r), f(g), f(b), 1.0],
+        pbr: [0.7, 0.0, 0.0, 1.0],
+        surface: None,
+        tex: None,
+    }
+}
+
+/// A box on a wall: `u` along it, `z` up, `off` out from its centre line
+/// toward the exterior (left) side.
+#[allow(clippy::too_many_arguments)]
+fn wall_box(g: &WallGeom, u: (f64, f64), z: (f64, f64), off: (f64, f64), look: Look, mesh: &mut Mesh) {
+    if (u.1 - u.0).abs() < 0.5 || (off.1 - off.0).abs() < 0.1 {
+        return;
+    }
+    let quad = vec![
+        g.center_at(u.0) + g.left * off.0,
+        g.center_at(u.1) + g.left * off.0,
+        g.center_at(u.1) + g.left * off.1,
+        g.center_at(u.0) + g.left * off.1,
+    ];
+    mesh.prism_look(&ccw(quad), z.0.min(z.1), z.0.max(z.1), look);
+}
+
+/// A bar of `width` on the wall plane between two (u, z) points.
+fn wall_bar(g: &WallGeom, p: DVec2, q: DVec2, width: f64, off: (f64, f64), look: Look, mesh: &mut Mesh) {
+    let d = (q - p).normalize_or_zero();
+    if d == DVec2::ZERO {
+        return;
+    }
+    let n = perp_of(d) * width / 2.0;
+    let corners = [p + n, q + n, q - n, p - n];
+    let at = |c: DVec2, o: f64| (g.center_at(c.x) + g.left * o).extend(c.y);
+    let face = |o: f64| corners.map(|c| at(c, o)).to_vec();
+    for o in [off.0, off.1] {
+        let f = face(o);
+        let mut r = f.clone();
+        r.reverse();
+        mesh.polygon_look(&f, look);
+        mesh.polygon_look(&r, look);
+    }
+    for i in 0..4 {
+        let (c0, c1) = (corners[i], corners[(i + 1) % 4]);
+        let side = vec![at(c0, off.0), at(c1, off.0), at(c1, off.1), at(c0, off.1)];
+        let mut r = side.clone();
+        r.reverse();
+        mesh.polygon_look(&side, look);
+        mesh.polygon_look(&r, look);
+    }
+}
+
+/// Muntins, shutters and curtains or blinds for a window whose glass spans
+/// `gu` along the wall and `gz` up.
+fn window_details(g: &WallGeom, o: &Opening, z0: f64, gu: (f64, f64), gz: (f64, f64), mesh: &mut Mesh) {
+    let dt = &o.details;
+    let frame_look = mesh.look(Surface::Frame);
+    if let Some(m) = &dt.muntins {
+        let w = m.width.mm();
+        let (gw, gh) = (gu.1 - gu.0, gz.1 - gz.0);
+        let off = (-15.0, 15.0);
+        for i in 1..m.across.max(1) {
+            let u = gu.0 + gw * i as f64 / m.across as f64;
+            wall_box(g, (u - w / 2.0, u + w / 2.0), gz, off, frame_look, mesh);
+        }
+        for j in 1..m.up.max(1) {
+            let z = gz.0 + gh * j as f64 / m.up as f64;
+            wall_box(g, gu, (z - w / 2.0, z + w / 2.0), off, frame_look, mesh);
+        }
+        for [p, q] in &m.custom {
+            let at = |v: &[f64; 2]| DVec2::new(gu.0 + v[0] * gw, gz.0 + v[1] * gh);
+            wall_bar(g, at(p), at(q), w, off, frame_look, mesh);
+        }
+    }
+    let (a, b) = (gu.0 - 50.0, gu.1 + 50.0);
+    let (bottom, top) = (gz.0 - 50.0, gz.1 + 50.0);
+    if let Some(s) = &dt.shutters {
+        let sw = s.width.map_or((b - a) / 2.0, |w| w.mm());
+        let look = mesh.painted_whole().unwrap_or(color_look(s.color, 1.0));
+        let dark = color_look(s.color, 0.55);
+        let o0 = g.half + 25.0;
+        for (u0, u1) in [(a - sw, a), (b, b + sw)] {
+            match s.style {
+                ShutterStyle::Louvered => {
+                    wall_box(g, (u0, u1), (bottom, top), (o0, o0 + 8.0), dark, mesh);
+                    wall_box(g, (u0, u0 + 50.0), (bottom, top), (o0, o0 + 30.0), look, mesh);
+                    wall_box(g, (u1 - 50.0, u1), (bottom, top), (o0, o0 + 30.0), look, mesh);
+                    wall_box(g, (u0, u1), (bottom, bottom + 80.0), (o0, o0 + 30.0), look, mesh);
+                    wall_box(g, (u0, u1), (top - 80.0, top), (o0, o0 + 30.0), look, mesh);
+                    let mut z = bottom + 90.0;
+                    while z + 25.0 < top - 80.0 {
+                        wall_box(g, (u0 + 50.0, u1 - 50.0), (z, z + 25.0), (o0 + 8.0, o0 + 24.0), look, mesh);
+                        z += 40.0;
+                    }
+                }
+                ShutterStyle::Panel => {
+                    wall_box(g, (u0, u1), (bottom, top), (o0, o0 + 18.0), look, mesh);
+                    let mid = (bottom + top) / 2.0;
+                    for (p0, p1) in [(bottom + 60.0, mid - 30.0), (mid + 30.0, top - 60.0)] {
+                        wall_box(g, (u0 + 60.0, u1 - 60.0), (p0, p1), (o0 + 18.0, o0 + 26.0), look, mesh);
+                    }
+                }
+                ShutterStyle::Board => {
+                    let bw = ((u1 - u0) - 16.0) / 3.0;
+                    for k in 0..3 {
+                        let s0 = u0 + k as f64 * (bw + 8.0);
+                        wall_box(g, (s0, s0 + bw), (bottom, top), (o0, o0 + 20.0), look, mesh);
+                    }
+                    let h = top - bottom;
+                    for zc in [bottom + 0.2 * h, top - 0.2 * h] {
+                        wall_box(g, (u0 + 20.0, u1 - 20.0), (zc - 45.0, zc + 45.0), (o0 + 20.0, o0 + 40.0), look, mesh);
+                    }
+                }
+            }
+        }
+    }
+    if let Some(t) = &dt.treatment {
+        let look = color_look(t.color, 1.0);
+        let open = t.open.clamp(0.0, 1.0);
+        let room = -g.half;
+        match t.kind {
+            TreatmentKind::Curtains => {
+                let (r0, r1) = (a - 200.0, b + 200.0);
+                let rod_off = room - 80.0;
+                wall_box(g, (r0 - 30.0, r1 + 30.0), (top + 150.0, top + 180.0), (rod_off - 15.0, rod_off + 15.0), frame_look, mesh);
+                let half = (r1 - r0) / 2.0;
+                let pw = ((1.0 - open) * half).max(150.0);
+                for (u0, u1) in [(r0, r0 + pw), (r1 - pw, r1)] {
+                    // Folds: a zigzag strip hanging from the rod to the floor.
+                    let folds = ((u1 - u0) / 100.0).ceil().max(1.0) as usize;
+                    let mut front = Vec::new();
+                    let mut back = Vec::new();
+                    for i in 0..=folds {
+                        let u = u0 + (u1 - u0) * i as f64 / folds as f64;
+                        let o = room - if i % 2 == 0 { 50.0 } else { 110.0 };
+                        front.push(g.center_at(u) + g.left * o);
+                        back.push(g.center_at(u) + g.left * (o + 8.0));
+                    }
+                    back.reverse();
+                    front.extend(back);
+                    mesh.prism_look(&ccw(front), z0 + 20.0, top + 150.0, look);
+                }
+            }
+            TreatmentKind::Blinds => {
+                let off = (room + 35.0, room + 60.0);
+                let stop = gz.1 - (1.0 - open) * (gz.1 - gz.0);
+                if open >= 0.999 {
+                    wall_box(g, gu, (gz.1 - 60.0, gz.1), off, look, mesh);
+                } else {
+                    let mut z = gz.1 - 3.0;
+                    while z > stop {
+                        wall_box(g, gu, (z - 3.0, z), off, look, mesh);
+                        z -= 25.0;
+                    }
+                    wall_box(g, gu, (stop, stop + 20.0), off, look, mesh);
+                }
+            }
+            TreatmentKind::Shade => {
+                let stop = gz.1 - (1.0 - open) * (gz.1 - gz.0);
+                wall_box(g, gu, (gz.1 - 50.0, gz.1), (room + 30.0, room + 80.0), look, mesh);
+                wall_box(g, gu, (stop, gz.1), (room + 40.0, room + 45.0), look, mesh);
+            }
         }
     }
 }

@@ -713,6 +713,7 @@ mod tests {
             plan_swing: 90.0,
             renovation: Default::default(),
             layer: d.layers.doors,
+            details: Default::default(),
         });
         assert_eq!(doc.validate().len(), 1, "{:?}", doc.validate());
     }

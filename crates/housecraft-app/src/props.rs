@@ -1413,6 +1413,9 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             {
                 ed.out.push(patch(id, json!({ "sill": l })));
             }
+            if !o.opening_kind.is_door() {
+                window_details_editor(ui, ed, &o.details);
+            }
             if let Some(l) = ed.length(ui, "Distance from Wall Start", "position", o.position) {
                 ed.out.push(patch(id, json!({ "position": l })));
             }
@@ -2104,6 +2107,91 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.weak("Edit values in Edit > Default Settings.");
             ui.end_row();
         }
+    }
+}
+
+/// Grilles, shutters, curtains and the plan symbol of a window.
+fn window_details_editor(ui: &mut Ui, ed: &mut Ed<'_>, current: &OpeningDetails) {
+    let mut dt = current.clone();
+    Ed::label(ui, "Grille");
+    ui.horizontal(|ui| {
+        let mut on = dt.muntins.is_some();
+        if ui.checkbox(&mut on, "").changed() {
+            dt.muntins = on.then(Muntins::default);
+        }
+        if let Some(m) = &mut dt.muntins {
+            ui.add(egui::DragValue::new(&mut m.across).range(1..=12).suffix(" across"));
+            ui.add(egui::DragValue::new(&mut m.up).range(1..=12).suffix(" up"));
+            let mut w = m.width.inches();
+            if ui.add(egui::DragValue::new(&mut w).range(0.25..=4.0).speed(0.05).suffix("\" wide")).changed() {
+                m.width = Length::from_inches(w);
+            }
+            if !m.custom.is_empty() && ui.small_button("Clear custom bars").clicked() {
+                m.custom.clear();
+            }
+        }
+    });
+    ui.end_row();
+    Ed::label(ui, "Shutters");
+    ui.horizontal(|ui| {
+        let mut on = dt.shutters.is_some();
+        if ui.checkbox(&mut on, "").changed() {
+            dt.shutters = on.then(Shutters::default);
+        }
+        if let Some(s) = &mut dt.shutters {
+            egui::ComboBox::from_id_salt(ed.key("shutter_style"))
+                .selected_text(s.style.name())
+                .show_ui(ui, |ui| {
+                    for st in ShutterStyle::ALL {
+                        ui.selectable_value(&mut s.style, st, st.name());
+                    }
+                });
+            let mut c32 = to_color32(s.color);
+            if ui.color_edit_button_srgba(&mut c32).changed() {
+                s.color = from_color32(c32);
+            }
+        }
+    });
+    ui.end_row();
+    Ed::label(ui, "Inside");
+    ui.horizontal(|ui| {
+        let mut on = dt.treatment.is_some();
+        if ui.checkbox(&mut on, "").changed() {
+            dt.treatment = on.then(WindowTreatment::default);
+        }
+        if let Some(t) = &mut dt.treatment {
+            egui::ComboBox::from_id_salt(ed.key("treatment"))
+                .selected_text(t.kind.name())
+                .show_ui(ui, |ui| {
+                    for k in TreatmentKind::ALL {
+                        ui.selectable_value(&mut t.kind, k, k.name());
+                    }
+                });
+            ui.add(egui::Slider::new(&mut t.open, 0.0..=1.0).text("open"));
+            let mut c32 = to_color32(t.color);
+            if ui.color_edit_button_srgba(&mut c32).changed() {
+                t.color = from_color32(c32);
+            }
+        }
+    });
+    ui.end_row();
+    Ed::label(ui, "Plan Symbol");
+    let doc = ed.doc;
+    let name = |b: Option<Id>| {
+        b.and_then(|b| doc.get::<Block>(b))
+            .map_or("Standard".to_string(), |b| b.name.clone())
+    };
+    egui::ComboBox::from_id_salt(ed.key("plan_block"))
+        .selected_text(name(dt.plan_block))
+        .show_ui(ui, |ui| {
+            ui.selectable_value(&mut dt.plan_block, None, "Standard");
+            for b in doc.iter::<Block>() {
+                ui.selectable_value(&mut dt.plan_block, Some(b.id), &b.name);
+            }
+        });
+    ui.end_row();
+    if dt != *current {
+        ed.out.push(patch(ed.id, json!({ "details": dt })));
     }
 }
 

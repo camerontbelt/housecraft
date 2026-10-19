@@ -2031,3 +2031,36 @@ fn symbols_convert_cut_counters_light_rooms_and_dress_stairs() {
     assert_eq!(s.document().get::<Stair>(stair).unwrap().baluster, None);
     assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
 }
+
+#[test]
+fn window_grilles_shutters_and_plan_symbols() {
+    let mut s = boxed();
+    let wall = walls(&s)[0].id;
+    let win = apply(&mut s, &format!(r#"[{{"op": "add_window", "wall": {}, "position": "10'"}}]"#, wall.0)).created[0];
+    let count = |s: &Session| {
+        let m = housecraft_api::geom::mesh::build(s.document(), None);
+        m.parts.iter().filter(|p| p.object == win).map(|p| p.index_count).sum::<u32>()
+    };
+    let plain = count(&s);
+    let cad = apply(
+        &mut s,
+        r#"[{"op": "add_cad", "shape": {"shape": "polyline", "points": [[0,0],[100,100],[200,0]], "closed": false}}]"#,
+    )
+    .created[0];
+    apply(&mut s, &format!(r#"[{{"op": "muntins_from_cad", "opening": {}, "ids": [{}]}}]"#, win.0, cad.0));
+    let m = s.document().get::<Opening>(win).unwrap().details.muntins.clone().unwrap();
+    assert_eq!(m.custom, vec![[[0.0, 0.0], [0.5, 1.0]], [[0.5, 1.0], [1.0, 0.0]]]);
+    let block = apply(&mut s, r#"[{"op": "add_block", "name": "W", "shapes": [{"shape": {"shape": "line", "a": [0,0], "b": [100,0]}}]}]"#).created[0];
+    apply(
+        &mut s,
+        &format!(
+            r##"[{{"op": "update", "id": {}, "set": {{"details": {{"muntins": {{"across": 2, "up": 3}}, "shutters": {{"style": "board", "color": "#204030"}}, "treatment": {{"kind": "blinds", "color": "#ffffff", "open": 0.3}}, "plan_block": {}}}}}}}]"##,
+            win.0, block.0
+        ),
+    );
+    assert!(count(&s) > plain, "grille, shutters and blinds add to the window's mesh");
+    // Deleting the block puts the standard symbol back.
+    apply(&mut s, &format!(r#"[{{"op": "delete", "ids": [{}]}}]"#, block.0));
+    assert_eq!(s.document().get::<Opening>(win).unwrap().details.plan_block, None);
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
+}

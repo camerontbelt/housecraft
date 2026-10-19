@@ -290,7 +290,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
                 } else {
                     look.stroke
                 };
-                opening_symbol(g, o, stroke, &mut out);
+                opening_symbol(doc, g, o, stroke, &mut out);
             }
         }
     }
@@ -1542,10 +1542,80 @@ fn stair_symbol(
 
 /// Plan symbol for a door or window in its wall gap.
 /// Plan symbol for a door or window in its wall gap.
-fn opening_symbol(g: &WallGeom, o: &Opening, stroke: Stroke, out: &mut Drawing) {
+/// Shutters outside and curtains or blinds inside a window, in plan.
+fn opening_details(g: &WallGeom, o: &Opening, (a, b): (f64, f64), stroke: Stroke, out: &mut Drawing) {
+    let thin = Stroke {
+        width: stroke.width * 0.6,
+        ..stroke
+    };
+    let at = |u: f64, off: f64| g.center_at(u) + g.left * off;
+    let mut poly = |points: Vec<DVec2>, closed: bool| {
+        out.push(Some(o.id), Prim::Polyline { points, closed, stroke: thin });
+    };
+    if let Some(s) = &o.details.shutters {
+        let sw = s.width.map_or((b - a) / 2.0, |w| w.mm());
+        let (o0, o1) = (g.half + 25.0, g.half + 50.0);
+        for (u0, u1) in [(a - sw, a), (b, b + sw)] {
+            poly(vec![at(u0, o0), at(u1, o0), at(u1, o1), at(u0, o1)], true);
+        }
+    }
+    if let Some(t) = &o.details.treatment {
+        let room = -g.half;
+        match t.kind {
+            TreatmentKind::Curtains => {
+                let (r0, r1) = (a - 200.0, b + 200.0);
+                let pw = ((1.0 - t.open.clamp(0.0, 1.0)) * (r1 - r0) / 2.0).max(150.0);
+                poly(vec![at(r0, room - 80.0), at(r1, room - 80.0)], false);
+                for (u0, u1) in [(r0, r0 + pw), (r1 - pw, r1)] {
+                    let n = ((u1 - u0) / 100.0).ceil().max(1.0) as usize;
+                    let zig = (0..=n)
+                        .map(|i| {
+                            let u = u0 + (u1 - u0) * i as f64 / n as f64;
+                            at(u, room - if i % 2 == 0 { 50.0 } else { 110.0 })
+                        })
+                        .collect();
+                    poly(zig, false);
+                }
+            }
+            TreatmentKind::Blinds | TreatmentKind::Shade => {
+                poly(vec![at(a, room + 45.0), at(b, room + 45.0)], false);
+            }
+        }
+    }
+}
+
+fn opening_symbol(doc: &Document, g: &WallGeom, o: &Opening, stroke: Stroke, out: &mut Drawing) {
     let Some(&(a, b)) = opening_spans(g, &[o]).first() else {
         return;
     };
+    opening_details(g, o, (a, b), stroke, out);
+    // A custom plan symbol: the block stretched over the opening.
+    if let Some(block) = o.details.plan_block.and_then(|b| doc.get::<Block>(b)) {
+        let lines: Vec<(Vec<DVec2>, bool)> = doc
+            .iter::<Cad>()
+            .filter(|c| c.floor == block.id)
+            .flat_map(|c| shape_polylines(&c.shape))
+            .collect();
+        if let Some((lo, hi)) = housecraft_geom::math::bounds(lines.iter().flat_map(|(p, _)| p.iter().copied())) {
+            let size = hi - lo;
+            let map = |p: DVec2| {
+                let u = a + if size.x > 1e-6 { (p.x - lo.x) / size.x } else { 0.5 } * (b - a);
+                let v = if size.y > 1e-6 { (p.y - lo.y) / size.y * 2.0 - 1.0 } else { 0.0 } * g.half;
+                g.center_at(u) + g.left * v
+            };
+            for (pts, closed) in lines {
+                out.push(
+                    Some(o.id),
+                    Prim::Polyline {
+                        points: pts.into_iter().map(map).collect(),
+                        closed,
+                        stroke,
+                    },
+                );
+            }
+            return;
+        }
+    }
     let id = Some(o.id);
     let thin = Stroke {
         width: stroke.width * 0.7,

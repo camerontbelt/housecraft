@@ -1038,6 +1038,9 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
                 t.style = None;
             }
             Object::Electrical(e) => e.controls.retain(|c| !doomed.contains(c)),
+            Object::Opening(o) => {
+                o.details.plan_block = o.details.plan_block.filter(|b| !doomed.contains(b));
+            }
             Object::Stair(s) => {
                 s.baluster = s.baluster.filter(|b| !doomed.contains(b));
                 s.newel = s.newel.filter(|n| !doomed.contains(n));

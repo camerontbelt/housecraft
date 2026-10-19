@@ -323,6 +323,9 @@ pub enum Command {
         #[serde(default)]
         behavior: SymbolBehavior,
     },
+    /// Use CAD lines (drawn anywhere, at any size) as a window's grille:
+    /// their outline is stretched over the glass.
+    MuntinsFromCad { opening: Id, ids: Vec<Id> },
     /// Make the selected objects one 3D symbol (they are replaced by a
     /// placed copy of it).
     ConvertToSymbol { ids: Vec<Id>, name: String },
@@ -830,6 +833,7 @@ impl Command {
             Command::AddPicture { .. } => "add_picture",
             Command::AddSymbolDef { .. } => "add_symbol_def",
             Command::ConvertToSymbol { .. } => "convert_to_symbol",
+            Command::MuntinsFromCad { .. } => "muntins_from_cad",
             Command::AddSymbol { .. } => "add_symbol",
             Command::ReplaceWith { .. } => "replace_with",
             Command::PaintMaterial { .. } => "paint_material",
@@ -1522,6 +1526,40 @@ impl Command {
                 }));
             }
             Command::ConvertToSymbol { ids, name } => crate::symbols::convert(doc, ids, name, &mut out)?,
+            Command::MuntinsFromCad { opening, ids } => {
+                let o = expect::<Opening>(doc, *opening)?;
+                if o.opening_kind.is_door() {
+                    return invalid("muntins go on windows");
+                }
+                let mut segs = Vec::new();
+                for id in ids {
+                    let cad = expect::<Cad>(doc, *id)?;
+                    for (pts, closed) in housecraft_geom::math::shape_polylines(&cad.shape) {
+                        let n = pts.len();
+                        let count = if closed { n } else { n.saturating_sub(1) };
+                        segs.extend((0..count).map(|i| (pts[i], pts[(i + 1) % n])));
+                    }
+                }
+                let all = segs.iter().flat_map(|(a, b)| [*a, *b]);
+                let Some((lo, hi)) = housecraft_geom::math::bounds(all) else {
+                    return invalid("choose CAD lines to make the grille from");
+                };
+                let size = (hi - lo).max(housecraft_geom::DVec2::splat(1e-6));
+                let unit = |p: housecraft_geom::DVec2| {
+                    let q = (p - lo) / size;
+                    [q.x, q.y]
+                };
+                let custom = segs.iter().map(|(a, b)| [unit(*a), unit(*b)]).collect();
+                let o = doc.get_mut::<Opening>(*opening).expect("checked");
+                let mut m = o.details.muntins.clone().unwrap_or(Muntins {
+                    across: 1,
+                    up: 1,
+                    ..Muntins::default()
+                });
+                m.custom = custom;
+                o.details.muntins = Some(m);
+                out.modified.push(*opening);
+            }
             Command::AddSymbol {
                 floor,
                 def,
@@ -2104,6 +2142,7 @@ impl Command {
                     plan_swing: 90.0,
                     renovation: Default::default(),
                     layer: d.layers.doors,
+                    details: Default::default(),
                 }));
             }
             Command::AddWindow {
@@ -2134,6 +2173,7 @@ impl Command {
                     plan_swing: 90.0,
                     renovation: Default::default(),
                     layer: d.layers.windows,
+                    details: Default::default(),
                 }));
             }
             Command::AddCad {

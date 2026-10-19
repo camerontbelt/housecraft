@@ -1383,6 +1383,23 @@ impl App {
                         self.selection = out.created.clone();
                     }
                 });
+                {
+                    let doc = self.doc();
+                    let window = self.selection.iter().copied().find(|id| {
+                        doc.get::<Opening>(*id).is_some_and(|o| !o.opening_kind.is_door())
+                    });
+                    let cads: Vec<Id> = self
+                        .selection
+                        .iter()
+                        .copied()
+                        .filter(|id| doc.kind_of(*id) == Some(ObjectKind::Cad))
+                        .collect();
+                    if item(ui, "Make Window Grille from Selection", "", window.is_some() && !cads.is_empty())
+                        && let Some(opening) = window
+                    {
+                        self.run1(Command::MuntinsFromCad { opening, ids: cads });
+                    }
+                }
                 if item(
                     ui,
                     "Make Molding Profile from Selection",
