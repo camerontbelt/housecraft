@@ -43,6 +43,10 @@ pub enum LibraryKind {
     Molding,
     /// A door or window: an [`Opening`] without its wall, place or id.
     Opening,
+    /// A [`HatchPattern`] for fills.
+    HatchPattern,
+    /// A [`FillStyle`] (pattern, colour, spacing, angle) to apply to shapes.
+    FillStyle,
 }
 
 impl LibraryKind {
@@ -57,6 +61,8 @@ impl LibraryKind {
             LibraryKind::Symbol => "symbol",
             LibraryKind::Molding => "molding",
             LibraryKind::Opening => "door or window",
+            LibraryKind::HatchPattern => "hatch pattern",
+            LibraryKind::FillStyle => "fill style",
         }
     }
 
@@ -71,6 +77,8 @@ impl LibraryKind {
             LibraryKind::Symbol => "symbols",
             LibraryKind::Molding => "moldings",
             LibraryKind::Opening => "openings",
+            LibraryKind::HatchPattern => "hatch_patterns",
+            LibraryKind::FillStyle => "fill_styles",
         }
     }
 }
@@ -302,9 +310,82 @@ pub fn import_bundle(dir: &Path, path: &Path) -> Result<usize, Error> {
     Ok(items.len())
 }
 
+/// A plan's hatch pattern as a library item.
+pub fn hatch_item(p: &HatchPattern) -> LibraryItem {
+    LibraryItem {
+        name: p.name.clone(),
+        category: "My Library/Hatch Patterns".into(),
+        kind: LibraryKind::HatchPattern,
+        tags: vec!["hatch".into(), "pattern".into()],
+        data: serde_json::to_value(p).expect("serialisable"),
+        source: Source::BuiltIn,
+    }
+}
+
+/// A fill style as a library item.
+pub fn fill_item(name: &str, f: &FillStyle) -> LibraryItem {
+    LibraryItem {
+        name: name.into(),
+        category: "My Library/Fill Styles".into(),
+        kind: LibraryKind::FillStyle,
+        tags: vec!["fill".into()],
+        data: serde_json::to_value(f).expect("serialisable"),
+        source: Source::BuiltIn,
+    }
+}
+
+/// Library folders kept as shortcuts at the top of the browser.
+pub fn load_shortcuts(dir: &Path) -> Vec<String> {
+    std::fs::read(dir.join("shortcuts.json"))
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .unwrap_or_default()
+}
+
+pub fn save_shortcuts(dir: &Path, folders: &[String]) -> Result<(), Error> {
+    std::fs::create_dir_all(dir)?;
+    std::fs::write(dir.join("shortcuts.json"), serde_json::to_vec_pretty(folders).map_err(corrupt)?)?;
+    Ok(())
+}
+
+/// Built-in hatch patterns and fill styles.
+fn builtin_fills() -> Vec<LibraryItem> {
+    let line = |angle: f64, spacing: f64, offset: f64, dash: &[f64], stagger: f64| HatchLine { angle, spacing, offset, dash: dash.to_vec(), stagger };
+    let mut out: Vec<LibraryItem> = [
+        ("Running Bond Brick", vec![line(0.0, 1.0, 0.0, &[], 0.0), line(90.0, 2.0, 0.0, &[1.0, 1.0], 1.0)]),
+        ("Concrete Block", vec![line(0.0, 1.0, 0.0, &[], 0.0), line(90.0, 2.0, 0.0, &[1.0, 1.0], 1.0)]),
+        ("Square Tile", vec![line(0.0, 1.0, 0.0, &[], 0.0), line(90.0, 1.0, 0.0, &[], 0.0)]),
+        ("Diagonal Tile", vec![line(45.0, 1.0, 0.0, &[], 0.0), line(135.0, 1.0, 0.0, &[], 0.0)]),
+        ("Herringbone", vec![line(45.0, 1.0, 0.0, &[2.0, 2.0], 2.0), line(135.0, 1.0, 0.0, &[2.0, 2.0], 0.0)]),
+        ("Earth", vec![line(45.0, 1.0, 0.0, &[], 0.0), line(45.0, 1.0, 0.25, &[], 0.0), line(45.0, 1.0, 0.5, &[], 0.0), line(135.0, 3.0, 0.0, &[1.0, 2.0], 0.0)]),
+        ("Insulation Batt", vec![line(60.0, 1.0, 0.0, &[0.5, 0.5], 0.0), line(120.0, 1.0, 0.0, &[0.5, 0.5], 0.5)]),
+        ("Wood Grain", vec![line(0.0, 0.4, 0.0, &[3.0, 0.4, 1.0, 0.3], 1.5)]),
+    ]
+    .into_iter()
+    .map(|(name, lines)| {
+        let mut i = hatch_item(&HatchPattern { name: name.into(), lines });
+        i.category = "Fills/Hatch Patterns".into();
+        i
+    })
+    .collect();
+    let fill = |pattern, spacing: f64, angle: f64, color: Option<Color>| FillStyle { pattern, color, spacing: Length::from_inches(spacing), angle, opacity: 1.0 };
+    for (name, f) in [
+        ("Concrete (dots)", fill(FillPattern::Dots, 3.0, 0.0, None)),
+        ("Section Cut (hatch)", fill(FillPattern::Hatch, 3.0, 45.0, None)),
+        ("Masonry (crosshatch)", fill(FillPattern::Crosshatch, 4.0, 45.0, None)),
+        ("Lawn (green)", fill(FillPattern::Solid, 6.0, 0.0, Some(Color::rgb(150, 190, 120)))),
+        ("Water (blue)", fill(FillPattern::Solid, 6.0, 0.0, Some(Color::rgb(140, 180, 220)))),
+    ] {
+        let mut i = fill_item(name, &f);
+        i.category = "Fills/Fill Styles".into();
+        out.push(i);
+    }
+    out
+}
+
 /// The built-in catalogue.
 pub fn builtin() -> Vec<LibraryItem> {
-    let mut out = Vec::new();
+    let mut out = builtin_fills();
     let item = |name: String, category: &str, kind: LibraryKind, tags: &[&str], data: Value| {
         LibraryItem {
             name,
@@ -1244,5 +1325,22 @@ mod settings_tests {
         assert!(!p.exists());
         assert!(user_items(&dir).iter().any(|i| i.name == "Renamed"));
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod fill_tests {
+    use super::*;
+
+    #[test]
+    fn built_in_fills_and_shortcuts() {
+        let items = builtin();
+        assert!(items.iter().any(|i| i.kind == LibraryKind::HatchPattern && i.name == "Running Bond Brick"));
+        let fill = items.iter().find(|i| i.kind == LibraryKind::FillStyle).unwrap();
+        assert!(serde_json::from_value::<FillStyle>(fill.data.clone()).is_ok());
+        let dir = std::env::temp_dir().join(format!("hc-shortcuts-{}", std::process::id()));
+        save_shortcuts(&dir, &["Fills/Hatch Patterns".to_string()]).unwrap();
+        assert_eq!(load_shortcuts(&dir), ["Fills/Hatch Patterns"]);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

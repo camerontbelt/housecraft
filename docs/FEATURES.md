@@ -456,7 +456,7 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-16 | Plan materials manager (replace, merge, search) | P1 | M5 ✓ |
 | MAT-17 | Hatch pattern editor | P2 | M4 ✓ CAD > Hatch Patterns: line families with angle, spacing, offset, dashes and stagger, with a preview |
 | MAT-18 | Generate vector hatch pattern from texture | P3 | M5 ◐ patterned floor regions get a tile-joint hatch in plan |
-| MAT-19 | Screen-capture image as material | P3 | M5 |
+| MAT-19 | Screen-capture image as material | P3 | M5 ✓ 3D > Material from View captures the 3D view as a textured material |
 | MAT-20 | 3D cladding from moldings (board & batten, lap, standing seam) (X18+) | P2 | M5 ✓ |
 | MAT-21 | Style palettes (save and apply finish sets) | P2 | M5 ✓ save and apply styles (materials, door style, hardware) |
 | MAT-22 | Center object between two objects | P1 | M1 ✓ Center Object button: then click a wall or line to centre along it, or an object to centre on it |
@@ -466,7 +466,7 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-26 | Convert selection to symbol object | P2 | M5 ✓ Library > Convert Selection to Symbol keeps the 3D look in one symbol |
 | MAT-27 | Custom molding profiles; stacked, flipped, rotated, centered | P2 | M5 ✓ |
 | MAT-28 | Edit molding polylines from library (X18+) | P3 | M5 ◐ custom profiles made from CAD shapes and edited per molding; library storage later |
-| MAT-29 | Distributed regions/paths with randomized variation | P3 | M6 |
+| MAT-29 | Distributed regions/paths with randomized variation | P3 | M6 ✓ Edit > Scatter Copies: plants, symbols or blocks strewn in a region or along a path, turned and sized at random (repeatable seed) |
 
 ## 19. Library / catalog
 
@@ -479,10 +479,10 @@ These come from reading the whole list and change the architecture, not just the
 | LIB-05 | Search with AND/OR/NOT/grouping; search attributes | P1 | M5 ✓ |
 | LIB-06 | Tags, filters, favorites, saved filters | P2 | M5 ✓ tags (Edit…), favourites folder, saved searches as buttons |
 | LIB-07 | Edit CAD blocks in place; apply to all instances | P2 | M5 ✓ CAD > Blocks > Edit Block opens the block; every copy updates |
-| LIB-08 | Patterns and fill styles in library | P2 | M5 |
+| LIB-08 | Patterns and fill styles in library | P2 | M5 ✓ built-in and saved hatch patterns and fill styles; Save to Library from the Hatch Patterns editor; click a fill style to fill selected shapes |
 | LIB-09 | Notes, callouts, markers in library | P2 | M5 ✓ built-in notes and callouts; save your own with Add Selected |
 | LIB-10 | Text in library | P3 | M5 ✓ text saves to and places from the library |
-| LIB-11 | Library shortcuts | P3 | M5 |
+| LIB-11 | Library shortcuts | P3 | M5 ✓ right-click a library folder > Add Shortcut; shortcut buttons open it on its own |
 | LIB-12 | Replace from library (one or all identical) | P1 | M5 ◐ cabinets and appliances, one or all identical; blocks later |
 | LIB-13 | Library painter with scope | P2 | M5 ✓ |
 | LIB-14 | Edit parametric items stored in library | P2 | M5 ✓ right-click > Edit… changes an item's name, folder, tags and properties (built-ins save an edited copy) |

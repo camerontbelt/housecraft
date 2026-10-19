@@ -198,6 +198,8 @@ pub struct Dialogs {
     pub layers: bool,
     pub text_styles: bool,
     pub line_styles: bool,
+    /// Scatter: count, size variation, seed.
+    pub scatter: Option<(u32, f64, u64)>,
     pub plan_check: bool,
     pub hatch: HatchDialog,
     /// Auto Dimension Tiers being chosen, and a preset name being typed.
@@ -279,6 +281,7 @@ pub fn show(app: &mut App, ctx: &Context) {
     );
     save_view_dialog(app, ctx);
     line_styles_dialog(app, ctx);
+    scatter_dialog(app, ctx);
     plan_check_dialog(app, ctx);
     hatch_dialog(app, ctx);
     auto_dims_dialog(app, ctx);
@@ -2111,6 +2114,56 @@ fn plan_check_dialog(app: &mut App, ctx: &Context) {
     }
 }
 
+/// Edit > Scatter Copies: a plant, symbol or block strewn at random in a
+/// selected CAD region (or along a path).
+fn scatter_dialog(app: &mut App, ctx: &Context) {
+    let Some((mut count, mut vary, mut seed)) = app.dialogs.scatter.take() else {
+        return;
+    };
+    let mut open = true;
+    let mut run = None;
+    egui::Window::new("Scatter Copies").open(&mut open).resizable(false).show(ctx, |ui| {
+        let doc = app.session.document();
+        let source = app.selection.iter().copied().find(|id| matches!(doc.kind_of(*id), Some(ObjectKind::Plant | ObjectKind::Symbol | ObjectKind::BlockRef)));
+        let region = app.selection.iter().copied().find(|id| doc.kind_of(*id) == Some(ObjectKind::Cad));
+        ui.label("Select one plant, 3D symbol or CAD block and one CAD shape: copies land at random inside it (or along it, if it is open).");
+        ui.horizontal(|ui| {
+            ui.label("Copies");
+            ui.add(egui::DragValue::new(&mut count).range(1..=2000));
+            ui.label("Size variation");
+            ui.add(egui::Slider::new(&mut vary, 0.0..=0.9).fixed_decimals(2));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Random seed");
+            ui.add(egui::DragValue::new(&mut seed));
+            if ui.small_button("New").clicked() {
+                seed = seed.wrapping_mul(2862933555777941757).wrapping_add(3037000493) % 100_000;
+            }
+        });
+        let ready = source.zip(region);
+        if ui.add_enabled(ready.is_some(), egui::Button::new("Scatter")).clicked()
+            && let Some((s, r)) = ready
+        {
+            run = Some(Command::Scatter { source: s, region: r, count, seed, size_variation: vary, rotate: true });
+        }
+        if ready.is_none() {
+            ui.weak(match (source, region) {
+                (None, _) => "No plant, symbol or block selected.",
+                _ => "No CAD shape selected.",
+            });
+        }
+    });
+    if open {
+        app.dialogs.scatter = Some((count, vary, seed));
+    }
+    if let Some(c) = run
+        && let Some(out) = app.run1(c)
+    {
+        app.info(format!("{} copies scattered", out.created.len()));
+        app.selection = out.created;
+    }
+}
+
 #[derive(Default)]
 pub struct HatchDialog {
     pub open: bool,
@@ -2126,6 +2179,7 @@ fn hatch_dialog(app: &mut App, ctx: &Context) {
     }
     let mut open = true;
     let mut commands = Vec::new();
+    let mut saved_to_library = false;
     egui::Window::new("Hatch Patterns").open(&mut open).resizable(true).default_width(520.0).show(ctx, |ui| {
         let doc = app.session.document();
         let h = &mut app.dialogs.hatch;
@@ -2203,9 +2257,19 @@ fn hatch_dialog(app: &mut App, ctx: &Context) {
             {
                 commands.push(Command::DeleteHatchPattern { index: *i });
             }
+            if ui.button("Save to Library").on_hover_text("Keep it in your library for other plans").clicked()
+                && let Some(dir) = housecraft_io_native::library::library_dir()
+            {
+                let _ = housecraft_io_native::library::save_item(&dir, &housecraft_io_native::library::hatch_item(pattern));
+                saved_to_library = true;
+            }
         });
     });
     app.dialogs.hatch.open = open;
+    if saved_to_library {
+        app.library.refresh();
+        app.info("Saved to your library under My Library/Hatch Patterns");
+    }
     if !commands.is_empty() {
         let deleting = commands.iter().any(|c| matches!(c, Command::DeleteHatchPattern { .. }));
         let adding = commands.iter().any(|c| matches!(c, Command::SetHatchPattern { index: None, .. }));

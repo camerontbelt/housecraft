@@ -215,3 +215,80 @@ pub(crate) fn roof_outlines(doc: &mut Document, ids: &[Id], out: &mut Outcome) -
     let _ = v2;
     Ok(())
 }
+
+/// A small repeatable random sequence (no dependency needed).
+struct Rng(u64);
+
+impl Rng {
+    fn next(&mut self) -> f64 {
+        self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        (self.0 >> 11) as f64 / (1u64 << 53) as f64
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn scatter(doc: &mut Document, source: Id, region: Id, count: u32, seed: u64, size_variation: f64, rotate: bool, out: &mut Outcome) -> Result<(), ApiError> {
+    let src = doc.object(source).cloned().ok_or(ApiError::NotFound(source))?;
+    let (pos_key, turn_key, size_keys): (&str, Option<&str>, &[&str]) = match &src {
+        Object::Plant(_) => ("at", None, &["height", "spread"]),
+        Object::Symbol(_) => ("position", Some("facing"), &["width", "depth", "height"]),
+        Object::BlockRef(_) => ("position", Some("rotation"), &["scale"]),
+        _ => return Err(ApiError::Invalid("scatter plants, 3D symbols or CAD blocks".into())),
+    };
+    let shape = doc.get::<Cad>(region).map(|c| c.shape.clone()).ok_or_else(|| ApiError::Invalid("the region must be a CAD shape".into()))?;
+    let Some((pts, closed)) = shape_polylines(&shape).into_iter().next() else {
+        return Err(ApiError::Invalid("the region has no outline".into()));
+    };
+    if count == 0 || count > 5000 {
+        return Err(ApiError::Invalid("scatter 1 to 5000 copies".into()));
+    }
+    let mut rng = Rng(seed.wrapping_add(0x9E37_79B9_7F4A_7C15));
+    let mut spots: Vec<DVec2> = Vec::new();
+    if closed && pts.len() >= 3 {
+        let (lo, hi) = housecraft_geom::math::bounds(pts.iter().copied()).expect("points");
+        let mut tries = 0;
+        while spots.len() < count as usize && tries < count as usize * 200 {
+            tries += 1;
+            let p = lo + (hi - lo) * DVec2::new(rng.next(), rng.next());
+            if housecraft_geom::math::point_in_polygon(p, &pts) {
+                spots.push(p);
+            }
+        }
+    } else {
+        // Along the path, evenly, nudged sideways a little.
+        let lens: Vec<f64> = pts.windows(2).map(|w| w[0].distance(w[1])).collect();
+        let total: f64 = lens.iter().sum();
+        let step = total / count as f64;
+        for k in 0..count {
+            let mut u = (k as f64 + 0.5) * step;
+            for (i, l) in lens.iter().enumerate() {
+                if u <= *l || i == lens.len() - 1 {
+                    let d = (pts[i + 1] - pts[i]).normalize_or_zero();
+                    let side = DVec2::new(-d.y, d.x) * (rng.next() - 0.5) * step * 0.6;
+                    spots.push(pts[i] + d * u.min(*l) + side);
+                    break;
+                }
+                u -= l;
+            }
+        }
+    }
+    let base = serde_json::to_value(&src).expect("serialises");
+    for p in spots {
+        let mut v = base.clone();
+        v[pos_key] = serde_json::to_value(pt(p)).expect("point");
+        if rotate && let Some(k) = turn_key {
+            v[k] = serde_json::json!(rng.next() * 360.0);
+        }
+        let f = 1.0 + (rng.next() * 2.0 - 1.0) * size_variation.clamp(0.0, 0.9);
+        for k in size_keys {
+            if let Some(x) = v.get(*k).and_then(|x| x.as_f64()) {
+                v[*k] = serde_json::json!(x * f);
+            }
+        }
+        v["id"] = serde_json::json!(0);
+        let o: Object = serde_json::from_value(v).map_err(|e| ApiError::Invalid(e.to_string()))?;
+        out.created.push(doc.insert(o));
+    }
+    let _ = v2;
+    Ok(())
+}

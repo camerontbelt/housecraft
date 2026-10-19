@@ -22,6 +22,9 @@ pub struct LibraryState {
     /// A door or window template and the tool that places it.
     pub opening: Option<(Tool, Value)>,
     filters: Option<Vec<library::SavedFilter>>,
+    shortcuts: Option<Vec<String>>,
+    /// A shortcut's folder shown on its own.
+    folder: Option<String>,
     favorites: Option<std::collections::BTreeSet<String>>,
     /// The item being edited and its fields as text.
     editing: Option<ItemEdit>,
@@ -55,6 +58,17 @@ impl LibraryState {
     fn filters(&mut self) -> &mut Vec<library::SavedFilter> {
         self.filters
             .get_or_insert_with(|| library::library_dir().map(|d| library::load_filters(&d)).unwrap_or_default())
+    }
+
+    fn shortcuts(&mut self) -> &mut Vec<String> {
+        self.shortcuts.get_or_insert_with(|| library::library_dir().map(|d| library::load_shortcuts(&d)).unwrap_or_default())
+    }
+
+    fn save_shortcuts(&mut self) {
+        let list = self.shortcuts().clone();
+        if let Some(dir) = library::library_dir() {
+            let _ = library::save_shortcuts(&dir, &list);
+        }
     }
 
     fn favorites(&mut self) -> &mut std::collections::BTreeSet<String> {
@@ -208,6 +222,35 @@ fn activate(app: &mut App, item: &LibraryItem) {
                 app.info(format!("Painting with {}", item.name));
             }
         }
+        LibraryKind::HatchPattern => {
+            let Ok(p) = serde_json::from_value::<HatchPattern>(item.data.clone()) else { return };
+            if app.doc().settings.hatch_patterns.iter().any(|h| h.name == p.name) {
+                app.info(format!("{} is already in the plan's fill patterns", p.name));
+            } else if app.run1(Command::SetHatchPattern { index: None, pattern: p.clone() }).is_some() {
+                app.info(format!("{} added: pick it in any fill's pattern list", p.name));
+            }
+        }
+        LibraryKind::FillStyle => {
+            let Ok(mut f) = serde_json::from_value::<FillStyle>(item.data.clone()) else { return };
+            // A fill naming a user pattern refers to this plan's list; keep plain hatching otherwise.
+            if let FillPattern::UserPattern(i) = f.pattern
+                && i as usize >= app.doc().settings.hatch_patterns.len()
+            {
+                f.pattern = FillPattern::Hatch;
+            }
+            let cads: Vec<Id> = app.selection.iter().copied().filter(|id| app.doc().kind_of(*id) == Some(ObjectKind::Cad)).collect();
+            if cads.is_empty() {
+                app.error("Select the CAD shapes to fill first.");
+                return;
+            }
+            let cmds: Vec<Command> = cads
+                .iter()
+                .map(|id| Command::Update { id: *id, set: json!({"fill_style": f}).as_object().cloned().unwrap_or_default() })
+                .collect();
+            if app.run(cmds).is_some() {
+                app.info(format!("Filled {} shape(s) with {}", cads.len(), item.name));
+            }
+        }
         LibraryKind::WallType => {
             if ensure_in_plan(app, item).is_some() {
                 app.info(format!(
@@ -272,6 +315,8 @@ fn item_row(app: &mut App, ui: &mut Ui, item: &LibraryItem, show_category: bool)
         LibraryKind::Molding => "Click to add the profile to the plan",
         LibraryKind::Material => "Click to paint with it in 3D",
         LibraryKind::WallType => "Click to add it to the plan",
+        LibraryKind::HatchPattern => "Click to add the pattern to the plan's fill patterns",
+        LibraryKind::FillStyle => "Click to fill the selected CAD shapes with it",
     };
     let resp = resp.on_hover_text(hint);
     if resp.clicked() {
@@ -429,10 +474,23 @@ fn tree(app: &mut App, ui: &mut Ui, items: &[LibraryItem], prefix: &str) {
     }
     for f in folders {
         let name = f.rsplit('/').next().unwrap_or(&f).to_string();
-        egui::CollapsingHeader::new(name)
+        let r = egui::CollapsingHeader::new(name)
             .id_salt(("lib", &f))
             .default_open(false)
             .show(ui, |ui| tree(app, ui, items, &f));
+        r.header_response.context_menu(|ui| {
+            let has = app.library.shortcuts().contains(&f);
+            if !has && ui.button("Add Shortcut").on_hover_text("A button at the top of the library opens this folder").clicked() {
+                app.library.shortcuts().push(f.clone());
+                app.library.save_shortcuts();
+                ui.close();
+            }
+            if has && ui.button("Remove Shortcut").clicked() {
+                app.library.shortcuts().retain(|s| *s != f);
+                app.library.save_shortcuts();
+                ui.close();
+            }
+        });
     }
     if !prefix.is_empty() {
         for i in items.iter().filter(|i| i.category == prefix) {
@@ -576,10 +634,32 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     {
         ui.label(format!("Placing: {name} (Esc to stop)"));
     }
+    // Folder shortcuts.
+    let shortcuts = app.library.shortcuts().clone();
+    if !shortcuts.is_empty() {
+        ui.horizontal_wrapped(|ui| {
+            ui.weak("Shortcuts:");
+            for f in &shortcuts {
+                let name = f.rsplit('/').next().unwrap_or(f);
+                let on = app.library.folder.as_deref() == Some(f.as_str());
+                if ui.selectable_label(on, name).on_hover_text(f.as_str()).clicked() {
+                    app.library.folder = if on { None } else { Some(f.clone()) };
+                }
+            }
+        });
+    }
     ui.separator();
     let search = app.library.search.clone();
     let items = app.library.items().to_vec();
     egui::ScrollArea::vertical().id_salt("library_items").show(ui, |ui| {
+        if let Some(folder) = app.library.folder.clone().filter(|_| search.trim().is_empty()) {
+            if ui.small_button("← Whole library").clicked() {
+                app.library.folder = None;
+            }
+            ui.strong(&folder);
+            tree(app, ui, &items, &folder);
+            return;
+        }
         if search.trim().is_empty() {
             let favs = app.library.favorites().clone();
             let starred: Vec<&LibraryItem> = items.iter().filter(|i| favs.contains(&library::favorite_key(i))).collect();

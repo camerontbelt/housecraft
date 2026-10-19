@@ -280,6 +280,20 @@ pub enum Command {
     ConvertCad { ids: Vec<Id>, to: CadTarget },
     /// Trace roof planes as closed CAD polylines in plan (the planes stay).
     RoofPlanesToPolylines { ids: Vec<Id> },
+    /// Scatter `count` copies of plant, symbol or block `source` at random
+    /// inside closed CAD shape `region` (or along it, when open), turned
+    /// at random and sized up to `size_variation` (0–1) either way.
+    Scatter {
+        source: Id,
+        region: Id,
+        count: u32,
+        #[serde(default)]
+        seed: u64,
+        #[serde(default)]
+        size_variation: f64,
+        #[serde(default = "yes")]
+        rotate: bool,
+    },
     /// Set (or with `null`, delete) user text macro `name`.
     SetMacro { name: String, text: Option<String> },
     /// Replace `find` with `replace` in text, callouts, room names, object
@@ -1249,6 +1263,7 @@ impl Command {
             Command::DeleteHatchPattern { .. } => "delete_hatch_pattern",
             Command::ConvertCad { .. } => "convert_cad",
             Command::RoofPlanesToPolylines { .. } => "roof_planes_to_polylines",
+            Command::Scatter { .. } => "scatter",
             Command::SetMacro { .. } => "set_macro",
             Command::ReplaceText { .. } => "replace_text",
             Command::ReplaceFont { .. } => "replace_font",
@@ -1912,6 +1927,9 @@ impl Command {
             }
             Command::ConvertCad { ids, to } => crate::convert::convert_cad(doc, ids, to, &mut out)?,
             Command::RoofPlanesToPolylines { ids } => crate::convert::roof_outlines(doc, ids, &mut out)?,
+            Command::Scatter { source, region, count, seed, size_variation, rotate } => {
+                crate::convert::scatter(doc, *source, *region, *count, *seed, *size_variation, *rotate, &mut out)?
+            }
             Command::SetProjectInfo { info } => {
                 doc.settings.project = info.clone();
             }

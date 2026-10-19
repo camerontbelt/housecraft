@@ -108,6 +108,9 @@ impl Default for Prefs {
     }
 }
 
+/// Where a requested screenshot lands when the window has drawn it.
+pub type CaptureSlot = std::sync::Arc<std::sync::Mutex<Option<std::sync::Arc<egui::ColorImage>>>>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Plan,
@@ -176,6 +179,9 @@ pub struct App {
     pub clipboard_layout: Option<(Option<PathBuf>, String)>,
     /// The layer set the materials list counts (the plan view's when `None`).
     pub materials_layer_set: Option<Id>,
+    /// A screen capture on its way (3D > Material from View): the image
+    /// slot, and the 3D view's rect and scale when it was asked for.
+    pub capture: Option<(CaptureSlot, egui::Rect, f32)>,
     pub status: Option<(String, bool)>,
     pub pending: Option<Pending>,
     quit_confirmed: bool,
@@ -239,6 +245,7 @@ impl App {
             clipboard: Vec::new(),
             clipboard_layout: None,
             materials_layer_set: None,
+            capture: None,
             status: None,
             pending: None,
             quit_confirmed: false,
@@ -2240,6 +2247,9 @@ impl App {
                         self.run1(Command::ExtendTo { id, boundary });
                     }
                     ui.separator();
+                    if item(ui, "Scatter Copies…", "", true) {
+                        self.dialogs.scatter = Some((20, 0.25, 1));
+                    }
                     if item(ui, "Find and Replace Text…", "", true) {
                         self.dialogs.find_replace.open = true;
                     }
@@ -2625,6 +2635,20 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                 }
             });
             ui.menu_button("3D", |ui| {
+                if item(ui, "Material from View", "", self.mode == Mode::ThreeD && self.view3d.last_rect.is_some())
+                    && let Some(rect) = self.view3d.last_rect
+                {
+                    let slot = std::sync::Arc::new(std::sync::Mutex::new(None));
+                    let s2 = slot.clone();
+                    let c2 = ui.ctx().clone();
+                    ui.ctx().request_screenshot(move |img| {
+                        if let Ok(mut g) = s2.lock() {
+                            *g = Some(img);
+                        }
+                        c2.request_repaint();
+                    });
+                    self.capture = Some((slot, rect, ui.ctx().pixels_per_point()));
+                }
                 if item(ui, "Material Painter", "", true) {
                     self.mode = Mode::ThreeD;
                     self.view3d.painter.get_or_insert_with(|| {
@@ -4075,6 +4099,75 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
         }
     }
 
+    /// A requested screen capture has arrived: crop it to the 3D view, save
+    /// it as an image and make a material that uses it.
+    fn finish_capture(&mut self) {
+        let Some((slot, rect, ppp)) = &self.capture else { return };
+        let img = match slot.lock() {
+            Ok(mut g) => g.take(),
+            Err(_) => None,
+        };
+        let Some(img) = img else { return };
+        let (rect, ppp) = (*rect, *ppp);
+        self.capture = None;
+        let [w, h] = img.size;
+        let x0 = ((rect.left() * ppp) as usize).min(w);
+        let y0 = ((rect.top() * ppp) as usize).min(h);
+        let x1 = ((rect.right() * ppp) as usize).min(w);
+        let y1 = ((rect.bottom() * ppp) as usize).min(h);
+        if x1 <= x0 + 8 || y1 <= y0 + 8 {
+            self.error("The capture came back empty");
+            return;
+        }
+        let mut bytes = Vec::with_capacity((x1 - x0) * (y1 - y0) * 4);
+        let mut sum = [0u64; 3];
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let c = img.pixels[y * w + x];
+                bytes.extend_from_slice(&[c.r(), c.g(), c.b(), 255]);
+                sum[0] += c.r() as u64;
+                sum[1] += c.g() as u64;
+                sum[2] += c.b() as u64;
+            }
+        }
+        let n = ((x1 - x0) * (y1 - y0)) as u64;
+        let Some(dir) = housecraft_io_native::library::app_data_dir().map(|d| d.join("Captures")) else {
+            self.error("No folder to keep the capture in");
+            return;
+        };
+        let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+        let path = dir.join(format!("capture-{stamp}.png"));
+        let saved = std::fs::create_dir_all(&dir).map_err(|e| e.to_string()).and_then(|_| {
+            image::RgbaImage::from_raw((x1 - x0) as u32, (y1 - y0) as u32, bytes)
+                .ok_or_else(|| "bad image".to_string())?
+                .save(&path)
+                .map_err(|e| e.to_string())
+        });
+        if let Err(e) = saved {
+            self.error(format!("Could not save the capture: {e}"));
+            return;
+        }
+        let color = housecraft_api::model::Color::rgb((sum[0] / n) as u8, (sum[1] / n) as u8, (sum[2] / n) as u8);
+        let Some(out) = self.run1(Command::AddMaterial { name: format!("Capture {stamp}"), category: Some("Captures".into()), class: None, color: Some(color), copy_from: None }) else {
+            return;
+        };
+        let Some(id) = out.created.first().copied() else { return };
+        let aspect = (y1 - y0) as f64 / (x1 - x0) as f64;
+        self.run1(Command::Update {
+            id,
+            set: serde_json::json!({
+                "maps": {"color": {"path": path.display().to_string(), "strength": 1.0}},
+                "texture_width": housecraft_api::units::Length::from_feet(4.0),
+                "texture_height": housecraft_api::units::Length::from_feet(4.0 * aspect),
+            })
+            .as_object()
+            .cloned()
+            .unwrap_or_default(),
+        });
+        self.spec.push(id);
+        self.info(format!("Made a material from the view: {}", path.display()));
+    }
+
     /// Open what a callout links to: a view or detail, a plan view or a layout.
     pub fn open_link(&mut self, id: Id) {
         match self.doc().object(id).cloned() {
@@ -4393,6 +4486,7 @@ fn palette_row(ui: &mut Ui, icon: Icon, name: &str, selected: bool) -> egui::Res
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        self.finish_capture();
         // Intercept window close to offer saving.
         if ctx.input(|i| i.viewport().close_requested())
             && !self.quit_confirmed

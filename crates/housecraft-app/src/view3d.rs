@@ -863,6 +863,8 @@ pub struct View3d {
     pub camera: Option<Id>,
     /// The Lighting Manager window is open.
     pub lighting_window: bool,
+    /// Where the 3D view was last drawn (for captures).
+    pub last_rect: Option<egui::Rect>,
     /// A panorama's average colour, cached by path.
     pano_tint: Option<(String, [f32; 3])>,
     mesh: Option<(u64, Mesh)>,
@@ -898,6 +900,7 @@ impl Default for View3d {
             annotate: None,
             camera: None,
             lighting_window: false,
+            last_rect: None,
             pano_tint: None,
         }
     }
@@ -1295,6 +1298,7 @@ fn pick_hit(
 
 pub fn show(app: &mut App, ui: &mut Ui) {
     let (rect, resp) = ui.allocate_exact_size(ui.available_size(), Sense::click_and_drag());
+    app.view3d.last_rect = Some(rect);
     let v = &mut app.view3d;
     // The revision the mesh shows (a click below may change the document).
     let mesh_rev = app.rev;

@@ -2617,3 +2617,32 @@ fn framing_options_purlins_tails_balloon_furring_girts_trays() {
     s.apply(&[Command::FramingMarkers { view }]).unwrap();
     assert!(s.document().iter::<Text>().any(|t| t.floor == view && t.text.contains("T.O. plate")));
 }
+
+#[test]
+fn scatter_copies_inside_regions_and_along_paths() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_plant", "at": ["50'","50'"], "name": "Oak"},
+            {"op": "add_cad", "shape": {"shape": "polyline", "points": [["40'",0],["60'",0],["60'","20'"],["40'","20'"]], "closed": true}},
+            {"op": "add_cad", "shape": {"shape": "polyline", "points": [["70'",0],["90'",0]], "closed": false}}]"#,
+    );
+    let (plant, area, path) = (out.created[0], out.created[1], out.created[2]);
+    let out = s.apply(&[Command::Scatter { source: plant, region: area, count: 25, seed: 7, size_variation: 0.3, rotate: true }]).unwrap();
+    assert_eq!(out.created.len(), 25);
+    let doc = s.document();
+    let ft = 304.8;
+    let heights: Vec<f64> = out.created.iter().map(|id| doc.get::<Plant>(*id).unwrap().height.mm()).collect();
+    assert!(heights.iter().any(|h| (h - heights[0]).abs() > 1.0), "sizes vary");
+    for id in &out.created {
+        let p = doc.get::<Plant>(*id).unwrap().at;
+        assert!(p.x().mm() > 40.0 * ft && p.x().mm() < 60.0 * ft && p.y().mm() > 0.0 && p.y().mm() < 20.0 * ft);
+    }
+    // The same seed gives the same layout.
+    let again = s.apply(&[Command::Scatter { source: plant, region: area, count: 25, seed: 7, size_variation: 0.3, rotate: true }]).unwrap();
+    let doc = s.document();
+    assert_eq!(doc.get::<Plant>(again.created[3]).unwrap().at, doc.get::<Plant>(out.created[3]).unwrap().at);
+    let along = s.apply(&[Command::Scatter { source: plant, region: path, count: 10, seed: 1, size_variation: 0.0, rotate: false }]).unwrap();
+    let doc = s.document();
+    assert!(along.created.iter().all(|id| (doc.get::<Plant>(*id).unwrap().at.y().mm()).abs() < 3.0 * ft));
+}
