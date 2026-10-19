@@ -1032,6 +1032,34 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                 );
                             });
                     });
+                egui::CollapsingHeader::new("Object Labels").show(ui, |ui| {
+                    let l = &d.labels;
+                    egui::Grid::new("label_defaults").num_columns(2).show(ui, |ui| {
+                        for (label, key, v) in [
+                            ("Doors", "doors", &l.doors),
+                            ("Windows", "windows", &l.windows),
+                            ("Cabinets", "cabinets", &l.cabinets),
+                            ("Fixtures and furniture", "fixtures", &l.fixtures),
+                        ] {
+                            ui.label(label);
+                            let id = egui::Id::unique(("label_default", key));
+                            if let Some(t) = app.bufs.text(ui, id, v, 180.0) {
+                                commands.push(p(json!({"labels": {key: t}})));
+                            }
+                            ui.end_row();
+                        }
+                        ui.label("Border");
+                        let mut b = l.border;
+                        if ui.checkbox(&mut b, "Box around each label").changed() {
+                            commands.push(p(json!({"labels": {"border": b}})));
+                        }
+                        ui.end_row();
+                    });
+                    ui.weak("Empty shows no label. Macros:");
+                    for (m, what) in housecraft_draft::macros::OBJECT_MACROS {
+                        ui.weak(format!("{{{m}}}  {what}"));
+                    }
+                });
                 egui::CollapsingHeader::new("Framing").show(ui, |ui| {
                     let f = &d.framing;
                     egui::Grid::new("framing_defaults").num_columns(2).show(ui, |ui| {

@@ -779,7 +779,13 @@ pub enum Command {
         #[serde(default)]
         justify: Justify,
         height: Option<Length>,
+        /// Arrow tips for leaders from the text.
+        #[serde(default)]
+        leaders: Vec<Point2>,
     },
+    /// Type an object's own label (replacing its kind's template from the
+    /// default set; "-" hides it), or `None` to go back to the template.
+    SetObjectLabel { id: Id, text: Option<String> },
     /// Save a plan view (floor, layer set, default set).
     AddPlanView {
         name: String,
@@ -1042,6 +1048,7 @@ impl Command {
             Command::AddDimension { .. } => "add_dimension",
             Command::AddExteriorDimensions { .. } => "add_exterior_dimensions",
             Command::AddText { .. } => "add_text",
+            Command::SetObjectLabel { .. } => "set_object_label",
             Command::AddPlanView { .. } => "add_plan_view",
             Command::AddCamera { .. } => "add_camera",
             Command::Update { .. } => "update",
@@ -2013,6 +2020,9 @@ impl Command {
                         height: None,
                         bold: None,
                         color: None,
+                        leaders: Vec::new(),
+                        border: false,
+                        wrap: None,
                     }));
                     pts.push(next);
                 }
@@ -2357,6 +2367,9 @@ impl Command {
                         height: t.height,
                         bold: None,
                         color: None,
+                        leaders: Vec::new(),
+                        border: false,
+                        wrap: None,
                     });
                 }
             }
@@ -2717,6 +2730,7 @@ impl Command {
                 rotation,
                 justify,
                 height,
+                leaders,
             } => {
                 let floor = ops::resolve_sheet(doc, *floor, false)?;
                 let text_layer = doc.defaults_for(floor).layers.text;
@@ -2732,7 +2746,20 @@ impl Command {
                     height: *height,
                     bold: None,
                     color: None,
+                    leaders: leaders.clone(),
+                    border: false,
+                    wrap: None,
                 }));
+            }
+            Command::SetObjectLabel { id, text } => {
+                if doc.object(*id).is_none() {
+                    return Err(ApiError::NotFound(*id));
+                }
+                match text {
+                    Some(t) => doc.settings.labels.insert(*id, t.clone()),
+                    None => doc.settings.labels.remove(id),
+                };
+                out.modified.push(*id);
             }
             Command::AddPlanView {
                 name,

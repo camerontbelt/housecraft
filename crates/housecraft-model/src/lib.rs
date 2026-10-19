@@ -264,6 +264,10 @@ pub struct Settings {
     /// Default sets used for drafting in each kind of 2D view.
     #[serde(default)]
     pub view_defaults: ViewDefaults,
+    /// Object labels typed for one object, replacing its kind's template
+    /// ("-" hides that object's label).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub labels: BTreeMap<Id, String>,
 }
 
 /// Camera default sets: the default set (dimension, text and layer
@@ -350,6 +354,7 @@ impl Document {
                 prices: BTreeMap::new(),
                 markup_percent: 0.0,
                 view_defaults: ViewDefaults::default(),
+                labels: BTreeMap::new(),
             },
             next_id: 1,
             objects: BTreeMap::new(),

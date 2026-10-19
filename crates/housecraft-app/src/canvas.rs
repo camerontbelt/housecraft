@@ -79,6 +79,8 @@ pub struct PlanState {
     /// Sides for the Regular Polygon tool.
     pub polygon_sides: u32,
     text_prompt: Option<(DVec2, String)>,
+    /// Arrow tips for the text being typed (Text with Arrow).
+    prompt_leaders: Vec<DVec2>,
     temp_dim_edit: Option<(Id, String, bool)>,
     /// The switch being wired by the Connect Electrical tool.
     pub wiring: Option<Id>,
@@ -117,6 +119,7 @@ impl PlanState {
             pick: None,
             polygon_sides: 6,
             text_prompt: None,
+            prompt_leaders: Vec::new(),
             temp_dim_edit: None,
             wiring: None,
         }
@@ -738,6 +741,16 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
         }
     }
 
+    // Alt+click a note's link to open it.
+    if resp.clicked()
+        && ui.input(|i| i.modifiers.alt)
+        && let Some(c) = app.plan.cursor
+        && let Some(Object::Text(t)) = hit_test(doc, cache, c, tol).first().and_then(|id| doc.object(*id))
+        && let Some(url) = housecraft_draft::rich::links(&t.text).into_iter().next()
+    {
+        ui.ctx().open_url(egui::OpenUrl::new_tab(url));
+        return;
+    }
     if resp.clicked()
         && let Some(c) = app.plan.cursor
         && let Some(pick) = app.plan.pick.clone()
@@ -1506,6 +1519,14 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 }
             }
             Tool::Text => app.plan.text_prompt = Some((p, String::new())),
+            Tool::TextArrow => {
+                if let Some(tip) = pending.pop() {
+                    app.plan.prompt_leaders = vec![tip];
+                    app.plan.text_prompt = Some((p, String::new()));
+                } else {
+                    pending.push(p);
+                }
+            }
             Tool::Solid => {
                 if let Some(a) = pending.pop() {
                     if (a.x - p.x).abs() > 1.0 && (a.y - p.y).abs() > 1.0 {
@@ -2341,6 +2362,7 @@ fn overlays(app: &mut App, ui: &mut Ui, view: &View, commands: &mut Vec<Command>
                             rotation: 0.0,
                             justify: Justify::Left,
                             height: None,
+                            leaders: app.plan.prompt_leaders.drain(..).map(pt).collect(),
                         });
                         keep = false;
                     }
@@ -2348,6 +2370,7 @@ fn overlays(app: &mut App, ui: &mut Ui, view: &View, commands: &mut Vec<Command>
                         || ui.input(|i| i.key_pressed(egui::Key::Escape))
                     {
                         keep = false;
+                        app.plan.prompt_leaders.clear();
                     }
                     ui.weak("Ctrl+Enter to place");
                 });

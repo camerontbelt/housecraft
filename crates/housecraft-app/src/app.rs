@@ -2238,6 +2238,9 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                 if tool_item(ui, Tool::Text) {
                     self.set_tool(Tool::Text);
                 }
+                if tool_item(ui, Tool::TextArrow) {
+                    self.set_tool(Tool::TextArrow);
+                }
                 ui.separator();
                 ui.menu_button("CAD Details", |ui| {
                     if item(ui, "New CAD Detail", "", true) {

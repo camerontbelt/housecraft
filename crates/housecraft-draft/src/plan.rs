@@ -641,6 +641,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
     }
 
     notes(&ctx, opts.floor, &mut out);
+    object_labels(&ctx, opts.floor, &mut out);
     out
 }
 
@@ -759,6 +760,64 @@ fn cad_shape(
 }
 
 /// Callouts, revision clouds, dimensions and text drawn on `sheet`.
+/// Labels on doors, windows, cabinets and fixtures: each object's own
+/// label, else its kind's template from the default set.
+fn object_labels(ctx: &Ctx, floor: Id, out: &mut Drawing) {
+    let doc = ctx.doc;
+    let l = &ctx.defaults.labels;
+    if l.doors.is_empty() && l.windows.is_empty() && l.cabinets.is_empty() && l.fixtures.is_empty() && doc.settings.labels.is_empty() {
+        return;
+    }
+    let in_front = |pos: housecraft_units::Point2, facing: f64, depth: housecraft_units::Length| v2(pos) + DVec2::from_angle(facing.to_radians()) * depth.mm() / 2.0;
+    for (id, object) in &doc.objects {
+        let (template, at, layer) = match object {
+            Object::Opening(o) => {
+                let Some(w) = doc.get::<Wall>(o.wall).filter(|w| w.floor == floor) else {
+                    continue;
+                };
+                let (a, b) = (v2(w.start), v2(w.end));
+                let dir = (b - a).normalize_or_zero();
+                // Outside the wall (the exterior is on the left of start→end).
+                let at = a + dir * o.position.mm() + perp(dir) * 450.0;
+                let t = if o.opening_kind.is_door() { &l.doors } else { &l.windows };
+                (t, at, o.layer)
+            }
+            Object::Cabinet(c) if c.floor == floor => (&l.cabinets, in_front(c.position, c.facing, c.depth), c.layer),
+            Object::Appliance(a) if a.floor == floor => (&l.fixtures, in_front(a.position, a.facing, a.depth), a.layer),
+            Object::Symbol(s) if s.floor == floor => (&l.fixtures, v2(s.position), s.layer),
+            _ => continue,
+        };
+        let text = doc.settings.labels.get(id).unwrap_or(template);
+        if text.trim().is_empty() || text.trim() == "-" {
+            continue;
+        }
+        let look = ctx.look(layer);
+        if !look.visible {
+            continue;
+        }
+        let style = ctx.text_style(None, &look);
+        let ink = style.color.map_or(look.ink, Ink::Color);
+        crate::rich::text_block(
+            out,
+            Some(*id),
+            &crate::rich::TextBlock {
+                at,
+                text: &crate::macros::expand_object(doc, *id, text),
+                height: style.height.mm() * 0.75,
+                rotation: 0.0,
+                justify: Justify::Center,
+                middle: true,
+                bold: false,
+                ink,
+                stroke: Stroke { ink, ..look.stroke },
+                border: l.border,
+                wrap: l.wrap.map(|w| w.mm()),
+                leaders: &[],
+            },
+        );
+    }
+}
+
 fn notes(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
     let doc = ctx.doc;
     for c in doc.iter::<Callout>().filter(|c| c.floor == sheet) {
@@ -807,17 +866,24 @@ fn notes(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
             continue;
         }
         let style = ctx.text_style(text.style, &look);
-        out.push(
+        let leaders: Vec<DVec2> = text.leaders.iter().map(|p| v2(*p)).collect();
+        let ink = text.color.or(style.color).map_or(look.ink, Ink::Color);
+        crate::rich::text_block(
+            out,
             Some(text.id),
-            Prim::Text {
+            &crate::rich::TextBlock {
                 at: v2(text.position),
-                text: crate::macros::expand(doc, &text.text),
+                text: &crate::macros::expand(doc, &text.text),
                 height: text.height.unwrap_or(style.height).mm(),
                 rotation: text.rotation,
                 justify: text.justify,
                 middle: false,
                 bold: text.bold.unwrap_or(style.bold),
-                ink: text.color.or(style.color).map_or(look.ink, Ink::Color),
+                ink,
+                stroke: Stroke { ink, ..look.stroke },
+                border: text.border,
+                wrap: text.wrap.map(|w| w.mm()),
+                leaders: &leaders,
             },
         );
     }

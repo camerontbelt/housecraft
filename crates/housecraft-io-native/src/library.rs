@@ -330,6 +330,9 @@ pub fn builtin() -> Vec<LibraryItem> {
                 height: None,
                 bold: None,
                 color: None,
+                leaders: Vec::new(),
+                border: false,
+                wrap: None,
             })
         };
         out.push(item(

@@ -279,6 +279,19 @@ pub fn title_case(s: &str) -> String {
 fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
     let id = ed.id;
     let doc = ed.doc;
+    if matches!(object, Object::Opening(_) | Object::Cabinet(_) | Object::Appliance(_) | Object::Symbol(_)) {
+        Ed::label(ui, "Label");
+        let own = doc.settings.labels.get(&id).cloned().unwrap_or_default();
+        let key = ed.key("object_label");
+        if let Some(t) = ed.bufs.text(ui, key, &own, 160.0) {
+            let t = t.trim().to_string();
+            ed.out.push(Command::SetObjectLabel { id, text: (!t.is_empty()).then_some(t) });
+        }
+        ui.end_row();
+        Ed::label(ui, "");
+        ui.weak("Blank uses the default label; - hides it. Macros: {width} {height} {size} {type} {code}");
+        ui.end_row();
+    }
     match object {
         Object::Wall(w) => {
             ed.pick::<WallType>(ui, "Wall Type", "wall_type", Some(w.wall_type), None);
@@ -2169,7 +2182,20 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "rotation": r })));
             }
             ed.color(ui, "Color", "color", t.color, "By style / layer");
+            ed.check(ui, "Border", "border", "Box around the text", t.border);
+            ed.opt_length(ui, "Wrap width", "wrap", t.wrap, Some(Length::from_feet(4.0)));
+            Ed::label(ui, "Arrows");
+            ui.horizontal(|ui| {
+                ui.label(t.leaders.len().to_string());
+                if !t.leaders.is_empty() && ui.small_button("Remove arrows").clicked() {
+                    ed.out.push(patch(id, json!({ "leaders": [] })));
+                }
+            });
+            ui.end_row();
             ed.pick::<Layer>(ui, "Layer", "layer", Some(t.layer), None);
+            Ed::label(ui, "");
+            ui.weak("Markup: **bold**, __underline__, [label](https://…), {#c03030}colour{/}.\nAlt+click a link in the plan to open it.");
+            ui.end_row();
         }
         Object::Layer(l) => {
             ed.text(ui, "Name", "name", &l.name);

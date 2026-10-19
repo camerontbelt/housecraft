@@ -279,6 +279,7 @@ pub(crate) fn new_document(name: String) -> Document {
         solids: Default::default(),
         framing: Default::default(),
         materials,
+        labels: Default::default(),
     });
     doc.settings.active_default_set = defaults;
 

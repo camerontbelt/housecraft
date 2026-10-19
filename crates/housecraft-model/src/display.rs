@@ -322,6 +322,25 @@ pub struct DefaultSet {
     /// Default material for each surface role (empty: built-in colours).
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub materials: crate::SurfaceMaterials,
+    /// Labels shown on objects in plan.
+    #[serde(default)]
+    pub labels: LabelDefaults,
+}
+
+/// Object labels in plan: a template per kind of object, with object
+/// macros such as `{width}` or `{size}` (empty: no label).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct LabelDefaults {
+    pub doors: String,
+    pub windows: String,
+    pub cabinets: String,
+    /// Appliances, fixtures and furniture.
+    pub fixtures: String,
+    /// Draw a box around each label.
+    pub border: bool,
+    /// Wrap labels wider than this.
+    pub wrap: Option<Length>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

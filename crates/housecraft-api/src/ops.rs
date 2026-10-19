@@ -650,6 +650,9 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
         Object::Text(x) => {
             let mut x = x.clone();
             x.position = t.apply_point(x.position);
+            for tip in &mut x.leaders {
+                *tip = t.apply_point(*tip);
+            }
             if !t.is_reflection() {
                 x.rotation = t.apply_angle(x.rotation);
             }

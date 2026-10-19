@@ -151,6 +151,15 @@ pub struct Text {
     pub bold: Option<bool>,
     #[serde(default)]
     pub color: Option<Color>,
+    /// Arrow tips: a leader runs from the text's nearer side to each.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub leaders: Vec<Point2>,
+    /// Draw a box around the text.
+    #[serde(default)]
+    pub border: bool,
+    /// Wrap lines wider than this.
+    #[serde(default)]
+    pub wrap: Option<Length>,
 }
 
 /// What a schedule lists.
