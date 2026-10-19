@@ -1099,7 +1099,22 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             None,
         );
     }
-    let doc = app.session.document();
+    let uniforms = frame_uniforms(v, app.session.document(), vp);
+    painter.add(egui_wgpu::Callback::new_paint_callback(
+        rect,
+        Paint3d {
+            vertices: verts,
+            indices: idx,
+            key: v.gpu_key,
+            uniforms,
+        },
+    ));
+    overlay(app, ui, rect);
+    painter_bar(app, ui, rect);
+}
+
+/// The shader inputs for a frame: camera, sun, shadows, cutaway, lights.
+fn frame_uniforms(v: &View3d, doc: &housecraft_api::model::Document, vp: Mat4) -> Uniforms {
     let light = sun_direction(doc);
     // Below the horizon the sun stops lighting and casting.
     let strength = (light.z / 0.1).clamp(0.0, 1.0);
@@ -1137,13 +1152,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             ]
         })
         .collect();
-    painter.add(egui_wgpu::Callback::new_paint_callback(
-        rect,
-        Paint3d {
-            vertices: verts,
-            indices: idx,
-            key: v.gpu_key,
-            uniforms: Uniforms {
+    Uniforms {
                 view_proj: vp.to_cols_array_2d(),
                 light_vp: light_vp.to_cols_array_2d(),
                 light: [light.x, light.y, light.z, 0.0],
@@ -1160,11 +1169,198 @@ pub fn show(app: &mut App, ui: &mut Ui) {
                     a[..lamps.len()].copy_from_slice(&lamps);
                     a
                 },
+            }
+}
+
+/// Render the current 3D view at `width` × `height` pixels and save it as
+/// a PNG; with `transparent`, the sky is left see-through.
+pub fn export_image(
+    app: &mut App,
+    width: u32,
+    height: u32,
+    transparent: bool,
+    path: &std::path::Path,
+) -> Result<(), String> {
+    let rs = app.render_state.clone().ok_or("3D rendering is not available")?;
+    let device = &rs.device;
+    let max = device.limits().max_texture_dimension_2d;
+    let (w, h) = (width.clamp(16, max), height.clamp(16, max));
+    let doc = app.session.document();
+    let v = &mut app.view3d;
+    // A fresh model without selection highlights.
+    let mesh = build(doc, None);
+    let (verts, idx) = to_gpu(&mesh, &[], &v.hidden, grade(doc));
+    v.mesh = Some((app.rev, mesh));
+    let uniforms = frame_uniforms(v, doc, v.view_proj(w as f32 / h as f32));
+    let vbuf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("export vertices"),
+        contents: bytemuck::cast_slice(&verts),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+    let ibuf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("export indices"),
+        contents: bytemuck::cast_slice(&idx),
+        usage: wgpu::BufferUsages::INDEX,
+    });
+    let size = wgpu::Extent3d {
+        width: w,
+        height: h,
+        depth_or_array_layers: 1,
+    };
+    let texture = |label, format, samples, usage| {
+        device.create_texture(&wgpu::TextureDescriptor {
+            label: Some(label),
+            size,
+            mip_level_count: 1,
+            sample_count: samples,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage,
+            view_formats: &[],
+        })
+    };
+    let msaa = texture("export colour", rs.target_format, crate::MSAA, wgpu::TextureUsages::RENDER_ATTACHMENT);
+    let resolved = texture(
+        "export resolve",
+        rs.target_format,
+        1,
+        wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+    );
+    let depth = texture("export depth", crate::DEPTH_FORMAT, crate::MSAA, wgpu::TextureUsages::RENDER_ATTACHMENT);
+    let (msaa_view, resolved_view, depth_view) = (
+        msaa.create_view(&Default::default()),
+        resolved.create_view(&Default::default()),
+        depth.create_view(&Default::default()),
+    );
+    // Rows are padded to 256 bytes for the copy.
+    let row = (w * 4).div_ceil(256) * 256;
+    let readback = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("export readback"),
+        size: row as u64 * h as u64,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    {
+        let renderer = rs.renderer.read();
+        let r = renderer
+            .callback_resources
+            .get::<Renderer3d>()
+            .ok_or("the 3D renderer is not ready")?;
+        rs.queue.write_buffer(&r.uniforms, 0, bytemuck::bytes_of(&uniforms));
+        let mut encoder = device.create_command_encoder(&Default::default());
+        if uniforms.params[0] > 0.5 {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("export shadow"),
+                color_attachments: &[],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &r.shadow_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            pass.set_pipeline(&r.shadow_pipeline);
+            pass.set_bind_group(0, &r.bind, &[]);
+            pass.set_vertex_buffer(0, vbuf.slice(..));
+            pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..idx.len() as u32, 0, 0..1);
+        }
+        {
+            // The light theme's sky, in linear terms for an sRGB target.
+            let sky = |c: f64| (c / 255.0).powf(2.2);
+            let clear = if transparent {
+                wgpu::Color::TRANSPARENT
+            } else {
+                wgpu::Color {
+                    r: sky(196.0),
+                    g: sky(214.0),
+                    b: sky(232.0),
+                    a: 1.0,
+                }
+            };
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("export"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &msaa_view,
+                    depth_slice: None,
+                    resolve_target: Some(&resolved_view),
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(clear),
+                        store: wgpu::StoreOp::Discard,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &depth_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            pass.set_bind_group(0, &r.bind, &[]);
+            pass.set_bind_group(1, &r.shadow_bind, &[]);
+            pass.set_vertex_buffer(0, vbuf.slice(..));
+            pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
+            pass.set_pipeline(&r.pipeline);
+            pass.draw_indexed(0..idx.len() as u32, 0, 0..1);
+            pass.set_pipeline(&r.clear_pipeline);
+            pass.draw_indexed(0..idx.len() as u32, 0, 0..1);
+        }
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &resolved,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
             },
-        },
-    ));
-    overlay(app, ui, rect);
-    painter_bar(app, ui, rect);
+            wgpu::TexelCopyBufferInfo {
+                buffer: &readback,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(row),
+                    rows_per_image: Some(h),
+                },
+            },
+            size,
+        );
+        rs.queue.submit([encoder.finish()]);
+    }
+    let slice = readback.slice(..);
+    let (tx, rx) = std::sync::mpsc::channel();
+    slice.map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r);
+    });
+    device
+        .poll(wgpu::PollType::wait_indefinitely())
+        .map_err(|e| e.to_string())?;
+    rx.recv()
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+    let data = slice.get_mapped_range().map_err(|e| e.to_string())?;
+    let bgra = matches!(
+        rs.target_format,
+        wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb
+    );
+    let mut pixels = Vec::with_capacity((w * h * 4) as usize);
+    for y in 0..h as usize {
+        let line = &data[y * row as usize..y * row as usize + w as usize * 4];
+        for px in line.as_chunks::<4>().0 {
+            let [a, b, c, d] = *px;
+            pixels.extend(if bgra { [c, b, a, d] } else { [a, b, c, d] });
+        }
+    }
+    drop(data);
+    readback.unmap();
+    image::save_buffer(path, &pixels, w, h, image::ColorType::Rgba8).map_err(|e| e.to_string())
 }
 
 fn overlay(app: &mut App, ui: &mut Ui, rect: Rect) {

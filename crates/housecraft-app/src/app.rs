@@ -87,6 +87,10 @@ pub struct App {
     pub dialogs: Dialogs,
     pub materials: crate::materials::MaterialsDialog,
     pub library: crate::library_view::LibraryState,
+    /// The GPU, for rendering images offscreen.
+    pub render_state: Option<egui_wgpu::RenderState>,
+    /// The 3D image export dialog: width, height, transparent background.
+    pub image_export: Option<(u32, u32, bool)>,
     /// A 3D model file waiting for its import options.
     pub symbol_import: Option<(std::path::PathBuf, housecraft_io_native::symbols::ImportOptions)>,
     pub bufs: EditBuffers,
@@ -113,6 +117,7 @@ impl App {
         if let Some(rs) = cc.wgpu_render_state.as_ref() {
             crate::view3d::init_renderer(rs);
         }
+        let render_state = cc.wgpu_render_state.clone();
         let doc = Document::new("Untitled");
         let mut app = App {
             plan: PlanState::new(&doc),
@@ -129,6 +134,8 @@ impl App {
             materials: Default::default(),
             library: Default::default(),
             symbol_import: None,
+            render_state,
+            image_export: None,
             bufs: EditBuffers::default(),
             spec: Vec::new(),
             room_multi: None,
@@ -323,6 +330,48 @@ impl App {
             transparent: None,
         }) {
             self.selection = out.created;
+        }
+    }
+
+    /// The 3D image export window.
+    pub fn image_export_dialog(&mut self, ctx: &egui::Context) {
+        let Some((mut w, mut h, mut transparent)) = self.image_export else {
+            return;
+        };
+        let mut open = true;
+        let mut go = false;
+        egui::Window::new("Export 3D View as Image")
+            .open(&mut open)
+            .resizable(false)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Size:");
+                    ui.add(egui::DragValue::new(&mut w).range(16..=16384).suffix(" px"));
+                    ui.label("×");
+                    ui.add(egui::DragValue::new(&mut h).range(16..=16384).suffix(" px"));
+                });
+                ui.horizontal(|ui| {
+                    for (name, pw, ph) in [("HD", 1920, 1080), ("4K", 3840, 2160), ("8K", 7680, 4320), ("Square", 4096, 4096)] {
+                        if ui.small_button(name).clicked() {
+                            (w, h) = (pw, ph);
+                        }
+                    }
+                });
+                ui.checkbox(&mut transparent, "Transparent background (no sky)");
+                ui.weak("Uses the current 3D camera; very large sizes depend on your graphics card.");
+                go = ui.button("Export…").clicked();
+            });
+        if go {
+            self.image_export = None;
+            if let Some(path) = pick_save_path(&self.doc().name, "png") {
+                self.mode = Mode::ThreeD;
+                match crate::view3d::export_image(self, w, h, transparent, &path) {
+                    Ok(()) => self.info(format!("Saved {}", path.display())),
+                    Err(e) => self.error(format!("Export failed: {e}")),
+                }
+            }
+        } else {
+            self.image_export = open.then_some((w, h, transparent));
         }
     }
 
@@ -908,6 +957,9 @@ impl App {
                     }
                 });
                 ui.menu_button("Export", |ui| {
+                    if item(ui, "Export 3D View as Image…", "", true) {
+                        self.image_export = Some((3840, 2160, false));
+                    }
                     if item(ui, "Export Floor Plan as PDF…", "", true) {
                         self.dialogs.print.open = true;
                     }
@@ -2549,6 +2601,7 @@ impl eframe::App for App {
         crate::dialogs::show(self, &ctx);
         crate::materials::materials_dialog(self, &ctx);
         self.symbol_import_dialog(&ctx);
+        self.image_export_dialog(&ctx);
         self.confirm_discard(&ctx);
     }
 

@@ -564,7 +564,7 @@ These come from reading the whole list and change the architecture, not just the
 | IO-03 | DXF/DWG import & export (2D) | P1 | M1 (DXF) / M8 (DWG) |
 | IO-04 | 3D import: DXF, DWG, OBJ, 3DS, SKP, STL, DAE; 3D export: DXF, DWG, 3DS, STL, DAE (+ glTF/OBJ/IFC for us) | P1→P3 | M5/M8 |
 | IO-05 | Image import: BMP, JPG, GIF, TIFF, PNG, metafiles, WEBP; transparency color | P1 | M5 ◐ PNG, JPEG, BMP and TIFF pictures with a transparency colour, in plans, views, details and layouts (SVG embeds them); GIF, WebP, metafiles and pictures in PDF/PNG exports later |
-| IO-06 | High-resolution image export, transparent background | P1 | M7 |
+| IO-06 | High-resolution image export, transparent background | P1 | M7 ✓ |
 | IO-07 | Import/export settings objects (views, default sets, layer sets, hotkeys, wall types, line styles, macros, scripts) | P2 | M5 |
 | IO-08 | 3D mass import → library objects | P2 | M5 |
 | IO-09 | Textures → materials in bulk | P2 | M5 |
