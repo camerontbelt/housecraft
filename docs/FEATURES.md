@@ -361,7 +361,7 @@ These come from reading the whole list and change the architecture, not just the
 | LY-05 | Edit an object's layer properties from the toolbar | P2 | M1 |
 | LY-06 | Reference displays: multiple reference floors/layer sets, draw order | P1 | M3 ◐ several reference floors; reference layer sets and draw order later |
 | LY-07 | Reference display from other plan files (2D and 3D ghosting) | P2 | M8 |
-| LY-08 | 3D reference display styles | P3 | M7 |
+| LY-08 | 3D reference display styles | P3 | M7 ✓ 3D view Display menu: show, ghost (faint, see-through, not clickable) or hide each kind of object; Framing Overview ghosts walls and roofs |
 | LY-09 | Dockable layer display options panel | P1 | GUI |
 
 ## 15. Dimensions

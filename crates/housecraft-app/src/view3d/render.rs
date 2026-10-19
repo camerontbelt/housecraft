@@ -51,7 +51,7 @@ impl Offscreen {
                 r.tex_keys = mesh.textures.clone();
             }
         }
-        let (verts, idx, triangles) = to_gpu(&mesh, &[], &v.hidden, grade(doc), ground(doc), v.render.outlines);
+        let (verts, idx, triangles) = to_gpu(&mesh, &[], &v.hidden, &v.ghosted, grade(doc), ground(doc), v.render.outlines);
         let bounds = mesh_bounds(&mesh);
         v.mesh = Some((app.rev, mesh));
         let base = frame_uniforms(v, doc, v.view_proj(w as f32 / h as f32));

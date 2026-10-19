@@ -1571,8 +1571,15 @@ impl App {
                     }
                     if item(ui, "Framing Overview (3D)", "", true) {
                         use housecraft_api::geom::mesh::Category as C;
-                        let framing_only = vec![C::Wall, C::Opening, C::Floor, C::Ceiling, C::Roof, C::Foundation, C::Fixture, C::Cabinet, C::Terrain];
-                        self.view3d.hidden = if self.view3d.hidden.contains(&C::Wall) { vec![C::Ceiling] } else { framing_only };
+                        // Framing in front of a faint shell of walls and roofs.
+                        let v = &mut self.view3d;
+                        if v.ghosted.contains(&C::Wall) || v.hidden.contains(&C::Wall) {
+                            v.hidden = vec![C::Ceiling];
+                            v.ghosted.clear();
+                        } else {
+                            v.hidden = vec![C::Opening, C::Floor, C::Ceiling, C::Foundation, C::Fixture, C::Cabinet, C::Terrain];
+                            v.ghosted = vec![C::Wall, C::Roof];
+                        }
                         self.mode = Mode::ThreeD;
                     }
                     ui.separator();

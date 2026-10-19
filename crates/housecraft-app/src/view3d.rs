@@ -210,6 +210,10 @@ fn hash(p: vec2<f32>) -> f32 {
     return fract(sin(dot(p, vec2<f32>(12.9898, 78.233))) * 43758.5453);
 }
 @vertex fn vs_shadow(v: VIn) -> @builtin(position) vec4<f32> {
+    // Reference (ghosted) parts cast no shadow: put them outside the clip box.
+    if (v.flags > 3.5) {
+        return vec4<f32>(0.0, 0.0, -2.0, 1.0);
+    }
     return u.light_vp * vec4<f32>(v.pos, 1.0);
 }
 fn sunlit(world: vec3<f32>) -> f32 {
@@ -789,6 +793,21 @@ fn light_view_proj(light: Vec3, lo: Vec3, hi: Vec3) -> Mat4 {
     proj * view
 }
 
+/// The mesh categories as listed in the Display menu.
+const CATEGORY_NAMES: [(Category, &str); 11] = [
+    (Category::Wall, "Walls"),
+    (Category::Opening, "Doors and windows"),
+    (Category::Floor, "Floors"),
+    (Category::Ceiling, "Ceilings"),
+    (Category::Roof, "Roofs"),
+    (Category::Foundation, "Foundations"),
+    (Category::Stair, "Stairs and railings"),
+    (Category::Fixture, "Fixtures and furniture"),
+    (Category::Cabinet, "Cabinets"),
+    (Category::Terrain, "Terrain and site"),
+    (Category::Framing, "Framing"),
+];
+
 /// Distinct values mixed into the upload key for each hidden category.
 const CATEGORY_KEYS: [Id; 11] = [
     Id(u64::MAX - 1),
@@ -819,6 +838,8 @@ pub struct View3d {
     pub fit_requested: bool,
     /// Mesh categories not drawn (ceilings are hidden in overviews so rooms stay visible).
     pub hidden: Vec<Category>,
+    /// Mesh categories drawn as faint see-through reference (not pickable).
+    pub ghosted: Vec<Category>,
     pub cutaway: Cutaway,
     /// How far the cutaway has sliced through, 0 to 1.
     pub cut: f32,
@@ -861,6 +882,7 @@ impl Default for View3d {
             walk: false,
             fit_requested: true,
             hidden: vec![Category::Ceiling],
+            ghosted: Vec::new(),
             cutaway: Cutaway::Off,
             cut: 0.5,
             mesh: None,
@@ -905,6 +927,32 @@ impl View3d {
         self.distance = len;
         self.yaw = d.y.atan2(d.x);
         self.pitch = (-d.z / len).asin();
+    }
+
+    /// Categories clicks pass through: hidden or shown only for reference.
+    pub fn unpickable(&self) -> Vec<Category> {
+        self.hidden.iter().chain(&self.ghosted).copied().collect()
+    }
+
+    /// How a category is shown: 0 normally, 1 as reference, 2 hidden.
+    pub fn category_mode(&self, c: Category) -> u8 {
+        if self.hidden.contains(&c) {
+            2
+        } else if self.ghosted.contains(&c) {
+            1
+        } else {
+            0
+        }
+    }
+
+    pub fn set_category_mode(&mut self, c: Category, mode: u8) {
+        self.hidden.retain(|x| *x != c);
+        self.ghosted.retain(|x| *x != c);
+        match mode {
+            1 => self.ghosted.push(c),
+            2 => self.hidden.push(c),
+            _ => {}
+        }
     }
 
     pub fn apply_camera(&mut self, cam: &Camera) {
@@ -1035,6 +1083,7 @@ fn to_gpu(
     mesh: &Mesh,
     selection: &[Id],
     hidden: &[Category],
+    ghosted: &[Category],
     grade_z: Option<f32>,
     ground: (bool, Option<f32>),
     outlines: bool,
@@ -1078,6 +1127,20 @@ fn to_gpu(
                 }
             }
         }
+        if ghosted.contains(&part.category) {
+            // Reference display: pale, untextured and see-through.
+            let range = part.first_index as usize..(part.first_index + part.index_count) as usize;
+            for &i in &mesh.indices[range] {
+                let v = &mut vertices[i as usize];
+                let grey = (v.color[0] + v.color[1] + v.color[2]) / 3.0;
+                for k in 0..3 {
+                    v.color[k] = 0.55 + grey * 0.3;
+                }
+                v.pbr = [0.9, 0.0, 0.0, 0.22];
+                v.tex = -1.0;
+                v.flags = 4.0;
+            }
+        }
     }
     // Ground plane under everything (with a terrain, only out to the
     // horizon when asked).
@@ -1110,8 +1173,13 @@ fn to_gpu(
         }
     }
     let mut indices = visible_indices(mesh, hidden);
-    // Edge lines outline the model only, not the ground.
-    let lines = if outlines { edge_lines(mesh, &indices, &mut vertices) } else { Vec::new() };
+    // Edge lines outline the solid model only, not the ground or reference parts.
+    let lines = if outlines {
+        let hide_too: Vec<Category> = hidden.iter().chain(ghosted).copied().collect();
+        edge_lines(mesh, &visible_indices(mesh, &hide_too), &mut vertices)
+    } else {
+        Vec::new()
+    };
     if let Some(base) = ground_base {
         indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
     }
@@ -1358,7 +1426,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         let (near, far) = (near.truncate() / near.w, far.truncate() / far.w);
         let dir = (far - near).normalize();
         if let Some(mode) = app.view3d.annotate {
-            if let Some((_, _, t)) = pick_hit(&mesh, near, dir, &app.view3d.hidden) {
+            if let Some((_, _, t)) = pick_hit(&mesh, near, dir, &app.view3d.unpickable()) {
                 let p = near + dir * t;
                 let mm = |v: Vec3| Point3::from_mm(v.x as f64 * 1000.0, v.y as f64 * 1000.0, v.z as f64 * 1000.0);
                 let camera = app.view3d.camera;
@@ -1380,7 +1448,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             v_restore(app, mesh_rev, mesh);
             return;
         }
-        let hit = pick(&mesh, near, dir, &app.view3d.hidden);
+        let hit = pick(&mesh, near, dir, &app.view3d.unpickable());
         let (ctrl, alt) = ui.input(|i| (i.modifiers.command, i.modifiers.alt));
         if let Some(painter) = app.view3d.painter {
             match hit {
@@ -1441,11 +1509,16 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         .fold(mesh_rev.wrapping_mul(1_000_003) ^ v.render.outlines as u64, |h, id| {
             h.wrapping_mul(31).wrapping_add(id.0)
         });
+    let sel_hash = v
+        .ghosted
+        .iter()
+        .fold(sel_hash, |h, c| h.wrapping_mul(37).wrapping_add(CATEGORY_KEYS[*c as usize].0 ^ 0x5a5a));
     if v.gpu.as_ref().is_none_or(|g| g.0 != sel_hash) {
         let (verts, idx, tris) = to_gpu(
             &mesh,
             &app.selection,
             &v.hidden,
+            &v.ghosted,
             grade(app.session.document()),
             ground(app.session.document()),
             v.render.outlines,
@@ -1837,6 +1910,30 @@ fn overlay(app: &mut App, ui: &mut Ui, rect: Rect) {
                 if v.cutaway != Cutaway::Off {
                     ui.add(egui::Slider::new(&mut v.cut, 0.0..=1.0).show_value(false));
                 }
+                // Each kind of object shown, shown as faint reference, or hidden.
+                let keep_open = egui::containers::menu::MenuConfig::new()
+                    .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside);
+                let (display, _) = egui::containers::menu::MenuButton::new("Display").config(keep_open).ui(ui, |ui| {
+                    egui::Grid::new("category_modes").num_columns(4).show(ui, |ui| {
+                        ui.label("");
+                        ui.label("Show");
+                        ui.label("Reference");
+                        ui.label("Hide");
+                        ui.end_row();
+                        for (c, name) in CATEGORY_NAMES {
+                            ui.label(name);
+                            let mut mode = v.category_mode(c);
+                            for m in 0..3u8 {
+                                ui.radio_value(&mut mode, m, "");
+                            }
+                            if mode != v.category_mode(c) {
+                                v.set_category_mode(c, mode);
+                            }
+                            ui.end_row();
+                        }
+                    });
+                });
+                display.on_hover_text("Show, ghost (reference) or hide each kind of object");
                 ui.separator();
                 if ui
                     .selectable_label(v.walk, "Walk")
