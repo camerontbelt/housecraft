@@ -772,6 +772,7 @@ fn move_command(doc: &Document, ids: &[Id], d: DVec2) -> Command {
 
 fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &mut Vec<Command>) {
     let tool = app.plan.tool;
+    let placing = app.library.placing.clone();
     let floor = Some(app.plan.target());
     let doc = app.session.document();
     if app.plan.sheet.is_some() && !tool.is_drafting() {
@@ -1142,6 +1143,17 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 height: None,
             }),
             Tool::Countertop => pending.push(p),
+            Tool::PlaceTemplate => {
+                if let Some((kind, template, _)) = &placing {
+                    commands.push(Command::PlaceObject {
+                        floor,
+                        kind: *kind,
+                        template: template.clone(),
+                        at: pt(p),
+                        facing: None,
+                    });
+                }
+            }
             Tool::PlaceBlock(block) => commands.push(Command::AddBlockRef {
                 floor,
                 block,

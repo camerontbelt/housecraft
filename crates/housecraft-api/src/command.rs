@@ -270,6 +270,25 @@ pub enum Command {
         depth: Option<Length>,
         height: Option<Length>,
     },
+    /// Place a cabinet or appliance from a template (a library item): its
+    /// sizes and options come from `template`, its place from `at` and
+    /// `facing` (backed onto a nearby wall when `facing` is unset).
+    PlaceObject {
+        floor: Option<Id>,
+        kind: ObjectKind,
+        template: serde_json::Value,
+        at: Point2,
+        facing: Option<f64>,
+    },
+    /// Replace cabinets or appliances with a template (a library item),
+    /// keeping where they are. With `all_identical`, every object identical
+    /// to one of `ids` (apart from where it is) is replaced too.
+    ReplaceWith {
+        ids: Vec<Id>,
+        template: serde_json::Value,
+        #[serde(default)]
+        all_identical: bool,
+    },
     /// Close gaps up to the default set's largest filler between side-by-side
     /// cabinets and between cabinets and walls on a floor (cabinets marked
     /// `no_auto_filler` are skipped).
@@ -682,6 +701,8 @@ impl Command {
             Command::AddCountertop { .. } => "add_countertop",
             Command::AddAppliance { .. } => "add_appliance",
             Command::AutoFillers { .. } => "auto_fillers",
+            Command::PlaceObject { .. } => "place_object",
+            Command::ReplaceWith { .. } => "replace_with",
             Command::PaintMaterial { .. } => "paint_material",
             Command::ReplaceMaterial { .. } => "replace_material",
             Command::AddBlock { .. } => "add_block",
@@ -1318,6 +1339,23 @@ impl Command {
                     [*width, *depth, *height],
                 )?);
             }
+            Command::PlaceObject {
+                floor,
+                kind,
+                template,
+                at,
+                facing,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                out.created.push(crate::cabinets::place_object(
+                    doc, &d, floor, *kind, template, *at, *facing,
+                )?);
+            }
+            Command::ReplaceWith {
+                ids,
+                template,
+                all_identical,
+            } => crate::cabinets::replace_with(doc, ids, template, *all_identical, &mut out)?,
             Command::AutoFillers { floor } => {
                 let floor = ops::resolve_floor(doc, *floor)?;
                 let max = d.cabinets.max_filler.mm();

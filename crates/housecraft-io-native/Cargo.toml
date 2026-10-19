@@ -8,10 +8,8 @@ publish.workspace = true
 
 [dependencies]
 housecraft-model.workspace = true
+housecraft-units.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 zip.workspace = true
-
-[dev-dependencies]
-housecraft-units.workspace = true

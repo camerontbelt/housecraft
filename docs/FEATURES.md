@@ -177,7 +177,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-11 | Partition walls (don't cut structural layers) | P2 | M3 |
 | WL-12 | Remodel layers: new / existing / demolition | P1 | M3 ✓ |
 | WL-13 | Wall hatching (labels, copy/paste, shear wall marking) | P2 | M4 |
-| WL-14 | Wall definitions in library | P1 | M5 |
+| WL-14 | Wall definitions in library | P1 | M5 ✓ |
 | WL-15 | Corner boards & quoins (auto/manual) | P2 | M5 |
 | WL-16 | Wall material regions | P2 | M5 |
 | WL-17 | Double walls (marriage/multi-family) incl. openings | P3 | M3 |
@@ -472,18 +472,18 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| LIB-01 | Library browser of objects; create, import, download | P1 | M5 |
+| LIB-01 | Library browser of objects; create, import, download | P1 | M5 ◐ built-in catalogue (cabinet sizes, appliances, fixtures, materials, wall types) and a user library: add selected objects, import/export .hclib bundles; downloading from an online catalogue later |
 | LIB-02 | Catalog migration between versions | P3 | M8 |
 | LIB-03 | Catalog update service | ✗ | — (own content feed later) |
 | LIB-04 | Update catalogs on demand | ✗ | — |
-| LIB-05 | Search with AND/OR/NOT/grouping; search attributes | P1 | M5 |
+| LIB-05 | Search with AND/OR/NOT/grouping; search attributes | P1 | M5 ✓ |
 | LIB-06 | Tags, filters, favorites, saved filters | P2 | M5 |
 | LIB-07 | Edit CAD blocks in place; apply to all instances | P2 | M5 |
 | LIB-08 | Patterns and fill styles in library | P2 | M5 |
 | LIB-09 | Notes, callouts, markers in library | P2 | M5 |
 | LIB-10 | Text in library | P3 | M5 |
 | LIB-11 | Library shortcuts | P3 | M5 |
-| LIB-12 | Replace from library (one or all identical) | P1 | M5 |
+| LIB-12 | Replace from library (one or all identical) | P1 | M5 ◐ cabinets and appliances, one or all identical; blocks later |
 | LIB-13 | Library painter with scope | P2 | M5 |
 | LIB-14 | Edit parametric items stored in library | P2 | M5 |
 | LIB-15 | Edit symbol properties in library | P2 | M5 |

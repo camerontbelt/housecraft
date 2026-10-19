@@ -86,6 +86,7 @@ pub struct App {
     pub prefs: Prefs,
     pub dialogs: Dialogs,
     pub materials: crate::materials::MaterialsDialog,
+    pub library: crate::library_view::LibraryState,
     pub bufs: EditBuffers,
     /// Objects whose specification windows are open.
     pub spec: Vec<Id>,
@@ -124,6 +125,7 @@ impl App {
             prefs,
             dialogs: Dialogs::default(),
             materials: Default::default(),
+            library: Default::default(),
             bufs: EditBuffers::default(),
             spec: Vec::new(),
             room_multi: None,
@@ -1727,34 +1729,7 @@ impl App {
         egui::ScrollArea::vertical().show(ui, |ui| match self.side_tab {
             SideTab::ProjectBrowser => self.project_browser(ui),
             SideTab::LayerDisplay => self.layer_display(ui),
-            SideTab::Library => {
-                use housecraft_io_native::library;
-                let dir = library::library_dir();
-                egui::CollapsingHeader::new("CAD Blocks")
-                    .default_open(true)
-                    .show(ui, |ui| {
-                        let blocks = dir.as_deref().map(library::list_blocks).unwrap_or_default();
-                        if blocks.is_empty() {
-                            ui.weak(
-                                "Select a placed block and use CAD > Blocks > Save Block to \
-                                 Library to keep it here for any plan.",
-                            );
-                        }
-                        for (_, block) in blocks {
-                            let resp = ui
-                                .selectable_label(false, &block.name)
-                                .on_hover_text("Click, then click in the plan to place it");
-                            if resp.clicked() {
-                                self.place_library_block(&block);
-                            }
-                        }
-                    });
-                ui.add_space(6.0);
-                ui.weak(
-                    "Wall types, symbols, materials and manufacturer catalogs come later \
-                     (backlog LIB-01). Wall types and room types are managed from the Tools menu.",
-                );
-            }
+            SideTab::Library => crate::library_view::show(self, ui),
         });
     }
 

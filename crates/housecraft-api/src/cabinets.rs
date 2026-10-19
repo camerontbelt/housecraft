@@ -5,7 +5,9 @@ use housecraft_model::*;
 use housecraft_units::{Length, Point2};
 
 use crate::ApiError;
+use crate::command::Outcome;
 use crate::ops::invalid;
+use serde_json::{Value, json};
 
 /// How far from a wall a click still snaps onto it.
 const REACH_FT: f64 = 3.0;
@@ -124,4 +126,115 @@ pub(crate) fn add_appliance(
         elevation: i(e),
         renovation: Renovation::default(),
     }))
+}
+
+/// Fields that say where an object is rather than what it is.
+const PLACEMENT: [&str; 8] = [
+    "id",
+    "floor",
+    "layer",
+    "position",
+    "facing",
+    "renovation",
+    "filler_left",
+    "filler_right",
+];
+
+/// `template` with `placement`'s placement fields, as an object of `kind`.
+fn instantiate(kind: ObjectKind, template: &Value, placement: &Value) -> Result<Object, ApiError> {
+    let mut v = template.clone();
+    let Some(m) = v.as_object_mut() else {
+        return invalid("a template must be a JSON object");
+    };
+    for k in PLACEMENT {
+        m.remove(k);
+        if let Some(p) = placement.get(k) {
+            m.insert(k.into(), p.clone());
+        }
+    }
+    m.insert("kind".into(), json!(kind));
+    serde_json::from_value::<Object>(v)
+        .map_err(|e| ApiError::Invalid(format!("the template doesn't make a {kind}: {e}")))
+}
+
+pub(crate) fn place_object(
+    doc: &mut Document,
+    d: &DefaultSet,
+    floor: Id,
+    kind: ObjectKind,
+    template: &Value,
+    at: Point2,
+    facing: Option<f64>,
+) -> Result<Id, ApiError> {
+    if !matches!(kind, ObjectKind::Cabinet | ObjectKind::Appliance) {
+        return invalid("only cabinets and appliances are placed from templates");
+    }
+    let (position, facing) = place(doc, floor, at, facing);
+    let placement = json!({
+        "id": 0,
+        "floor": floor,
+        "layer": d.layers.cabinets.unwrap_or(d.layers.cad),
+        "position": position,
+        "facing": facing,
+    });
+    Ok(doc.insert(instantiate(kind, template, &placement)?))
+}
+
+/// An object as JSON without where it is, for comparing.
+fn essence(o: &Object) -> Value {
+    let mut v = serde_json::to_value(o).expect("serialisable");
+    if let Some(m) = v.as_object_mut() {
+        for k in PLACEMENT {
+            m.remove(k);
+        }
+    }
+    v
+}
+
+pub(crate) fn replace_with(
+    doc: &mut Document,
+    ids: &[Id],
+    template: &Value,
+    all_identical: bool,
+    out: &mut Outcome,
+) -> Result<(), ApiError> {
+    let mut targets: Vec<Id> = Vec::new();
+    for id in ids {
+        let o = doc.object(*id).ok_or(ApiError::NotFound(*id))?;
+        if !matches!(o.kind(), ObjectKind::Cabinet | ObjectKind::Appliance) {
+            return invalid(format!("{id} is a {}; only cabinets and appliances are replaced", o.kind()));
+        }
+        targets.push(*id);
+    }
+    if all_identical {
+        let looks: Vec<Value> = targets
+            .iter()
+            .filter_map(|id| doc.object(*id))
+            .map(essence)
+            .collect();
+        for o in doc.objects.values() {
+            if !targets.contains(&o.id())
+                && matches!(o.kind(), ObjectKind::Cabinet | ObjectKind::Appliance)
+                && looks.contains(&essence(o))
+            {
+                targets.push(o.id());
+            }
+        }
+    }
+    // A template may be either kind; it says which by its fields.
+    let kind = if template.get("cabinet_kind").is_some() {
+        ObjectKind::Cabinet
+    } else if template.get("appliance_kind").is_some() {
+        ObjectKind::Appliance
+    } else {
+        return invalid("the template is neither a cabinet nor an appliance");
+    };
+    for id in targets {
+        let placement = serde_json::to_value(doc.object(id).expect("checked")).expect("serialisable");
+        let mut new = instantiate(kind, template, &placement)?;
+        new.set_id(id);
+        doc.objects.insert(id, new);
+        out.modified.push(id);
+    }
+    Ok(())
 }

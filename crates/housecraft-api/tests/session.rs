@@ -1655,3 +1655,51 @@ fn light_fixtures_light_the_model() {
         .is_err()
     );
 }
+
+#[test]
+fn place_and_replace_from_templates() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'","5'"]},
+            {"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'","9'"]},
+            {"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'","13'"], "width": "30\""}]"#,
+    );
+    let (a, b, c) = (out.created[0], out.created[1], out.created[2]);
+    let doc = s.document();
+    // A template is the cabinet without where it is.
+    let mut template = serde_json::to_value(doc.get::<Cabinet>(c).unwrap()).unwrap();
+    for k in ["id", "floor", "layer", "position", "facing"] {
+        template.as_object_mut().unwrap().remove(k);
+    }
+    template["width"] = serde_json::to_value(Length::from_inches(18.0)).unwrap();
+    // Place one by a wall: it backs onto it like the cabinet tool.
+    let out = apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "place_object", "kind": "cabinet", "template": {template}, "at": ["10'","1'"]}}]"#
+        ),
+    );
+    let placed = s.document().get::<Cabinet>(out.created[0]).unwrap();
+    assert!((placed.width.inches() - 18.0).abs() < 1e-9);
+    assert!((placed.facing - 90.0).abs() < 1e-6, "faces north off the south wall: {}", placed.facing);
+    // Replace one 24" cabinet: only that one changes.
+    apply(
+        &mut s,
+        &format!(r#"[{{"op": "replace_with", "ids": [{}], "template": {template}}}]"#, a.0),
+    );
+    let w = |s: &Session, id: Id| s.document().get::<Cabinet>(id).unwrap().width.inches();
+    assert!((w(&s, a) - 18.0).abs() < 1e-9 && (w(&s, b) - 24.0).abs() < 1e-9);
+    // Undo and replace all identical: both 24" cabinets change, the 30" one doesn't.
+    s.undo();
+    template["width"] = serde_json::to_value(Length::from_inches(21.0)).unwrap();
+    apply(
+        &mut s,
+        &format!(r#"[{{"op": "replace_with", "ids": [{}], "template": {template}, "all_identical": true}}]"#, a.0),
+    );
+    assert!((w(&s, a) - 21.0).abs() < 1e-9 && (w(&s, b) - 21.0).abs() < 1e-9);
+    assert!((w(&s, c) - 30.0).abs() < 1e-9);
+    // Positions are kept.
+    assert!((s.document().get::<Cabinet>(b).unwrap().position.y().feet() - 9.0).abs() < 0.1);
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
+}

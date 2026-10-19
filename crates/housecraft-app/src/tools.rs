@@ -48,6 +48,8 @@ pub enum Tool {
     /// Draw a custom countertop outline.
     Countertop,
     Appliance(ApplianceKind),
+    /// Place the cabinet or appliance chosen in the Library Browser.
+    PlaceTemplate,
 }
 
 /// The shapes offered by the stair tools.
@@ -291,9 +293,11 @@ impl Tool {
             Tool::SectionLine(_) => Family::Cameras,
             Tool::Stair(_) => Family::Stairs,
             Tool::Electrical(_) | Tool::ConnectSwitch => Family::Electrical,
-            Tool::Cabinet(_) | Tool::SinkCabinet | Tool::Countertop | Tool::Appliance(_) => {
-                Family::Cabinets
-            }
+            Tool::Cabinet(_)
+            | Tool::SinkCabinet
+            | Tool::Countertop
+            | Tool::Appliance(_)
+            | Tool::PlaceTemplate => Family::Cabinets,
             _ => Family::Cad,
         }
     }
@@ -336,6 +340,7 @@ impl Tool {
             Tool::SinkCabinet => "Sink Base Cabinet",
             Tool::Countertop => "Custom Countertop",
             Tool::Appliance(k) => k.name(),
+            Tool::PlaceTemplate => "Place from Library",
         }
     }
 
@@ -374,9 +379,11 @@ impl Tool {
             Tool::Stair(_) => Icon::Stairs,
             Tool::Electrical(_) | Tool::ConnectSwitch => Icon::Electrical,
             Tool::PlaceBlock(_) => Icon::Box,
-            Tool::Cabinet(_) | Tool::SinkCabinet | Tool::Countertop | Tool::Appliance(_) => {
-                Icon::Cabinet
-            }
+            Tool::Cabinet(_)
+            | Tool::SinkCabinet
+            | Tool::Countertop
+            | Tool::Appliance(_)
+            | Tool::PlaceTemplate => Icon::Cabinet,
         }
     }
 
@@ -456,7 +463,7 @@ impl Tool {
             Tool::Countertop => {
                 "Click the corners of the countertop; double-click or Enter to finish."
             }
-            Tool::Appliance(_) => "Click near a wall to back it onto the wall.",
+            Tool::Appliance(_) | Tool::PlaceTemplate => "Click near a wall to back it onto the wall.",
         }
     }
 }
