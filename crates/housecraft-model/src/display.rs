@@ -83,12 +83,16 @@ pub enum LineStyle {
     Dashed,
     Dotted,
     DashDot,
+    /// One of the plan's own line styles (`settings.line_types`, by index).
+    Custom(u32),
 }
 
 impl LineStyle {
     /// Dash pattern in paper millimetres (on, off, ...); empty = solid.
+    /// Custom styles are looked up with [`LineStyle::dash`].
     pub fn pattern(self) -> &'static [f64] {
         match self {
+            LineStyle::Custom(_) => &[],
             LineStyle::Solid => &[],
             LineStyle::Dashed => &[3.0, 1.5],
             LineStyle::Dotted => &[0.4, 1.0],
@@ -110,6 +114,9 @@ pub struct Layer {
     pub text_style: Option<Id>,
     /// Objects on this layer are counted in the materials list.
     pub in_materials_list: bool,
+    /// Fill for walls and closed shapes on this layer (walls: instead of poché).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<FillStyle>,
 }
 
 /// Per-layer overrides inside a [`LayerSet`].
@@ -492,5 +499,95 @@ impl Default for RoofDefaults {
             fascia: fascia_depth(),
             shadow_board: Length::ZERO,
         }
+    }
+}
+
+impl LineStyle {
+    pub const BUILT_IN: [LineStyle; 4] = [LineStyle::Solid, LineStyle::Dashed, LineStyle::Dotted, LineStyle::DashDot];
+
+    /// The dash pattern, looking custom styles up in the plan's settings.
+    pub fn dash(self, settings: &crate::Settings) -> &'static [f64] {
+        match self {
+            LineStyle::Custom(i) => settings
+                .line_types
+                .get(i as usize)
+                .map_or(&[][..], |t| intern(&t.pattern)),
+            other => other.pattern(),
+        }
+    }
+
+    /// The style's name (custom ones from the plan's settings).
+    pub fn name(self, settings: &crate::Settings) -> String {
+        match self {
+            LineStyle::Solid => "Solid".into(),
+            LineStyle::Dashed => "Dashed".into(),
+            LineStyle::Dotted => "Dotted".into(),
+            LineStyle::DashDot => "Dash-dot".into(),
+            LineStyle::Custom(i) => settings
+                .line_types
+                .get(i as usize)
+                .map_or_else(|| format!("Missing style {i}"), |t| t.name.clone()),
+        }
+    }
+}
+
+/// Dash patterns live as long as the program: each distinct one is kept once.
+fn intern(pattern: &[f64]) -> &'static [f64] {
+    use std::sync::Mutex;
+    static PATTERNS: Mutex<Vec<&'static [f64]>> = Mutex::new(Vec::new());
+    let mut all = PATTERNS.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(p) = all.iter().find(|p| **p == pattern) {
+        return p;
+    }
+    let p: &'static [f64] = Box::leak(pattern.to_vec().into_boxed_slice());
+    all.push(p);
+    p
+}
+
+/// A plan's own line style: name and dash pattern (paper mm, on/off…).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct LineType {
+    pub name: String,
+    pub pattern: Vec<f64>,
+}
+
+/// How a closed area is filled.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum FillPattern {
+    Solid,
+    #[default]
+    Hatch,
+    Crosshatch,
+    Dots,
+}
+
+impl FillPattern {
+    pub const ALL: [FillPattern; 4] = [FillPattern::Solid, FillPattern::Hatch, FillPattern::Crosshatch, FillPattern::Dots];
+    pub fn name(self) -> &'static str {
+        match self {
+            FillPattern::Solid => "Solid",
+            FillPattern::Hatch => "Hatch",
+            FillPattern::Crosshatch => "Crosshatch",
+            FillPattern::Dots => "Dots",
+        }
+    }
+}
+
+/// A fill: pattern, colour (`None`: the line colour), line spacing, angle
+/// (degrees) and opacity (0–1, solid fills).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct FillStyle {
+    pub pattern: FillPattern,
+    pub color: Option<Color>,
+    pub spacing: Length,
+    pub angle: f64,
+    pub opacity: f64,
+}
+
+impl Default for FillStyle {
+    fn default() -> Self {
+        FillStyle { pattern: FillPattern::Hatch, color: None, spacing: Length::from_inches(6.0), angle: 45.0, opacity: 1.0 }
     }
 }

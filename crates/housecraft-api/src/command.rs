@@ -757,6 +757,9 @@ pub enum Command {
         shape: Shape,
         color: Option<Color>,
         fill: Option<Color>,
+        /// A patterned fill (hatch, crosshatch, dots, solid).
+        #[serde(default)]
+        fill_style: Option<FillStyle>,
     },
     /// Add a dimension.
     AddDimension {
@@ -786,6 +789,19 @@ pub enum Command {
     /// Type an object's own label (replacing its kind's template from the
     /// default set; "-" hides it), or `None` to go back to the template.
     SetObjectLabel { id: Id, text: Option<String> },
+    /// Add the standard plan views — Electrical, Framing, Kitchen & Bath,
+    /// Construction and Site — each with its own default set and layer set
+    /// copied from the current ones (views that exist are left alone).
+    AddStandardPlanViews,
+    /// Add a line style to the plan (`index` None) or change one.
+    SetLineType { index: Option<u32>, line_type: LineType },
+    /// Delete one of the plan's line styles; whatever used it uses
+    /// `merge_into` instead.
+    DeleteLineType {
+        index: u32,
+        #[serde(default)]
+        merge_into: LineStyle,
+    },
     /// Bring in 2D shapes and notes (e.g. read from a DXF file) on `floor`,
     /// each on the layer of that name (made when missing; "0" or "" uses the
     /// CAD and Text layers), moved by `offset`.
@@ -1086,6 +1102,9 @@ impl Command {
             Command::SetObjectLabel { .. } => "set_object_label",
             Command::RoomPolyline { .. } => "room_polyline",
             Command::ImportDrawing { .. } => "import_drawing",
+            Command::SetLineType { .. } => "set_line_type",
+            Command::AddStandardPlanViews => "add_standard_plan_views",
+            Command::DeleteLineType { .. } => "delete_line_type",
             Command::AddPlanView { .. } => "add_plan_view",
             Command::AddCamera { .. } => "add_camera",
             Command::Update { .. } => "update",
@@ -2078,6 +2097,7 @@ impl Command {
                     },
                     color: None,
                     fill: None,
+                    fill_style: None,
                 }));
                 if let (Some(s), true) = (setback, closed) {
                     let mut poly = pts.clone();
@@ -2096,6 +2116,7 @@ impl Command {
                             },
                             color: Some(Color::rgb(200, 60, 60)),
                             fill: None,
+                            fill_style: None,
                         }));
                     }
                 }
@@ -2389,6 +2410,7 @@ impl Command {
                         shape: s.shape.clone(),
                         color: s.color,
                         fill: s.fill,
+                        fill_style: None,
                     });
                 }
                 for t in texts {
@@ -2480,6 +2502,7 @@ impl Command {
                     line_style: *line_style,
                     text_style: None,
                     in_materials_list: true,
+                    fill: None,
                 }));
             }
             Command::AddLayerSet { name, copy_from } => {
@@ -2726,6 +2749,7 @@ impl Command {
                 shape,
                 color,
                 fill,
+                fill_style,
             } => {
                 let floor = ops::resolve_sheet(doc, *floor, true)?;
                 let cad_layer = doc.defaults_for(floor).layers.cad;
@@ -2736,6 +2760,7 @@ impl Command {
                     shape: shape.clone(),
                     color: *color,
                     fill: *fill,
+                    fill_style: *fill_style,
                 }));
             }
             Command::AddDimension {
@@ -2788,6 +2813,46 @@ impl Command {
                     wrap: None,
                 }));
             }
+            Command::AddStandardPlanViews => ops::standard_plan_views(doc, &mut out)?,
+            Command::SetLineType { index, line_type } => {
+                if line_type.pattern.iter().any(|v| !(v.is_finite() && *v >= 0.0)) || !line_type.pattern.len().is_multiple_of(2) {
+                    return invalid("a dash pattern is pairs of non-negative lengths (on, off, …)");
+                }
+                match index {
+                    Some(i) => {
+                        let Some(t) = doc.settings.line_types.get_mut(*i as usize) else {
+                            return invalid(format!("no line style {i}"));
+                        };
+                        *t = line_type.clone();
+                    }
+                    None => doc.settings.line_types.push(line_type.clone()),
+                }
+            }
+            Command::DeleteLineType { index, merge_into } => {
+                let i = *index as usize;
+                if i >= doc.settings.line_types.len() {
+                    return invalid(format!("no line style {index}"));
+                }
+                if *merge_into == LineStyle::Custom(*index) {
+                    return invalid("can't merge a line style into itself");
+                }
+                doc.settings.line_types.remove(i);
+                // Re-point every use: the deleted one → merge_into, later ones shift down.
+                let target = match *merge_into {
+                    LineStyle::Custom(j) if j > *index => LineStyle::Custom(j - 1),
+                    other => other,
+                };
+                let target = serde_json::to_value(target).expect("serializes");
+                let ids: Vec<Id> = doc.objects.keys().copied().collect();
+                for id in ids {
+                    let mut v = serde_json::to_value(doc.object(id).expect("listed")).expect("serializes");
+                    if ops::repoint_line_styles(&mut v, *index, &target) {
+                        let object: Object = serde_json::from_value(v).map_err(|e| ApiError::Invalid(e.to_string()))?;
+                        doc.objects.insert(id, object);
+                        out.modified.push(id);
+                    }
+                }
+            }
             Command::ImportDrawing { floor, shapes, texts, offset } => {
                 let floor = ops::resolve_sheet(doc, *floor, false)?;
                 let layers = doc.defaults_for(floor).layers.clone();
@@ -2807,6 +2872,7 @@ impl Command {
                         line_style: LineStyle::default(),
                         text_style: None,
                         in_materials_list: false,
+                        fill: None,
                     });
                     out.created.push(id);
                     id
@@ -2819,7 +2885,7 @@ impl Command {
                         Some(t) => t.apply_shape(&s.shape),
                         None => s.shape.clone(),
                     };
-                    out.created.push(doc.insert(Cad { id: Id(0), floor, layer, shape, color: None, fill: None }));
+                    out.created.push(doc.insert(Cad { id: Id(0), floor, layer, shape, color: None, fill: None, fill_style: None }));
                 }
                 for x in texts {
                     let layer = layer_for(doc, &mut out, &x.layer, layers.text);
@@ -2859,6 +2925,7 @@ impl Command {
                     shape: Shape::Polyline { points, closed: true },
                     color: None,
                     fill: None,
+                    fill_style: None,
                 }));
             }
             Command::SetObjectLabel { id, text } => {

@@ -62,7 +62,7 @@ These come from reading the whole list and change the architecture, not just the
 | VIS-03 | Navigation: orbit, pan, dolly, tilt, walk; standard view-direction presets | P0 | M1 ✓ (orbit, pan, dolly, walk, presets) |
 | VIS-04 | Auto-hide camera-facing exterior walls while navigating small rooms | P2 | M7 ✓ option to hide walls between the camera and what it looks at |
 | VIS-05 | Cross-section slider: interactive cutaway from any side, live | P1 | M4 ✓ |
-| VIS-06 | Poché (solid fill) for walls/roofs/platforms in plan and camera views | P1 | M1 |
+| VIS-06 | Poché (solid fill) for walls/roofs/platforms in plan and camera views | P1 | M1 ◐ walls and piers are poché-filled in plan; a layer's fill style replaces it (hatch, crosshatch, dots, solid); no poché in 3D camera views yet |
 | VIS-07 | Walkthrough recording along spline paths; per-keyframe direction/speed; multi-floor; per-path lighting | P2 | M7 ◐ record a walkthrough as you move; smooth path, travel time and pause per keyframe, any floors, its own lighting; exported as numbered frames (no video file) |
 | VIS-08 | Walkthrough editing: keyframe editing, join/break segments, pauses, multi-select | P2 | M7 ◐ edit keyframe times and pauses, delete keyframes, join stops; no multi-select or splitting |
 | VIS-09 | Automatic 360° exterior orbit walkthrough | P2 | M7 ✓ 3D > Walkthroughs > Create Orbit Walkthrough |
@@ -82,7 +82,7 @@ These come from reading the whole list and change the architecture, not just the
 | VIS-23 | Denoising for ray-traced views | P2 | M7 ◐ high-quality renders average passes, so there is no ray-tracing noise to remove |
 | VIS-24 | Depth of field (focus point, f-stop) | P3 | M7 ✓ depth of field (focus distance and f-stop) in high-quality renders |
 | VIS-25 | Camera default sets (e.g. dimension defaults for elevations vs sections) | P1 | M4 ✓ |
-| VIS-26 | Eight standard isometric angles | P1 | M1 |
+| VIS-26 | Eight standard isometric angles | P1 | M1 ✓ 3D view Iso menu: each corner from above and from below, orthographic |
 | VIS-27 | Shadow intensity control for vector/technical views | P2 | M7 ✓ shadow strength slider per view |
 | VIS-28 | Depth cueing (distance fog) | P3 | M7 ✓ distance fog per view |
 
@@ -119,11 +119,11 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-10 | Pin items in Project Browser (X18+) | P3 | M8 |
 | PRJ-11 | Saved Plan Views (layer set + default set + active defaults; zoom/floor optional); tabs/windows | P0 | M1 ✓ (multiple view tabs: later) |
 | PRJ-12 | Duplicate saved view copies its active layer set (X18+) | P2 | M1 |
-| PRJ-13 | Default Sets per drawing type (kitchen, framing, electrical…) | P1 | M1 |
+| PRJ-13 | Default Sets per drawing type (kitchen, framing, electrical…) | P1 | M1 ✓ View > Add Standard Plan Views: Electrical, Framing, Kitchen & Bath, Construction and Site, each with its own default set and layer set |
 | PRJ-14 | Multi-floor structures | P0 | M0 ✓ |
 | PRJ-15 | Insert/exchange floors above/below | P1 | M3 ✓ |
 | PRJ-16 | Layers: create, assign, style, group into Layer Sets | P0 | M1 ✓ |
-| PRJ-17 | Fill style by layer (X18+) | P2 | M1 |
+| PRJ-17 | Fill style by layer (X18+) | P2 | M1 ✓ each layer can carry a fill style used by its walls and closed shapes |
 | PRJ-18 | Select all on layer | P1 | M1 ✓ Edit > Select All on Layer |
 | PRJ-19 | Time tracker per project/client/task with export | P3 | M8 |
 | PRJ-20 | Plan database / portfolio | P3 | M8 |
@@ -330,9 +330,9 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | CAD-01 | Points, lines, polylines, splines, arcs, circles, ovals, boxes, arrows; trim/extend, parallel, perpendicular, reflect, replicate, transform, fillet, chamfer | P0 | M1 ✓ (perpendicular tool: later) |
-| CAD-02 | Multiple arc creation modes | P1 | M1 |
+| CAD-02 | Multiple arc creation modes | P1 | M1 ◐ arcs by centre-start-end and through three points; no tangent arcs |
 | CAD-03 | Object snaps (end, center, tangent…), grid snap, reference-floor snap | P0 | M1 ◐ end/mid/center/on-object/angle/grid/reference floor; tangent, intersection, quadrant later |
-| CAD-04 | Paste in place across layers/plans/floors | P1 | M1 |
+| CAD-04 | Paste in place across layers/plans/floors | P1 | M1 ✓ Paste Hold Position onto the current floor, into another plan (layers and types matched by name, else added), or to a chosen layer |
 | CAD-05 | Point-to-point move/copy/resize | P0 | M1 ✓ |
 | CAD-06 | Detailing primitives: cross box, blocking box, insulation | P1 | M4 ✓ |
 | CAD-07 | Convert 2D CAD into smart objects (solids, moldings, counters, slabs, roads, terrain, …) | P2 | M4 |
@@ -348,7 +348,7 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-17 | CAD details & blocks with insertion points; save to library | P1 | M4 ✓ |
 | CAD-18 | CAD detail from any view | P1 | M4 ✓ |
 | CAD-19 | Copy CAD details between plans | P2 | M4 |
-| CAD-20 | Line style manager (create, merge, find usages) | P1 | M1 |
+| CAD-20 | Line style manager (create, merge, find usages) | P1 | M1 ✓ Tools > Line Styles…: your own dash patterns, usage counts, delete and merge into another style |
 
 ## 14. Layers
 
@@ -356,7 +356,7 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | LY-01 | Layer sets per drawing type; quick swap | P0 | M1 ✓ |
 | LY-02 | Layer management: weight, color, style; materials-list inclusion | P0 | M1 ✓ (materials list itself: M4) |
-| LY-03 | Layer eyedropper & painter | P2 | M1 |
+| LY-03 | Layer eyedropper & painter | P2 | M1 ✓ CAD Tools > Layer Painter: click to pick up a layer, then click objects to move them onto it (Alt+click re-picks) |
 | LY-04 | Layer hider (click to hide) | P1 | M1 ✓ CAD Tools > Layer Hider: click objects to hide their layers |
 | LY-05 | Edit an object's layer properties from the toolbar | P2 | M1 |
 | LY-06 | Reference displays: multiple reference floors/layer sets, draw order | P1 | M3 ◐ several reference floors; reference layer sets and draw order later |
@@ -443,7 +443,7 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-03 | Material painter with scope; default painter (reset) | P1 | M5 ✓ |
 | MAT-04 | Material eyedropper; color chooser from image | P2 | M5 ◐ colour from an image's average; no on-screen eyedropper |
 | MAT-05 | Adjust-material scoping (whole plan vs copy for subset) | P2 | M5 ✓ Copy for Selection gives chosen objects their own copy |
-| MAT-06 | Fill styles: pattern scale/angle/offset/transparency; gradients; fill painter | P1 | M1 |
+| MAT-06 | Fill styles: pattern scale/angle/offset/transparency; gradients; fill painter | P1 | M1 ◐ fill styles per layer or shape: solid (with opacity), hatch, crosshatch, dots, with spacing, angle and colour; no gradients, offset or fill painter |
 | MAT-07 | Parametric herringbone/grid patterns | P2 | M5 ✓ grid, running bond, herringbone and basketweave tile patterns |
 | MAT-08 | Custom patterns to library (X18+) | P2 | M5 ✓ Add to Library keeps the pattern |
 | MAT-09 | Animated water materials | P3 | M7 ✓ Water material class ripples in 3D |

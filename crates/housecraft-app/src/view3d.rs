@@ -1985,7 +1985,6 @@ fn overlay(app: &mut App, ui: &mut Ui, rect: Rect) {
                     ("Back", -90.0, 0.0),
                     ("Left", 0.0, 0.0),
                     ("Right", 180.0, 0.0),
-                    ("Iso", 45.0, 35.26),
                 ] {
                     if ui.button(name).clicked() {
                         v.backdrop = None;
@@ -1995,6 +1994,31 @@ fn overlay(app: &mut App, ui: &mut Ui, rect: Rect) {
                         v.fit_requested = true;
                     }
                 }
+                // Eight standard isometric views: each corner from above and below.
+                ui.menu_button("Iso", |ui| {
+                    for (name, yaw, pitch) in [
+                        ("Front-Left, from above", 45.0f32, 35.26f32),
+                        ("Front-Right, from above", 135.0, 35.26),
+                        ("Back-Right, from above", -135.0, 35.26),
+                        ("Back-Left, from above", -45.0, 35.26),
+                        ("Front-Left, from below", 45.0, -35.26),
+                        ("Front-Right, from below", 135.0, -35.26),
+                        ("Back-Right, from below", -135.0, -35.26),
+                        ("Back-Left, from below", -45.0, -35.26),
+                    ] {
+                        if ui.button(name).clicked() {
+                            v.backdrop = None;
+                            v.walk = false;
+                            v.ortho = true;
+                            v.yaw = yaw.to_radians();
+                            v.pitch = pitch.to_radians();
+                            v.fit_requested = true;
+                            ui.close();
+                        }
+                    }
+                })
+                .response
+                .on_hover_text("Isometric views (orthographic) from each corner");
                 ui.separator();
                 if ui.button("Fit").clicked() {
                     v.fit_requested = true;

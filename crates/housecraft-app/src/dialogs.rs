@@ -189,6 +189,9 @@ pub struct Dialogs {
     pub defaults: bool,
     pub layers: bool,
     pub text_styles: bool,
+    pub line_styles: bool,
+    /// Name and pattern being typed for a new line style.
+    pub new_line_type: (String, String),
     pub room_types: bool,
     pub about: bool,
     pub shortcuts: bool,
@@ -256,6 +259,7 @@ pub fn show(app: &mut App, ctx: &Context) {
         },
     );
     save_view_dialog(app, ctx);
+    line_styles_dialog(app, ctx);
     shortcuts_dialog(app, ctx);
     about_dialog(app, ctx);
 }
@@ -1561,6 +1565,85 @@ fn save_view_dialog(app: &mut App, ctx: &Context) {
     }
     if keep {
         app.dialogs.save_view = Some(name);
+    }
+}
+
+/// Parse "3 1.5 0.4 1.5" into a dash pattern (pairs of on/off, paper mm).
+fn parse_pattern(text: &str) -> Option<Vec<f64>> {
+    let v: Vec<f64> = text
+        .split(|c: char| c.is_whitespace() || c == ',')
+        .filter(|s| !s.is_empty())
+        .map(|s| s.parse::<f64>().ok().filter(|x| x.is_finite() && *x >= 0.0))
+        .collect::<Option<_>>()?;
+    v.len().is_multiple_of(2).then_some(v)
+}
+
+/// Tools > Line Styles…: the plan's own dash patterns, how often each is
+/// used, and deleting one into another.
+fn line_styles_dialog(app: &mut App, ctx: &Context) {
+    let mut open = app.dialogs.line_styles;
+    let mut commands = Vec::new();
+    egui::Window::new("Line Styles").open(&mut open).resizable(true).show(ctx, |ui| {
+        let doc = app.session.document();
+        ui.label("Built in: Solid, Dashed, Dotted, Dash-dot. Patterns are dash and gap lengths on paper (mm).");
+        ui.separator();
+        egui::Grid::new("line_types").striped(true).num_columns(5).show(ui, |ui| {
+            ui.strong("Name");
+            ui.strong("Pattern (mm)");
+            ui.strong("Used by");
+            ui.strong("Delete, using instead");
+            ui.end_row();
+            for (i, t) in doc.settings.line_types.iter().enumerate() {
+                let i = i as u32;
+                let mut name = t.name.clone();
+                if ui.text_edit_singleline(&mut name).lost_focus() && name != t.name {
+                    commands.push(Command::SetLineType { index: Some(i), line_type: LineType { name, pattern: t.pattern.clone() } });
+                }
+                let text: String = t.pattern.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(" ");
+                let mut edit = text.clone();
+                if ui.text_edit_singleline(&mut edit).lost_focus()
+                    && edit != text
+                    && let Some(pattern) = parse_pattern(&edit)
+                {
+                    commands.push(Command::SetLineType { index: Some(i), line_type: LineType { name: t.name.clone(), pattern } });
+                }
+                let uses = housecraft_api::ops_line_type_uses(doc, i);
+                ui.label(format!("{uses} object{}", if uses == 1 { "" } else { "s" }));
+                ui.horizontal(|ui| {
+                    let others = LineStyle::BUILT_IN
+                        .into_iter()
+                        .chain((0..doc.settings.line_types.len() as u32).map(LineStyle::Custom))
+                        .filter(|s| *s != LineStyle::Custom(i));
+                    ui.menu_button("Delete…", |ui| {
+                        for s in others {
+                            if ui.button(s.name(&doc.settings)).clicked() {
+                                commands.push(Command::DeleteLineType { index: i, merge_into: s });
+                                ui.close();
+                            }
+                        }
+                    });
+                });
+                ui.end_row();
+            }
+        });
+        ui.separator();
+        let (name, pattern) = &mut app.dialogs.new_line_type;
+        ui.horizontal(|ui| {
+            ui.add(egui::TextEdit::singleline(name).hint_text("Name").desired_width(120.0));
+            ui.add(egui::TextEdit::singleline(pattern).hint_text("e.g. 6 1.5 1.5 1.5").desired_width(140.0));
+            let parsed = parse_pattern(pattern).filter(|p| !p.is_empty());
+            if ui.add_enabled(parsed.is_some() && !name.trim().is_empty(), egui::Button::new("Add")).clicked()
+                && let Some(p) = parsed
+            {
+                commands.push(Command::SetLineType { index: None, line_type: LineType { name: name.trim().to_string(), pattern: p } });
+                name.clear();
+                pattern.clear();
+            }
+        });
+    });
+    app.dialogs.line_styles = open;
+    if !commands.is_empty() {
+        app.run(commands);
     }
 }
 

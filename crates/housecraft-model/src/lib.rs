@@ -268,6 +268,9 @@ pub struct Settings {
     /// ("-" hides that object's label).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub labels: BTreeMap<Id, String>,
+    /// The plan's own line styles (`LineStyle::Custom(index)`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub line_types: Vec<LineType>,
 }
 
 /// Camera default sets: the default set (dimension, text and layer
@@ -355,6 +358,7 @@ impl Document {
                 markup_percent: 0.0,
                 view_defaults: ViewDefaults::default(),
                 labels: BTreeMap::new(),
+                line_types: Vec::new(),
             },
             next_id: 1,
             objects: BTreeMap::new(),

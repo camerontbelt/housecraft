@@ -51,6 +51,7 @@ fn framing_layer(doc: &mut Document, out: &mut Outcome) -> Id {
                 line_style: LineStyle::Solid,
                 text_style: None,
                 in_materials_list: true,
+                fill: None,
             });
             out.created.push(id);
             let sets: Vec<Id> = doc.iter::<LayerSet>().map(|s| s.id).collect();

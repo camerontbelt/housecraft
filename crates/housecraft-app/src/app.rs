@@ -1025,12 +1025,28 @@ impl App {
         }
         ids.sort();
         ids.dedup();
-        self.clipboard = ids
+        let mut clip: Vec<serde_json::Value> = ids
             .iter()
             .filter(|id| doc.kind_of(**id).is_some_and(|k| k.is_placed()))
             .filter_map(|id| housecraft_api::query::get_object(doc, *id))
             .collect();
-        let n = self.clipboard.len();
+        let n = clip.len();
+        // The layers and types they use come along, so pasting into another
+        // plan finds (by name) or adds them.
+        let mut support: Vec<Id> = Vec::new();
+        for v in &clip {
+            for key in ["layer", "wall_type", "style", "room_type", "text_style"] {
+                if let Some(id) = v.get(key).and_then(|n| n.as_u64()).map(Id)
+                    && matches!(doc.kind_of(id), Some(ObjectKind::Layer | ObjectKind::WallType | ObjectKind::TextStyle | ObjectKind::RoomType))
+                    && !support.contains(&id)
+                {
+                    support.push(id);
+                }
+            }
+        }
+        let extra: Vec<serde_json::Value> = support.iter().filter_map(|id| housecraft_api::query::get_object(doc, *id)).collect();
+        clip.extend(extra);
+        self.clipboard = clip;
         self.info(format!(
             "Copied {n} object{}",
             if n == 1 { "" } else { "s" }
@@ -1969,6 +1985,30 @@ impl App {
                 ) {
                     self.paste(true);
                 }
+                ui.add_enabled_ui(!self.clipboard.is_empty(), |ui| {
+                    ui.menu_button("Paste Hold Position to Layer", |ui| {
+                        let layers: Vec<(Id, String)> = self.doc().iter::<Layer>().map(|l| (l.id, l.name.clone())).collect();
+                        for (id, name) in layers {
+                            if ui.button(name).clicked() {
+                                self.paste(true);
+                                let doc = self.doc();
+                                let moves: Vec<Command> = self
+                                    .selection
+                                    .iter()
+                                    .filter(|o| serde_json::to_value(doc.object(**o)).is_ok_and(|v| v.get("layer").is_some()))
+                                    .map(|o| Command::Update {
+                                        id: *o,
+                                        set: serde_json::json!({ "layer": id }).as_object().cloned().unwrap_or_default(),
+                                    })
+                                    .collect();
+                                if !moves.is_empty() {
+                                    self.run(moves);
+                                }
+                                ui.close();
+                            }
+                        }
+                    });
+                });
                 if item(ui, "Delete", "Del", has_sel) {
                     self.delete_selection();
                 }
@@ -2685,6 +2725,9 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                 if item(ui, "Text Styles…", "", true) {
                     self.dialogs.text_styles = true;
                 }
+                if item(ui, "Line Styles…", "", true) {
+                    self.dialogs.line_styles = true;
+                }
                 if item(ui, "Room Types…", "", true) {
                     self.dialogs.room_types = true;
                 }
@@ -2696,6 +2739,12 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                 }
                 if item(ui, "Zoom to Selection", "", has_sel) {
                     self.plan.zoom_to_selection = true;
+                }
+                if item(ui, "Add Standard Plan Views", "", true)
+                    && let Some(out) = self.run1(Command::AddStandardPlanViews)
+                {
+                    let n = out.created.iter().filter(|id| self.doc().kind_of(**id) == Some(ObjectKind::PlanView)).count();
+                    self.info(format!("{n} plan views added: pick them in the plan view list"));
                 }
                 ui.separator();
                 ui.checkbox(&mut self.prefs.show_grid, "Reference Grid");
@@ -2999,6 +3048,14 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                 ui.label("Sides");
                 ui.add(egui::DragValue::new(&mut self.plan.polygon_sides).range(3..=64));
             });
+        }
+        if self.palette == Family::Cad
+            && palette_row(ui, Icon::Layers, "Layer Painter", matches!(self.plan.pick, Some(crate::canvas::Pick::PaintLayer(_))))
+                .on_hover_text("Pick up an object's layer, then click objects to move them onto it")
+                .clicked()
+        {
+            self.set_tool(Tool::Select);
+            self.start_pick(crate::canvas::Pick::PaintLayer(None));
         }
         if self.palette == Family::Cad
             && palette_row(ui, Icon::LayerHider, "Layer Hider", self.plan.pick == Some(crate::canvas::Pick::HideLayer))

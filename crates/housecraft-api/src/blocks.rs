@@ -71,6 +71,7 @@ pub(crate) fn add_block(
             shape: s.shape.clone(),
             color: s.color,
             fill: s.fill,
+            fill_style: None,
         });
     }
     if let Some(sheet) = sheet {

@@ -6,6 +6,7 @@
 
 pub mod detail;
 pub mod dxf;
+pub mod fills;
 mod cabinets;
 mod dims;
 pub mod elevation;

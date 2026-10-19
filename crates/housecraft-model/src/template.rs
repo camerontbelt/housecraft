@@ -97,6 +97,7 @@ pub(crate) fn new_document(name: String) -> Document {
             line_style: LineStyle::Solid,
             text_style: None,
             in_materials_list: true,
+            fill: None,
         })
     };
     let walls = layer(&mut doc, "Walls", 0.5, None);

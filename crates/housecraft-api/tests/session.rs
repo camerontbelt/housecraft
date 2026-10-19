@@ -2246,3 +2246,55 @@ fn wall_reference_offsets() {
     let m = t.centerline_offset(WallReference::Main);
     assert!(m.abs() < half, "main layer lies within the wall: {m}");
 }
+
+#[test]
+fn line_types_add_use_and_merge() {
+    let mut s = boxed();
+    let wall_layer = walls(&s)[0].layer;
+    s.apply(&[
+        Command::SetLineType { index: None, line_type: LineType { name: "A".into(), pattern: vec![1.0, 1.0] } },
+        Command::SetLineType { index: None, line_type: LineType { name: "B".into(), pattern: vec![2.0, 1.0] } },
+        Command::Update { id: wall_layer, set: patch(serde_json::json!({ "line_style": { "custom": 1 } })) },
+    ])
+    .unwrap();
+    assert_eq!(housecraft_api::ops_line_type_uses(s.document(), 1), 1);
+    // Deleting A shifts B down to index 0, still used by the layer.
+    s.apply(&[Command::DeleteLineType { index: 0, merge_into: LineStyle::Solid }]).unwrap();
+    let l = s.document().get::<Layer>(wall_layer).unwrap();
+    assert_eq!(l.line_style, LineStyle::Custom(0));
+    assert_eq!(l.line_style.dash(&s.document().settings), &[2.0, 1.0]);
+    s.apply(&[Command::DeleteLineType { index: 0, merge_into: LineStyle::Dashed }]).unwrap();
+    assert_eq!(s.document().get::<Layer>(wall_layer).unwrap().line_style, LineStyle::Dashed);
+}
+
+#[test]
+fn paste_into_another_plan_matches_layers_by_name() {
+    let src = boxed();
+    let w = walls(&src)[0].clone();
+    let layer = src.document().get::<Layer>(w.layer).unwrap().clone();
+    let wt = src.document().get::<WallType>(w.wall_type).unwrap().clone();
+    let mut dst = Session::new(Document::new("Other"));
+    let objects = vec![
+        serde_json::to_value(Object::Wall(w)).unwrap(),
+        serde_json::to_value(Object::Layer(layer.clone())).unwrap(),
+        serde_json::to_value(Object::WallType(wt)).unwrap(),
+    ];
+    let before = dst.document().iter::<Layer>().count();
+    let out = dst.apply(&[Command::InsertObjects { objects, floor: None, dx: Length::ZERO, dy: Length::ZERO }]).unwrap();
+    let doc = dst.document();
+    let pasted = doc.get::<Wall>(out.created[0]).unwrap();
+    assert_eq!(doc.get::<Layer>(pasted.layer).unwrap().name, layer.name);
+    assert_eq!(doc.iter::<Layer>().count(), before, "the same-named layer was reused");
+}
+
+#[test]
+fn standard_plan_views_have_their_own_sets() {
+    let mut s = boxed();
+    let views = s.document().iter::<PlanView>().count();
+    s.apply(&[Command::AddStandardPlanViews]).unwrap();
+    s.apply(&[Command::AddStandardPlanViews]).unwrap();
+    let doc = s.document();
+    assert_eq!(doc.iter::<PlanView>().count(), views + 5, "added once");
+    let c = doc.iter::<PlanView>().find(|v| v.name == "Construction Plan").unwrap();
+    assert_eq!(doc.get::<DefaultSet>(c.default_set).unwrap().labels.windows, "{size}");
+}

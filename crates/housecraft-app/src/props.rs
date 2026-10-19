@@ -11,6 +11,75 @@ use serde_json::{Value, json};
 use crate::app::App;
 use crate::util::{EditBuffers, fmt, from_color32, to_color32};
 
+/// Choose a line style, the plan's own ones included.
+pub fn line_style_combo(ui: &mut Ui, doc: &Document, salt: egui::Id, s: &mut LineStyle) {
+    egui::ComboBox::from_id_salt(salt)
+        .selected_text(s.name(&doc.settings))
+        .show_ui(ui, |ui| {
+            let customs = (0..doc.settings.line_types.len() as u32).map(LineStyle::Custom);
+            for v in LineStyle::BUILT_IN.into_iter().chain(customs) {
+                ui.selectable_value(s, v, v.name(&doc.settings));
+            }
+        });
+}
+
+/// An optional patterned fill: pattern, colour, spacing, angle, opacity.
+fn fill_style_row(ui: &mut Ui, ed: &mut Ed<'_>, label: &str, field: &str, current: Option<FillStyle>) {
+    Ed::label(ui, label);
+    let mut next = current;
+    ui.vertical(|ui| {
+        let mut on = current.is_some();
+        if ui.checkbox(&mut on, "Fill").changed() {
+            next = on.then(FillStyle::default);
+        }
+        if let Some(mut fs) = current {
+            ui.horizontal(|ui| {
+                egui::ComboBox::from_id_salt(ed.key(&format!("{field}_pattern")))
+                    .selected_text(fs.pattern.name())
+                    .show_ui(ui, |ui| {
+                        for p in FillPattern::ALL {
+                            ui.selectable_value(&mut fs.pattern, p, p.name());
+                        }
+                    });
+                let mut own = fs.color.is_some();
+                if ui.checkbox(&mut own, "Colour").changed() {
+                    fs.color = own.then(|| Color::rgb(120, 120, 120));
+                }
+                if let Some(c) = fs.color {
+                    let [r, g, b, _] = c.0;
+                    let mut c32 = egui::Color32::from_rgb(r, g, b);
+                    if egui::color_picker::color_edit_button_srgba(ui, &mut c32, egui::color_picker::Alpha::Opaque).changed() {
+                        fs.color = Some(Color::rgb(c32.r(), c32.g(), c32.b()));
+                    }
+                }
+            });
+            ui.horizontal(|ui| {
+                if fs.pattern == FillPattern::Solid {
+                    ui.label("Opacity");
+                    ui.add(egui::Slider::new(&mut fs.opacity, 0.0..=1.0));
+                } else {
+                    ui.label("Spacing");
+                    let key = ed.key(&format!("{field}_spacing"));
+                    if let Some(v) = ed.bufs.length(ui, ed.doc, key, fs.spacing) {
+                        fs.spacing = v;
+                    }
+                    if fs.pattern != FillPattern::Dots {
+                        ui.label("Angle");
+                        ui.add(egui::DragValue::new(&mut fs.angle).range(-180.0..=180.0).suffix("°"));
+                    }
+                }
+            });
+            if Some(fs) != current {
+                next = Some(fs);
+            }
+        }
+    });
+    if next != current {
+        ed.out.push(patch(ed.id, json!({ field: next })));
+    }
+    ui.end_row();
+}
+
 fn patch(id: Id, v: Value) -> Command {
     Command::Update {
         id,
@@ -2110,6 +2179,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             }
             ed.color(ui, "Line Color", "color", c.color, "By layer");
             ed.color(ui, "Fill", "fill", c.fill, "None");
+            fill_style_row(ui, ed, "Pattern Fill", "fill_style", c.fill_style);
             ed.pick::<Layer>(ui, "Layer", "layer", Some(c.layer), None);
         }
         Object::Dimension(d) => {
@@ -2228,22 +2298,12 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             }
             Ed::label(ui, "Line Style");
             let mut s = l.line_style;
-            egui::ComboBox::from_id_salt(ed.key("line_style"))
-                .selected_text(format!("{s:?}"))
-                .show_ui(ui, |ui| {
-                    for v in [
-                        LineStyle::Solid,
-                        LineStyle::Dashed,
-                        LineStyle::Dotted,
-                        LineStyle::DashDot,
-                    ] {
-                        ui.selectable_value(&mut s, v, format!("{v:?}"));
-                    }
-                });
+            line_style_combo(ui, doc, ed.key("line_style"), &mut s);
             if s != l.line_style {
                 ed.out.push(patch(id, json!({ "line_style": s })));
             }
             ui.end_row();
+            fill_style_row(ui, ed, "Fill (walls, closed shapes)", "fill", l.fill);
             ed.pick::<TextStyle>(
                 ui,
                 "Text Style",

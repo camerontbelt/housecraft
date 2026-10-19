@@ -100,6 +100,7 @@ struct Look {
     ink: Ink,
     stroke: Stroke,
     text_style: Option<Id>,
+    fill: Option<FillStyle>,
 }
 
 struct Ctx<'a> {
@@ -124,9 +125,10 @@ impl Ctx<'_> {
                     .line_style
                     .or(l.map(|l| l.line_style))
                     .unwrap_or_default()
-                    .pattern(),
+                    .dash(&self.doc.settings),
             },
             text_style: l.and_then(|l| l.text_style),
+            fill: l.and_then(|l| l.fill),
         }
     }
 
@@ -237,13 +239,17 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         }
         if let (None, Some(fill)) = (railing, fill) {
             for piece in g.pieces(&openings) {
-                out.push(
-                    Some(g.id),
-                    Prim::Polygon {
-                        points: piece,
-                        fill,
-                    },
-                );
+                match look.fill {
+                    // The layer's fill replaces poché (not for new work in proposed plans).
+                    Some(fs) if fill == Fill::Poche => crate::fills::fill_area(&mut out, Some(g.id), &piece, &fs, look.ink),
+                    _ => out.push(
+                        Some(g.id),
+                        Prim::Polygon {
+                            points: piece,
+                            fill,
+                        },
+                    ),
+                }
             }
         }
         if let Some(f) = wall.footing {
@@ -695,7 +701,8 @@ fn cad_shapes(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
     for cad in doc.iter::<Cad>().filter(|c| c.floor == sheet) {
         let look = ctx.look(cad.layer);
         if look.visible {
-            cad_shape(cad.id, &cad.shape, cad.color, cad.fill, look, out);
+            let fs = cad.fill_style.or(look.fill);
+            cad_shape(cad.id, &cad.shape, cad.color, cad.fill, fs, look, out);
         }
     }
     for b in doc.iter::<BlockRef>().filter(|b| b.floor == sheet) {
@@ -705,7 +712,8 @@ fn cad_shapes(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
         }
         let t = housecraft_api::blocks::placement(b);
         for cad in doc.iter::<Cad>().filter(|c| c.floor == b.block) {
-            cad_shape(b.id, &t.apply_shape(&cad.shape), cad.color, cad.fill, look, out);
+            let fs = cad.fill_style.or(look.fill);
+            cad_shape(b.id, &t.apply_shape(&cad.shape), cad.color, cad.fill, fs, look, out);
         }
     }
 }
@@ -716,12 +724,16 @@ fn cad_shape(
     shape: &Shape,
     color: Option<Color>,
     fill: Option<Color>,
+    fill_style: Option<FillStyle>,
     look: Look,
     out: &mut Drawing,
 ) {
     let ink = color.map_or(look.ink, Ink::Color);
     let stroke = Stroke { ink, ..look.stroke };
     for (points, closed) in shape_polylines(shape) {
+        if let (Some(fs), true) = (fill_style, closed) {
+            crate::fills::fill_area(out, Some(id), &points, &fs, ink);
+        }
         if let (Some(fill), true) = (fill, closed) {
             out.push(
                 Some(id),

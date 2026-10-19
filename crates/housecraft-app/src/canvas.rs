@@ -809,6 +809,21 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
                     }
                     app.plan.pick = None;
                 }
+                Pick::PaintLayer(layer) => {
+                    let alt = ui.input(|i| i.modifiers.alt);
+                    match layer {
+                        Some(l) if !alt => {
+                            let has_layer = serde_json::to_value(doc.object(target)).is_ok_and(|v| v.get("layer").is_some());
+                            if has_layer && doc.layer_of(target) != Some(l) {
+                                commands.push(Command::Update {
+                                    id: target,
+                                    set: serde_json::json!({ "layer": l }).as_object().cloned().unwrap_or_default(),
+                                });
+                            }
+                        }
+                        _ => app.plan.pick = Some(Pick::PaintLayer(doc.layer_of(target))),
+                    }
+                }
                 Pick::HideLayer => {
                     if let Some(layer) = doc.layer_of(target) {
                         app.selection.retain(|id| doc.layer_of(*id) != Some(layer));
@@ -858,6 +873,30 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
     }
 }
 
+/// The arc from `s` through `m` to `e`: centre, radius, start angle and
+/// counter-clockwise sweep (degrees). `None` when the points are in a line.
+fn arc_through(s: DVec2, m: DVec2, e: DVec2) -> Option<(DVec2, f64, f64, f64)> {
+    let d = 2.0 * (s.x * (m.y - e.y) + m.x * (e.y - s.y) + e.x * (s.y - m.y));
+    if d.abs() < 1e-6 {
+        return None;
+    }
+    let sq = |p: DVec2| p.length_squared();
+    let c = DVec2::new(
+        (sq(s) * (m.y - e.y) + sq(m) * (e.y - s.y) + sq(e) * (s.y - m.y)) / d,
+        (sq(s) * (e.x - m.x) + sq(m) * (s.x - e.x) + sq(e) * (m.x - s.x)) / d,
+    );
+    let ang = |p: DVec2| (p - c).to_angle().to_degrees();
+    let (a_s, a_m, a_e) = (ang(s), ang(m), ang(e));
+    let to_end = (a_e - a_s).rem_euclid(360.0);
+    let to_mid = (a_m - a_s).rem_euclid(360.0);
+    Some(if to_mid < to_end {
+        (c, c.distance(s), a_s, to_end)
+    } else {
+        // Clockwise from s: the same arc counter-clockwise from e.
+        (c, c.distance(s), a_e, 360.0 - to_end)
+    })
+}
+
 /// How far the centreline lies left of the line the wall tools draw along.
 fn wall_offset(doc: &Document, interior: bool) -> f64 {
     let d = doc.active_defaults();
@@ -892,6 +931,9 @@ pub enum Pick {
     Center(Vec<Id>),
     /// Layer Hider: each click hides the layer of what was clicked.
     HideLayer,
+    /// Layer Painter: the first click picks a layer (Alt+click picks
+    /// again); later clicks move objects onto it.
+    PaintLayer(Option<Id>),
 }
 
 impl Pick {
@@ -901,6 +943,8 @@ impl Pick {
             Pick::Match(_) => "Match Properties: click each object of the same kind to copy onto. Esc ends.",
             Pick::Center(_) => "Center Object: click a wall or line to centre along, or an object to centre on. Esc cancels.",
             Pick::HideLayer => "Layer Hider: click objects to hide their layers. Esc ends.",
+            Pick::PaintLayer(None) => "Layer Painter: click an object to pick up its layer.",
+            Pick::PaintLayer(Some(_)) => "Layer Painter: click objects to move them onto the picked layer (Alt+click picks another). Esc ends.",
         }
     }
 }
@@ -1336,6 +1380,21 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                                 sweep,
                             },
                         ));
+                    }
+                }
+            }
+            Tool::ArcThreePoint => {
+                pending.push(p);
+                if pending.len() == 3 {
+                    let (s, m, e) = (pending[0], pending[1], pending[2]);
+                    pending.clear();
+                    match arc_through(s, m, e) {
+                        Some((c, r, a0, sweep)) => commands.push(cad(
+                            floor,
+                            Shape::Arc { center: pt(c), radius: Length::from_mm(r), start_angle: a0, sweep },
+                        )),
+                        // In a line: just a line.
+                        None => commands.push(cad(floor, Shape::Line { a: pt(s), b: pt(e), arrow_start: false, arrow_end: false })),
                     }
                 }
             }
@@ -1862,6 +1921,7 @@ fn cad(floor: Option<Id>, shape: Shape) -> Command {
         shape,
         color: None,
         fill: None,
+        fill_style: None,
     }
 }
 

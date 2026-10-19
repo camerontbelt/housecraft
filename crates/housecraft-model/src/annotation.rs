@@ -84,6 +84,9 @@ pub struct Cad {
     /// Fill closed shapes with this colour.
     #[serde(default)]
     pub fill: Option<Color>,
+    /// A patterned fill for closed shapes (over the layer's).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill_style: Option<crate::FillStyle>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]

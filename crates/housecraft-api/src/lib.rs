@@ -29,6 +29,11 @@ pub use housecraft_model as model;
 pub use housecraft_units as units;
 pub use session::Session;
 
+/// How many objects use the plan's line style `index` (Tools > Line Styles).
+pub fn ops_line_type_uses(doc: &model::Document, index: u32) -> usize {
+    ops::line_type_uses(doc, index)
+}
+
 use housecraft_model::{Id, ObjectKind};
 
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]

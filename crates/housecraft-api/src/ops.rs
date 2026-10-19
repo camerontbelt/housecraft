@@ -310,6 +310,62 @@ pub(crate) fn update(
     Ok(())
 }
 
+/// Within `v`, replace `{"custom": index}` line styles with `target` and
+/// shift later custom styles down by one. True if anything changed.
+pub(crate) fn repoint_line_styles(v: &mut serde_json::Value, index: u32, target: &serde_json::Value) -> bool {
+    use serde_json::Value;
+    if let Value::Object(m) = v
+        && m.len() == 1
+        && let Some(Value::Number(n)) = m.get("custom")
+        && let Some(k) = n.as_u64()
+    {
+        let k = k as u32;
+        if k == index {
+            *v = target.clone();
+            return true;
+        }
+        if k > index {
+            *v = serde_json::json!({ "custom": k - 1 });
+            return true;
+        }
+        return false;
+    }
+    // Visit every child (no short-circuit): each may need re-pointing.
+    let mut changed = false;
+    match v {
+        Value::Object(m) => {
+            for x in m.values_mut() {
+                changed |= repoint_line_styles(x, index, target);
+            }
+        }
+        Value::Array(a) => {
+            for x in a.iter_mut() {
+                changed |= repoint_line_styles(x, index, target);
+            }
+        }
+        _ => {}
+    }
+    changed
+}
+
+/// How many objects use line style `Custom(index)`.
+pub fn line_type_uses(doc: &Document, index: u32) -> usize {
+    fn uses(v: &serde_json::Value, index: u32) -> bool {
+        match v {
+            serde_json::Value::Object(m) => {
+                (m.len() == 1 && m.get("custom").and_then(|n| n.as_u64()) == Some(index as u64))
+                    || m.values().any(|x| uses(x, index))
+            }
+            serde_json::Value::Array(a) => a.iter().any(|x| uses(x, index)),
+            _ => false,
+        }
+    }
+    doc.objects
+        .values()
+        .filter(|o| serde_json::to_value(o).is_ok_and(|v| uses(&v, index)))
+        .count()
+}
+
 /// Fields Match Properties leaves alone: identity, host, placement and facing.
 const PLACEMENT_KEYS: &[&str] = &[
     "id", "kind", "floor", "wall", "host", "name", "label", "text", "position", "offset", "at",
@@ -1214,6 +1270,7 @@ pub(crate) fn insert_objects(
     // Symbol definitions and walls first so the symbols, stairs, doors and
     // windows using them can be re-pointed.
     parsed.sort_by_key(|o| match o {
+        Object::Layer(_) | Object::WallType(_) | Object::TextStyle(_) | Object::RoomType(_) => -1,
         Object::SymbolDef(_) => 0,
         Object::Wall(_) => 1,
         _ => 2,
@@ -1221,6 +1278,43 @@ pub(crate) fn insert_objects(
     let mut remap = std::collections::BTreeMap::new();
     for object in parsed {
         let old = object.id();
+        // Layers, wall types, text and room types copied along (from another
+        // plan): use the one of the same name here, else add it.
+        let support_name = match &object {
+            Object::Layer(x) => Some(x.name.clone()),
+            Object::WallType(x) => Some(x.name.clone()),
+            Object::TextStyle(x) => Some(x.name.clone()),
+            Object::RoomType(x) => Some(x.name.clone()),
+            _ => None,
+        };
+        if let Some(name) = support_name {
+            let kind = object.kind();
+            let same = doc
+                .objects
+                .values()
+                .find(|o| o.kind() == kind && serde_json::to_value(o).is_ok_and(|v| v.get("name").and_then(|n| n.as_str()) == Some(name.as_str())))
+                .map(|o| o.id());
+            let new = match same {
+                Some(id) => id,
+                None => doc.insert(object),
+            };
+            remap.insert(old, new);
+            continue;
+        }
+        // Point references at the layers and types matched above.
+        let object = if remap.is_empty() {
+            object
+        } else {
+            let mut v = serde_json::to_value(&object).expect("objects serialize");
+            for key in ["layer", "wall_type", "style", "room_type", "text_style"] {
+                if let Some(n) = v.get(key).and_then(|n| n.as_u64())
+                    && let Some(new) = remap.get(&Id(n))
+                {
+                    v[key] = serde_json::json!(new.0);
+                }
+            }
+            serde_json::from_value(v).map_err(|e| ApiError::Invalid(format!("invalid object: {e}")))?
+        };
         // A symbol already in the plan is reused rather than duplicated.
         if let Object::SymbolDef(def) = &object
             && let Some(same) = doc.iter::<SymbolDef>().find(|d| {
@@ -1371,4 +1465,78 @@ pub(crate) fn sync_platforms(doc: &mut Document, out: &mut Outcome) {
             }
         }
     }
+}
+
+/// Plan views for each kind of drawing, each with its own default set and
+/// layer set (see [`crate::Command::AddStandardPlanViews`]).
+pub(crate) fn standard_plan_views(doc: &mut Document, out: &mut Outcome) -> Result<(), ApiError> {
+    let base_view = doc
+        .iter::<PlanView>()
+        .next()
+        .cloned()
+        .ok_or_else(|| ApiError::Invalid("the plan has no plan view to copy".into()))?;
+    let base_set = doc
+        .get::<LayerSet>(base_view.layer_set)
+        .cloned()
+        .ok_or_else(|| ApiError::Invalid("the plan view's layer set is missing".into()))?;
+    let base_defaults = doc
+        .get::<DefaultSet>(base_view.default_set)
+        .cloned()
+        .unwrap_or_else(|| doc.active_defaults().clone());
+    let l = base_defaults.layers.clone();
+    let hide = |set: &mut LayerSet, layer: Option<Id>, visible: bool| {
+        if let Some(layer) = layer {
+            set.layers.entry(layer).or_default().visible = visible;
+        }
+    };
+    for name in ["Electrical Plan", "Framing Plan", "Kitchen & Bath Plan", "Construction Plan", "Site Plan"] {
+        if doc.iter::<PlanView>().any(|v| v.name == name) {
+            continue;
+        }
+        let mut set = base_set.clone();
+        set.id = Id(0);
+        set.name = name.to_string();
+        let mut d = base_defaults.clone();
+        d.id = Id(0);
+        d.name = name.trim_end_matches(" Plan").to_string();
+        match name {
+            "Electrical Plan" => {
+                hide(&mut set, Some(l.dimensions), false);
+                hide(&mut set, l.electrical, true);
+            }
+            "Framing Plan" => {
+                hide(&mut set, l.framing, true);
+                hide(&mut set, Some(l.rooms), false);
+                hide(&mut set, l.electrical, false);
+            }
+            "Kitchen & Bath Plan" => {
+                hide(&mut set, l.cabinets, true);
+                d.labels.cabinets = "{code}".into();
+                d.labels.fixtures = "{type}".into();
+            }
+            "Construction Plan" => {
+                hide(&mut set, Some(l.dimensions), true);
+                d.labels.doors = "{size}".into();
+                d.labels.windows = "{size}".into();
+                d.room_labels.size = RoomSizeFormat::Exact;
+            }
+            _ => {
+                hide(&mut set, l.electrical, false);
+                hide(&mut set, l.cabinets, false);
+                hide(&mut set, l.framing, false);
+                hide(&mut set, Some(l.dimensions), false);
+            }
+        }
+        let set_id = doc.insert(set);
+        let d_id = doc.insert(d);
+        let mut view = base_view.clone();
+        view.id = Id(0);
+        view.name = name.to_string();
+        view.layer_set = set_id;
+        view.default_set = d_id;
+        out.created.push(set_id);
+        out.created.push(d_id);
+        out.created.push(doc.insert(view));
+    }
+    Ok(())
 }
