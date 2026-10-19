@@ -300,7 +300,7 @@ These come from reading the whole list and change the architecture, not just the
 | FR-06 | Retain manual framing across auto rebuilds (X18+) | P2 | M6 ✓ members placed, moved or edited by hand are kept when framing is rebuilt |
 | FR-07 | Framing materials: lumber, steel, LVL, PSL, VSL; custom types and shapes | P2 | M6 ◐ lumber, LVL, PSL, VSL and steel members; no custom section shapes |
 | FR-08 | EasyFrame panelization export (.EZF) | P3 | M8 |
-| FR-09 | Roof framing: rafters, ridges, lookouts, blocking, valley fill, rafter tails | P2 | M6 ◐ rafters and ridges under each roof plane; no lookouts, blocking, valley fill or rafter tails |
+| FR-09 | Roof framing: rafters, ridges, lookouts, blocking, valley fill, rafter tails | P2 | M6 ◐ rafters and ridges, lookouts at rakes, eave (frieze) blocking, purlins, square/plumb/bevelled tails; no valley fill |
 | FR-10 | Auto-build trusses; auto-fit floor/ceiling/roof trusses (scissor, attic, girder, hip, energy heel…) | P2 | M6 ◐ trusses fitted under the roof (common, stepped-down at hips) with Fink webs and heels; no scissor, attic, girder or energy-heel types |
 | FR-11 | Truss rebuild tool; truss details with labels | P3 | M6 ✓ Build Roof Framing rebuilds trusses; Truss Detail draws one with its member sizes |
 | FR-12 | Truss chords/webbing in materials list (X18+) | P3 | M6 ✓ truss chords and webs in the cut list and buy list |
@@ -308,17 +308,17 @@ These come from reading the whole list and change the architecture, not just the
 | FR-14 | Decorative end profiles | P3 | M6 ◐ rafter tails cut square, plumb or bevelled; shaped profiles later |
 | FR-15 | Post & beam tools | P2 | M6 ◐ Post and Beam tools (6x6 posts, 2-ply beams); no automatic post-and-beam layout |
 | FR-16 | Multi-ply beams/posts/girders (X18+) | P3 | M6 ✓ members can be 1–4 plies |
-| FR-17 | Wall framing options: plates, studs, bridging, knee walls; steel C/U channels; rim joists | P2 | M6 ◐ stud spacing, 1–3 top plates, mid-height blocking, rim joists; no knee walls or steel channels |
+| FR-17 | Wall framing options: plates, studs, bridging, knee walls; steel C/U channels; rim joists | P2 | M6 ◐ stud spacing, 1–3 top plates, mid-height blocking, rim joists, steel studs and tracks; no knee-wall option |
 | FR-18 | Balloon framing | P3 | M6 ✓ studs run through stacked walls, floors hung on ribbons |
-| FR-19 | Header controls (cripples, rotated, flush, combined) | P2 | M6 ◐ headers sized by span (2x6 to 2x12, built-up); no per-header options |
+| FR-19 | Header controls (cripples, rotated, flush, combined) | P2 | M6 ◐ headers sized by span, or per opening: own depth, flush to the plates (no cripples); no rotated or combined headers |
 | FR-20 | Framing per wall-type layer (furred basement walls) | P3 | M6 ✓ wall-type layers named Furring get their own plates and studs |
 | FR-21 | Horizontal wall framing (girts) for pole/timber buildings | P3 | M6 ✓ posts-and-girts wall framing (post and girt spacing) |
 | FR-22 | Per-opening framing (box/built-up headers, trimmers, sills) | P2 | M6 ✓ king and jack studs, headers, cripples above and below, rough sills |
 | FR-23 | Wall framing detail views | P2 | M6 ✓ Build > Framing > Wall Framing Detail draws a wall's framing as a CAD detail |
 | FR-24 | Framing labels and member roles for schedules | P2 | M6 ✓ every member has a role; Framing Cut List schedule |
-| FR-25 | Build framing per room / per wall / per roof plane | P2 | M6 ◐ rebuild per floor, or for selected walls and roof planes; not per room |
+| FR-25 | Build framing per room / per wall / per roof plane | P2 | M6 ✓ rebuild per floor, or for selected walls, rooms (their walls) and roof planes |
 | FR-26 | Corner & intersection framing (standard, 2-stud, laddered) | P2 | M6 ✓ three-stud, two-stud and ladder corners |
-| FR-27 | Bearing walls (butt/lap framing) | P2 | M6 ◐ walls can be marked Bearing (they get footings); butt/lap framing at bearing walls not yet |
+| FR-27 | Bearing walls (butt/lap framing) | P2 | M6 ✓ bearing walls get footings; floor and ceiling joists run continuous, butt or lap over them |
 | FR-28 | Platform holes with auto framing | P2 | M6 ✓ joists stop at stairwell holes, with headers |
 | FR-29 | Tray ceiling framing | P3 | M6 ✓ joists inside a tray step up by its rise, blocking frames the step |
 | FR-30 | Deck framing: planks, borders, beams, joists, posts, footings, blocking; auto-rebuild | P2 | M6 ◐ decks rebuild themselves: planks, border, joists, rims, ledger, beams, posts, footings, railings; no blocking |

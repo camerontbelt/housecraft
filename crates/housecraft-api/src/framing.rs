@@ -71,7 +71,14 @@ fn framing_layer(doc: &mut Document, out: &mut Outcome) -> Id {
     id
 }
 
-fn insert(doc: &mut Document, layer: Id, m: Member, tails: TailCut, out: &mut Outcome) {
+fn insert(doc: &mut Document, layer: Id, m: Member, d: &FramingDefaults, out: &mut Outcome) {
+    let tails = d.rafter_tails;
+    // Steel walls: studs, plates and their blocking in light-gauge steel.
+    let material = if doc.kind_of(m.host) == Some(ObjectKind::Wall) && !matches!(m.role, FramingRole::Header | FramingRole::Post | FramingRole::Girt) {
+        d.wall_material
+    } else {
+        FramingMaterial::Lumber
+    };
     out.created.push(doc.insert(FramingMember {
         id: Id(0),
         floor: m.floor,
@@ -82,7 +89,7 @@ fn insert(doc: &mut Document, layer: Id, m: Member, tails: TailCut, out: &mut Ou
         width: Length::from_mm(m.width),
         depth: Length::from_mm(m.depth),
         rotation: m.rotation,
-        material: FramingMaterial::Lumber,
+        material,
         host: Some(m.host),
         manual: false,
         plies: 1,
@@ -105,6 +112,16 @@ pub(crate) fn build(
     }
     let d = doc.active_defaults().framing.clone();
     let on = |f: Id| floor.is_none_or(|x| x == f);
+    // A room stands for the walls round it.
+    let mut hosts = hosts.to_vec();
+    let rooms: Vec<Room> = hosts.iter().filter_map(|h| doc.get::<Room>(*h).cloned()).collect();
+    for r in rooms {
+        let regions = housecraft_geom::rooms::detect(doc, r.floor);
+        if let Some(i) = regions.room_at(housecraft_geom::v2(r.anchor)) {
+            hosts.extend(regions.rooms[i].walls.iter().copied());
+        }
+    }
+    let hosts = &hosts[..];
     let wanted = |h: Id| hosts.is_empty() || hosts.contains(&h);
     let mut members = Vec::new();
     let mut rebuilt_hosts = Vec::new();
@@ -137,11 +154,12 @@ pub(crate) fn build(
         }
     }
     let mut ridges = Vec::new();
+    let overhang = doc.active_defaults().roof.overhang.mm();
     if parts.roofs {
         let planes: Vec<RoofPlane> = doc.iter::<RoofPlane>().filter(|p| on(p.floor) && wanted(p.id)).cloned().collect();
         for p in &planes {
             if !d.trusses {
-                members.extend(roof_framing(&d, p, &mut ridges));
+                members.extend(roof_framing(&d, p, overhang, &mut ridges));
             }
             rebuilt_hosts.push(p.id);
         }
@@ -170,7 +188,7 @@ pub(crate) fn build(
     }
     let layer = framing_layer(doc, out);
     for m in members {
-        insert(doc, layer, m, d.rafter_tails, out);
+        insert(doc, layer, m, &d, out);
     }
     Ok(())
 }

@@ -70,6 +70,19 @@ impl TailCut {
     }
 }
 
+/// How joists meet over a bearing wall.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum JoistSplice {
+    /// One piece across.
+    #[default]
+    Continuous,
+    /// Two pieces meeting end to end over the wall.
+    Butt,
+    /// Two pieces lapped side by side over the wall.
+    Lap,
+}
+
 /// How walls are framed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -312,6 +325,18 @@ pub struct FramingDefaults {
     /// …and girts this far apart up the wall.
     #[serde(default = "girt_spacing")]
     pub girt_spacing: Length,
+    /// Lookouts under the rake overhang of gable ends.
+    #[serde(default)]
+    pub lookouts: bool,
+    /// Frieze blocking between rafters over the wall line at the eaves.
+    #[serde(default)]
+    pub eave_blocking: bool,
+    /// How floor and ceiling joists meet over bearing walls.
+    #[serde(default)]
+    pub joist_splice: JoistSplice,
+    /// What wall studs and plates are made of (steel studs and tracks).
+    #[serde(default)]
+    pub wall_material: FramingMaterial,
 }
 
 fn post_spacing() -> Length {
@@ -349,6 +374,10 @@ impl Default for FramingDefaults {
             wall_style: WallFraming::Studs,
             post_spacing: post_spacing(),
             girt_spacing: girt_spacing(),
+            lookouts: false,
+            eave_blocking: false,
+            joist_splice: JoistSplice::Continuous,
+            wall_material: FramingMaterial::Lumber,
         }
     }
 }

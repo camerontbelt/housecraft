@@ -2475,9 +2475,9 @@ impl App {
                         .selection
                         .iter()
                         .copied()
-                        .filter(|id| matches!(self.doc().kind_of(*id), Some(ObjectKind::Wall | ObjectKind::RoofPlane)))
+                        .filter(|id| matches!(self.doc().kind_of(*id), Some(ObjectKind::Wall | ObjectKind::RoofPlane | ObjectKind::Room)))
                         .collect();
-                    if item(ui, "Rebuild Framing of Selected Walls/Roof Planes", "", !hosts.is_empty()) {
+                    if item(ui, "Rebuild Framing of Selected Walls, Rooms or Roof Planes", "", !hosts.is_empty()) {
                         cmd = Some(Command::BuildFraming { floor: None, parts: parts(true, false, false, true), hosts: hosts.clone() });
                     }
                     ui.separator();

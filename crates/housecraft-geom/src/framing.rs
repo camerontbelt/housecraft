@@ -189,16 +189,20 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
     for (a, b, o) in &spans {
         let head = z0 + o.sill.mm() + o.height.mm();
         let span = b - a;
-        let hd = if span <= 36.0 * IN {
-            5.5
-        } else if span <= 60.0 * IN {
-            7.25
-        } else if span <= 96.0 * IN {
-            9.25
-        } else {
-            11.25
-        } * IN;
-        let header_top = (head + hd).min(stud_top);
+        let spec = o.details.header.unwrap_or_default();
+        let hd = spec.depth.map(|d| d.mm()).unwrap_or(
+            if span <= 36.0 * IN {
+                5.5
+            } else if span <= 60.0 * IN {
+                7.25
+            } else if span <= 96.0 * IN {
+                9.25
+            } else {
+                11.25
+            } * IN,
+        );
+        // A flush header fills up to the plates.
+        let header_top = if spec.flush { stud_top } else { (head + hd).min(stud_top) };
         for (jack, king) in [(a - t / 2.0, a - 1.5 * t), (b + t / 2.0, b + 1.5 * t)] {
             push(FramingRole::JackStud, at(jack, stud_bottom), at(jack, head), t, core, across);
             push(FramingRole::KingStud, at(king, stud_bottom), at(king, stud_top), t, core, across);
@@ -447,6 +451,78 @@ fn joists(
     t: f64,
     depth: f64,
     holes: &[Vec<DVec2>],
+    splice: JoistSplice,
+    out: &mut Vec<Member>,
+) {
+    let start = out.len();
+    joists_inner(doc, floor, ceiling, z, spacing, t, depth, holes, out);
+    if splice == JoistSplice::Continuous {
+        return;
+    }
+    // Bearing walls under the joists: this floor's (ceiling joists) or the
+    // floor below's (floor joists).
+    let wall_floor = if ceiling {
+        Some(floor)
+    } else {
+        let floors = doc.floors_by_elevation();
+        floors.iter().position(|f| f.id == floor).and_then(|i| i.checked_sub(1)).map(|i| floors[i].id)
+    };
+    let Some(wall_floor) = wall_floor else { return };
+    let bearing: Vec<(DVec2, DVec2)> = doc.walls_on(wall_floor).filter(|w| w.shape.bearing).map(|w| (v2(w.start), v2(w.end))).collect();
+    if bearing.is_empty() {
+        return;
+    }
+    let lap = 12.0 * IN;
+    let mut spliced = Vec::new();
+    for m in out.drain(start..) {
+        let role_ok = matches!(m.role, FramingRole::FloorJoist | FramingRole::CeilingJoist);
+        let (a, b) = (m.a.truncate(), m.b.truncate());
+        let len = a.distance(b);
+        let dir = (b - a) / len.max(1e-9);
+        // Where the joist crosses each bearing wall, along it.
+        let mut cuts: Vec<f64> = bearing
+            .iter()
+            .filter_map(|(p, q)| {
+                let e = *q - *p;
+                let den = dir.perp_dot(e);
+                if den.abs() < 1e-6 {
+                    return None;
+                }
+                let s = (p - a).perp_dot(e) / den;
+                let u = (p - a).perp_dot(dir) / den;
+                (s > lap && s < len - lap && (0.0..=1.0).contains(&u)).then_some(s)
+            })
+            .collect();
+        if !role_ok || cuts.is_empty() {
+            spliced.push(m);
+            continue;
+        }
+        cuts.sort_by(f64::total_cmp);
+        let at = |s: f64, side: f64| (a + dir * s + perp(dir) * side).extend(m.a.z);
+        let mut from = 0.0;
+        for (k, c) in cuts.iter().chain(std::iter::once(&len)).enumerate() {
+            let last = k == cuts.len();
+            let (s0, s1, side) = match splice {
+                JoistSplice::Lap => (if k == 0 { from } else { from - lap / 2.0 }, if last { *c } else { c + lap / 2.0 }, if k % 2 == 1 { t } else { 0.0 }),
+                _ => (from, *c, 0.0),
+            };
+            spliced.push(Member { a: at(s0, side), b: at(s1, side), ..m.clone() });
+            from = *c;
+        }
+    }
+    out.extend(spliced);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn joists_inner(
+    doc: &Document,
+    floor: Id,
+    ceiling: bool,
+    z: f64,
+    spacing: f64,
+    t: f64,
+    depth: f64,
+    holes: &[Vec<DVec2>],
     out: &mut Vec<Member>,
 ) {
     let role = if ceiling { FramingRole::CeilingJoist } else { FramingRole::FloorJoist };
@@ -524,7 +600,7 @@ pub fn floor_framing(doc: &Document, d: &FramingDefaults, floor: &Floor) -> Vec<
     let depth = d.floor_joist_depth.mm();
     let z = floor.elevation.mm() - 19.0 - depth / 2.0;
     let mut out = Vec::new();
-    joists(doc, floor.id, false, z, d.joist_spacing.mm().max(100.0), d.lumber_width.mm(), depth, &stair_holes(doc, floor.id), &mut out);
+    joists(doc, floor.id, false, z, d.joist_spacing.mm().max(100.0), d.lumber_width.mm(), depth, &stair_holes(doc, floor.id), d.joist_splice, &mut out);
     out
 }
 
@@ -536,7 +612,7 @@ pub fn ceiling_framing(doc: &Document, d: &FramingDefaults, floor: &Floor) -> Ve
     let depth = d.ceiling_joist_depth.mm();
     let z = floor.elevation.mm() + floor.ceiling_height.mm() + depth / 2.0;
     let mut out = Vec::new();
-    joists(doc, floor.id, true, z, d.ceiling_joist_spacing.mm().max(100.0), d.lumber_width.mm(), depth, &[], &mut out);
+    joists(doc, floor.id, true, z, d.ceiling_joist_spacing.mm().max(100.0), d.lumber_width.mm(), depth, &[], d.joist_splice, &mut out);
     tray_framing(doc, floor, d, &mut out);
     out
 }
@@ -599,7 +675,8 @@ fn tray_framing(doc: &Document, floor: &Floor, d: &FramingDefaults, out: &mut Ve
 }
 
 /// Rafters down a roof plane and a ridge along its top edge.
-pub fn roof_framing(d: &FramingDefaults, plane: &RoofPlane, ridges: &mut Vec<(DVec2, DVec2)>) -> Vec<Member> {
+/// `overhang` is the roof's eave overhang (for frieze blocking over the wall line).
+pub fn roof_framing(d: &FramingDefaults, plane: &RoofPlane, overhang: f64, ridges: &mut Vec<(DVec2, DVec2)>) -> Vec<Member> {
     if plane.gable || plane.outline.len() < 3 {
         return Vec::new();
     }
@@ -654,6 +731,36 @@ pub fn roof_framing(d: &FramingDefaults, plane: &RoofPlane, ridges: &mut Vec<(DV
                 }
             }
             u += step;
+        }
+    }
+    let low = pts.iter().map(|p| p.z).fold(f64::MAX, f64::min);
+    let m = flat_ccw.len();
+    for i in 0..m {
+        let (a, b) = (flat_ccw[i], flat_ccw[(i + 1) % m]);
+        let e = b - a;
+        let len = e.length();
+        if len < 300.0 {
+            continue;
+        }
+        let ed = e / len;
+        // Eaves: level edges at the bottom. Frieze blocking over the wall line.
+        if d.eave_blocking && (height(a) - low).abs() < 2.0 && (height(b) - low).abs() < 2.0 {
+            let inward = perp(ed); // the outline is counter-clockwise
+            let (p, q) = (a + inward * overhang, b + inward * overhang);
+            let z = |x: DVec2| height(x) - drop;
+            out.push(Member { role: FramingRole::Blocking, a: p.extend(z(p)), b: q.extend(z(q)), width: t, depth, rotation: 0.0, host: plane.id, floor: plane.floor });
+        }
+        // Rakes run down the slope: lookouts every 24" across the overhang.
+        if d.lookouts && ed.dot(down).abs() > 0.97 {
+            let inward = perp(ed);
+            let mut u = 12.0 * IN;
+            while u < len - 6.0 * IN {
+                let p = a + ed * u;
+                let q = p + inward * 36.0 * IN;
+                let z = |x: DVec2| height(x) - (19.0 + 0.75 * IN) / cos;
+                out.push(Member { role: FramingRole::Blocking, a: p.extend(z(p)), b: q.extend(z(q)), width: t, depth: 3.5 * IN, rotation: 90.0, host: plane.id, floor: plane.floor });
+                u += 24.0 * IN;
+            }
         }
     }
     let mut s = lo + t;

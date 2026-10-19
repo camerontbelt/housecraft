@@ -1332,6 +1332,35 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                         len_row(ui, doc, &mut app.bufs, "Purlin spacing (0: none)", ("framing", "purlin_spacing"), f.purlin_spacing, |v| {
                             commands.push(p(json!({"framing": {"purlin_spacing": v}})))
                         });
+                        ui.label("Roof extras");
+                        ui.horizontal(|ui| {
+                            let (mut lo, mut eb) = (f.lookouts, f.eave_blocking);
+                            if ui.checkbox(&mut lo, "Lookouts at rakes").changed() {
+                                commands.push(p(json!({"framing": {"lookouts": lo}})));
+                            }
+                            if ui.checkbox(&mut eb, "Eave blocking").changed() {
+                                commands.push(p(json!({"framing": {"eave_blocking": eb}})));
+                            }
+                        });
+                        ui.end_row();
+                        ui.label("Joists over bearing walls");
+                        ui.horizontal(|ui| {
+                            for (label, s) in [("Continuous", JoistSplice::Continuous), ("Butt", JoistSplice::Butt), ("Lap", JoistSplice::Lap)] {
+                                if ui.selectable_label(f.joist_splice == s, label).clicked() {
+                                    commands.push(p(json!({"framing": {"joist_splice": s}})));
+                                }
+                            }
+                        });
+                        ui.end_row();
+                        ui.label("Wall studs");
+                        ui.horizontal(|ui| {
+                            for (label, m) in [("Lumber", FramingMaterial::Lumber), ("Steel", FramingMaterial::Steel)] {
+                                if ui.selectable_label(f.wall_material == m, label).clicked() {
+                                    commands.push(p(json!({"framing": {"wall_material": m}})));
+                                }
+                            }
+                        });
+                        ui.end_row();
                         ui.label("Rafter tails");
                         ui.horizontal(|ui| {
                             for c in TailCut::ALL {

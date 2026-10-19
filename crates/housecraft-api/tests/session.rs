@@ -2646,3 +2646,50 @@ fn scatter_copies_inside_regions_and_along_paths() {
     let doc = s.document();
     assert!(along.created.iter().all(|id| (doc.get::<Plant>(*id).unwrap().at.y().mm()).abs() < 3.0 * ft));
 }
+
+#[test]
+fn framing_lookouts_blocking_headers_rooms_splices_steel() {
+    let count = |s: &Session, r: FramingRole| s.document().iter::<FramingMember>().filter(|m| m.role == r).count();
+    let set_framing = |s: &mut Session, v: serde_json::Value| {
+        let id = s.document().settings.active_default_set;
+        s.apply(&[Command::Update { id, set: patch(serde_json::json!({ "framing": v })) }]).unwrap();
+    };
+    let mut s = boxed();
+    // A gable roof: rakes get lookouts, eaves get frieze blocking.
+    let w = walls(&s);
+    for wall in [w[0].id, w[2].id] {
+        s.apply(&[Command::Update { id: wall, set: patch(serde_json::json!({"roof": {"gable": true}})) }]).unwrap();
+    }
+    apply(&mut s, r#"[{"op": "build_roof"}, {"op": "build_framing"}]"#);
+    let blocks = count(&s, FramingRole::Blocking);
+    set_framing(&mut s, serde_json::json!({"lookouts": true, "eave_blocking": true, "wall_material": "steel"}));
+    apply(&mut s, r#"[{"op": "build_framing"}]"#);
+    assert!(count(&s, FramingRole::Blocking) > blocks + 8, "{} vs {blocks}", count(&s, FramingRole::Blocking));
+    assert!(s.document().iter::<FramingMember>().filter(|m| m.role == FramingRole::Stud).all(|m| m.material == FramingMaterial::Steel));
+    // A flush 11 7/8" header.
+    let out = apply(&mut s, &format!(r#"[{{"op": "add_window", "wall": {}, "position": "10'"}}]"#, w[1].id.0));
+    let win = out.created[0];
+    s.apply(&[Command::Update { id: win, set: patch(serde_json::json!({"details": {"header": {"depth": "11 7/8\"", "flush": true}}})) }]).unwrap();
+    apply(&mut s, &format!(r#"[{{"op": "build_framing", "hosts": [{}], "parts": {{"floors": false, "ceilings": false, "roofs": false}}}}]"#, w[1].id.0));
+    let doc = s.document();
+    let header = doc.iter::<FramingMember>().find(|m| m.role == FramingRole::Header && m.host == Some(w[1].id)).unwrap();
+    let o = doc.get::<Opening>(win).unwrap();
+    let head = o.sill.mm() + o.height.mm();
+    assert!(header.depth.mm() > 11.0 * 25.4, "flush header fills to the plates: {}", header.depth.mm());
+    assert!((header.a.mm()[2] - header.depth.mm() / 2.0 - head).abs() < 1.0);
+    assert_eq!(doc.iter::<FramingMember>().filter(|m| m.role == FramingRole::Cripple && m.host == Some(w[1].id) && m.a.mm()[2] > head).count(), 0);
+    // Rebuilding a room rebuilds its walls only.
+    let room = doc.iter::<Room>().next().unwrap().id;
+    let out = s.apply(&[Command::BuildFraming { floor: None, parts: serde_json::from_str(r#"{"floors": false, "ceilings": false, "roofs": false}"#).unwrap(), hosts: vec![room] }]).unwrap();
+    let doc = s.document();
+    assert!(!out.created.is_empty() && out.created.iter().all(|id| doc.get::<FramingMember>(*id).is_some_and(|m| doc.kind_of(m.host.unwrap()) == Some(ObjectKind::Wall))));
+    // Ceiling joists lap over a bearing wall.
+    let mut s = boxed();
+    let bw = apply(&mut s, r#"[{"op": "add_wall", "start": ["10'",0], "end": ["10'","30'"], "interior": true}]"#).created[0];
+    s.apply(&[Command::Update { id: bw, set: patch(serde_json::json!({"shape": {"bearing": true}})) }]).unwrap();
+    apply(&mut s, r#"[{"op": "build_framing", "parts": {"walls": false, "floors": false, "roofs": false}}]"#);
+    let plain = count(&s, FramingRole::CeilingJoist);
+    set_framing(&mut s, serde_json::json!({"joist_splice": "lap"}));
+    apply(&mut s, r#"[{"op": "build_framing", "parts": {"walls": false, "floors": false, "roofs": false}}]"#);
+    assert!(count(&s, FramingRole::CeilingJoist) > plain + 5, "{} vs {plain}", count(&s, FramingRole::CeilingJoist));
+}

@@ -145,6 +145,25 @@ fn opening_extras(ui: &mut Ui, ed: &mut Ed<'_>, o: &Opening) {
         }
     });
     ui.end_row();
+    Ed::label(ui, "Header");
+    ui.horizontal(|ui| {
+        let mut own = d.header.is_some();
+        ui.checkbox(&mut own, "Own header").on_hover_text("Framing: choose this opening's header instead of sizing it by span");
+        if own {
+            let h = d.header.get_or_insert_with(Default::default);
+            let mut sized = h.depth.is_some();
+            ui.checkbox(&mut sized, "Depth");
+            let mut inches = h.depth.map_or(9.25, |l| l.inches());
+            if sized {
+                ui.add(egui::DragValue::new(&mut inches).range(3.5..=24.0).speed(0.25).suffix("\""));
+            }
+            h.depth = sized.then(|| Length::from_inches(inches));
+            ui.checkbox(&mut h.flush, "Flush to plates");
+        } else {
+            d.header = None;
+        }
+    });
+    ui.end_row();
     Ed::label(ui, "Trim");
     ui.horizontal(|ui| {
         ui.checkbox(&mut d.lintel, "Lintel");

@@ -1033,6 +1033,16 @@ impl Default for WindowTreatment {
     }
 }
 
+/// A header chosen for one opening.
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct HeaderSpec {
+    /// Header depth; sized by span when `None`.
+    pub depth: Option<Length>,
+    /// Raised flush to the top plates (no cripples above).
+    pub flush: bool,
+}
+
 /// Window extras.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
 pub struct OpeningDetails {
@@ -1071,6 +1081,9 @@ pub struct OpeningDetails {
     /// Solar heat gain coefficient (0–1).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shgc: Option<f64>,
+    /// Framing: this opening's header, when not the automatic one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub header: Option<HeaderSpec>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
