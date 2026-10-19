@@ -2552,3 +2552,68 @@ fn plan_check_finds_egress_doors_walls_and_stairs() {
     let issues = plan_check(s.document());
     assert!(issues.iter().any(|i| i.topic == "Walls" && i.severity == Severity::Problem), "{issues:?}");
 }
+
+#[test]
+fn framing_options_purlins_tails_balloon_furring_girts_trays() {
+    let count = |s: &Session, r: FramingRole| s.document().iter::<FramingMember>().filter(|m| m.role == r).count();
+    let set_framing = |s: &mut Session, v: serde_json::Value| {
+        let id = s.document().settings.active_default_set;
+        s.apply(&[Command::Update { id, set: patch(serde_json::json!({ "framing": v })) }]).unwrap();
+    };
+    // Rafter spacing per plane, purlins and tails.
+    let mut s = boxed();
+    apply(&mut s, r#"[{"op": "build_roof"}, {"op": "build_framing"}]"#);
+    let rafters = count(&s, FramingRole::Rafter);
+    let plane = s.document().iter::<RoofPlane>().find(|r| !r.gable).unwrap().id;
+    s.apply(&[Command::Update { id: plane, set: patch(serde_json::json!({"rafter_spacing": "12\""})) }]).unwrap();
+    set_framing(&mut s, serde_json::json!({"purlin_spacing": "24\"", "rafter_tails": "plumb"}));
+    apply(&mut s, r#"[{"op": "build_framing"}]"#);
+    assert!(count(&s, FramingRole::Rafter) > rafters + 5, "{} vs {rafters}", count(&s, FramingRole::Rafter));
+    assert!(count(&s, FramingRole::Purlin) > 4);
+    assert!(s.document().iter::<FramingMember>().filter(|m| m.role == FramingRole::Rafter).all(|m| m.tail == TailCut::Plumb));
+    // A tray ceiling: some ceiling joists step up, blocking frames the step.
+    let room = s.document().iter::<Room>().next().unwrap().id;
+    s.apply(&[Command::Update { id: room, set: patch(serde_json::json!({"ceiling": {"style": "tray", "inset": "2'", "rise": "1'"}})) }]).unwrap();
+    set_framing(&mut s, serde_json::json!({"purlin_spacing": 0.0}));
+    apply(&mut s, r#"[{"op": "build_framing"}]"#);
+    let zs: Vec<f64> = s.document().iter::<FramingMember>().filter(|m| m.role == FramingRole::CeilingJoist).map(|m| m.a.mm()[2]).collect();
+    let (lo, hi) = (zs.iter().copied().fold(f64::MAX, f64::min), zs.iter().copied().fold(f64::MIN, f64::max));
+    assert!((hi - lo - 304.8).abs() < 1.0, "{lo} {hi}");
+
+    // Post-and-girt walls.
+    let mut s = boxed();
+    set_framing(&mut s, serde_json::json!({"wall_style": "post_and_girt"}));
+    apply(&mut s, r#"[{"op": "build_framing", "parts": {"floors": false, "ceilings": false, "roofs": false}}]"#);
+    assert_eq!(count(&s, FramingRole::Stud), 0);
+    assert!(count(&s, FramingRole::Post) >= 8 && count(&s, FramingRole::Girt) > 8);
+
+    // Furring: a framed furring layer gets its own studs.
+    let mut s = boxed();
+    apply(&mut s, r#"[{"op": "build_framing", "parts": {"floors": false, "ceilings": false, "roofs": false}}]"#);
+    let studs = count(&s, FramingRole::Stud);
+    let wt = walls(&s)[0].wall_type;
+    let mut t = s.document().get::<WallType>(wt).unwrap().clone();
+    t.layers.push(WallLayer { name: "Furring".into(), thickness: Length::from_inches(1.5), material: String::new(), main: false, r_value: 0.0 });
+    s.apply(&[Command::Update { id: wt, set: patch(serde_json::json!({"layers": t.layers})) }]).unwrap();
+    apply(&mut s, r#"[{"op": "build_framing", "parts": {"floors": false, "ceilings": false, "roofs": false}}]"#);
+    assert!(count(&s, FramingRole::Stud) > studs + 20);
+
+    // Balloon framing over two storeys.
+    let mut s = boxed();
+    let f2 = apply(&mut s, r#"[{"op": "add_floor"}]"#).created[0];
+    apply(&mut s, &format!(r#"[{{"op": "add_walls", "floor": {f}, "points": [[0,0], [0,"30'"], ["20'","30'"], ["20'",0]], "closed": true}}]"#, f = f2.0));
+    set_framing(&mut s, serde_json::json!({"balloon": true}));
+    apply(&mut s, r#"[{"op": "build_framing", "parts": {"floors": false, "ceilings": false, "roofs": false}}]"#);
+    let doc = s.document();
+    assert!(doc.iter::<FramingMember>().filter(|m| m.floor == f2).all(|m| m.role != FramingRole::Stud));
+    let tall = doc.iter::<FramingMember>().filter(|m| m.role == FramingRole::Stud).map(|m| m.length().mm()).fold(0.0, f64::max);
+    assert!(tall > 16.0 * 304.8, "{tall}");
+    assert_eq!(doc.iter::<FramingMember>().filter(|m| m.role == FramingRole::Ribbon).count(), 4);
+
+    // Framing reference markers in a view.
+    let mut s = boxed();
+    apply(&mut s, r#"[{"op": "add_section_view", "name": "S", "a": ["-10'","-10'"], "b": ["30'","-10'"]}]"#);
+    let view = s.document().iter::<SectionView>().next().unwrap().id;
+    s.apply(&[Command::FramingMarkers { view }]).unwrap();
+    assert!(s.document().iter::<Text>().any(|t| t.floor == view && t.text.contains("T.O. plate")));
+}

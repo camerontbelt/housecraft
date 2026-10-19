@@ -2800,6 +2800,11 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                     {
                         self.run1(Command::StoryPole { view: v });
                     }
+                    if item(ui, "Framing Reference Markers", "", view.is_some())
+                        && let Some(v) = view
+                    {
+                        self.run1(Command::FramingMarkers { view: v });
+                    }
                 });
                 if tool_item(ui, Tool::Text) {
                     self.set_tool(Tool::Text);

@@ -63,7 +63,22 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
     let (core, off) = framing_core(doc, wall, g);
     let t = d.lumber_width.mm().max(10.0);
     let z0 = floor.elevation.mm();
-    let h = doc.wall_height(wall).map_or(floor.ceiling_height.mm(), |h| h.mm());
+    let mut h = doc.wall_height(wall).map_or(floor.ceiling_height.mm(), |h| h.mm());
+    if d.wall_style == WallFraming::PostAndGirt {
+        return post_and_girt(doc, d, wall, g, core, off);
+    }
+    // Balloon framing: a wall with one stacked on it carries its studs up
+    // through the floor; the wall above frames only its openings.
+    let (above, below) = if d.balloon { (stacked(doc, wall, true), stacked(doc, wall, false)) } else { (None, None) };
+    let upper_of_balloon = below.is_some();
+    let mut ribbon = None;
+    if let Some(up) = &above
+        && let Some(uf) = doc.get::<Floor>(up.floor)
+    {
+        let uh = doc.wall_height(up).map_or(uf.ceiling_height.mm(), |h| h.mm());
+        ribbon = Some(uf.elevation.mm() - 19.0 - d.floor_joist_depth.mm() - 1.75 * IN);
+        h = uf.elevation.mm() + uh - z0;
+    }
     let top_plates = d.top_plates.max(1) as f64;
     let stud_top = z0 + h - top_plates * t;
     let stud_bottom = z0 + t;
@@ -100,12 +115,20 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
                 .collect();
         }
     }
-    for (s, e) in bottom_runs {
-        push(FramingRole::BottomPlate, at(s, z0 + t / 2.0), at(e, z0 + t / 2.0), t, core, 90.0);
+    if !upper_of_balloon {
+        for (s, e) in bottom_runs {
+            push(FramingRole::BottomPlate, at(s, z0 + t / 2.0), at(e, z0 + t / 2.0), t, core, 90.0);
+        }
+        for k in 0..d.top_plates.max(1) {
+            let z = z0 + h - t * (k as f64 + 0.5);
+            push(FramingRole::TopPlate, at(0.0, z), at(len, z), t, core, 90.0);
+        }
     }
-    for k in 0..d.top_plates.max(1) {
-        let z = z0 + h - t * (k as f64 + 0.5);
-        push(FramingRole::TopPlate, at(0.0, z), at(len, z), t, core, 90.0);
+    if let Some(z) = ribbon {
+        // Let into the interior face of the studs.
+        let inner = (g.center_at(0.0) + g.left * (off - core / 2.0 + 0.375 * IN)).extend(z);
+        let inner_end = (g.center_at(len) + g.left * (off - core / 2.0 + 0.375 * IN)).extend(z);
+        push(FramingRole::Ribbon, inner, inner_end, 0.75 * IN, 3.5 * IN, 0.0);
     }
     // Where each opening's framing goes: no common studs inside it.
     let blocked = |u: f64| spans.iter().any(|(a, b, _)| u > a - 2.0 * t && u < b + 2.0 * t);
@@ -148,10 +171,12 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
     }
     studs.sort_by(|a, b| a.total_cmp(b));
     studs.dedup_by(|a, b| (*a - *b).abs() < t * 0.9);
-    for u in studs.iter().copied().filter(|u| !blocked(*u)) {
-        push(FramingRole::Stud, at(u, stud_bottom), at(u, stud_top), t, core, across);
+    if !upper_of_balloon {
+        for u in studs.iter().copied().filter(|u| !blocked(*u)) {
+            push(FramingRole::Stud, at(u, stud_bottom), at(u, stud_top), t, core, across);
+        }
     }
-    if d.wall_blocking {
+    if d.wall_blocking && !upper_of_balloon {
         let z = (stud_bottom + stud_top) / 2.0;
         let kept: Vec<f64> = studs.iter().copied().filter(|u| !blocked(*u)).collect();
         for w in kept.windows(2) {
@@ -159,6 +184,8 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
         }
     }
     // Openings: kings, jacks, a header sized by span, cripples and sills.
+    // (Headers stay under this storey's ceiling even in balloon walls.)
+    let stud_top = stud_top.min(z0 + doc.wall_height(wall).map_or(floor.ceiling_height.mm(), |h| h.mm()) - top_plates * t);
     for (a, b, o) in &spans {
         let head = z0 + o.sill.mm() + o.height.mm();
         let span = b - a;
@@ -206,6 +233,139 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
             }
         }
     }
+    // Furring and other extra framed layers (a 2x4 wall inside a
+    // basement's concrete): plates and studs of their own.
+    for (lcore, loff) in extra_framing_layers(doc, wall, g) {
+        let at = |u: f64, z: f64| (g.center_at(u) + g.left * loff).extend(z);
+        let mut push = |role, a: DVec3, b: DVec3, width: f64, depth: f64, rotation: f64| {
+            if a.distance(b) > 5.0 {
+                out.push(Member { role, a, b, width, depth, rotation, host: wall.id, floor: wall.floor });
+            }
+        };
+        let top = z0 + doc.wall_height(wall).map_or(floor.ceiling_height.mm(), |h| h.mm());
+        push(FramingRole::BottomPlate, at(0.0, z0 + t / 2.0), at(len, z0 + t / 2.0), t, lcore, 90.0);
+        push(FramingRole::TopPlate, at(0.0, top - t / 2.0), at(len, top - t / 2.0), t, lcore, 90.0);
+        let mut u = t / 2.0;
+        while u < len {
+            if !spans.iter().any(|(a, b, _)| u > a - t && u < b + t) {
+                push(FramingRole::Stud, at(u, z0 + t), at(u, top - t), t, lcore, across);
+            }
+            u = if u + spacing > len - t / 2.0 && u < len - t { len - t / 2.0 } else { u + spacing };
+        }
+    }
+    out
+}
+
+/// The wall stacked directly above (`up`) or below this one: same ends.
+fn stacked<'a>(doc: &'a Document, wall: &Wall, up: bool) -> Option<&'a Wall> {
+    let other = if up {
+        doc.floor_above(wall.floor)?.id
+    } else {
+        let floors = doc.floors_by_elevation();
+        let i = floors.iter().position(|f| f.id == wall.floor)?;
+        if i == 0 {
+            return None;
+        }
+        let f = floors[i - 1];
+        if f.foundation.is_some() {
+            return None;
+        }
+        f.id
+    };
+    let (a, b) = (v2(wall.start), v2(wall.end));
+    doc.walls_on(other).find(|w| {
+        let (c, e) = (v2(w.start), v2(w.end));
+        (c.distance(a) < 50.0 && e.distance(b) < 50.0) || (c.distance(b) < 50.0 && e.distance(a) < 50.0)
+    })
+}
+
+/// Layers framed besides the main one (furring): their depth and offset
+/// from the wall's centre line toward its exterior side.
+fn extra_framing_layers(doc: &Document, wall: &Wall, g: &WallGeom) -> Vec<(f64, f64)> {
+    let Some(wt) = doc.get::<WallType>(wall.wall_type) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    let mut before = 0.0;
+    for l in &wt.layers {
+        let th = l.thickness.mm();
+        let name = format!("{} {}", l.name, l.material).to_lowercase();
+        if name.contains("furring") && th > 10.0 {
+            out.push((th, g.half - before - th / 2.0));
+        }
+        before += th;
+    }
+    out
+}
+
+/// Pole-building walls: posts, girts between them, a top plate and
+/// headers over openings.
+fn post_and_girt(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGeom, core: f64, off: f64) -> Vec<Member> {
+    let Some(floor) = doc.get::<Floor>(wall.floor) else {
+        return Vec::new();
+    };
+    let z0 = floor.elevation.mm();
+    let h = doc.wall_height(wall).map_or(floor.ceiling_height.mm(), |h| h.mm());
+    let t = d.lumber_width.mm().max(10.0);
+    let post = 5.5 * IN;
+    let len = g.length;
+    let across = g.left.to_angle().to_degrees();
+    let at = |u: f64, z: f64, o: f64| (g.center_at(u) + g.left * o).extend(z);
+    let mut out = Vec::new();
+    let mut push = |role, a: DVec3, b: DVec3, width: f64, depth: f64, rotation: f64| {
+        if a.distance(b) > 5.0 {
+            out.push(Member { role, a, b, width, depth, rotation, host: wall.id, floor: wall.floor });
+        }
+    };
+    let spans: Vec<(f64, f64, f64, f64)> = doc
+        .openings_in(wall.id)
+        .filter_map(|o| opening_spans(g, &[o]).first().map(|(a, b)| (a.min(*b), a.max(*b), z0 + o.sill.mm(), z0 + o.sill.mm() + o.height.mm())))
+        .collect();
+    // Posts at the ends and every post spacing, inside the main layer.
+    let spacing = d.post_spacing.mm().max(600.0);
+    let mut posts = vec![post / 2.0];
+    let mut u = spacing;
+    while u < len - post {
+        posts.push(u);
+        u += spacing;
+    }
+    posts.push(len - post / 2.0);
+    for u in &posts {
+        push(FramingRole::Post, at(*u, z0, off), at(*u, z0 + h - t, off), post, post, across);
+    }
+    push(FramingRole::TopPlate, at(0.0, z0 + h - t / 2.0, off), at(len, z0 + h - t / 2.0, off), t, post, 90.0);
+    // Girts on the outside face of the posts, broken at openings.
+    let face = off + post / 2.0 + t / 2.0;
+    let girt = d.girt_spacing.mm().max(300.0);
+    let mut z = z0 + girt / 2.0;
+    while z < z0 + h - t {
+        let mut runs = vec![(0.0, len)];
+        for (a, b, lo, hi) in &spans {
+            if z > *lo - t && z < *hi + t {
+                runs = runs
+                    .into_iter()
+                    .flat_map(|(s, e)| {
+                        let mut v = Vec::new();
+                        if *a > s {
+                            v.push((s, a.min(e)));
+                        }
+                        if *b < e {
+                            v.push((b.max(s), e));
+                        }
+                        v
+                    })
+                    .collect();
+            }
+        }
+        for (s, e) in runs {
+            push(FramingRole::Girt, at(s, z, face), at(e, z, face), t, 5.5 * IN, 90.0);
+        }
+        z += girt;
+    }
+    for (a, b, _, hi) in &spans {
+        push(FramingRole::Header, at(*a, hi + 3.6 * IN, face), at(*b, hi + 3.6 * IN, face), t, 7.25 * IN, 0.0);
+    }
+    let _ = core;
     out
 }
 
@@ -377,7 +537,65 @@ pub fn ceiling_framing(doc: &Document, d: &FramingDefaults, floor: &Floor) -> Ve
     let z = floor.elevation.mm() + floor.ceiling_height.mm() + depth / 2.0;
     let mut out = Vec::new();
     joists(doc, floor.id, true, z, d.ceiling_joist_spacing.mm().max(100.0), d.lumber_width.mm(), depth, &[], &mut out);
+    tray_framing(doc, floor, d, &mut out);
     out
+}
+
+/// Tray ceilings: the joists inside a tray step up by its rise, and a
+/// ring of blocking frames the step.
+fn tray_framing(doc: &Document, floor: &Floor, d: &FramingDefaults, out: &mut Vec<Member>) {
+    let regions = crate::rooms::detect(doc, floor.id);
+    let t = d.lumber_width.mm();
+    for room in doc.rooms_on(floor.id) {
+        let CeilingStyle::Tray { inset, rise, .. } = room.ceiling else { continue };
+        let Some(i) = regions.room_at(v2(room.anchor)) else { continue };
+        let mut poly = regions.rooms[i].polygon.clone();
+        if signed_area(&poly) < 0.0 {
+            poly.reverse();
+        }
+        let inner = inset_polygon(&poly, inset.mm());
+        if inner.len() < 3 {
+            continue;
+        }
+        let rise = rise.mm();
+        let mut split = Vec::new();
+        for m in out.drain(..) {
+            if m.role != FramingRole::CeilingJoist {
+                split.push(m);
+                continue;
+            }
+            let (a, b) = (m.a.truncate(), m.b.truncate());
+            let len = a.distance(b);
+            let dir = (b - a) / len.max(1e-9);
+            let inside: Vec<(f64, f64)> = clip_line(&inner, a, dir).into_iter().map(|(t0, t1)| (t0.max(0.0), t1.min(len))).filter(|(t0, t1)| t1 > t0).collect();
+            if inside.is_empty() {
+                split.push(m);
+                continue;
+            }
+            let z = m.a.z;
+            let mut from = 0.0;
+            for (t0, t1) in inside {
+                if t0 > from {
+                    split.push(Member { a: (a + dir * from).extend(z), b: (a + dir * t0).extend(z), ..m.clone() });
+                }
+                split.push(Member { a: (a + dir * t0).extend(z + rise), b: (a + dir * t1).extend(z + rise), ..m.clone() });
+                from = t1;
+            }
+            if from < len {
+                split.push(Member { a: (a + dir * from).extend(z), b: b.extend(z), ..m.clone() });
+            }
+        }
+        *out = split;
+        // Blocking round the tray's edge, top and bottom of the step.
+        let z = floor.elevation.mm() + floor.ceiling_height.mm() + d.ceiling_joist_depth.mm() / 2.0;
+        let n = inner.len();
+        for k in 0..n {
+            let (a, b) = (inner[k], inner[(k + 1) % n]);
+            for zz in [z, z + rise] {
+                out.push(Member { role: FramingRole::Blocking, a: a.extend(zz), b: b.extend(zz), width: t, depth: d.ceiling_joist_depth.mm(), rotation: 0.0, host: room.id, floor: floor.id });
+            }
+        }
+    }
 }
 
 /// Rafters down a roof plane and a ridge along its top edge.
@@ -417,8 +635,27 @@ pub fn roof_framing(d: &FramingDefaults, plane: &RoofPlane, ridges: &mut Vec<(DV
     let n = perp(down);
     let proj: Vec<f64> = flat_ccw.iter().map(|p| p.dot(n)).collect();
     let (lo, hi) = (proj.iter().copied().fold(f64::MAX, f64::min), proj.iter().copied().fold(f64::MIN, f64::max));
-    let spacing = d.rafter_spacing.mm().max(100.0);
+    let spacing = plane.rafter_spacing.unwrap_or(d.rafter_spacing).mm().max(100.0);
     let mut out = Vec::new();
+    // Purlins: flat 2x4s across the rafters, every so far down the slope.
+    let purlins = d.purlin_spacing.mm();
+    if purlins > 50.0 {
+        let along: Vec<f64> = flat_ccw.iter().map(|p| p.dot(down)).collect();
+        let (dlo, dhi) = (along.iter().copied().fold(f64::MAX, f64::min), along.iter().copied().fold(f64::MIN, f64::max));
+        let step = purlins * cos; // plan distance for that slope distance
+        let mut u = dlo + step / 2.0;
+        while u < dhi - t {
+            let o = down * u;
+            for (t0, t1) in clip_line(&flat_ccw, o, n) {
+                let (a, b) = (o + n * t0, o + n * t1);
+                if a.distance(b) > 100.0 {
+                    let z = |q: DVec2| height(q) - (19.0 + 0.75 * IN) / cos;
+                    out.push(Member { role: FramingRole::Purlin, a: a.extend(z(a)), b: b.extend(z(b)), width: t, depth: 3.5 * IN, rotation: 90.0, host: plane.id, floor: plane.floor });
+                }
+            }
+            u += step;
+        }
+    }
     let mut s = lo + t;
     while s < hi - t / 2.0 {
         let o = n * s;
@@ -484,7 +721,18 @@ pub fn corners(m: &FramingMember) -> [DVec3; 8] {
     };
     let (dh, wh) = (dd * m.depth.mm() / 2.0, wd * m.width.mm() * m.plies.max(1) as f64 / 2.0);
     let ring = |e: DVec3| [e - dh - wh, e + dh - wh, e + dh + wh, e - dh + wh];
-    let (ra, rb) = (ring(a), ring(b));
+    let (ra, mut rb) = (ring(a), ring(b));
+    // A plumb (or undercut) end: slide the end corners along the member
+    // onto the vertical plane through `b`.
+    let ah = axis.truncate();
+    if m.tail != TailCut::Square && ah.length() > 0.05 && axis.z.abs() > 0.01 {
+        let ah_n = ah.normalize();
+        let k = if m.tail == TailCut::Bevel { 2.0 } else { 1.0 };
+        for c in rb.iter_mut() {
+            let t = -(*c - b).truncate().dot(ah_n) / ah.dot(ah_n);
+            *c += axis * t * k;
+        }
+    }
     [ra[0], ra[1], ra[2], ra[3], rb[0], rb[1], rb[2], rb[3]]
 }
 

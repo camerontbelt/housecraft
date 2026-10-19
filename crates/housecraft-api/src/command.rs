@@ -861,6 +861,9 @@ pub enum Command {
     /// A story pole in elevation or section `view`: a marked staff of levels
     /// (floors, plates, ridge) with their heights.
     StoryPole { view: Id },
+    /// Framing reference markers in elevation or section `view`: a datum
+    /// triangle and height at each floor's joists, subfloor and top plate.
+    FramingMarkers { view: Id },
     /// A column-grid line from `a` to `b` with a bubble at `a`; grid lines
     /// are numbered 1, 2, 3 left to right and lettered A, B, C bottom to top.
     AddGridLine { floor: Option<Id>, a: Point2, b: Point2 },
@@ -1286,6 +1289,7 @@ impl Command {
             Command::SetAutoDimPreset { .. } => "set_auto_dim_preset",
             Command::ElevationDimensions { .. } => "elevation_dimensions",
             Command::StoryPole { .. } => "story_pole",
+            Command::FramingMarkers { .. } => "framing_markers",
             Command::AddGridLine { .. } => "add_grid_line",
             Command::AddText { .. } => "add_text",
             Command::SetObjectLabel { .. } => "set_object_label",
@@ -2530,6 +2534,7 @@ impl Command {
                     host: None,
                     manual: true,
                     plies: plies.unwrap_or(1).max(1),
+                    tail: TailCut::Square,
                 }));
             }
             Command::AddJoistDirection { floor, at, angle, ceiling } => {
@@ -3173,6 +3178,7 @@ impl Command {
             }
             Command::ElevationDimensions { view } => crate::grids::elevation_dimensions(doc, *view, &mut out)?,
             Command::StoryPole { view } => crate::grids::story_pole(doc, *view, &mut out)?,
+            Command::FramingMarkers { view } => crate::grids::framing_markers(doc, *view, &mut out)?,
             Command::AddGridLine { floor, a, b } => {
                 let floor = ops::resolve_sheet(doc, *floor, false)?;
                 crate::grids::add_grid_line(doc, floor, *a, *b, &mut out)?;

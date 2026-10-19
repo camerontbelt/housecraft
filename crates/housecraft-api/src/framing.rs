@@ -71,7 +71,7 @@ fn framing_layer(doc: &mut Document, out: &mut Outcome) -> Id {
     id
 }
 
-fn insert(doc: &mut Document, layer: Id, m: Member, out: &mut Outcome) {
+fn insert(doc: &mut Document, layer: Id, m: Member, tails: TailCut, out: &mut Outcome) {
     out.created.push(doc.insert(FramingMember {
         id: Id(0),
         floor: m.floor,
@@ -86,6 +86,7 @@ fn insert(doc: &mut Document, layer: Id, m: Member, out: &mut Outcome) {
         host: Some(m.host),
         manual: false,
         plies: 1,
+        tail: if m.role == FramingRole::Rafter { tails } else { TailCut::Square },
     }));
 }
 
@@ -169,7 +170,7 @@ pub(crate) fn build(
     }
     let layer = framing_layer(doc, out);
     for m in members {
-        insert(doc, layer, m, out);
+        insert(doc, layer, m, d.rafter_tails, out);
     }
     Ok(())
 }

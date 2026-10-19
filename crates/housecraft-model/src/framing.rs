@@ -37,10 +37,52 @@ pub enum FramingRole {
     Ledger,
     /// Concrete under a post.
     Footing,
+    /// A horizontal member across rafters (or battens under roofing).
+    Purlin,
+    /// A horizontal wall member between posts (post-frame buildings).
+    Girt,
+    /// A board let into balloon-framed studs that floor joists rest on.
+    Ribbon,
+}
+
+/// How the low end of a rafter is cut.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TailCut {
+    /// Square to the rafter.
+    #[default]
+    Square,
+    /// Vertical (plumb), the usual fascia cut.
+    Plumb,
+    /// Undercut past plumb, a decorative exposed tail.
+    Bevel,
+}
+
+impl TailCut {
+    pub const ALL: [TailCut; 3] = [TailCut::Square, TailCut::Plumb, TailCut::Bevel];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            TailCut::Square => "Square",
+            TailCut::Plumb => "Plumb",
+            TailCut::Bevel => "Bevelled",
+        }
+    }
+}
+
+/// How walls are framed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum WallFraming {
+    /// Studs between plates.
+    #[default]
+    Studs,
+    /// Posts with horizontal girts (pole and timber buildings).
+    PostAndGirt,
 }
 
 impl FramingRole {
-    pub const ALL: [FramingRole; 20] = [
+    pub const ALL: [FramingRole; 23] = [
         FramingRole::Stud,
         FramingRole::KingStud,
         FramingRole::JackStud,
@@ -61,6 +103,9 @@ impl FramingRole {
         FramingRole::Web,
         FramingRole::Ledger,
         FramingRole::Footing,
+        FramingRole::Purlin,
+        FramingRole::Girt,
+        FramingRole::Ribbon,
     ];
 
     pub fn name(self) -> &'static str {
@@ -85,6 +130,9 @@ impl FramingRole {
             FramingRole::Web => "Truss Web",
             FramingRole::Ledger => "Ledger",
             FramingRole::Footing => "Footing",
+            FramingRole::Purlin => "Purlin",
+            FramingRole::Girt => "Girt",
+            FramingRole::Ribbon => "Ribbon",
         }
     }
 }
@@ -154,6 +202,13 @@ pub struct FramingMember {
     /// Pieces nailed side by side (a 2-ply beam); `width` is each piece's.
     #[serde(default = "one_ply")]
     pub plies: u32,
+    /// How the `b` end is cut (rafter tails).
+    #[serde(default, skip_serializing_if = "is_square")]
+    pub tail: TailCut,
+}
+
+fn is_square(t: &TailCut) -> bool {
+    *t == TailCut::Square
 }
 
 fn one_ply() -> u32 {
@@ -240,6 +295,31 @@ pub struct FramingDefaults {
     pub trusses: bool,
     #[serde(default = "truss_spacing")]
     pub truss_spacing: Length,
+    /// Purlins across the rafters this far apart along the slope (0: none).
+    #[serde(default)]
+    pub purlin_spacing: Length,
+    /// How rafter tails are cut.
+    #[serde(default)]
+    pub rafter_tails: TailCut,
+    /// Balloon framing: studs run through stacked storeys, floors hung on ribbons.
+    #[serde(default)]
+    pub balloon: bool,
+    #[serde(default)]
+    pub wall_style: WallFraming,
+    /// Post-and-girt walls: posts this far apart…
+    #[serde(default = "post_spacing")]
+    pub post_spacing: Length,
+    /// …and girts this far apart up the wall.
+    #[serde(default = "girt_spacing")]
+    pub girt_spacing: Length,
+}
+
+fn post_spacing() -> Length {
+    Length::from_feet(8.0)
+}
+
+fn girt_spacing() -> Length {
+    Length::from_inches(24.0)
 }
 
 fn truss_spacing() -> Length {
@@ -263,6 +343,12 @@ impl Default for FramingDefaults {
             wall_blocking: false,
             trusses: false,
             truss_spacing: truss_spacing(),
+            purlin_spacing: Length::ZERO,
+            rafter_tails: TailCut::Square,
+            balloon: false,
+            wall_style: WallFraming::Studs,
+            post_spacing: post_spacing(),
+            girt_spacing: girt_spacing(),
         }
     }
 }

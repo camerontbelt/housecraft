@@ -2389,6 +2389,8 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             });
             ui.end_row();
             if !r.gable {
+                let fallback = doc.active_defaults().framing.rafter_spacing;
+                ed.opt_length(ui, "Rafter Spacing", "rafter_spacing", r.rafter_spacing, Some(fallback));
                 Ed::label(ui, "Pitch");
                 ui.label(format!(
                     "{} ({:.1}°)",

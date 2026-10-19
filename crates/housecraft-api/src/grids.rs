@@ -252,6 +252,77 @@ pub(crate) fn story_pole(doc: &mut Document, view: Id, out: &mut Outcome) -> Res
     Ok(())
 }
 
+/// Datum markers at each storey's framing levels, right of the building.
+pub(crate) fn framing_markers(doc: &mut Document, view: Id, out: &mut Outcome) -> Result<(), ApiError> {
+    let v = expect::<SectionView>(doc, view)?.clone();
+    let (a, b) = (v2(v.a), v2(v.b));
+    let dir = (b - a).normalize_or_zero();
+    let right = doc
+        .iter::<Wall>()
+        .flat_map(|w| [v2(w.start), v2(w.end)])
+        .map(|p| (p - a).dot(dir))
+        .fold(f64::MIN, f64::max);
+    if right == f64::MIN {
+        return Err(ApiError::Invalid("there are no walls to mark".into()));
+    }
+    let d = doc.defaults_for(view).clone();
+    let fr = doc.active_defaults().framing.clone();
+    let unit = doc.settings.display_unit;
+    let x = right + 1500.0;
+    let mut levels: Vec<(String, f64)> = Vec::new();
+    for f in doc.floors_by_elevation() {
+        let z = f.elevation.mm();
+        if f.foundation.is_none() {
+            levels.push((format!("{} T.O. joists", f.name), z - 19.0));
+            levels.push((format!("{} T.O. subfloor", f.name), z));
+            let plates = fr.top_plates.max(1) as f64 * fr.lumber_width.mm();
+            levels.push((format!("{} T.O. plate", f.name), z + f.ceiling_height.mm()));
+            levels.push((format!("{} T.O. studs", f.name), z + f.ceiling_height.mm() - plates));
+        }
+    }
+    for (name, z) in levels {
+        let s = 150.0;
+        out.created.push(doc.insert(Cad {
+            id: Id(0),
+            floor: view,
+            layer: d.layers.cad,
+            shape: Shape::Polyline {
+                points: vec![Point2::from_mm(x, z), Point2::from_mm(x - s, z + s * 1.4), Point2::from_mm(x + s, z + s * 1.4)],
+                closed: true,
+            },
+            color: None,
+            fill: None,
+            fill_style: None,
+        }));
+        out.created.push(doc.insert(Cad {
+            id: Id(0),
+            floor: view,
+            layer: d.layers.cad,
+            shape: Shape::Line { a: Point2::from_mm(x - 600.0, z), b: Point2::from_mm(x + 300.0, z), arrow_start: false, arrow_end: false },
+            color: None,
+            fill: None,
+            fill_style: None,
+        }));
+        out.created.push(doc.insert(Text {
+            id: Id(0),
+            floor: view,
+            layer: d.layers.text,
+            position: Point2::from_mm(x + 400.0, z),
+            text: format!("{name}  {}", Length::from_mm(z).format(unit)),
+            style: None,
+            rotation: 0.0,
+            justify: Justify::Left,
+            height: None,
+            bold: None,
+            color: None,
+            leaders: Vec::new(),
+            border: false,
+            wrap: None,
+        }));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::letters;

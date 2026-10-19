@@ -86,6 +86,7 @@ fn regenerate(doc: &mut Document, floor: Id, out: &mut Outcome) -> usize {
             auto: true,
             layer,
             skylights: Vec::new(),
+            rafter_spacing: None,
         }));
     }
     generated.len()
@@ -187,6 +188,7 @@ pub(crate) fn add_plane(
         auto: false,
         layer: defaults.layers.roofs.unwrap_or(defaults.layers.walls),
         skylights: Vec::new(),
+        rafter_spacing: None,
     }));
     Ok(())
 }

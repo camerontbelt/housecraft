@@ -744,6 +744,9 @@ pub struct RoofPlane {
     /// Skylights set in the plane.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub skylights: Vec<Skylight>,
+    /// Rafter spacing under this plane; the framing defaults' when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rafter_spacing: Option<Length>,
 }
 
 impl Wall {

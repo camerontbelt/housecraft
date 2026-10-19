@@ -1303,6 +1303,41 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                             commands.push(p(json!({"framing": {"wall_blocking": b}})));
                         }
                         ui.end_row();
+                        ui.label("Walls");
+                        ui.horizontal(|ui| {
+                            for (label, s) in [("Studs", WallFraming::Studs), ("Posts and girts", WallFraming::PostAndGirt)] {
+                                if ui.selectable_label(f.wall_style == s, label).clicked() {
+                                    commands.push(p(json!({"framing": {"wall_style": s}})));
+                                }
+                            }
+                        });
+                        ui.end_row();
+                        if f.wall_style == WallFraming::PostAndGirt {
+                            len_row(ui, doc, &mut app.bufs, "Post spacing", ("framing", "post_spacing"), f.post_spacing, |v| {
+                                commands.push(p(json!({"framing": {"post_spacing": v}})))
+                            });
+                            len_row(ui, doc, &mut app.bufs, "Girt spacing", ("framing", "girt_spacing"), f.girt_spacing, |v| {
+                                commands.push(p(json!({"framing": {"girt_spacing": v}})))
+                            });
+                        }
+                        ui.label("Balloon framing");
+                        let mut bl = f.balloon;
+                        if ui.checkbox(&mut bl, "Studs run through stacked storeys").changed() {
+                            commands.push(p(json!({"framing": {"balloon": bl}})));
+                        }
+                        ui.end_row();
+                        len_row(ui, doc, &mut app.bufs, "Purlin spacing (0: none)", ("framing", "purlin_spacing"), f.purlin_spacing, |v| {
+                            commands.push(p(json!({"framing": {"purlin_spacing": v}})))
+                        });
+                        ui.label("Rafter tails");
+                        ui.horizontal(|ui| {
+                            for c in TailCut::ALL {
+                                if ui.selectable_label(f.rafter_tails == c, c.name()).clicked() {
+                                    commands.push(p(json!({"framing": {"rafter_tails": c}})));
+                                }
+                            }
+                        });
+                        ui.end_row();
                     });
                 });
                 egui::CollapsingHeader::new("3D Solids").show(ui, |ui| {

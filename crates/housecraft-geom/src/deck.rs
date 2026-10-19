@@ -207,6 +207,7 @@ fn as_member(m: &Member) -> FramingMember {
         host: Some(m.host),
         manual: false,
         plies: 1,
+        tail: TailCut::Square,
     }
 }
 
