@@ -231,7 +231,7 @@ pub fn table_window(app: &mut App, ctx: &Context) {
 }
 
 /// Select `ids` in plan, switching to the floor the first one is on.
-fn select(app: &mut App, ids: &[Id]) {
+pub(crate) fn select(app: &mut App, ids: &[Id]) {
     let sheet = ids
         .first()
         .and_then(|id| app.session.document().floor_of(*id));

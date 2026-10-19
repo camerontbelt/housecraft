@@ -3024,6 +3024,9 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                 if item(ui, "Text Styles…", "", true) {
                     self.dialogs.text_styles = true;
                 }
+                if item(ui, "Plan Check…", "", true) {
+                    self.dialogs.plan_check = true;
+                }
                 if item(ui, "Text Macros…", "", true) {
                     self.dialogs.macros.open = true;
                 }

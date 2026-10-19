@@ -10,6 +10,7 @@ mod command;
 mod paint;
 mod foundation;
 pub mod framing;
+pub mod check;
 pub mod convert;
 pub mod grids;
 pub mod layouts;

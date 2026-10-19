@@ -110,7 +110,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-01 | Plan templates; save-as-template | P1 | M1 ✓ File > Save as Template… and File > New from Template; mark one Default for New Plan |
 | PRJ-02 | Recent files with pinning | P2 | M1 ✓ File > Recent Files with Pin / Unpin; pinned files stay on top |
 | PRJ-03 | Space-planner room boxes: drag room bubbles, convert to walls | P2 | M3 ◐ Space Planning Box tool draws labelled room boxes; Build > Wall > Convert Space Plan to Rooms builds the walls and types the rooms; boxes aren't dragged as bubbles |
-| PRJ-04 | Plan Check: egress, roof, wall layout review | P2 | M4 |
+| PRJ-04 | Plan Check: egress, roof, wall layout review | P2 | M4 ✓ Tools > Plan Check (and `housecraft check`): bedroom egress, rooms without doors, short/doubled/near-miss walls, overlapping openings, stair rise and run, missing or low roofs |
 | PRJ-05 | Rotate and mirror (flip) entire plan | P1 | M1 ✓ Edit > Entire Plan: Reverse Plan, rotate 90° either way (all floors) |
 | PRJ-06 | Zoom to selection | P0 | M1 ✓ |
 | PRJ-07 | Free viewer app for clients (read-only) | P1 | web build |

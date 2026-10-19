@@ -198,6 +198,7 @@ pub struct Dialogs {
     pub layers: bool,
     pub text_styles: bool,
     pub line_styles: bool,
+    pub plan_check: bool,
     pub hatch: HatchDialog,
     /// Auto Dimension Tiers being chosen, and a preset name being typed.
     pub auto_dims: Option<(AutoDims, String)>,
@@ -278,6 +279,7 @@ pub fn show(app: &mut App, ctx: &Context) {
     );
     save_view_dialog(app, ctx);
     line_styles_dialog(app, ctx);
+    plan_check_dialog(app, ctx);
     hatch_dialog(app, ctx);
     auto_dims_dialog(app, ctx);
     find_replace_dialog(app, ctx);
@@ -2031,6 +2033,46 @@ fn auto_dims_dialog(app: &mut App, ctx: &Context) {
     }
     if !commands.is_empty() {
         app.run(commands);
+    }
+}
+
+/// Tools > Plan Check: problems found in the plan, each with Find.
+fn plan_check_dialog(app: &mut App, ctx: &Context) {
+    if !app.dialogs.plan_check {
+        return;
+    }
+    let mut open = true;
+    let mut find = None;
+    let issues = housecraft_api::check::plan_check(app.session.document());
+    egui::Window::new("Plan Check").open(&mut open).resizable(true).default_width(560.0).show(ctx, |ui| {
+        if issues.is_empty() {
+            ui.label("No problems found.");
+            return;
+        }
+        let problems = issues.iter().filter(|i| i.severity == housecraft_api::check::Severity::Problem).count();
+        ui.label(format!("{problems} problem(s) and {} note(s). The list updates as you edit.", issues.len() - problems));
+        ui.separator();
+        egui::ScrollArea::vertical().max_height(420.0).show(ui, |ui| {
+            egui::Grid::new("plan_check").striped(true).num_columns(4).show(ui, |ui| {
+                for (k, issue) in issues.iter().enumerate() {
+                    let (tag, color) = match issue.severity {
+                        housecraft_api::check::Severity::Problem => ("Problem", egui::Color32::from_rgb(220, 110, 90)),
+                        housecraft_api::check::Severity::Note => ("Note", ui.visuals().weak_text_color()),
+                    };
+                    ui.colored_label(color, tag);
+                    ui.label(&issue.topic);
+                    ui.label(&issue.message);
+                    if !issue.ids.is_empty() && ui.small_button("Find").clicked() {
+                        find = Some(k);
+                    }
+                    ui.end_row();
+                }
+            });
+        });
+    });
+    app.dialogs.plan_check = open;
+    if let Some(k) = find {
+        crate::schedules::select(app, &issues[k].ids);
     }
 }
 

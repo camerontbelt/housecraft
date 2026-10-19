@@ -2529,3 +2529,26 @@ fn auto_dimension_tiers_presets_grids_and_view_heights() {
     assert!(doc.iter::<Text>().any(|t| t.floor == view && t.text.starts_with("Ridge")));
     assert!(out.created.len() > 4);
 }
+
+#[test]
+fn plan_check_finds_egress_doors_walls_and_stairs() {
+    use housecraft_api::check::{Severity, plan_check};
+    let mut s = boxed();
+    let bedroom = s.document().iter::<RoomType>().find(|t| t.name.to_lowercase().contains("bed")).unwrap().id;
+    let room = s.document().iter::<Room>().next().unwrap().id;
+    s.apply(&[Command::Update { id: room, set: patch(serde_json::json!({"room_type": bedroom.0})) }]).unwrap();
+    let issues = plan_check(s.document());
+    let has = |issues: &[housecraft_api::check::Issue], topic: &str| issues.iter().any(|i| i.topic == topic);
+    assert!(has(&issues, "Egress"), "{issues:?}");
+    assert!(has(&issues, "Rooms"), "no door");
+    assert!(has(&issues, "Roof"));
+    // A big low window fixes egress; a door fixes access.
+    let w = walls(&s)[0].id;
+    apply(&mut s, &format!(r#"[{{"op": "add_window", "wall": {w}, "position": "10'", "width": "3'", "height": "4'", "sill": "2'"}}, {{"op": "add_door", "wall": {w}, "position": "20'"}}]"#, w = w.0));
+    let issues = plan_check(s.document());
+    assert!(!has(&issues, "Egress") && !has(&issues, "Rooms"), "{issues:?}");
+    // A wall end that just misses another wall.
+    apply(&mut s, r#"[{"op": "add_wall", "start": ["10'","1\""], "end": ["10'","12'"], "interior": true}]"#);
+    let issues = plan_check(s.document());
+    assert!(issues.iter().any(|i| i.topic == "Walls" && i.severity == Severity::Problem), "{issues:?}");
+}

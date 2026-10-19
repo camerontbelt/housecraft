@@ -61,6 +61,9 @@ enum Cmd {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Plan Check: list likely problems (egress, doors, walls, openings,
+    /// stairs, roof).
+    Check { path: PathBuf },
     /// Bring a DXF drawing's lines, arcs, circles and text into a plan as
     /// CAD; a .pdf file's vector linework and text come in the same way.
     ImportDxf {
@@ -393,6 +396,17 @@ fn main() -> Result<()> {
                 },
             )?;
             println!("{}", saved.display());
+        }
+        Cmd::Check { path } => {
+            let doc = load(&path)?;
+            let issues = housecraft_api::check::plan_check(&doc);
+            if issues.is_empty() {
+                println!("no problems found");
+            }
+            for i in issues {
+                let ids: Vec<String> = i.ids.iter().map(|id| format!("#{}", id.0)).collect();
+                println!("{:?}  {}: {}  {}", i.severity, i.topic, i.message, ids.join(" "));
+            }
         }
         Cmd::ImportDxf { path, dxf, floor, unit_mm, page, scale } => {
             let mut doc = load(&path)?;
