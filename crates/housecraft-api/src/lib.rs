@@ -10,6 +10,7 @@ mod command;
 mod paint;
 mod foundation;
 pub mod framing;
+pub mod convert;
 pub mod grids;
 pub mod layouts;
 pub mod materials;
@@ -24,6 +25,7 @@ mod solids;
 mod symbols;
 mod views;
 
+pub use convert::CadTarget;
 pub use command::{BayStyle, Command, DetailText, LengthAnchor, NamedShape, NamedText, Outcome, PaintScope, PlotLeg, ShapeOp, TransformOp};
 pub use housecraft_geom as geom;
 pub use housecraft_model as model;

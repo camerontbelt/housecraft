@@ -2034,3 +2034,40 @@ pub(crate) fn replace_text(doc: &mut Document, find: &str, replace: &str, match_
     }
     changed
 }
+
+/// Within `v`, fills using user pattern `index` become plain hatching and
+/// later patterns shift down by one. True if anything changed.
+pub(crate) fn repoint_user_patterns(v: &mut serde_json::Value, index: u32) -> bool {
+    use serde_json::Value;
+    if let Value::Object(m) = v
+        && m.len() == 1
+        && let Some(Value::Number(n)) = m.get("user_pattern")
+        && let Some(k) = n.as_u64()
+    {
+        let k = k as u32;
+        if k == index {
+            *v = serde_json::to_value(FillPattern::Hatch).expect("serializes");
+            return true;
+        }
+        if k > index {
+            *v = serde_json::json!({ "user_pattern": k - 1 });
+            return true;
+        }
+        return false;
+    }
+    let mut changed = false;
+    match v {
+        Value::Object(m) => {
+            for x in m.values_mut() {
+                changed |= repoint_user_patterns(x, index);
+            }
+        }
+        Value::Array(a) => {
+            for x in a.iter_mut() {
+                changed |= repoint_user_patterns(x, index);
+            }
+        }
+        _ => {}
+    }
+    changed
+}

@@ -715,3 +715,51 @@ fn notes_links_macros_find_replace_and_block_arrows() {
     assert!(s.document().iter::<TextStyle>().all(|t| t.font == "Courier"));
     assert!(s.document().iter::<Text>().any(|t| t.text == "Built by {builder}"));
 }
+
+#[test]
+fn cad_conversions_roof_outlines_wall_hatches_and_user_patterns() {
+    use housecraft_api::model::{Cad, Countertop, FillPattern, HatchLine, HatchPattern, Wall};
+    use housecraft_api::CadTarget;
+    let mut s = house();
+    let p = |v: serde_json::Value| v.as_object().unwrap().clone();
+    // Two parallel lines 6" apart: one wall between them, of the nearest type.
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "add_cad", "shape": {"shape": "line", "a": ["60'",0], "b": ["70'",0]}},
+            {"op": "add_cad", "shape": {"shape": "line", "a": ["60'","6\""], "b": ["70'","6\""]}},
+            {"op": "add_cad", "shape": {"shape": "polyline", "points": [["60'","10'"],["66'","10'"],["66'","12'"],["60'","12'"]], "closed": true}}]"#,
+    )
+    .unwrap();
+    let out = s.apply(&cmds).unwrap();
+    let (l1, l2, rect) = (out.created[0], out.created[1], out.created[2]);
+    let walls_before = s.document().iter::<Wall>().count();
+    s.apply(&[Command::ConvertCad { ids: vec![l1, l2], to: CadTarget::DoubleLineWalls }]).unwrap();
+    let doc = s.document();
+    assert_eq!(doc.iter::<Wall>().count(), walls_before + 1);
+    let w = doc.iter::<Wall>().max_by_key(|w| w.id).unwrap();
+    assert!((w.start.y().inches() - 3.0).abs() < 0.01, "on the centre line: {:?}", w.start);
+    assert!(doc.get::<Cad>(l1).is_none() && doc.get::<Cad>(l2).is_none());
+    s.apply(&[Command::ConvertCad { ids: vec![rect], to: CadTarget::Countertop }]).unwrap();
+    assert_eq!(s.document().iter::<Countertop>().count(), 1);
+    // Roof planes traced as CAD.
+    s.apply(&serde_json::from_str::<Vec<Command>>(r#"[{"op": "set_roof_style", "style": "gable"}]"#).unwrap()).unwrap();
+    let cads = s.document().iter::<Cad>().count();
+    let out = s.apply(&[Command::RoofPlanesToPolylines { ids: Vec::new() }]).unwrap();
+    assert!(out.created.len() >= 2 && s.document().iter::<Cad>().count() == cads + out.created.len());
+    // A user pattern on a wall hatch, then deleted: the hatch falls back to plain.
+    let pattern = HatchPattern { name: "Shear".into(), lines: vec![HatchLine { angle: 45.0, dash: vec![1.0, 0.5], ..Default::default() }] };
+    let wall = s.document().iter::<Wall>().next().unwrap().id;
+    s.apply(&[
+        Command::SetHatchPattern { index: None, pattern },
+        Command::Update { id: wall, set: p(serde_json::json!({"shape": {"hatch": {"pattern": {"user_pattern": 0}, "spacing": 50.0}}})) },
+        Command::SetObjectLabel { id: wall, text: Some("SW1".into()) },
+    ])
+    .unwrap();
+    let doc = s.document();
+    let d = plan(doc, &PlanOptions::first(doc).unwrap());
+    let hatch = d.items.iter().filter(|i| i.object == Some(wall) && matches!(&i.prim, Prim::Polyline { points, .. } if points.len() == 2)).count();
+    assert!(hatch > 10, "{hatch}");
+    assert!(d.items.iter().any(|i| i.object == Some(wall) && matches!(&i.prim, Prim::Text { text, .. } if text == "SW1")));
+    s.apply(&[Command::DeleteHatchPattern { index: 0 }]).unwrap();
+    let w = s.document().get::<Wall>(wall).unwrap();
+    assert_eq!(w.shape.hatch.unwrap().pattern, FillPattern::Hatch);
+}

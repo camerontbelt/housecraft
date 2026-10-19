@@ -25,6 +25,13 @@ pub fn line_style_combo(ui: &mut Ui, doc: &Document, salt: egui::Id, s: &mut Lin
 
 /// An optional patterned fill: pattern, colour, spacing, angle, opacity.
 fn fill_style_row(ui: &mut Ui, ed: &mut Ed<'_>, label: &str, field: &str, current: Option<FillStyle>) {
+    fill_style_row_at(ui, ed, label, &[field], current);
+}
+
+/// As [`fill_style_row`], for a field nested in the object (`["shape", "hatch"]`).
+fn fill_style_row_at(ui: &mut Ui, ed: &mut Ed<'_>, label: &str, path: &[&str], current: Option<FillStyle>) {
+    let field = path.join("_");
+    let field = field.as_str();
     Ed::label(ui, label);
     let mut next = current;
     ui.vertical(|ui| {
@@ -34,11 +41,17 @@ fn fill_style_row(ui: &mut Ui, ed: &mut Ed<'_>, label: &str, field: &str, curren
         }
         if let Some(mut fs) = current {
             ui.horizontal(|ui| {
+                let patterns = &ed.doc.settings.hatch_patterns;
+                let name = |p: FillPattern| match p {
+                    FillPattern::UserPattern(i) => patterns.get(i as usize).map_or("Custom".to_string(), |h| h.name.clone()),
+                    p => p.name().to_string(),
+                };
                 egui::ComboBox::from_id_salt(ed.key(&format!("{field}_pattern")))
-                    .selected_text(fs.pattern.name())
+                    .selected_text(name(fs.pattern))
                     .show_ui(ui, |ui| {
-                        for p in FillPattern::ALL {
-                            ui.selectable_value(&mut fs.pattern, p, p.name());
+                        let users = (0..patterns.len() as u32).map(FillPattern::UserPattern);
+                        for p in FillPattern::ALL.into_iter().chain(users) {
+                            ui.selectable_value(&mut fs.pattern, p, name(p));
                         }
                     });
                 let mut own = fs.color.is_some();
@@ -75,7 +88,12 @@ fn fill_style_row(ui: &mut Ui, ed: &mut Ed<'_>, label: &str, field: &str, curren
         }
     });
     if next != current {
-        ed.out.push(patch(ed.id, json!({ field: next })));
+        // Nest the value along the path: {"shape": {"hatch": …}}.
+        let mut body = json!(next);
+        for key in path.iter().rev() {
+            body = json!({ *key: body });
+        }
+        ed.out.push(patch(ed.id, body));
     }
     ui.end_row();
 }
@@ -150,6 +168,14 @@ fn wall_shape_rows(ui: &mut Ui, ed: &mut Ed<'_>, w: &Wall) {
     let len = w.length();
     Ed::label(ui, "Bearing Wall");
     ui.checkbox(&mut shape.bearing, "Carries load (adds a footing)");
+    ui.end_row();
+    fill_style_row_at(ui, ed, "Wall Hatch", &["shape", "hatch"], w.shape.hatch);
+    Ed::label(ui, "Wall Label");
+    let key = ed.key("wall_label");
+    let current_label = doc.settings.labels.get(&id).cloned().unwrap_or_default();
+    if let Some(t) = ed.bufs.text(ui, key, &current_label, 140.0) {
+        ed.out.push(Command::SetObjectLabel { id, text: (!t.trim().is_empty()).then_some(t) });
+    }
     ui.end_row();
     if let Some(t) = doc.get::<WallType>(w.wall_type)
         && t.r_value() > 0.0
@@ -266,7 +292,7 @@ fn wall_shape_rows(ui: &mut Ui, ed: &mut Ed<'_>, w: &Wall) {
                     }
                 }
                 ui.checkbox(&mut n.interior, "inside");
-                if ui.small_button("✕").clicked() {
+                if ui.small_button("×").clicked() {
                     remove = Some(i);
                 }
             });
@@ -351,7 +377,7 @@ pub fn components_editor(ui: &mut Ui, doc: &Document, id: Id, out: &mut Vec<Comm
                     ui.add_enabled(priced, egui::DragValue::new(&mut p).range(0.0..=1e7).speed(0.05).max_decimals(2));
                 });
                 item.price = priced.then_some(p);
-                if ui.small_button("✕").clicked() {
+                if ui.small_button("×").clicked() {
                     remove = Some(i);
                 }
                 ui.end_row();
@@ -395,7 +421,7 @@ pub fn info_editor(ui: &mut Ui, doc: &Document, bufs: &mut EditBuffers, id: Id, 
                     if let Some(t) = bufs.text(ui, key, &v, 160.0) {
                         info.custom.insert(k.clone(), t);
                     }
-                    if ui.small_button("✕").on_hover_text("Remove this field").clicked() {
+                    if ui.small_button("×").on_hover_text("Remove this field").clicked() {
                         remove = Some(k.clone());
                     }
                 });
@@ -870,7 +896,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                             s.offset = l;
                             changed = true;
                         }
-                        if ui.small_button("✕").on_hover_text("Remove this jog").clicked() {
+                        if ui.small_button("×").on_hover_text("Remove this jog").clicked() {
                             remove = Some(i);
                         }
                     });
@@ -1255,7 +1281,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                             ui.add(egui::DragValue::new(&mut k.seconds).range(0.0..=60.0).speed(0.1).prefix("travel ").suffix(" s"));
                         }
                         ui.add(egui::DragValue::new(&mut k.pause).range(0.0..=60.0).speed(0.1).prefix("pause ").suffix(" s"));
-                        if ui.small_button("✕").on_hover_text("Delete this keyframe").clicked() {
+                        if ui.small_button("×").on_hover_text("Delete this keyframe").clicked() {
                             remove = Some(i);
                         }
                         if i > 0 && ui.small_button("⇤").on_hover_text("Join with the one before (removes this stop)").clicked() {
@@ -1392,7 +1418,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                                         *v = Length::from_inches(x);
                                     }
                                 }
-                                if ui.small_button("✕").clicked() {
+                                if ui.small_button("×").clicked() {
                                     remove = Some(i);
                                 }
                             });
@@ -3143,7 +3169,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 for (k, s) in stack.iter_mut().enumerate() {
                     ui.horizontal(|ui| {
                         changed |= spec_editor(ui, doc, (id, k), s);
-                        if ui.small_button("✕").clicked() {
+                        if ui.small_button("×").clicked() {
                             remove = Some(k);
                         }
                     });
@@ -3317,7 +3343,7 @@ fn platform_editor(ui: &mut Ui, ed: &mut Ed<'_>, f: &Floor) {
                 layers[i].thickness = l;
                 changed = true;
             }
-            if ui.small_button("✕").on_hover_text("Remove layer").clicked() {
+            if ui.small_button("×").on_hover_text("Remove layer").clicked() {
                 remove = Some(i);
             }
         });
@@ -3714,7 +3740,7 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
                 {
                     changed = true;
                 }
-                if ui.small_button("✕").on_hover_text("Remove this row").clicked() {
+                if ui.small_button("×").on_hover_text("Remove this row").clicked() {
                     remove_row = Some(r);
                 }
             });
@@ -3914,7 +3940,7 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
                     changed = true;
                 }
                 changed |= ui.checkbox(&mut m.flush, "flush").changed();
-                if ui.small_button("✕").clicked() {
+                if ui.small_button("×").clicked() {
                     remove = Some(k);
                 }
             });
@@ -4053,7 +4079,7 @@ fn room_moldings_editor(ui: &mut Ui, doc: &Document, id: Id, ms: &mut Vec<RoomMo
                     }
                 }
                 changed |= spec_editor(ui, doc, (id, "room", k), &mut m.spec);
-                if ui.small_button("✕").clicked() {
+                if ui.small_button("×").clicked() {
                     remove = Some(k);
                 }
             });

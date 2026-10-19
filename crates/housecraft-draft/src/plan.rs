@@ -246,7 +246,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             for piece in g.pieces_with(&openings, &shared) {
                 match look.fill {
                     // The layer's fill replaces poché (not for new work in proposed plans).
-                    Some(fs) if fill == Fill::Poche => crate::fills::fill_area(&mut out, Some(g.id), &piece, &fs, look.ink),
+                    Some(fs) if fill == Fill::Poche => crate::fills::fill_area(&mut out, Some(g.id), &piece, &fs, look.ink, &doc.settings.hatch_patterns),
                     _ => out.push(
                         Some(g.id),
                         Prim::Polygon {
@@ -255,6 +255,12 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
                         },
                     ),
                 }
+            }
+        }
+        // The wall's own hatch (shear walls…) over its pieces.
+        if let Some(h) = wall.shape.hatch {
+            for piece in g.pieces_with(&openings, &shared) {
+                crate::fills::fill_area(&mut out, Some(g.id), &piece, &h, look.ink, &doc.settings.hatch_patterns);
             }
         }
         if let Some(f) = wall.effective_footing() {
@@ -767,7 +773,7 @@ fn cad_shapes(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
         let look = ctx.look(cad.layer);
         if look.visible {
             let fs = cad.fill_style.or(look.fill);
-            cad_shape(cad.id, &cad.shape, cad.color, cad.fill, fs, look, out);
+            cad_shape(cad.id, &cad.shape, cad.color, cad.fill, fs, look, &doc.settings.hatch_patterns, out);
         }
     }
     for b in doc.iter::<BlockRef>().filter(|b| b.floor == sheet) {
@@ -778,12 +784,13 @@ fn cad_shapes(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
         let t = housecraft_api::blocks::placement(b);
         for cad in doc.iter::<Cad>().filter(|c| c.floor == b.block) {
             let fs = cad.fill_style.or(look.fill);
-            cad_shape(b.id, &t.apply_shape(&cad.shape), cad.color, cad.fill, fs, look, out);
+            cad_shape(b.id, &t.apply_shape(&cad.shape), cad.color, cad.fill, fs, look, &doc.settings.hatch_patterns, out);
         }
     }
 }
 
 /// One CAD shape, tagged with `id` for selection.
+#[allow(clippy::too_many_arguments)]
 fn cad_shape(
     id: Id,
     shape: &Shape,
@@ -791,13 +798,14 @@ fn cad_shape(
     fill: Option<Color>,
     fill_style: Option<FillStyle>,
     look: Look,
+    patterns: &[HatchPattern],
     out: &mut Drawing,
 ) {
     let ink = color.map_or(look.ink, Ink::Color);
     let stroke = Stroke { ink, ..look.stroke };
     for (points, closed) in shape_polylines(shape) {
         if let (Some(fs), true) = (fill_style, closed) {
-            crate::fills::fill_area(out, Some(id), &points, &fs, ink);
+            crate::fills::fill_area(out, Some(id), &points, &fs, ink, patterns);
         }
         if let (Some(fill), true) = (fill, closed) {
             out.push(
@@ -887,6 +895,7 @@ fn object_labels(ctx: &Ctx, floor: Id, out: &mut Drawing) {
     if l.doors.is_empty() && l.windows.is_empty() && l.cabinets.is_empty() && l.fixtures.is_empty() && doc.settings.labels.is_empty() {
         return;
     }
+    let no_template = String::new();
     let in_front = |pos: housecraft_units::Point2, facing: f64, depth: housecraft_units::Length| v2(pos) + DVec2::from_angle(facing.to_radians()) * depth.mm() / 2.0;
     for (id, object) in &doc.objects {
         let (template, at, layer) = match object {
@@ -904,6 +913,12 @@ fn object_labels(ctx: &Ctx, floor: Id, out: &mut Drawing) {
             Object::Cabinet(c) if c.floor == floor => (&l.cabinets, in_front(c.position, c.facing, c.depth), c.layer),
             Object::Appliance(a) if a.floor == floor => (&l.fixtures, in_front(a.position, a.facing, a.depth), a.layer),
             Object::Symbol(s) if s.floor == floor => (&l.fixtures, v2(s.position), s.layer),
+            // Walls are labelled one by one (shear wall marks and the like).
+            Object::Wall(w) if w.floor == floor && doc.settings.labels.contains_key(id) => {
+                let (a, b) = (v2(w.start), v2(w.end));
+                let side = perp((b - a).normalize_or_zero()) * 450.0;
+                (&no_template, (a + b) / 2.0 + side, w.layer)
+            }
             _ => continue,
         };
         let text = doc.settings.labels.get(id).unwrap_or(template);

@@ -306,6 +306,9 @@ pub struct Settings {
     /// Saved sets of automatic dimension tiers.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub auto_dim_presets: Vec<NamedAutoDims>,
+    /// The plan's own hatch patterns (`FillPattern::UserPattern(index)`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hatch_patterns: Vec<HatchPattern>,
 }
 
 /// An object's own materials list lines.
@@ -510,6 +513,7 @@ impl Document {
                 macros: BTreeMap::new(),
                 auto_dims: BTreeMap::new(),
                 auto_dim_presets: Vec::new(),
+                hatch_patterns: Vec::new(),
             },
             next_id: 1,
             objects: BTreeMap::new(),

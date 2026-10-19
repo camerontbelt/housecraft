@@ -5,6 +5,7 @@ use housecraft_units::{DisplayUnit, Length, Point2, Point3};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::convert::CadTarget;
 use crate::ApiError;
 use crate::ops::{self, expect, invalid, positive};
 
@@ -271,6 +272,14 @@ pub enum Command {
     },
     /// Client, designer and custom project fields.
     SetProjectInfo { info: ProjectInfo },
+    /// Add (`index` null) or replace one of the plan's hatch patterns.
+    SetHatchPattern { index: Option<u32>, pattern: HatchPattern },
+    /// Delete hatch pattern `index`; fills using it become plain hatching.
+    DeleteHatchPattern { index: u32 },
+    /// Turn CAD shapes into building objects (the CAD is removed).
+    ConvertCad { ids: Vec<Id>, to: CadTarget },
+    /// Trace roof planes as closed CAD polylines in plan (the planes stay).
+    RoofPlanesToPolylines { ids: Vec<Id> },
     /// Set (or with `null`, delete) user text macro `name`.
     SetMacro { name: String, text: Option<String> },
     /// Replace `find` with `replace` in text, callouts, room names, object
@@ -1233,6 +1242,10 @@ impl Command {
             Command::ConvertBoxToLines { .. } => "convert_box_to_lines",
             Command::DeleteLayoutBoxes { .. } => "delete_layout_boxes",
             Command::SetProjectInfo { .. } => "set_project_info",
+            Command::SetHatchPattern { .. } => "set_hatch_pattern",
+            Command::DeleteHatchPattern { .. } => "delete_hatch_pattern",
+            Command::ConvertCad { .. } => "convert_cad",
+            Command::RoofPlanesToPolylines { .. } => "roof_planes_to_polylines",
             Command::SetMacro { .. } => "set_macro",
             Command::ReplaceText { .. } => "replace_text",
             Command::ReplaceFont { .. } => "replace_font",
@@ -1862,6 +1875,39 @@ impl Command {
                     }
                 }
             }
+            Command::SetHatchPattern { index, pattern } => {
+                if pattern.name.trim().is_empty() || pattern.lines.is_empty() {
+                    return invalid("a hatch pattern needs a name and at least one line");
+                }
+                if pattern.lines.iter().any(|l| !(l.spacing.is_finite() && l.spacing > 0.0) || l.dash.iter().any(|d| !(d.is_finite() && *d > 0.0))) {
+                    return invalid("line spacing and dash lengths must be positive");
+                }
+                match index {
+                    Some(i) => {
+                        let slot = doc.settings.hatch_patterns.get_mut(*i as usize).ok_or_else(|| ApiError::Invalid(format!("no hatch pattern {i}")))?;
+                        *slot = pattern.clone();
+                    }
+                    None => doc.settings.hatch_patterns.push(pattern.clone()),
+                }
+            }
+            Command::DeleteHatchPattern { index } => {
+                let i = *index as usize;
+                if i >= doc.settings.hatch_patterns.len() {
+                    return invalid(format!("no hatch pattern {index}"));
+                }
+                doc.settings.hatch_patterns.remove(i);
+                let ids: Vec<Id> = doc.objects.keys().copied().collect();
+                for id in ids {
+                    let mut v = serde_json::to_value(doc.object(id).expect("listed")).expect("serializes");
+                    if ops::repoint_user_patterns(&mut v, *index) {
+                        let object: Object = serde_json::from_value(v).map_err(|e| ApiError::Invalid(e.to_string()))?;
+                        doc.objects.insert(id, object);
+                        out.modified.push(id);
+                    }
+                }
+            }
+            Command::ConvertCad { ids, to } => crate::convert::convert_cad(doc, ids, to, &mut out)?,
+            Command::RoofPlanesToPolylines { ids } => crate::convert::roof_outlines(doc, ids, &mut out)?,
             Command::SetProjectInfo { info } => {
                 doc.settings.project = info.clone();
             }

@@ -663,6 +663,39 @@ pub enum FillPattern {
     Hatch,
     Crosshatch,
     Dots,
+    /// One of the plan's own hatch patterns (`Settings::hatch_patterns`).
+    UserPattern(u32),
+}
+
+/// A hatch pattern made in the Hatch Patterns editor: families of
+/// parallel (optionally dashed) lines. Sizes are fractions of the fill's
+/// spacing and angles add to its angle, so one pattern serves any scale.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct HatchPattern {
+    pub name: String,
+    pub lines: Vec<HatchLine>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct HatchLine {
+    /// Degrees, added to the fill's angle.
+    pub angle: f64,
+    /// Gap between lines, × the fill's spacing.
+    pub spacing: f64,
+    /// Shift of the whole family across its lines, × the fill's spacing.
+    pub offset: f64,
+    /// Dash and gap lengths, × the fill's spacing (empty: solid lines).
+    pub dash: Vec<f64>,
+    /// Shift of the dashes along alternate lines, × the fill's spacing
+    /// (brick and block patterns).
+    pub stagger: f64,
+}
+
+impl Default for HatchLine {
+    fn default() -> Self {
+        HatchLine { angle: 0.0, spacing: 1.0, offset: 0.0, dash: Vec::new(), stagger: 0.0 }
+    }
 }
 
 impl FillPattern {
@@ -673,6 +706,7 @@ impl FillPattern {
             FillPattern::Hatch => "Hatch",
             FillPattern::Crosshatch => "Crosshatch",
             FillPattern::Dots => "Dots",
+            FillPattern::UserPattern(_) => "Custom",
         }
     }
 }

@@ -589,6 +589,9 @@ pub struct WallShape {
     pub newels: Vec<Length>,
     /// A bearing wall: carries load, so it gets a footing.
     pub bearing: bool,
+    /// A hatch over the wall in plan (shear walls, fire walls…).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hatch: Option<crate::FillStyle>,
 }
 
 impl WallShape {

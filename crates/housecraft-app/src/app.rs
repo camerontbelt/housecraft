@@ -543,6 +543,33 @@ impl App {
     }
 
     /// CAD > CAD Details > New CAD Detail.
+    /// Copy a CAD detail with everything drawn on it (paste it in this or
+    /// another plan with CAD > CAD Details > Paste CAD Detail).
+    pub fn copy_cad_detail(&mut self, detail: Id) {
+        let doc = self.doc();
+        let mut ids = vec![detail];
+        ids.extend(doc.objects.keys().copied().filter(|id| doc.floor_of(*id) == Some(detail)));
+        let clip: Vec<serde_json::Value> = ids.iter().filter_map(|id| housecraft_api::query::get_object(doc, *id)).collect();
+        let n = clip.len() - 1;
+        self.clipboard = clip;
+        self.clipboard_layout = None;
+        self.info(format!("Copied the CAD detail and its {n} object(s)"));
+    }
+
+    pub fn paste_cad_detail(&mut self) {
+        let objects: Vec<serde_json::Value> = self.clipboard.clone();
+        if let Some(out) = self.run1(Command::InsertObjects {
+            objects,
+            floor: None,
+            dx: housecraft_api::units::Length::ZERO,
+            dy: housecraft_api::units::Length::ZERO,
+        }) && let Some(d) = out.created.iter().copied().find(|id| self.doc().get::<CadDetail>(*id).is_some())
+        {
+            self.open_sheet(d);
+            self.plan.fit_requested = true;
+        }
+    }
+
     pub fn new_cad_detail(&mut self) {
         let n = self.doc().count::<CadDetail>() + 1;
         if let Some(out) = self.run1(Command::AddCadDetail {
@@ -2801,7 +2828,57 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                             self.open_sheet(id);
                         }
                     }
+                    ui.separator();
+                    let open_detail = self.plan.sheet.filter(|s| self.doc().get::<CadDetail>(*s).is_some());
+                    if item(ui, "Copy This CAD Detail", "", open_detail.is_some())
+                        && let Some(d) = open_detail
+                    {
+                        self.copy_cad_detail(d);
+                    }
+                    let has_detail = self.clipboard.iter().any(|v| v.get("kind").and_then(|k| k.as_str()) == Some("cad_detail"));
+                    if item(ui, "Paste CAD Detail", "", has_detail) {
+                        self.paste_cad_detail();
+                    }
                 });
+                ui.menu_button("Convert CAD To", |ui| {
+                    let cads: Vec<Id> = self.selection.iter().copied().filter(|id| self.doc().kind_of(*id) == Some(ObjectKind::Cad)).collect();
+                    let targets: Vec<(&str, housecraft_api::CadTarget)> = vec![
+                        ("Exterior Walls", housecraft_api::CadTarget::Walls { interior: false }),
+                        ("Interior Walls", housecraft_api::CadTarget::Walls { interior: true }),
+                        ("Walls from Double Lines", housecraft_api::CadTarget::DoubleLineWalls),
+                        ("Countertop", housecraft_api::CadTarget::Countertop),
+                        ("Deck", housecraft_api::CadTarget::Deck),
+                        ("Molding", housecraft_api::CadTarget::Molding),
+                        ("Sidewalk", housecraft_api::CadTarget::SiteFeature {
+                            feature: SiteKind::Road { style: RoadStyle::Sidewalk, width: Length::from_feet(4.0), thickness: Length::from_inches(4.0), curbs: false },
+                        }),
+                        ("Driveway", housecraft_api::CadTarget::SiteFeature {
+                            feature: SiteKind::Road { style: RoadStyle::Driveway, width: Length::from_feet(12.0), thickness: Length::from_inches(4.0), curbs: false },
+                        }),
+                        ("Solid (8' tall)", housecraft_api::CadTarget::Solid { height: Some(Length::from_feet(8.0)) }),
+                    ];
+                    if cads.is_empty() {
+                        ui.weak("Select CAD lines or shapes first");
+                    }
+                    for (label, to) in targets {
+                        if item(ui, label, "", !cads.is_empty()) {
+                            if let Some(out) = self.run1(Command::ConvertCad { ids: cads.clone(), to }) {
+                                self.selection = out.created;
+                            }
+                            ui.close();
+                        }
+                    }
+                    ui.separator();
+                    if item(ui, "Roof Planes to Polylines", "", self.doc().iter::<RoofPlane>().next().is_some()) {
+                        let roofs: Vec<Id> = self.selection.iter().copied().filter(|id| self.doc().kind_of(*id) == Some(ObjectKind::RoofPlane)).collect();
+                        if let Some(out) = self.run1(Command::RoofPlanesToPolylines { ids: roofs }) {
+                            self.info(format!("{} outline(s) drawn on the CAD layer", out.created.len()));
+                        }
+                    }
+                });
+                if item(ui, "Hatch Patterns…", "", true) {
+                    self.dialogs.hatch.open = true;
+                }
                 ui.menu_button("Shapes and Solids", |ui| {
                     let cads: Vec<Id> = self
                         .selection

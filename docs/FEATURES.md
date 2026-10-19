@@ -176,7 +176,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-10 | Wall niches | P2 | M3 ✓ Wall specification > Niches: recesses in either face with width, height, sill and depth (3D, plan outline) |
 | WL-11 | Partition walls (don't cut structural layers) | P2 | M3 ✓ walls meeting another wall stop at its surface, so they never cut its structural layers |
 | WL-12 | Remodel layers: new / existing / demolition | P1 | M3 ✓ |
-| WL-13 | Wall hatching (labels, copy/paste, shear wall marking) | P2 | M4 |
+| WL-13 | Wall hatching (labels, copy/paste, shear wall marking) | P2 | M4 ✓ Wall Hatch and Wall Label in the wall's specification; Match Properties copies them |
 | WL-14 | Wall definitions in library | P1 | M5 ✓ |
 | WL-15 | Corner boards & quoins (auto/manual) | P2 | M5 ✓ |
 | WL-16 | Wall material regions | P2 | M5 ✓ Wall Material Region tool (wainscot from two clicks, editable extents) |
@@ -254,7 +254,7 @@ These come from reading the whole list and change the architecture, not just the
 | RF-11 | Layered roof assemblies (SIP roofs) | P2 | M3 |
 | RF-12 | Gutters & frieze moldings with custom profiles | P2 | M3 ◐ gutters along the eaves and a frieze board under them (Default Settings > Roofs); fixed profiles |
 | RF-13 | Shadow boards on fascia | P3 | M5 ✓ |
-| RF-14 | Convert roof/ceiling planes to polylines | P3 | M4 |
+| RF-14 | Convert roof/ceiling planes to polylines | P3 | M4 ◐ Convert CAD To > Roof Planes to Polylines; there are no separate ceiling planes yet |
 
 ## 10. Stairs & ramps
 
@@ -335,19 +335,19 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-04 | Paste in place across layers/plans/floors | P1 | M1 ✓ Paste Hold Position onto the current floor, into another plan (layers and types matched by name, else added), or to a chosen layer |
 | CAD-05 | Point-to-point move/copy/resize | P0 | M1 ✓ |
 | CAD-06 | Detailing primitives: cross box, blocking box, insulation | P1 | M4 ✓ |
-| CAD-07 | Convert 2D CAD into smart objects (solids, moldings, counters, slabs, roads, terrain, …) | P2 | M4 |
+| CAD-07 | Convert 2D CAD into smart objects (solids, moldings, counters, slabs, roads, terrain, …) | P2 | M4 ◐ CAD > Convert CAD To: walls, countertop, deck, molding, sidewalk, driveway, solid; slabs and terrain later |
 | CAD-08 | Multiple copy at preset increments | P1 | M1 ✓ Multiple Copy repeats a move N times; Rotate with copies makes a circular array |
 | CAD-09 | 3D solids and faces; extrude/revolve; polyline boolean ops | P2 | M5 ✓ CAD > Shapes and Solids: join, intersect and subtract closed shapes; extrude or revolve them into 3D solids |
 | CAD-10 | 3D solid tool with defaults | P2 | M5 ✓ 3D Solid tool draws a box, cylinder, cone or sphere; shape, height and colour in Default Settings |
 | CAD-11 | Solid booleans across plan/elevation; fillet/chamfer solid edges | P3 | M5 ◐ cut shapes before extruding (plan booleans); no 3D solid booleans or edge fillets yet |
 | CAD-12 | Regular polygon tool | P1 | M1 ✓ CAD > Regular Polygon: centre, then a corner; sides set in the Tool Palette |
 | CAD-13 | Fillet all / chamfer all | P2 | M1 |
-| CAD-14 | CAD-to-Walls (DWG lines → walls, windows, doors) | P2 | M4 |
+| CAD-14 | CAD-to-Walls (DWG lines → walls, windows, doors) | P2 | M4 ◐ lines become walls; double lines become one wall of the nearest thickness; doors and windows from drawings later |
 | CAD-15 | Library of structural CAD details | P3 | M8 (own content) |
 | CAD-16 | Align / distribute | P1 | M1 ✓ edit toolbar and Edit > Edit Objects > Align and Distribute: edges, centres, even spacing |
 | CAD-17 | CAD details & blocks with insertion points; save to library | P1 | M4 ✓ |
 | CAD-18 | CAD detail from any view | P1 | M4 ✓ |
-| CAD-19 | Copy CAD details between plans | P2 | M4 |
+| CAD-19 | Copy CAD details between plans | P2 | M4 ✓ CAD Details > Copy This CAD Detail / Paste CAD Detail (works across files) |
 | CAD-20 | Line style manager (create, merge, find usages) | P1 | M1 ✓ Tools > Line Styles…: your own dash patterns, usage counts, delete and merge into another style |
 
 ## 14. Layers
@@ -454,7 +454,7 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-14 | Material classes (plastic, metal, mirror, glass, translucent…) | P1 | M5 ✓ |
 | MAT-15 | Material maps incl. opacity; roughness/gloss inversion | P1 | M5 ✓ maps stored; colour textures rendered |
 | MAT-16 | Plan materials manager (replace, merge, search) | P1 | M5 ✓ |
-| MAT-17 | Hatch pattern editor | P2 | M4 |
+| MAT-17 | Hatch pattern editor | P2 | M4 ✓ CAD > Hatch Patterns: line families with angle, spacing, offset, dashes and stagger, with a preview |
 | MAT-18 | Generate vector hatch pattern from texture | P3 | M5 ◐ patterned floor regions get a tile-joint hatch in plan |
 | MAT-19 | Screen-capture image as material | P3 | M5 |
 | MAT-20 | 3D cladding from moldings (board & batten, lap, standing seam) (X18+) | P2 | M5 ✓ |

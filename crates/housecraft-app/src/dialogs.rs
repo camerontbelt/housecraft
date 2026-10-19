@@ -198,6 +198,7 @@ pub struct Dialogs {
     pub layers: bool,
     pub text_styles: bool,
     pub line_styles: bool,
+    pub hatch: HatchDialog,
     /// Auto Dimension Tiers being chosen, and a preset name being typed.
     pub auto_dims: Option<(AutoDims, String)>,
     pub find_replace: FindReplace,
@@ -277,6 +278,7 @@ pub fn show(app: &mut App, ctx: &Context) {
     );
     save_view_dialog(app, ctx);
     line_styles_dialog(app, ctx);
+    hatch_dialog(app, ctx);
     auto_dims_dialog(app, ctx);
     find_replace_dialog(app, ctx);
     macros_dialog(app, ctx);
@@ -1488,7 +1490,7 @@ fn wall_types_dialog(app: &mut App, ctx: &Context) {
                             if ui.add_enabled(i + 1 < n, egui::Button::new("↓")).clicked() {
                                 swap = Some((i, i + 1));
                             }
-                            if ui.add_enabled(n > 1, egui::Button::new("✕")).clicked() {
+                            if ui.add_enabled(n > 1, egui::Button::new("×")).clicked() {
                                 remove = Some(i);
                             }
                         });
@@ -1879,7 +1881,7 @@ fn project_dialog(app: &mut App, ctx: &Context) {
                 ui.add_sized([260.0, 20.0], egui::TextEdit::singleline(value));
                 ui.horizontal(|ui| {
                     ui.weak(format!("{{{name}}}"));
-                    if ui.small_button("✕").on_hover_text("Remove this field").clicked() {
+                    if ui.small_button("×").on_hover_text("Remove this field").clicked() {
                         remove = Some(name.clone());
                     }
                 });
@@ -2029,6 +2031,118 @@ fn auto_dims_dialog(app: &mut App, ctx: &Context) {
     }
     if !commands.is_empty() {
         app.run(commands);
+    }
+}
+
+#[derive(Default)]
+pub struct HatchDialog {
+    pub open: bool,
+    /// The pattern being edited (`None`: a new one) and its working copy.
+    pub editing: Option<(Option<u32>, HatchPattern)>,
+}
+
+/// CAD > Hatch Patterns: the plan's own patterns, built from families of
+/// (dashed) lines, with a preview.
+fn hatch_dialog(app: &mut App, ctx: &Context) {
+    if !app.dialogs.hatch.open {
+        return;
+    }
+    let mut open = true;
+    let mut commands = Vec::new();
+    egui::Window::new("Hatch Patterns").open(&mut open).resizable(true).default_width(520.0).show(ctx, |ui| {
+        let doc = app.session.document();
+        let h = &mut app.dialogs.hatch;
+        ui.label("Your patterns appear in every fill's pattern list. Sizes are fractions of the fill's spacing.");
+        ui.horizontal_wrapped(|ui| {
+            for (i, p) in doc.settings.hatch_patterns.iter().enumerate() {
+                let on = h.editing.as_ref().is_some_and(|e| e.0 == Some(i as u32));
+                if ui.selectable_label(on, &p.name).clicked() {
+                    h.editing = Some((Some(i as u32), p.clone()));
+                }
+            }
+            if ui.button("New Pattern").clicked() {
+                h.editing = Some((None, HatchPattern { name: "Brick".into(), lines: vec![
+                    HatchLine::default(),
+                    HatchLine { angle: 90.0, spacing: 2.0, dash: vec![1.0, 1.0], stagger: 1.0, ..Default::default() },
+                ] }));
+            }
+        });
+        let Some((index, pattern)) = &mut h.editing else {
+            return;
+        };
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.label("Name");
+            ui.text_edit_singleline(&mut pattern.name);
+        });
+        let mut remove = None;
+        egui::Grid::new("hatch_lines").num_columns(6).striped(true).show(ui, |ui| {
+            for t in ["Angle", "Spacing ×", "Offset ×", "Dashes ×", "Stagger ×", ""] {
+                ui.strong(t);
+            }
+            ui.end_row();
+            for (i, l) in pattern.lines.iter_mut().enumerate() {
+                ui.add(egui::DragValue::new(&mut l.angle).range(-180.0..=180.0).suffix("°"));
+                ui.add(egui::DragValue::new(&mut l.spacing).range(0.05..=20.0).speed(0.05));
+                ui.add(egui::DragValue::new(&mut l.offset).range(-20.0..=20.0).speed(0.05));
+                let mut text: String = l.dash.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(" ");
+                if ui.add(egui::TextEdit::singleline(&mut text).hint_text("solid").desired_width(80.0)).changed() {
+                    l.dash = text.split_whitespace().filter_map(|v| v.parse::<f64>().ok()).filter(|v| *v > 0.0).collect();
+                }
+                ui.add(egui::DragValue::new(&mut l.stagger).range(-20.0..=20.0).speed(0.05));
+                if ui.small_button("×").clicked() {
+                    remove = Some(i);
+                }
+                ui.end_row();
+            }
+        });
+        if let Some(i) = remove {
+            pattern.lines.remove(i);
+        }
+        if ui.button("Add Line Family").clicked() {
+            pattern.lines.push(HatchLine::default());
+        }
+        // Preview: a square filled with the pattern.
+        let size = 160.0;
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
+        let painter = ui.painter_at(rect);
+        painter.rect_filled(rect, 0.0, ui.visuals().extreme_bg_color);
+        let sq = [housecraft_api::geom::DVec2::ZERO, housecraft_api::geom::DVec2::new(100.0, 0.0), housecraft_api::geom::DVec2::new(100.0, 100.0), housecraft_api::geom::DVec2::new(0.0, 100.0)];
+        let mut d = housecraft_draft::Drawing::default();
+        let style = FillStyle { pattern: FillPattern::UserPattern(0), spacing: Length::from_mm(12.0), angle: 0.0, ..Default::default() };
+        housecraft_draft::fills::fill_area(&mut d, None, &sq, &style, housecraft_draft::Ink::Default, std::slice::from_ref(pattern));
+        let to = |p: housecraft_api::geom::DVec2| egui::pos2(rect.left() + (p.x as f32) / 100.0 * size, rect.bottom() - (p.y as f32) / 100.0 * size);
+        for item in &d.items {
+            if let housecraft_draft::Prim::Polyline { points, .. } = &item.prim {
+                painter.line(points.iter().map(|p| to(*p)).collect(), egui::Stroke::new(1.0, ui.visuals().text_color()));
+            }
+        }
+        ui.horizontal(|ui| {
+            if ui.add_enabled(!pattern.lines.is_empty() && !pattern.name.trim().is_empty(), egui::Button::new("Save")).clicked() {
+                commands.push(Command::SetHatchPattern { index: *index, pattern: pattern.clone() });
+            }
+            if let Some(i) = index
+                && ui.button("Delete").on_hover_text("Fills using it become plain hatching").clicked()
+            {
+                commands.push(Command::DeleteHatchPattern { index: *i });
+            }
+        });
+    });
+    app.dialogs.hatch.open = open;
+    if !commands.is_empty() {
+        let deleting = commands.iter().any(|c| matches!(c, Command::DeleteHatchPattern { .. }));
+        let adding = commands.iter().any(|c| matches!(c, Command::SetHatchPattern { index: None, .. }));
+        if app.run(commands).is_some() {
+            if deleting {
+                app.dialogs.hatch.editing = None;
+            } else if adding {
+                // Now saved: further saves replace it.
+                let n = app.session.document().settings.hatch_patterns.len() as u32;
+                if let Some(e) = &mut app.dialogs.hatch.editing {
+                    e.0 = Some(n - 1);
+                }
+            }
+        }
     }
 }
 
