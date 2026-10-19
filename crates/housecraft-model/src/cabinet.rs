@@ -310,6 +310,77 @@ pub struct EndPanels {
     /// Legs at the corners instead of a toe kick.
     #[serde(default)]
     pub legs: bool,
+    #[serde(default)]
+    pub leg_style: LegStyle,
+    /// Pilasters (decorative columns) at the front corners.
+    #[serde(default)]
+    pub pilasters: bool,
+}
+
+/// The shape of furniture legs.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum LegStyle {
+    #[default]
+    Square,
+    /// Round, turned legs.
+    Round,
+    /// Low bun feet.
+    Bun,
+}
+
+impl LegStyle {
+    pub const ALL: [LegStyle; 3] = [LegStyle::Square, LegStyle::Round, LegStyle::Bun];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            LegStyle::Square => "Square",
+            LegStyle::Round => "Turned",
+            LegStyle::Bun => "Bun feet",
+        }
+    }
+}
+
+/// Fittings inside a cabinet's door opening.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CabinetAccessory {
+    /// Two waste bins on a pull-out.
+    TrashPullout,
+    /// Two turntable shelves.
+    LazySusan,
+    /// Shelves on slides, with a rim.
+    RollOuts,
+    /// Upright dividers for trays and sheet pans.
+    TrayDividers,
+}
+
+impl CabinetAccessory {
+    pub const ALL: [CabinetAccessory; 4] = [CabinetAccessory::TrashPullout, CabinetAccessory::LazySusan, CabinetAccessory::RollOuts, CabinetAccessory::TrayDividers];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            CabinetAccessory::TrashPullout => "Trash pull-out",
+            CabinetAccessory::LazySusan => "Lazy susan",
+            CabinetAccessory::RollOuts => "Roll-out shelves",
+            CabinetAccessory::TrayDividers => "Tray dividers",
+        }
+    }
+}
+
+/// Rounded or chamfered front corners of a cabinet box.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct BoxCorner {
+    pub round: bool,
+    pub size: Length,
+    #[serde(default = "yes_corner")]
+    pub left: bool,
+    #[serde(default = "yes_corner")]
+    pub right: bool,
+}
+
+fn yes_corner() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -372,6 +443,12 @@ pub struct Cabinet {
     pub moldings: Vec<CabinetMolding>,
     #[serde(default)]
     pub ends: EndPanels,
+    /// Fittings inside the doors.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub accessories: Vec<CabinetAccessory>,
+    /// Rounded or chamfered front corners.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub corner: Option<BoxCorner>,
 }
 
 impl Cabinet {

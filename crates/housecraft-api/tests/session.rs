@@ -2805,3 +2805,51 @@ fn truss_types_raked_walls_shared_headers_deck_blocking_kept_rafter_spacing() {
     let parts = housecraft_api::geom::deck::parts(s.document(), &dk).unwrap();
     assert!(parts.members.iter().any(|m| m.role == FramingRole::Blocking));
 }
+
+#[test]
+fn cabinet_accessories_corners_legs_pilasters_and_clipped_stiles() {
+    let mut s = Session::new(Document::new("Kitchen"));
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_cabinet", "cabinet_kind": "base", "at": ["10'","10'"], "facing": 90, "width": "24\""},
+            {"op": "add_cabinet", "cabinet_kind": "base", "at": ["12'","10'"], "facing": 90, "width": "24\""}]"#,
+    );
+    let (a, b) = (out.created[0], out.created[1]);
+    let faces = |s: &Session, id: Id| {
+        let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+        mesh.faces.iter().filter(|f| mesh.parts[f.part].object == id).count()
+    };
+    let lowest_near = |s: &Session, id: Id, x: f64| {
+        let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+        mesh.faces
+            .iter()
+            .filter(|f| mesh.parts[f.part].object == id)
+            .flat_map(|f| f.points.iter())
+            .filter(|p| (p.x - x).abs() < 30.0 && p.y > 10.0 * 304.8 + 23.0 * 25.4)
+            .map(|p| p.z)
+            .fold(f64::MAX, f64::min)
+    };
+    let plain = faces(&s, a);
+    s.apply(&[Command::Update { id: a, set: patch(serde_json::json!({"accessories": ["trash_pullout", "lazy_susan"], "ends": {"left": false, "right": false, "legs": true, "leg_style": "bun", "pilasters": true}})) }]).unwrap();
+    assert!(faces(&s, a) > plain + 30, "{} vs {plain}", faces(&s, a));
+    // Rounded corners: the outline gains arc points.
+    s.apply(&[Command::Update { id: b, set: patch(serde_json::json!({"corner": {"round": true, "size": "3\""}})) }]).unwrap();
+    let c = s.document().get::<Cabinet>(b).unwrap().clone();
+    assert!(housecraft_api::geom::cabinets::outline(&c).len() > 10);
+    // Extended stiles: down to the floor at the open end, not where the
+    // cabinets meet.
+    let mut s = Session::new(Document::new("Kitchen"));
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_cabinet", "cabinet_kind": "base", "at": ["10'","10'"], "facing": 90, "width": "24\""},
+            {"op": "add_cabinet", "cabinet_kind": "base", "at": ["12'","10'"], "facing": 90, "width": "24\""}]"#,
+    );
+    let a = out.created[0];
+    let build = serde_json::to_value(s.document().get::<Cabinet>(a).unwrap().build).unwrap();
+    let mut build = build;
+    build["extended_stiles"] = serde_json::json!(true);
+    s.apply(&[Command::Update { id: a, set: patch(serde_json::json!({"build": build, "construction": "framed"})) }]).unwrap();
+    let open_end = lowest_near(&s, a, 9.0 * 304.8);
+    let shared = lowest_near(&s, a, 11.0 * 304.8 - 10.0);
+    assert!(open_end < 1.0 && shared > 50.0, "{open_end} {shared}");
+}

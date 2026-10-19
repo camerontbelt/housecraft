@@ -191,7 +191,7 @@ These come from reading the whole list and change the architecture, not just the
 | CB-01 | Parametric cabinets: framed, frameless, curved, angled, bow; doors, drawers, shelves, moldings, backsplashes | P1 | M5 ✓ |
 | CB-02 | Cabinet defaults | P1 | M5 ✓ |
 | CB-03 | Architectural blocks (save cabinet groups/kitchens; unblock) | P2 | M5 ✓ |
-| CB-04 | Items inside cabinets (shelves, storage, hardware, appliances on face) | P2 | M5 ◐ shelves drawn and spaced per opening, built-in appliance faces; storage accessories later |
+| CB-04 | Items inside cabinets (shelves, storage, hardware, appliances on face) | P2 | M5 ✓ shelves per opening, built-in appliance faces, trash pull-outs, lazy susans, roll-out shelves and tray dividers |
 | CB-05 | Shelf spacing per opening | P2 | M5 ✓ |
 | CB-06 | Waterfall countertop edges | P2 | M5 ✓ |
 | CB-07 | Custom countertops: holes, edge profiles, thickness, height | P1 | M5 ✓ |
@@ -202,12 +202,12 @@ These come from reading the whole list and change the architecture, not just the
 | CB-12 | Report door/drawer sizes | P2 | M5 ✓ |
 | CB-13 | Show doors/drawers open (percent, swing angle) in 2D/3D | P3 | M5 ✓ |
 | CB-14 | Box construction (top/bottom/sides on/off) | P2 | M5 ✓ |
-| CB-15 | Extended stiles with auto-clipping | P2 | M5 ◐ stiles extend to the floor; auto-clipping against neighbours later |
+| CB-15 | Extended stiles with auto-clipping | P2 | M5 ✓ stiles extend to the floor, and stop at the box where another cabinet butts up |
 | CB-16 | Per-edge door overlay | P2 | M5 ✓ |
 | CB-17 | Frameless reveal controls | P2 | M5 ✓ |
 | CB-18 | Separate materials per component | P1 | M5 ✓ |
-| CB-19 | Rounded/chamfered box and countertop corners | P2 | M5 ◐ countertop front corners round or chamfer; box corners later |
-| CB-20 | Millwork & end panels (pilasters, feet, legs, moldings; auto end panels) | P2 | M5 ◐ end panels and legs; pilasters and feet styles later |
+| CB-19 | Rounded/chamfered box and countertop corners | P2 | M5 ✓ countertop and cabinet-box front corners round or chamfer |
+| CB-20 | Millwork & end panels (pilasters, feet, legs, moldings; auto end panels) | P2 | M5 ◐ end panels, pilasters, square/turned legs and bun feet, moldings; end panels are not added automatically |
 | CB-21 | Hardware per door/drawer with auto-orientation and placement | P1 | M5 ✓ |
 | CB-22 | Stacked moldings with auto-stack | P2 | M5 ✓ |
 | CB-23 | Flush cabinet moldings | P3 | M5 ✓ |

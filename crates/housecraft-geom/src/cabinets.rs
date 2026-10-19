@@ -12,7 +12,8 @@ use housecraft_model::{
     Side, Surface,
 };
 
-use crate::math::{inset_polygon, minus_convex_holes, perp, signed_area, v2};
+use crate::math::{inset_polygon, minus_convex_holes, perp, point_in_polygon, signed_area, v2};
+use housecraft_model::{CabinetAccessory, LegStyle};
 use crate::mesh::Mesh;
 
 const IN: f64 = 25.4;
@@ -81,10 +82,33 @@ fn local_shape(c: &Cabinet, setback: f64) -> (Vec<DVec2>, Vec<DVec2>) {
     match c.shape {
         CabinetShape::Standard => {
             let front = vec![DVec2::new(-h, d), DVec2::new(h, d)];
-            (
-                vec![DVec2::new(-h, 0.0), DVec2::new(h, 0.0), front[1], front[0]],
-                front,
-            )
+            let Some(corner) = c.corner.filter(|k| k.size.mm() > 1.0) else {
+                return (vec![DVec2::new(-h, 0.0), DVec2::new(h, 0.0), front[1], front[0]], front);
+            };
+            // Front corners cut back: a quarter circle or a straight chamfer.
+            let r = corner.size.mm().min(h).min(d);
+            let mut outline = vec![DVec2::new(-h, 0.0), DVec2::new(h, 0.0)];
+            let pi = std::f64::consts::PI;
+            if corner.right {
+                if corner.round {
+                    outline.extend(arc(DVec2::new(h - r, d - r), r, 0.0, pi / 2.0, 8));
+                } else {
+                    outline.extend([DVec2::new(h, d - r), DVec2::new(h - r, d)]);
+                }
+            } else {
+                outline.push(front[1]);
+            }
+            if corner.left {
+                if corner.round {
+                    outline.extend(arc(DVec2::new(-h + r, d - r), r, pi / 2.0, pi, 8));
+                } else {
+                    outline.extend([DVec2::new(-h + r, d), DVec2::new(-h, d - r)]);
+                }
+            } else {
+                outline.push(front[0]);
+            }
+            let front = vec![DVec2::new(-h + if corner.left { r } else { 0.0 }, d), DVec2::new(h - if corner.right { r } else { 0.0 }, d)];
+            (outline, front)
         }
         CabinetShape::Angled { left, right } => {
             let (l, r) = (left.mm().min(d - 1.0), right.mm().min(d - 1.0));
@@ -682,7 +706,7 @@ pub fn cabinet_mesh(doc: &Document, c: &Cabinet, mesh: &mut Mesh) {
         (_, Some((th, td))) => Some((th.mm(), td.mm())),
     };
     let build = c.build;
-    let standard = c.shape == CabinetShape::Standard;
+    let standard = c.shape == CabinetShape::Standard && c.corner.is_none_or(|k| k.size.mm() <= 1.0);
     let (edge, gap) = frame_sizes(c);
     let all = cells(c);
     if standard {
@@ -729,6 +753,49 @@ pub fn cabinet_mesh(doc: &Document, c: &Cabinet, mesh: &mut Mesh) {
                 );
             }
         }
+        // Fittings in the first door opening.
+        if let Some(cell) = all.iter().find(|x| matches!(x.item, FaceItem::DoorLeft | FaceItem::DoorRight | FaceItem::GlassDoor | FaceItem::Open)) {
+            let [o0, o1, oz0, oz1] = cell.opening;
+            let (u0, u1) = (ul + o0.max(t) + 0.5 * IN, ul + o1.min(2.0 * half - t) - 0.5 * IN);
+            let (v0, v1) = (bt + 0.5 * IN, d - 1.5 * IN);
+            for acc in &c.accessories {
+                match acc {
+                    CabinetAccessory::TrashPullout => {
+                        let mid = (u0 + u1) / 2.0;
+                        let top = (oz0 + 20.0 * IN).min(oz1 - IN);
+                        block(&mut b, (u0, u1), (v0, v1), (oz0 + 0.5 * IN, oz0 + 1.0 * IN), Surface::CabinetBox);
+                        for (a, z) in [(u0 + 0.25 * IN, mid - 0.25 * IN), (mid + 0.25 * IN, u1 - 0.25 * IN)] {
+                            block(&mut b, (a, z), (v0 + IN, v1 - IN), (oz0 + IN, top), Surface::Hardware);
+                        }
+                    }
+                    CabinetAccessory::LazySusan => {
+                        let c0 = DVec2::new((u0 + u1) / 2.0, (v0 + v1) / 2.0);
+                        let r = ((u1 - u0).min(v1 - v0) / 2.0 - 0.5 * IN).max(2.0 * IN);
+                        let disc: Vec<DVec2> = arc(c0, r, 0.0, std::f64::consts::TAU, 24).into_iter().take(24).collect();
+                        for f in [0.1, 0.55] {
+                            let z = oz0 + (oz1 - oz0) * f;
+                            b.prism(&disc, z, z + 0.75 * IN, Surface::CabinetBox);
+                        }
+                        let pole: Vec<DVec2> = arc(c0, 0.5 * IN, 0.0, std::f64::consts::TAU, 8).into_iter().take(8).collect();
+                        b.prism(&pole, oz0, oz1 - 0.5 * IN, Surface::Hardware);
+                    }
+                    CabinetAccessory::RollOuts => {
+                        for k in 0..3 {
+                            let z = oz0 + 0.5 * IN + (oz1 - oz0) * k as f64 / 3.0;
+                            block(&mut b, (u0, u1), (v0, v1), (z, z + 0.5 * IN), Surface::CabinetBox);
+                            block(&mut b, (u0, u1), (v1 - 0.5 * IN, v1), (z, z + 3.0 * IN), Surface::CabinetBox);
+                        }
+                    }
+                    CabinetAccessory::TrayDividers => {
+                        let mut u = u0 + 3.0 * IN;
+                        while u < u1 - IN {
+                            block(&mut b, (u - 0.125 * IN, u + 0.125 * IN), (v0, v1), (oz0 + 0.5 * IN, oz1 - IN), Surface::CabinetBox);
+                            u += 3.0 * IN;
+                        }
+                    }
+                }
+            }
+        }
         // Toe kick board, set back.
         if let Some((th, td)) = toe
             && !c.ends.legs
@@ -748,16 +815,46 @@ pub fn cabinet_mesh(doc: &Document, c: &Cabinet, mesh: &mut Mesh) {
     if c.ends.legs && base > 0.0 {
         let s = 2.5 * IN;
         for (u, v) in [(-half, 0.0), (half - s, 0.0), (-half, d - s), (half - s, d - s)] {
-            block(&mut b, (u, u + s), (v, v + s), (0.0, base), Surface::CabinetBox);
+            let mid = DVec2::new(u + s / 2.0, v + s / 2.0);
+            let ring = |r: f64| -> Vec<DVec2> { arc(mid, r, 0.0, std::f64::consts::TAU, 16).into_iter().take(16).collect() };
+            match c.ends.leg_style {
+                LegStyle::Square => block(&mut b, (u, u + s), (v, v + s), (0.0, base), Surface::CabinetBox),
+                // A turned leg: wider collar at the top, slimmer shaft.
+                LegStyle::Round => {
+                    b.prism(&ring(s * 0.35), 0.0, base * 0.8, Surface::CabinetBox);
+                    b.prism(&ring(s * 0.5), base * 0.8, base, Surface::CabinetBox);
+                }
+                // Bun feet: a squat round foot.
+                LegStyle::Bun => {
+                    b.prism(&ring(s * 0.45), 0.0, base * 0.25, Surface::CabinetBox);
+                    b.prism(&ring(s * 0.62), base * 0.25, base * 0.75, Surface::CabinetBox);
+                    b.prism(&ring(s * 0.45), base * 0.75, base, Surface::CabinetBox);
+                }
+            }
+        }
+    }
+    // Pilasters: columns proud of the front corners, with a base and cap.
+    if c.ends.pilasters {
+        let pw = 2.5 * IN;
+        for (u0, u1) in [(-half, -half + pw), (half - pw, half)] {
+            block(&mut b, (u0, u1), (d, d + 0.75 * IN), (base, h), Surface::CabinetBox);
+            block(&mut b, (u0 - 0.25 * IN, u1 + 0.25 * IN), (d, d + 1.0 * IN), (base, base + 3.0 * IN), Surface::CabinetBox);
+            block(&mut b, (u0 - 0.25 * IN, u1 + 0.25 * IN), (d, d + 1.0 * IN), (h - 2.0 * IN, h), Surface::CabinetBox);
         }
     }
     // Face frame: stiles, rails, mullions (framed cabinets).
     if c.construction == CabinetConstruction::Framed {
         let len = length(&front);
         let ft = 0.75 * IN;
-        let zb = if build.extended_stiles { 0.0 } else { base };
-        b.slab(&front, 0.0, edge, zb, h, -ft, ft, Surface::CabinetBox);
-        b.slab(&front, len - edge, len, zb, h, -ft, ft, Surface::CabinetBox);
+        // Extended stiles stop at the box where another cabinet butts up.
+        let neighbour = |u: f64| {
+            let p = b.f.world(DVec2::new(u, d / 2.0));
+            doc.iter::<Cabinet>().any(|o| o.id != c.id && o.floor == c.floor && o.cabinet_kind != CabinetKind::Wall && point_in_polygon(p, &outline(o)))
+        };
+        let zl = if build.extended_stiles && !neighbour(-half - c.filler_left.mm() - 10.0) { 0.0 } else { base };
+        let zr = if build.extended_stiles && !neighbour(half + c.filler_right.mm() + 10.0) { 0.0 } else { base };
+        b.slab(&front, 0.0, edge, zl, h, -ft, ft, Surface::CabinetBox);
+        b.slab(&front, len - edge, len, zr, h, -ft, ft, Surface::CabinetBox);
         b.slab(&front, edge, len - edge, h - edge, h, -ft, ft, Surface::CabinetBox);
         b.slab(&front, edge, len - edge, base, base + edge, -ft, ft, Surface::CabinetBox);
         let mut rows: Vec<[f64; 4]> = all.iter().map(|c| c.opening).collect();
@@ -1305,6 +1402,8 @@ mod tests {
             blind: None,
             moldings: Vec::new(),
             ends: EndPanels::default(),
+            accessories: Vec::new(),
+            corner: None,
         }
     }
 

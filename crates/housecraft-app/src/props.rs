@@ -3951,11 +3951,56 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
         ui.checkbox(&mut ends.left, "Left");
         ui.checkbox(&mut ends.right, "Right");
         ui.checkbox(&mut ends.legs, "Legs instead of toe kick");
+        ui.checkbox(&mut ends.pilasters, "Pilasters");
     });
     ui.end_row();
+    if ends.legs {
+        Ed::label(ui, "Legs");
+        ui.horizontal(|ui| {
+            for st in LegStyle::ALL {
+                ui.selectable_value(&mut ends.leg_style, st, st.name());
+            }
+        });
+        ui.end_row();
+    }
     if ends != c.ends {
         ed.out.push(patch(id, json!({ "ends": ends })));
     }
+    // Rounded or chamfered front corners.
+    Ed::label(ui, "Box Corners");
+    ui.horizontal(|ui| {
+        let mut corner = c.corner;
+        let mut on = corner.is_some();
+        ui.checkbox(&mut on, "Shaped");
+        if on {
+            let k = corner.get_or_insert(BoxCorner { round: true, size: Length::from_inches(3.0), left: true, right: true });
+            ui.selectable_value(&mut k.round, true, "Round");
+            ui.selectable_value(&mut k.round, false, "Chamfer");
+            let mut inches = k.size.inches();
+            ui.add(egui::DragValue::new(&mut inches).range(0.5..=24.0).speed(0.25).suffix("\""));
+            k.size = Length::from_inches(inches);
+            ui.checkbox(&mut k.left, "Left");
+            ui.checkbox(&mut k.right, "Right");
+        } else {
+            corner = None;
+        }
+        if corner != c.corner {
+            ed.out.push(patch(id, json!({ "corner": corner })));
+        }
+    });
+    ui.end_row();
+    // Fittings inside.
+    Ed::label(ui, "Inside");
+    ui.horizontal_wrapped(|ui| {
+        for acc in CabinetAccessory::ALL {
+            let mut on = c.accessories.contains(&acc);
+            if ui.checkbox(&mut on, acc.name()).changed() {
+                let list: Vec<CabinetAccessory> = CabinetAccessory::ALL.into_iter().filter(|x| if *x == acc { on } else { c.accessories.contains(x) }).collect();
+                ed.out.push(patch(id, json!({ "accessories": list })));
+            }
+        }
+    });
+    ui.end_row();
     // Moldings.
     Ed::label(ui, "Moldings");
     ui.vertical(|ui| {

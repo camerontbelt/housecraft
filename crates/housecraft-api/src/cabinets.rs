@@ -98,6 +98,8 @@ pub(crate) fn add_cabinet(
         blind: None,
         moldings: Vec::new(),
         ends: EndPanels::default(),
+            accessories: Vec::new(),
+            corner: None,
     }))
 }
 
