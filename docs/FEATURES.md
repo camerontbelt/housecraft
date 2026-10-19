@@ -14,8 +14,8 @@ several wait on later milestones (library styles in M5, terrain and framing in M
 **M4 status (2026-10-18):** schedules with export, materials list with prices, elevations and cross sections
 (auto exterior and room elevations, plan callouts), layouts with live views and a title block exported to
 multi-page PDF, callouts, markers, revision clouds, detailing shapes, text macros and a 3D cutaway are in.
-Of the M4 P1 items, 11 are done (✓), 14 partial (◐) and 4 not started (camera default sets,
-drafting inside elevation views, CAD details and blocks).
+Of the M4 P1 items, 14 are done (✓), 15 partial (◐) and 0 not started. CAD details, blocks with a
+user library, drafting in elevation/section views and camera default sets were added in slice 6.
 
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
@@ -81,7 +81,7 @@ These come from reading the whole list and change the architecture, not just the
 | VIS-22 | GPU path-traced PBR with soft shadows | P2 | M7 |
 | VIS-23 | Denoising for ray-traced views | P2 | M7 |
 | VIS-24 | Depth of field (focus point, f-stop) | P3 | M7 |
-| VIS-25 | Camera default sets (e.g. dimension defaults for elevations vs sections) | P1 | M4 |
+| VIS-25 | Camera default sets (e.g. dimension defaults for elevations vs sections) | P1 | M4 ✓ |
 | VIS-26 | Eight standard isometric angles | P1 | M1 |
 | VIS-27 | Shadow intensity control for vector/technical views | P2 | M7 |
 | VIS-28 | Depth cueing (distance fog) | P3 | M7 |
@@ -95,7 +95,7 @@ These come from reading the whole list and change the architecture, not just the
 | SEC-03 | Vaulted ceilings shown in wall elevations; "ignore walls above" crop | P2 | M4 |
 | SEC-04 | Stepped (jogged) cutting planes | P2 | M4 |
 | SEC-05 | Below-grade items as hidden lines | P2 | M4 |
-| SEC-06 | Full drafting/dimensioning in section & elevation views; auto-detail tool | P1 | M4 |
+| SEC-06 | Full drafting/dimensioning in section & elevation views; auto-detail tool | P1 | M4 ◐ CAD, dimensions, text, callouts and blocks drawn in elevation/section views; auto-detail tool later |
 | SEC-07 | Center CAD objects in elevation | P3 | M4 |
 | SEC-08 | Copying a section camera copies its annotations | P2 | M4 |
 | SEC-09 | Cameras shown as callouts in plan (labels, descriptions; survive to layout) | P1 | M4 ◐ elevation/section callouts in plan; 3D camera callouts later |
@@ -345,8 +345,8 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-14 | CAD-to-Walls (DWG lines → walls, windows, doors) | P2 | M4 |
 | CAD-15 | Library of structural CAD details | P3 | M8 (own content) |
 | CAD-16 | Align / distribute | P1 | M1 |
-| CAD-17 | CAD details & blocks with insertion points; save to library | P1 | M4 |
-| CAD-18 | CAD detail from any view | P1 | M4 |
+| CAD-17 | CAD details & blocks with insertion points; save to library | P1 | M4 ✓ |
+| CAD-18 | CAD detail from any view | P1 | M4 ✓ |
 | CAD-19 | Copy CAD details between plans | P2 | M4 |
 | CAD-20 | Line style manager (create, merge, find usages) | P1 | M1 |
 
