@@ -553,6 +553,30 @@ impl App {
         }
     }
 
+    /// Whether the framing layer shows in the current plan view.
+    fn framing_visible(&self) -> bool {
+        let doc = self.doc();
+        match (doc.active_defaults().layers.framing, doc.get::<LayerSet>(self.plan.layer_set)) {
+            (Some(l), Some(set)) => set.display(l).visible,
+            _ => false,
+        }
+    }
+
+    fn set_framing_visible(&mut self, visible: bool) {
+        let Some(layer) = self.doc().active_defaults().layers.framing else {
+            return;
+        };
+        let set = self.plan.layer_set;
+        self.run1(Command::SetLayerDisplay {
+            layer_set: set,
+            layer,
+            visible: Some(visible),
+            color: None,
+            line_weight: None,
+            line_style: None,
+        });
+    }
+
     /// Terrain > Terrain Around Building: a lot 30' bigger than the plan
     /// on every side.
     fn terrain_around_building(&mut self) {
@@ -1349,6 +1373,64 @@ impl App {
                     }
                 });
                 ui.separator();
+                ui.menu_button("Framing", |ui| {
+                    let floor = Some(self.plan.floor);
+                    let parts = |walls, floors, ceilings, roofs| housecraft_api::framing::FramingParts { walls, floors, ceilings, roofs };
+                    let mut cmd = None;
+                    if item(ui, "Build All Framing", "", true) {
+                        cmd = Some(Command::BuildFraming { floor: None, parts: parts(true, true, true, true), hosts: Vec::new() });
+                    }
+                    if item(ui, "Build Wall Framing (this floor)", "", true) {
+                        cmd = Some(Command::BuildFraming { floor, parts: parts(true, false, false, false), hosts: Vec::new() });
+                    }
+                    if item(ui, "Build Floor and Ceiling Framing (this floor)", "", true) {
+                        cmd = Some(Command::BuildFraming { floor, parts: parts(false, true, true, false), hosts: Vec::new() });
+                    }
+                    if item(ui, "Build Roof Framing", "", true) {
+                        cmd = Some(Command::BuildFraming { floor: None, parts: parts(false, false, false, true), hosts: Vec::new() });
+                    }
+                    let hosts: Vec<Id> = self
+                        .selection
+                        .iter()
+                        .copied()
+                        .filter(|id| matches!(self.doc().kind_of(*id), Some(ObjectKind::Wall | ObjectKind::RoofPlane)))
+                        .collect();
+                    if item(ui, "Rebuild Framing of Selected Walls/Roof Planes", "", !hosts.is_empty()) {
+                        cmd = Some(Command::BuildFraming { floor: None, parts: parts(true, false, false, true), hosts: hosts.clone() });
+                    }
+                    ui.separator();
+                    if tool_item(ui, Tool::JoistDirection) {
+                        self.set_tool(Tool::JoistDirection);
+                    }
+                    let wall = (hosts.len() == 1 && self.doc().kind_of(hosts[0]) == Some(ObjectKind::Wall)).then(|| hosts[0]);
+                    if item(ui, "Wall Framing Detail", "", wall.is_some())
+                        && let Some(wall) = wall
+                        && let Some(out) = self.run1(Command::WallFramingDetail { wall })
+                        && let Some(id) = out.created.first()
+                    {
+                        self.open_sheet(*id);
+                    }
+                    let show = self.framing_visible();
+                    if item(ui, if show { "Hide Framing in Plan" } else { "Show Framing in Plan" }, "", self.doc().active_defaults().layers.framing.is_some()) {
+                        self.set_framing_visible(!show);
+                    }
+                    if item(ui, "Framing Overview (3D)", "", true) {
+                        use housecraft_api::geom::mesh::Category as C;
+                        let framing_only = vec![C::Wall, C::Opening, C::Floor, C::Ceiling, C::Roof, C::Foundation, C::Fixture, C::Cabinet, C::Terrain];
+                        self.view3d.hidden = if self.view3d.hidden.contains(&C::Wall) { vec![C::Ceiling] } else { framing_only };
+                        self.mode = Mode::ThreeD;
+                    }
+                    ui.separator();
+                    if item(ui, "Clear Automatic Framing", "", true) {
+                        cmd = Some(Command::ClearFraming { floor: None, manual_too: false });
+                    }
+                    if let Some(c) = cmd
+                        && let Some(out) = self.run1(c)
+                    {
+                        let n = out.created.iter().filter(|id| self.doc().kind_of(**id) == Some(ObjectKind::FramingMember)).count();
+                        self.info(format!("{n} framing members built"));
+                    }
+                });
                 ui.menu_button("Cabinets", |ui| {
                     for tool in Family::Cabinets.tools().iter().take(5) {
                         if tool_item(ui, *tool) {

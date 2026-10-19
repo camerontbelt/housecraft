@@ -232,6 +232,9 @@ pub struct KindLayers {
     /// Cabinets, countertops and appliances; CAD layer when `None`.
     #[serde(default)]
     pub cabinets: Option<Id>,
+    /// Framing members; made (hidden in plan) the first time framing is built.
+    #[serde(default)]
+    pub framing: Option<Id>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -314,6 +317,8 @@ pub struct DefaultSet {
     pub cabinets: crate::CabinetDefaults,
     #[serde(default)]
     pub solids: crate::SolidDefaults,
+    #[serde(default)]
+    pub framing: crate::FramingDefaults,
     /// Default material for each surface role (empty: built-in colours).
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub materials: crate::SurfaceMaterials,

@@ -388,6 +388,13 @@ pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
             SiteKind::Stream { .. } => {}
         }
     }
+    // Framing buy list: each member from the shortest stock length that
+    // covers it (2' steps from 8' to 24'; longer pieces as ordered).
+    for m in doc.iter::<FramingMember>().filter(|m| on_floor(m.floor) && shown(m.id)) {
+        let ft = m.length().inches() / 12.0;
+        let stock = (8..=24).step_by(2).map(|s| s as f64).find(|s| *s + 1e-6 >= ft).unwrap_or(ft.ceil());
+        t.add("Framing", format!("{} x {}'", m.size_name(), stock), Measure::Count, 1.0, m.id);
+    }
     for p in doc.iter::<Plant>().filter(|p| on_floor(p.floor) && shown(p.id)) {
         t.add("Plants", p.name.clone(), Measure::Count, 1.0, p.id);
     }

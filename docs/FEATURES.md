@@ -292,15 +292,15 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| FR-01 | Automatic framing of floors, walls, ceilings, roofs, openings, headers | P2 | M6 |
+| FR-01 | Automatic framing of floors, walls, ceilings, roofs, openings, headers | P2 | M6 ✓ Build > Framing builds wall studs, plates, openings and headers, floor and ceiling joists, and rafters |
 | FR-02 | Framing reference markers per level | P2 | M6 |
-| FR-03 | Joist direction lines | P2 | M6 |
-| FR-04 | Build All Framing / subsets | P2 | M6 |
-| FR-05 | Manual framing members with info panel | P2 | M6 |
-| FR-06 | Retain manual framing across auto rebuilds (X18+) | P2 | M6 |
-| FR-07 | Framing materials: lumber, steel, LVL, PSL, VSL; custom types and shapes | P2 | M6 |
+| FR-03 | Joist direction lines | P2 | M6 ✓ Joist Direction tool sets which way a room's joists run (shown as an arrow) |
+| FR-04 | Build All Framing / subsets | P2 | M6 ✓ Build All Framing, or walls / floors and ceilings / roofs separately |
+| FR-05 | Manual framing members with info panel | P2 | M6 ✓ add_framing_member; members show size, role and length in their specification |
+| FR-06 | Retain manual framing across auto rebuilds (X18+) | P2 | M6 ✓ members placed, moved or edited by hand are kept when framing is rebuilt |
+| FR-07 | Framing materials: lumber, steel, LVL, PSL, VSL; custom types and shapes | P2 | M6 ◐ lumber, LVL, PSL, VSL and steel members; no custom section shapes |
 | FR-08 | EasyFrame panelization export (.EZF) | P3 | M8 |
-| FR-09 | Roof framing: rafters, ridges, lookouts, blocking, valley fill, rafter tails | P2 | M6 |
+| FR-09 | Roof framing: rafters, ridges, lookouts, blocking, valley fill, rafter tails | P2 | M6 ◐ rafters and ridges under each roof plane; no lookouts, blocking, valley fill or rafter tails |
 | FR-10 | Auto-build trusses; auto-fit floor/ceiling/roof trusses (scissor, attic, girder, hip, energy heel…) | P2 | M6 |
 | FR-11 | Truss rebuild tool; truss details with labels | P3 | M6 |
 | FR-12 | Truss chords/webbing in materials list (X18+) | P3 | M6 |
@@ -308,18 +308,18 @@ These come from reading the whole list and change the architecture, not just the
 | FR-14 | Decorative end profiles | P3 | M6 |
 | FR-15 | Post & beam tools | P2 | M6 |
 | FR-16 | Multi-ply beams/posts/girders (X18+) | P3 | M6 |
-| FR-17 | Wall framing options: plates, studs, bridging, knee walls; steel C/U channels; rim joists | P2 | M6 |
+| FR-17 | Wall framing options: plates, studs, bridging, knee walls; steel C/U channels; rim joists | P2 | M6 ◐ stud spacing, 1–3 top plates, mid-height blocking, rim joists; no knee walls or steel channels |
 | FR-18 | Balloon framing | P3 | M6 |
-| FR-19 | Header controls (cripples, rotated, flush, combined) | P2 | M6 |
+| FR-19 | Header controls (cripples, rotated, flush, combined) | P2 | M6 ◐ headers sized by span (2x6 to 2x12, built-up); no per-header options |
 | FR-20 | Framing per wall-type layer (furred basement walls) | P3 | M6 |
 | FR-21 | Horizontal wall framing (girts) for pole/timber buildings | P3 | M6 |
-| FR-22 | Per-opening framing (box/built-up headers, trimmers, sills) | P2 | M6 |
-| FR-23 | Wall framing detail views | P2 | M6 |
-| FR-24 | Framing labels and member roles for schedules | P2 | M6 |
-| FR-25 | Build framing per room / per wall / per roof plane | P2 | M6 |
-| FR-26 | Corner & intersection framing (standard, 2-stud, laddered) | P2 | M6 |
+| FR-22 | Per-opening framing (box/built-up headers, trimmers, sills) | P2 | M6 ✓ king and jack studs, headers, cripples above and below, rough sills |
+| FR-23 | Wall framing detail views | P2 | M6 ✓ Build > Framing > Wall Framing Detail draws a wall's framing as a CAD detail |
+| FR-24 | Framing labels and member roles for schedules | P2 | M6 ✓ every member has a role; Framing Cut List schedule |
+| FR-25 | Build framing per room / per wall / per roof plane | P2 | M6 ◐ rebuild per floor, or for selected walls and roof planes; not per room |
+| FR-26 | Corner & intersection framing (standard, 2-stud, laddered) | P2 | M6 ✓ three-stud, two-stud and ladder corners |
 | FR-27 | Bearing walls (butt/lap framing) | P2 | M6 |
-| FR-28 | Platform holes with auto framing | P2 | M6 |
+| FR-28 | Platform holes with auto framing | P2 | M6 ✓ joists stop at stairwell holes, with headers |
 | FR-29 | Tray ceiling framing | P3 | M6 |
 | FR-30 | Deck framing: planks, borders, beams, joists, posts, footings, blocking; auto-rebuild | P2 | M6 |
 | FR-31 | Deck ledger controls (X18+) | P3 | M6 |
@@ -516,8 +516,8 @@ These come from reading the whole list and change the architecture, not just the
 | EST-19 | Schedule starting number | P3 | M4 |
 | EST-20 | Export schedules: CSV, TXT, XML | P1 | M4 ✓ |
 | EST-21 | BuilderTREND export with NAHB accounting codes | P3 | M8 |
-| EST-22 | Cut list and buy list (structural lumber) | P2 | M6 |
-| EST-23 | Pricing in framing buy lists | P3 | M6 |
+| EST-22 | Cut list and buy list (structural lumber) | P2 | M6 ✓ Framing Cut List schedule; buy list (stock lengths) in the materials list |
+| EST-23 | Pricing in framing buy lists | P3 | M6 ✓ framing buy-list lines take prices like any materials-list line |
 
 ## 21. Text, annotation & scripting
 

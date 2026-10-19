@@ -9,6 +9,7 @@ mod annotation;
 mod building;
 mod cabinet;
 mod display;
+mod framing;
 mod imported;
 mod site;
 mod solid;
@@ -29,6 +30,7 @@ pub use annotation::*;
 pub use building::*;
 pub use cabinet::*;
 pub use display::*;
+pub use framing::*;
 pub use imported::*;
 pub use site::*;
 pub use solid::*;
@@ -178,6 +180,8 @@ objects! {
     ElevationData => "elevation_data",
     SiteFeature => "site_feature",
     Plant => "plant",
+    FramingMember => "framing_member",
+    JoistDirection => "joist_direction",
 }
 
 impl fmt::Display for ObjectKind {
@@ -215,6 +219,8 @@ impl ObjectKind {
                 | ObjectKind::ElevationData
                 | ObjectKind::SiteFeature
                 | ObjectKind::Plant
+                | ObjectKind::FramingMember
+                | ObjectKind::JoistDirection
                 | ObjectKind::MaterialRegion
         )
     }
@@ -467,6 +473,8 @@ impl Document {
             Object::ElevationData(e) => Some(e.floor),
             Object::SiteFeature(f) => Some(f.floor),
             Object::Plant(p) => Some(p.floor),
+            Object::FramingMember(m) => Some(m.floor),
+            Object::JoistDirection(j) => Some(j.floor),
             Object::MaterialRegion(r) => Some(r.floor),
             _ => None,
         }
@@ -501,6 +509,8 @@ impl Document {
             Object::ElevationData(e) => Some(e.layer),
             Object::SiteFeature(f) => Some(f.layer),
             Object::Plant(p) => Some(p.layer),
+            Object::FramingMember(m) => Some(m.layer),
+            Object::JoistDirection(j) => Some(j.layer),
             Object::MaterialRegion(r) => Some(r.layer),
             _ => None,
         }

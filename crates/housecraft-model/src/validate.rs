@@ -715,6 +715,22 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     }
                 }
             }
+            Object::FramingMember(m) => {
+                c.reference(id, "floor", m.floor, K::Floor);
+                c.reference(id, "layer", m.layer, K::Layer);
+                c.positive(id, "width", m.width);
+                c.positive(id, "depth", m.depth);
+                let flat: Vec<f64> = m.a.mm().into_iter().chain(m.b.mm()).chain([m.rotation]).collect();
+                c.finite(id, "points", &flat);
+                if m.length().mm() < 1.0 {
+                    c.issue(id, "a framing member needs some length");
+                }
+            }
+            Object::JoistDirection(j) => {
+                c.reference(id, "floor", j.floor, K::Floor);
+                c.reference(id, "layer", j.layer, K::Layer);
+                c.finite(id, "at", &j.at.mm().into_iter().chain([j.angle]).collect::<Vec<_>>());
+            }
             Object::SiteFeature(f) => {
                 c.reference(id, "floor", f.floor, K::Floor);
                 c.reference(id, "layer", f.layer, K::Layer);

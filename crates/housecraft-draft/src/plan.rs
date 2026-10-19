@@ -516,6 +516,31 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             crate::site::terrain(doc, t, look.stroke, look.ink, &mut out);
         }
     }
+    for m in doc.iter::<FramingMember>().filter(|m| m.floor == opts.floor) {
+        let look = ctx.look(m.layer);
+        if look.visible {
+            let outline = housecraft_geom::framing::plan_outline(m);
+            if outline.len() >= 3 {
+                out.push(Some(m.id), Prim::Polyline { points: outline, closed: true, stroke: Stroke { width: look.stroke.width * 0.5, ..look.stroke } });
+            }
+        }
+    }
+    for j in doc.iter::<JoistDirection>().filter(|j| j.floor == opts.floor) {
+        let look = ctx.look(j.layer);
+        if look.visible {
+            // A double-headed arrow along the joists.
+            let c = housecraft_geom::v2(j.at);
+            let d = DVec2::from_angle(j.angle.to_radians());
+            let n = perp(d);
+            let (a, b) = (c - d * 900.0, c + d * 900.0);
+            let dash: &'static [f64] = if j.ceiling { &[2.0, 1.0] } else { &[] };
+            let s = Stroke { dash, ..look.stroke };
+            out.push(Some(j.id), Prim::Polyline { points: vec![a, b], closed: false, stroke: s });
+            for (tip, back) in [(a, d), (b, -d)] {
+                out.push(Some(j.id), Prim::Polyline { points: vec![tip + back * 200.0 + n * 100.0, tip, tip + back * 200.0 - n * 100.0], closed: false, stroke: look.stroke });
+            }
+        }
+    }
     for f in doc.iter::<SiteFeature>().filter(|f| f.floor == opts.floor) {
         let look = ctx.look(f.layer);
         if look.visible {

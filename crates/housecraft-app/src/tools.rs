@@ -86,6 +86,8 @@ pub enum Tool {
     SteppingStones,
     Stream,
     Plant(PlantForm),
+    /// Click a room, then the direction its joists run.
+    JoistDirection,
 }
 
 impl Tool {
@@ -452,6 +454,7 @@ impl Tool {
             Tool::Plant(PlantForm::Conifer) => "Conifer",
             Tool::Plant(PlantForm::Shrub) => "Shrub",
             Tool::Plant(PlantForm::Grass) => "Grass / Perennial",
+            Tool::JoistDirection => "Joist Direction",
             Tool::PlaceGroup => "Place Group",
         }
     }
@@ -489,6 +492,7 @@ impl Tool {
             Tool::TerrainPerimeter | Tool::ElevationLine | Tool::FlatRegion => Icon::Polyline,
             Tool::ElevationPoint => Icon::Point,
             Tool::Hill | Tool::Valley | Tool::Plant(_) | Tool::SteppingStones => Icon::Circle,
+            Tool::JoistDirection => Icon::Arrow,
             Tool::RetainingWall | Tool::Road(_) | Tool::Fence | Tool::GardenBed | Tool::Stream => Icon::Polyline,
             Tool::ObjectPainter => Icon::Select,
             Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => Icon::Box,
@@ -611,6 +615,7 @@ impl Tool {
             | Tool::Stream => "Click along its path; double-click or Enter to finish.",
             Tool::GardenBed => "Click the corners of the bed; double-click or Enter to finish.",
             Tool::Plant(_) => "Click to plant it (set its name and size in its specification).",
+            Tool::JoistDirection => "Click in a room, then click the direction its floor joists run.",
             Tool::WallRegion => "Click the two ends of the region on one side of a wall.",
             Tool::ObjectPainter => {
                 "Alt+click an object to copy from, tick what to copy, then click objects to paint them."

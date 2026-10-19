@@ -7,6 +7,7 @@
 pub mod boolean;
 pub mod cabinets;
 pub mod electrical;
+pub mod framing;
 pub mod math;
 pub mod mesh;
 pub mod pattern;

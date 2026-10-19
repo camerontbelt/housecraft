@@ -1028,6 +1028,46 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                 );
                             });
                     });
+                egui::CollapsingHeader::new("Framing").show(ui, |ui| {
+                    let f = &d.framing;
+                    egui::Grid::new("framing_defaults").num_columns(2).show(ui, |ui| {
+                        for (label, key, v) in [
+                            ("Stud spacing", "stud_spacing", f.stud_spacing),
+                            ("Floor joist spacing", "joist_spacing", f.joist_spacing),
+                            ("Ceiling joist spacing", "ceiling_joist_spacing", f.ceiling_joist_spacing),
+                            ("Rafter spacing", "rafter_spacing", f.rafter_spacing),
+                            ("Lumber thickness", "lumber_width", f.lumber_width),
+                            ("Floor joist depth", "floor_joist_depth", f.floor_joist_depth),
+                            ("Ceiling joist depth", "ceiling_joist_depth", f.ceiling_joist_depth),
+                            ("Rafter depth", "rafter_depth", f.rafter_depth),
+                        ] {
+                            len_row(ui, doc, &mut app.bufs, label, ("framing", key), v, |v| {
+                                commands.push(p(json!({"framing": {key: v}})))
+                            });
+                        }
+                        ui.label("Top plates");
+                        let mut n = f.top_plates;
+                        if ui.add(egui::DragValue::new(&mut n).range(1..=3)).changed() {
+                            commands.push(p(json!({"framing": {"top_plates": n}})));
+                        }
+                        ui.end_row();
+                        ui.label("Corners");
+                        ui.horizontal(|ui| {
+                            for c in CornerFraming::ALL {
+                                if ui.selectable_label(f.corners == c, c.name()).clicked() {
+                                    commands.push(p(json!({"framing": {"corners": c}})));
+                                }
+                            }
+                        });
+                        ui.end_row();
+                        ui.label("Mid-height blocking");
+                        let mut b = f.wall_blocking;
+                        if ui.checkbox(&mut b, "").changed() {
+                            commands.push(p(json!({"framing": {"wall_blocking": b}})));
+                        }
+                        ui.end_row();
+                    });
+                });
                 egui::CollapsingHeader::new("3D Solids").show(ui, |ui| {
                     let s = &d.solids;
                     ui.horizontal(|ui| {

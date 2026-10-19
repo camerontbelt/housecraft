@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use housecraft_geom::math::{EPS, closest_on_segment, line_intersection, perp};
 use housecraft_geom::{DVec2, Transform2, pt, v2};
 use housecraft_model::*;
-use housecraft_units::{Length, Point2};
+use housecraft_units::{Length, Point2, Point3};
 
 use crate::ApiError;
 use crate::command::{Outcome, TransformOp};
@@ -455,6 +455,31 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
                 RegionTarget::Wall { .. } => {}
             }
             Object::MaterialRegion(r)
+        }
+        Object::FramingMember(m) => {
+            let mut m = m.clone();
+            let move3 = |p: Point3| {
+                let [x, y, z] = p.mm();
+                let q = t.apply_point(Point2(Length::from_mm(x), Length::from_mm(y)));
+                Point3(q.0, q.1, Length::from_mm(z))
+            };
+            m.a = move3(m.a);
+            m.b = move3(m.b);
+            let [ax, ay, az] = m.a.mm();
+            let [bx, by, bz] = m.b.mm();
+            let vertical = (bz - az).abs() > ((bx - ax).powi(2) + (by - ay).powi(2)).sqrt() * 50.0;
+            if vertical {
+                m.rotation = t.apply_angle(m.rotation);
+            }
+            // Moved by hand: no longer rebuilt.
+            m.manual = true;
+            Object::FramingMember(m)
+        }
+        Object::JoistDirection(j) => {
+            let mut j = j.clone();
+            j.at = t.apply_point(j.at);
+            j.angle = t.apply_angle(j.angle);
+            Object::JoistDirection(j)
         }
         Object::SiteFeature(f) => {
             let mut f = f.clone();
@@ -1194,6 +1219,8 @@ pub(crate) fn insert_objects(
                 Object::Solid(x) => x.floor = f,
                 Object::Terrain(t) => t.floor = f,
                 Object::SiteFeature(s) => s.floor = f,
+                Object::FramingMember(m) => m.floor = f,
+                Object::JoistDirection(j) => j.floor = f,
                 Object::Plant(p) => p.floor = f,
                 Object::ElevationData(e) => e.floor = f,
                 Object::MaterialRegion(r) => r.floor = f,
@@ -1253,6 +1280,8 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::Solid(x) => &mut x.floor,
             Object::Terrain(t) => &mut t.floor,
             Object::SiteFeature(s) => &mut s.floor,
+            Object::FramingMember(m) => &mut m.floor,
+            Object::JoistDirection(j) => &mut j.floor,
             Object::Plant(p) => &mut p.floor,
             Object::ElevationData(e) => &mut e.floor,
             Object::MaterialRegion(r) => &mut r.floor,

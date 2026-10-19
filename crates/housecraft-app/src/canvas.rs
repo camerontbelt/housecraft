@@ -1192,6 +1192,20 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     elevation: Length::from_mm(ground_at(doc, p)),
                 },
             }),
+            Tool::JoistDirection => {
+                if let Some(c) = pending.pop() {
+                    if c.distance(p) > 10.0 {
+                        commands.push(Command::AddJoistDirection {
+                            floor,
+                            at: pt(c),
+                            angle: (p - c).to_angle().to_degrees(),
+                            ceiling: false,
+                        });
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
             Tool::Hill | Tool::Valley => {
                 if let Some(c) = pending.pop() {
                     let radius = Length::from_mm(c.distance(p));

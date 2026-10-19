@@ -596,6 +596,57 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.label(format!("{} surfaces", st.materials.len()));
             ui.end_row();
         }
+        Object::FramingMember(m) => {
+            Ed::label(ui, "Member");
+            ui.label(format!("{} {}, {} long", m.size_name(), m.role.name(), fmt(doc, m.length())));
+            ui.end_row();
+            // Any edit makes it a hand-placed member that rebuilding keeps.
+            let mut edits: Vec<Value> = Vec::new();
+            let mut role = m.role;
+            let mut material = m.material;
+            Ed::label(ui, "Role");
+            egui::ComboBox::from_id_salt(("framing_role", id.0))
+                .selected_text(role.name())
+                .show_ui(ui, |ui| {
+                    for r in FramingRole::ALL {
+                        ui.selectable_value(&mut role, r, r.name());
+                    }
+                });
+            ui.end_row();
+            Ed::label(ui, "Material");
+            ui.horizontal(|ui| {
+                for mt in FramingMaterial::ALL {
+                    ui.selectable_value(&mut material, mt, mt.name());
+                }
+            });
+            ui.end_row();
+            if role != m.role {
+                edits.push(json!({ "role": role }));
+            }
+            if material != m.material {
+                edits.push(json!({ "material": material }));
+            }
+            for (label, field, v) in [("Width", "width", m.width), ("Depth", "depth", m.depth)] {
+                if let Some(l) = ed.length(ui, label, field, v) {
+                    edits.push(json!({ field: l }));
+                }
+            }
+            for mut v in edits {
+                v["manual"] = json!(true);
+                ed.out.push(patch(id, v));
+            }
+            Ed::label(ui, "Built");
+            ui.label(if m.manual { "By hand (kept when framing is rebuilt)" } else { "Automatically" });
+            ui.end_row();
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(m.layer), None);
+        }
+        Object::JoistDirection(j) => {
+            if let Some(a) = ed.number(ui, "Angle (°)", "angle", j.angle) {
+                ed.out.push(patch(id, json!({ "angle": a })));
+            }
+            ed.check(ui, "Ceiling", "ceiling", "Ceiling joists (not floor joists)", j.ceiling);
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(j.layer), None);
+        }
         Object::SiteFeature(f) => {
             let mut kind = f.feature.clone();
             let len = |ui: &mut Ui, ed: &mut Ed<'_>, label: &str, key: &str, v: &mut Length| {

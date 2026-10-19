@@ -428,6 +428,48 @@ pub enum Command {
     },
     /// Remove the terrain and all elevation data.
     ClearTerrain,
+    /// Build (or rebuild) automatic framing on `floor` (every floor when
+    /// unset): walls, floor and ceiling joists and roof rafters, only for
+    /// `hosts` (walls, floors or roof planes) when given. Members placed or
+    /// edited by hand are kept.
+    BuildFraming {
+        floor: Option<Id>,
+        #[serde(default = "crate::framing::FramingParts::all")]
+        parts: crate::framing::FramingParts,
+        #[serde(default)]
+        hosts: Vec<Id>,
+    },
+    /// Remove framing on `floor` (every floor when unset); hand-placed
+    /// members stay unless `manual_too`.
+    ClearFraming {
+        floor: Option<Id>,
+        #[serde(default)]
+        manual_too: bool,
+    },
+    /// Place a framing member by hand; unset sizes are 2x stock of the
+    /// default framing depth for its role.
+    AddFramingMember {
+        floor: Option<Id>,
+        role: FramingRole,
+        a: Point3,
+        b: Point3,
+        width: Option<Length>,
+        depth: Option<Length>,
+        #[serde(default)]
+        rotation: f64,
+        #[serde(default)]
+        material: FramingMaterial,
+    },
+    /// Set which way joists run in the room around `at`.
+    AddJoistDirection {
+        floor: Option<Id>,
+        at: Point2,
+        angle: f64,
+        #[serde(default)]
+        ceiling: bool,
+    },
+    /// Draw a wall's framing (seen from outside) as a new CAD detail.
+    WallFramingDetail { wall: Id },
     /// Draw a lot from a survey's bearings and distances, starting at
     /// `start`, each side labelled; a `setback` draws the building line
     /// inside a closed lot.
@@ -884,6 +926,11 @@ impl Command {
             Command::AddElevationData { .. } => "add_elevation_data",
             Command::ImportTerrainPoints { .. } => "import_terrain_points",
             Command::ClearTerrain => "clear_terrain",
+            Command::BuildFraming { .. } => "build_framing",
+            Command::ClearFraming { .. } => "clear_framing",
+            Command::AddFramingMember { .. } => "add_framing_member",
+            Command::AddJoistDirection { .. } => "add_joist_direction",
+            Command::WallFramingDetail { .. } => "wall_framing_detail",
             Command::AddPlotLines { .. } => "add_plot_lines",
             Command::SitePlanDetail { .. } => "site_plan_detail",
             Command::AddSiteFeature { .. } => "add_site_feature",
@@ -1957,6 +2004,60 @@ impl Command {
                         }));
                     }
                 }
+            }
+            Command::BuildFraming { floor, parts, hosts } => crate::framing::build(doc, *floor, *parts, hosts, &mut out)?,
+            Command::ClearFraming { floor, manual_too } => {
+                let ids: Vec<Id> = doc
+                    .iter::<FramingMember>()
+                    .filter(|m| floor.is_none_or(|f| f == m.floor) && (*manual_too || !m.manual))
+                    .map(|m| m.id)
+                    .collect();
+                if !ids.is_empty() {
+                    ops::delete(doc, &ids, &mut out)?;
+                }
+            }
+            Command::AddFramingMember { floor, role, a, b, width, depth, rotation, material } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                let f = &d.framing;
+                let default_depth = match role {
+                    FramingRole::FloorJoist | FramingRole::RimJoist | FramingRole::Beam | FramingRole::Header => f.floor_joist_depth,
+                    FramingRole::CeilingJoist => f.ceiling_joist_depth,
+                    FramingRole::Rafter | FramingRole::Ridge => f.rafter_depth,
+                    FramingRole::Post => Length::from_inches(5.5),
+                    _ => Length::from_inches(3.5),
+                };
+                let default_width = if *role == FramingRole::Post { Length::from_inches(5.5) } else { f.lumber_width };
+                let layer = d.layers.framing.unwrap_or(d.layers.cad);
+                out.created.push(doc.insert(FramingMember {
+                    id: Id(0),
+                    floor,
+                    layer,
+                    role: *role,
+                    a: *a,
+                    b: *b,
+                    width: width.unwrap_or(default_width),
+                    depth: depth.unwrap_or(default_depth),
+                    rotation: *rotation,
+                    material: *material,
+                    host: None,
+                    manual: true,
+                }));
+            }
+            Command::AddJoistDirection { floor, at, angle, ceiling } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                out.created.push(doc.insert(JoistDirection {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.framing.unwrap_or(d.layers.cad),
+                    at: *at,
+                    angle: *angle,
+                    ceiling: *ceiling,
+                }));
+            }
+            Command::WallFramingDetail { wall } => {
+                let (name, shapes, texts) = crate::framing::wall_detail(doc, *wall)?;
+                let more = Command::AddCadDetail { name, shapes, texts }.apply(doc)?;
+                out.created.extend(more.created);
             }
             Command::SitePlanDetail { name } => {
                 let (shapes, texts) = crate::site::site_plan(doc);

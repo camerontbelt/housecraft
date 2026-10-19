@@ -249,6 +249,7 @@ pub(crate) fn new_document(name: String) -> Document {
             stairs: Some(stairs),
             electrical: Some(electrical),
             cabinets: Some(cabinets),
+            framing: None,
         },
         dimensions: DimensionDefaults {
             text_style: dim_text,
@@ -276,6 +277,7 @@ pub(crate) fn new_document(name: String) -> Document {
         exterior_stair: StairDefaults::exterior(),
         cabinets: CabinetDefaults::default(),
         solids: Default::default(),
+        framing: Default::default(),
         materials,
     });
     doc.settings.active_default_set = defaults;

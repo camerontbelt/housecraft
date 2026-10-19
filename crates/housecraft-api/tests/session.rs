@@ -380,6 +380,8 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_elevation_data", "shape": {{"type": "hill", "center": [0,0], "radius": "10'", "height": "3'"}}}},
                 {{"op": "add_site_feature", "points": [[0,0],["10'",0]], "feature": {{"type": "fence", "style": "picket", "height": "4'", "post_spacing": "8'"}}}},
                 {{"op": "add_plant", "at": ["30'","30'"], "form": "conifer"}},
+                {{"op": "add_framing_member", "role": "post", "a": [0,0,0], "b": [0,0,"8'"]}},
+                {{"op": "add_joist_direction", "at": ["5'","5'"], "angle": 90}},
                 {{"op": "add_solid", "shape": {{"type": "extrude", "points": [[0,0],[1000,0],[0,1000]], "height": 500}}}},
                 {{"op": "add_picture", "path": "x.png", "position": [0,0], "width": "1'"}},
                 {{"op": "add_symbol_def", "name": "S", "positions": [[0,0,0],[1,0,0],[0,-1,0],[0,0,1]], "triangles": [[0,1,2],[0,1,3]]}},
@@ -2114,4 +2116,50 @@ fn plot_plans_from_bearings_and_site_plan_details() {
     let out = apply(&mut s, r#"[{"op": "site_plan_detail", "name": "Site"}]"#);
     let detail = out.created[0];
     assert!(s.document().iter::<Cad>().filter(|c| c.floor == detail).count() >= 1, "the house footprint");
+}
+
+#[test]
+fn framing_builds_rebuilds_and_lists() {
+    let mut s = boxed();
+    let wall = walls(&s)[0].id;
+    apply(&mut s, &format!(r#"[{{"op": "add_window", "wall": {}, "position": "10'"}}, {{"op": "build_roof"}}]"#, wall.0));
+    let manual = apply(&mut s, r#"[{"op": "add_framing_member", "role": "post", "a": ["5'","5'",0], "b": ["5'","5'","8'"]}]"#).created[0];
+    apply(&mut s, r#"[{"op": "build_framing"}]"#);
+    let count = |s: &Session, r: FramingRole| s.document().iter::<FramingMember>().filter(|m| m.role == r).count();
+    assert!(count(&s, FramingRole::Stud) > 40, "{}", count(&s, FramingRole::Stud));
+    assert_eq!(count(&s, FramingRole::Header), 1);
+    assert!(count(&s, FramingRole::CeilingJoist) > 10);
+    assert!(count(&s, FramingRole::Rafter) > 10);
+    assert!(count(&s, FramingRole::Ridge) >= 1);
+    let total = s.document().count::<FramingMember>();
+    // Rebuilding replaces automatic members and keeps the hand-placed one.
+    apply(&mut s, r#"[{"op": "build_framing"}]"#);
+    assert_eq!(s.document().count::<FramingMember>(), total);
+    assert!(s.document().get::<FramingMember>(manual).is_some());
+    // Rebuilding one wall touches only that wall's members.
+    let out = apply(&mut s, &format!(r#"[{{"op": "build_framing", "hosts": [{}], "parts": {{"floors": false, "ceilings": false, "roofs": false}}}}]"#, wall.0));
+    let doc = s.document();
+    assert!(out.created.iter().all(|id| doc.get::<FramingMember>(*id).is_some_and(|m| m.host == Some(wall))));
+    assert_eq!(doc.count::<FramingMember>(), total);
+    // The framing layer is hidden in plan.
+    let layer = doc.active_defaults().layers.framing.unwrap();
+    assert!(!doc.iter::<LayerSet>().next().unwrap().display(layer).visible);
+    // Cut list and buy list.
+    let t = housecraft_api::schedule::schedule(
+        doc,
+        ScheduleKind::Framing,
+        &housecraft_api::schedule::ScheduleOptions { floor: None, columns: Vec::new() },
+    );
+    let csv = t.export(housecraft_api::schedule::TableFormat::Csv);
+    assert!(csv.contains("2x6") && csv.contains("Stud") && csv.contains("Rafter"), "{csv}");
+    let list = housecraft_api::materials::materials(doc, &Default::default());
+    assert!(list.lines.iter().any(|l| l.category == "Framing" && l.item.starts_with("2x6 x 8'")), "studs bought as 8' stock");
+    // A wall framing detail.
+    let out = apply(&mut s, &format!(r#"[{{"op": "wall_framing_detail", "wall": {}}}]"#, wall.0));
+    let detail = out.created[0];
+    assert!(s.document().iter::<Cad>().filter(|c| c.floor == detail).count() > 10);
+    // Clearing keeps hand-placed members.
+    apply(&mut s, r#"[{"op": "clear_framing"}]"#);
+    assert_eq!(s.document().count::<FramingMember>(), 1);
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
 }

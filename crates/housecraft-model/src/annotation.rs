@@ -171,10 +171,12 @@ pub enum ScheduleKind {
     Cabinets,
     /// Trees, shrubs and other plants (a landscaping plan's planting list).
     Plants,
+    /// Framing members by role, size and cut length (a cut list).
+    Framing,
 }
 
 impl ScheduleKind {
-    pub const ALL: [ScheduleKind; 9] = [
+    pub const ALL: [ScheduleKind; 10] = [
         ScheduleKind::Doors,
         ScheduleKind::Windows,
         ScheduleKind::Rooms,
@@ -184,6 +186,7 @@ impl ScheduleKind {
         ScheduleKind::RoofPlanes,
         ScheduleKind::Cabinets,
         ScheduleKind::Plants,
+        ScheduleKind::Framing,
     ];
 
     pub fn name(self) -> &'static str {
@@ -197,6 +200,7 @@ impl ScheduleKind {
             ScheduleKind::RoofPlanes => "Roof Plane Schedule",
             ScheduleKind::Cabinets => "Cabinet Schedule",
             ScheduleKind::Plants => "Plant Schedule",
+            ScheduleKind::Framing => "Framing Cut List",
         }
     }
 }

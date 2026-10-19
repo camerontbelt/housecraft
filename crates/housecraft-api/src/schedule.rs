@@ -92,6 +92,7 @@ pub fn available_columns(kind: ScheduleKind) -> &'static [&'static str] {
             "Code", "Type", "Qty", "Width", "Depth", "Height", "Doors", "Drawers", "Floor",
         ],
         ScheduleKind::Plants => &["Plant", "Form", "Qty", "Mature Height", "Spread"],
+        ScheduleKind::Framing => &["Role", "Size", "Material", "Qty", "Cut Length", "Floor"],
     }
 }
 
@@ -106,6 +107,7 @@ pub fn title(kind: ScheduleKind) -> &'static str {
         ScheduleKind::RoofPlanes => "Roof Plane Schedule",
         ScheduleKind::Cabinets => "Cabinet Schedule",
         ScheduleKind::Plants => "Plant Schedule",
+        ScheduleKind::Framing => "Framing Cut List",
     }
 }
 
@@ -340,6 +342,21 @@ pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> S
                 row.insert("Floor", floor_name(s.floor));
                 raw.push((vec![s.id], row));
             }
+        }
+        ScheduleKind::Framing => {
+            for m in doc.iter::<FramingMember>().filter(|m| on_floor(m.floor)) {
+                // Cut lengths to the nearest 1/8".
+                let len = Length::from_inches((m.length().inches() * 8.0).round() / 8.0);
+                let mut row = BTreeMap::new();
+                row.insert("Role", m.role.name().to_string());
+                row.insert("Size", m.size_name());
+                row.insert("Material", m.material.name().to_string());
+                row.insert("Cut Length", fmt(len));
+                row.insert("Floor", floor_name(m.floor));
+                let key = ["Role", "Size", "Material", "Cut Length", "Floor"].iter().map(|k| row[k].clone()).collect();
+                group(&mut raw, key, m.id, row);
+            }
+            raw.sort_by(|a, b| (&a.1["Floor"], &a.1["Role"], &a.1["Size"]).cmp(&(&b.1["Floor"], &b.1["Role"], &b.1["Size"])));
         }
         ScheduleKind::Plants => {
             for p in doc.iter::<Plant>().filter(|p| on_floor(p.floor)) {

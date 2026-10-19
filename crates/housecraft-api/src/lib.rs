@@ -9,6 +9,7 @@ mod cabinets;
 mod command;
 mod paint;
 mod foundation;
+pub mod framing;
 pub mod layouts;
 pub mod materials;
 mod ops;
