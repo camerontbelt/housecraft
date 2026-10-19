@@ -80,6 +80,8 @@ pub struct PlanState {
     pub pick: Option<Pick>,
     /// Sides for the Regular Polygon tool.
     pub polygon_sides: u32,
+    /// Room type the Space Planning Box labels its boxes with.
+    pub space_type: String,
     text_prompt: Option<(DVec2, String)>,
     /// Arrow tips for the text being typed (Text with Arrow).
     prompt_leaders: Vec<DVec2>,
@@ -124,6 +126,7 @@ impl PlanState {
             candidates: Vec::new(),
             pick: None,
             polygon_sides: 6,
+            space_type: "Living".into(),
             text_prompt: None,
             prompt_leaders: Vec::new(),
             last_wall: None,
@@ -1083,6 +1086,7 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
     }
 
     let app_sides = app.plan.polygon_sides;
+    let app_space_type = app.plan.space_type.clone();
     let pending = &mut app.plan.pending;
     if let Some(p) = click {
         match tool {
@@ -1453,6 +1457,38 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                         // In a line: just a line.
                         None => commands.push(cad(floor, Shape::Line { a: pt(s), b: pt(e), arrow_start: false, arrow_end: false })),
                     }
+                }
+            }
+            Tool::RoomBox | Tool::SpaceBox => {
+                if let Some(a) = pending.pop() {
+                    if (a.x - p.x).abs() > 300.0 && (a.y - p.y).abs() > 300.0 {
+                        let corners = [a, DVec2::new(p.x, a.y), p, DVec2::new(a.x, p.y)];
+                        if tool == Tool::RoomBox {
+                            commands.push(Command::AddWalls {
+                                floor,
+                                points: corners.iter().map(|c| pt(*c)).collect(),
+                                closed: true,
+                                wall_type: None,
+                                interior: true,
+                                height: None,
+                            });
+                        } else {
+                            commands.push(cad(floor, Shape::Polyline { points: corners.iter().map(|c| pt(*c)).collect(), closed: true }));
+                            commands.push(Command::AddText {
+                                floor,
+                                layer: None,
+                                position: pt((a + p) / 2.0),
+                                text: app_space_type.clone(),
+                                style: None,
+                                rotation: 0.0,
+                                justify: Justify::Center,
+                                height: None,
+                                leaders: Vec::new(),
+                            });
+                        }
+                    }
+                } else {
+                    pending.push(p);
                 }
             }
             Tool::RegularPolygon => {

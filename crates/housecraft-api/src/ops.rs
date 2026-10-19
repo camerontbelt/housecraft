@@ -1732,3 +1732,124 @@ pub(crate) fn set_roof_pitch(doc: &mut Document, id: Id, pitch: f64, keep_ridge:
     out.modified.push(id);
     Ok(())
 }
+
+/// Outlets round each room: every 12' at most along its walls, clear of
+/// doors; GFCI in wet rooms (kitchens at counter height).
+pub(crate) fn auto_outlets(doc: &mut Document, floor: Option<Id>, out: &mut Outcome) -> Result<(), ApiError> {
+    let floor = match floor {
+        Some(f) => f,
+        None => doc
+            .floors_by_elevation()
+            .iter()
+            .find(|f| f.foundation.is_none())
+            .map(|f| f.id)
+            .ok_or_else(|| ApiError::Invalid("no storey to place outlets on".into()))?,
+    };
+    let regions = housecraft_geom::rooms::detect(doc, floor);
+    let doors: Vec<(DVec2, f64)> = housecraft_geom::walls::wall_geoms(doc, floor)
+        .iter()
+        .flat_map(|g| {
+            doc.openings_in(g.id)
+                .filter(|o| o.opening_kind.is_door())
+                .map(|o| (g.center_at(o.position.mm()), o.width.mm() / 2.0 + 300.0))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let rooms: Vec<Room> = doc.rooms_on(floor).cloned().collect();
+    for room in rooms {
+        let Some(i) = regions.room_at(v2(room.anchor)) else {
+            continue;
+        };
+        let name = doc.get::<RoomType>(room.room_type).map_or(String::new(), |t| t.name.to_lowercase());
+        let wet = ["kitchen", "bath", "laundry", "garage", "utility"].iter().any(|w| name.contains(w));
+        let kitchen = name.contains("kitchen");
+        let mut poly = regions.rooms[i].polygon.clone();
+        poly.push(poly[0]);
+        // Evenly along each wall, at most 12' apart, never in a corner.
+        let spots: Vec<DVec2> = poly
+            .windows(2)
+            .flat_map(|e| {
+                let len = e[0].distance(e[1]);
+                let n = (len / 3657.6).ceil().max(1.0) as usize;
+                (0..n).map(move |k| e[0] + (e[1] - e[0]) * ((k as f64 + 0.5) / n as f64))
+            })
+            .collect();
+        for p in spots {
+            if doors.iter().any(|(c, r)| c.distance(p) < *r) {
+                continue;
+            }
+            // No rotation: the command snaps it to the wall, facing the room.
+            let o = crate::Command::AddElectrical {
+                floor: Some(floor),
+                electrical_kind: if wet { ElectricalKind::GfciOutlet } else { ElectricalKind::Outlet },
+                at: pt(p),
+                rotation: None,
+                height: kitchen.then(|| Length::from_inches(44.0)),
+                controls: Vec::new(),
+            }
+            .apply(doc)?;
+            out.merge(o);
+        }
+    }
+    Ok(())
+}
+
+/// Walls round each closed CAD box, the rooms typed from their labels.
+pub(crate) fn convert_space_plan(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Result<(), ApiError> {
+    let d = doc.active_defaults().clone();
+    let mut typed: Vec<(DVec2, Id)> = Vec::new();
+    for id in ids {
+        let Some(cad) = doc.get::<Cad>(*id).cloned() else {
+            continue;
+        };
+        let Shape::Polyline { points, closed: true } = &cad.shape else {
+            continue;
+        };
+        let pts: Vec<DVec2> = points.iter().map(|p| v2(*p)).collect();
+        // The label inside the box names its room type.
+        let label = doc
+            .iter::<Text>()
+            .filter(|t| t.floor == cad.floor && housecraft_geom::math::point_in_polygon(v2(t.position), &pts))
+            .map(|t| (t.id, t.text.trim().to_lowercase()))
+            .next();
+        let room_type = label.as_ref().and_then(|(_, l)| doc.iter::<RoomType>().find(|t| t.name.to_lowercase() == *l).map(|t| t.id));
+        // Walls on each side not already walled (a shared side once).
+        let n = pts.len();
+        for k in 0..n {
+            let (a, b) = (pts[k], pts[(k + 1) % n]);
+            let covered = doc.walls_on(cad.floor).any(|w| {
+                let (s, e) = (v2(w.start), v2(w.end));
+                let on = |p: DVec2| housecraft_geom::math::distance_to_segment(p, s, e) < 5.0;
+                on(a) && on(b)
+            });
+            if !covered {
+                let wt = d.interior_wall_type;
+                out.created.push(add_wall(doc, cad.floor, pt(a), pt(b), wt, None, d.layers.walls)?);
+            }
+        }
+        doc.remove(*id);
+        out.deleted.push(*id);
+        if let Some((tid, _)) = label {
+            doc.remove(tid);
+            out.deleted.push(tid);
+        }
+        if let Some(t) = room_type {
+            typed.push((housecraft_geom::math::centroid(&pts), t));
+        }
+    }
+    // Make the rooms now, then type them.
+    crate::rooms::sync(doc, out);
+    for (c, t) in typed {
+        let found = doc.iter::<Room>().find(|r| {
+            let regions = housecraft_geom::rooms::detect(doc, r.floor);
+            regions.room_at(v2(r.anchor)) == regions.room_at(c) && regions.room_at(c).is_some()
+        }).map(|r| r.id);
+        if let Some(rid) = found
+            && let Some(Object::Room(r)) = doc.objects.get_mut(&rid)
+        {
+            r.room_type = t;
+            out.modified.push(rid);
+        }
+    }
+    Ok(())
+}

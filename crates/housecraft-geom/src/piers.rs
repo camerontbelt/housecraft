@@ -16,6 +16,8 @@ pub struct PierLayout {
     /// Beam centrelines.
     pub beams: Vec<[DVec2; 2]>,
     pub diameter: f64,
+    /// Square columns instead of round ones.
+    pub square: bool,
     pub footing: f64,
     pub footing_depth: f64,
     /// Ground level the piers stand on.
@@ -84,6 +86,7 @@ pub fn layout(doc: &Document, floor: &Floor) -> Option<PierLayout> {
         }
     }
     Some(PierLayout {
+        square: fd.square_piers,
         piers,
         beams,
         diameter: fd.pier_diameter.mm(),

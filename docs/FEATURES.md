@@ -109,7 +109,7 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | PRJ-01 | Plan templates; save-as-template | P1 | M1 ✓ File > Save as Template… and File > New from Template; mark one Default for New Plan |
 | PRJ-02 | Recent files with pinning | P2 | M1 ✓ File > Recent Files with Pin / Unpin; pinned files stay on top |
-| PRJ-03 | Space-planner room boxes: drag room bubbles, convert to walls | P2 | M3 |
+| PRJ-03 | Space-planner room boxes: drag room bubbles, convert to walls | P2 | M3 ◐ Space Planning Box tool draws labelled room boxes; Build > Wall > Convert Space Plan to Rooms builds the walls and types the rooms; boxes aren't dragged as bubbles |
 | PRJ-04 | Plan Check: egress, roof, wall layout review | P2 | M4 |
 | PRJ-05 | Rotate and mirror (flip) entire plan | P1 | M1 ✓ Edit > Entire Plan: Reverse Plan, rotate 90° either way (all floors) |
 | PRJ-06 | Zoom to selection | P0 | M1 ✓ |
@@ -127,7 +127,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-18 | Select all on layer | P1 | M1 ✓ Edit > Select All on Layer |
 | PRJ-19 | Time tracker per project/client/task with export | P3 | M8 |
 | PRJ-20 | Plan database / portfolio | P3 | M8 |
-| PRJ-21 | R-values for walls, roofs, ceilings, platforms | P2 | M3 |
+| PRJ-21 | R-values for walls, roofs, ceilings, platforms | P2 | M3 ◐ R-values per wall-type layer (total shown on walls) and for the roof in Default Settings; no energy totals |
 | PRJ-22 | Client & designer info with macros and custom fields | P2 | M4 |
 | PRJ-23 | Layout files: sheets with scaled, live-linked views; title-block templates; reorder pages | P1 | M4 ◐ sheets in the plan file with live scaled views, title block, several pages; separate .layout files, title-block templates, page reordering later |
 | PRJ-24 | Layout viewports: polyline cropping with breaks/curves; pan/zoom; rotate | P1 | M4 ◐ rectangular crop with a set centre; polyline crops, in-box pan/zoom, rotation later |
@@ -149,7 +149,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-01 | Room defaults by room type (ceiling height, moldings, finishes) | P0 | M1 ✓ |
 | RM-02 | Custom room type definitions | P1 | M1 ✓ Tools > Room Types…: add, edit (ceiling height, finishes, living area, moldings) and delete |
 | RM-03 | Living-area calculation with include/exclude | P1 | M1 ✓ living area counts room types marked living; each room can be set to Include or Exclude |
-| RM-04 | Room polygon tool (preset shapes) | P2 | M3 |
+| RM-04 | Room polygon tool (preset shapes) | P2 | M3 ◐ Room Box tool: a rectangular room walled all round from two corners; no other preset shapes |
 | RM-05 | Room molding polylines; 3D molding polylines (stacked profiles) | P2 | M5 ✓ |
 | RM-06 | Room polyline (perimeter for area, materials, slabs, moldings) | P1 | M1 ◐ room's Make Room Polyline traces its inside outline as a CAD polyline; editing a room by its polyline isn't supported |
 | RM-07 | Layered floor & ceiling platforms (finish, structure, sub-layers) | P1 | M3 ✓ |
@@ -284,9 +284,9 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | FD-01 | Slab, pier, crawlspace, full basement, stem walls, footings, post & beam, grade beam | P1 | M3 ◐ slab, crawlspace/stem wall, basement, footings, piers with beams; post & beam framing, grade beam (M6) later |
 | FD-02 | Auto-rebuild foundation from floor 1 | P1 | M3 ✓ |
-| FD-03 | Round piers / square pads | P2 | M3 |
-| FD-04 | Monolithic slabs with ledges and garage curbs | P2 | M3 |
-| FD-05 | Footings under bearing walls; stepped footings | P2 | M3 |
+| FD-03 | Round piers / square pads | P2 | M3 ✓ pier foundations with round or square piers on square pads |
+| FD-04 | Monolithic slabs with ledges and garage curbs | P2 | M3 ◐ slab foundations can put a 4" curb round garages (broken at doors); no brick ledges |
+| FD-05 | Footings under bearing walls; stepped footings | P2 | M3 ◐ walls marked Bearing get a footing (plan and 3D); no stepped footings |
 
 ## 12. Framing
 
@@ -318,7 +318,7 @@ These come from reading the whole list and change the architecture, not just the
 | FR-24 | Framing labels and member roles for schedules | P2 | M6 ✓ every member has a role; Framing Cut List schedule |
 | FR-25 | Build framing per room / per wall / per roof plane | P2 | M6 ◐ rebuild per floor, or for selected walls and roof planes; not per room |
 | FR-26 | Corner & intersection framing (standard, 2-stud, laddered) | P2 | M6 ✓ three-stud, two-stud and ladder corners |
-| FR-27 | Bearing walls (butt/lap framing) | P2 | M6 |
+| FR-27 | Bearing walls (butt/lap framing) | P2 | M6 ◐ walls can be marked Bearing (they get footings); butt/lap framing at bearing walls not yet |
 | FR-28 | Platform holes with auto framing | P2 | M6 ✓ joists stop at stairwell holes, with headers |
 | FR-29 | Tray ceiling framing | P3 | M6 |
 | FR-30 | Deck framing: planks, borders, beams, joists, posts, footings, blocking; auto-rebuild | P2 | M6 ◐ decks rebuild themselves: planks, border, joists, rims, ledger, beams, posts, footings, railings; no blocking |
@@ -397,7 +397,7 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | EL-01 | Electrical, plumbing, HVAC symbols; circuits/wiring with auto 3-way/4-way; auto-orient to slopes | P1 | M3 ◐ electrical, plumbing and HVAC symbols; switch wiring with automatic 3-way/4-way; slope orientation later |
-| EL-02 | Auto-place outlets by room type (GFCI) | P2 | M3 |
+| EL-02 | Auto-place outlets by room type (GFCI) | P2 | M3 ✓ Build > Electrical > Auto Place Outlets: every room, at most 12' apart, clear of doors; GFCI in kitchens, baths, laundries and garages |
 | EL-03 | Light fixtures emit light in renders | P1 | M5 ✓ |
 | EL-04 | Rope lighting along paths | P3 | M7 ✓ Terrain > Site > Rope Light: glows in 3D, with height, brightness per foot and colour temperature |
 | EL-05 | Per-fixture light controls (shadows, intensity, dimming, on/off) | P1 | M5 ◐ on/off, brightness, dimmer, colour temperature and a shadows switch; light from fixtures doesn't cast shadows yet |

@@ -136,6 +136,16 @@ fn wall_shape_rows(ui: &mut Ui, ed: &mut Ed<'_>, w: &Wall) {
     let mut shape = w.shape.clone();
     let height = doc.wall_height(w).unwrap_or(Length::from_feet(8.0));
     let len = w.length();
+    Ed::label(ui, "Bearing Wall");
+    ui.checkbox(&mut shape.bearing, "Carries load (adds a footing)");
+    ui.end_row();
+    if let Some(t) = doc.get::<WallType>(w.wall_type)
+        && t.r_value() > 0.0
+    {
+        Ed::label(ui, "Insulation");
+        ui.label(format!("R-{:.1}", t.r_value()));
+        ui.end_row();
+    }
     // Pony wall.
     Ed::label(ui, "Pony Wall");
     ui.vertical(|ui| {
@@ -3090,6 +3100,7 @@ fn platform_editor(ui: &mut Ui, ed: &mut Ed<'_>, f: &Floor) {
             thickness: Length::from_inches(0.5),
             material: String::new(),
             main: false,
+            r_value: 0.0,
         });
         changed = true;
     }

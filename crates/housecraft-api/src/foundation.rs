@@ -61,6 +61,7 @@ fn foundation_wall_type(doc: &mut Document, thickness: Length, out: &mut Outcome
             thickness,
             material: "Concrete".into(),
             main: false,
+            r_value: 0.0,
         }],
         railing: None,
         cladding: None,

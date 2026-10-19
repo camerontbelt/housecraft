@@ -111,7 +111,7 @@ impl CadOpDialog {
 }
 
 /// (name, thickness, material, main layer)
-type LayerRow = (String, String, String, bool);
+type LayerRow = (String, String, String, bool, f64);
 
 #[derive(Default)]
 pub struct WallTypesDialog {
@@ -123,6 +123,8 @@ pub struct WallTypesDialog {
 
 pub struct FoundationDialog {
     pub open: bool,
+    pub square_piers: bool,
+    pub garage_curb: bool,
     kind: FoundationKind,
     wall_height: String,
     footing_width: String,
@@ -134,6 +136,8 @@ impl Default for FoundationDialog {
     fn default() -> Self {
         FoundationDialog {
             open: false,
+            square_piers: false,
+            garage_curb: false,
             kind: FoundationKind::Crawlspace,
             wall_height: String::new(),
             footing_width: String::new(),
@@ -1396,7 +1400,7 @@ fn wall_types_dialog(app: &mut App, ctx: &Context) {
                         sel.id,
                         sel.layers
                             .iter()
-                            .map(|l| (l.name.clone(), fmt(doc, l.thickness), l.material.clone(), l.main))
+                            .map(|l| (l.name.clone(), fmt(doc, l.thickness), l.material.clone(), l.main, l.r_value))
                             .collect(),
                     )
                 })
@@ -1414,14 +1418,16 @@ fn wall_types_dialog(app: &mut App, ctx: &Context) {
                     ui.strong("Thickness");
                     ui.strong("Material");
                     ui.strong("Main").on_hover_text("Main (structural) layer: framing, ICF concrete, SIP core");
+                    ui.strong("R");
                     ui.end_row();
                     let n = rows.len();
-                    for (i, (name, thick, mat, main)) in rows.iter_mut().enumerate() {
+                    for (i, (name, thick, mat, main, r)) in rows.iter_mut().enumerate() {
                         ui.label((i + 1).to_string());
                         ui.add(egui::TextEdit::singleline(name).desired_width(120.0));
                         ui.add(egui::TextEdit::singleline(thick).desired_width(80.0));
                         ui.add(egui::TextEdit::singleline(mat).desired_width(120.0));
                         ui.checkbox(main, "");
+                        ui.add(egui::DragValue::new(r).range(0.0..=100.0).speed(0.1));
                         ui.horizontal(|ui| {
                             if ui.add_enabled(i > 0, egui::Button::new("↑")).clicked() {
                                 swap = Some((i, i - 1));
@@ -1444,7 +1450,7 @@ fn wall_types_dialog(app: &mut App, ctx: &Context) {
             }
             let parsed: Option<Vec<WallLayer>> = rows
                 .iter()
-                .map(|(name, thick, mat, main)| {
+                .map(|(name, thick, mat, main, r)| {
                     parse(doc, thick)
                         .filter(|l| l.mm() > 0.0)
                         .map(|thickness| WallLayer {
@@ -1452,6 +1458,7 @@ fn wall_types_dialog(app: &mut App, ctx: &Context) {
                             thickness,
                             material: mat.clone(),
                             main: *main,
+                            r_value: *r,
                         })
                 })
                 .collect();
@@ -1459,7 +1466,7 @@ fn wall_types_dialog(app: &mut App, ctx: &Context) {
                 parsed.as_ref().map(|v| v.iter().map(|l| l.thickness).sum());
             ui.horizontal(|ui| {
                 if ui.button("Add layer").clicked() {
-                    rows.push(("New layer".into(), "1/2\"".into(), String::new(), false));
+                    rows.push(("New layer".into(), "1/2\"".into(), String::new(), false, 0.0));
                 }
                 ui.separator();
                 match total {
@@ -2019,6 +2026,12 @@ fn foundation_dialog(app: &mut App, ctx: &Context) {
                 ui.end_row();
             });
             ui.checkbox(&mut d.auto_rebuild, "Rebuild automatically when the floor above changes");
+            if d.kind == FoundationKind::Piers {
+                ui.checkbox(&mut d.square_piers, "Square piers");
+            }
+            if d.kind == FoundationKind::Slab {
+                ui.checkbox(&mut d.garage_curb, "4\" curb round garages");
+            }
             ui.weak("Built under the lowest floor, following its exterior walls. Running it again replaces the foundation.");
             let opt = |s: &str| if s.trim().is_empty() { Some(None) } else { parse(doc, s).filter(|l| l.mm() > 0.0).map(Some) };
             let parsed = (opt(&d.wall_height), opt(&d.footing_width), opt(&d.footing_depth));
@@ -2036,6 +2049,8 @@ fn foundation_dialog(app: &mut App, ctx: &Context) {
                     auto_rebuild: d.auto_rebuild,
                     pier_spacing: None,
                     pier_diameter: None,
+                    square_piers: d.square_piers,
+                    garage_curb: (d.kind == FoundationKind::Slab && d.garage_curb).then(|| Length::from_inches(4.0)),
                 });
             }
         });

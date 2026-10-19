@@ -526,6 +526,9 @@ pub struct RoofDefaults {
     /// A frieze board this tall at the top of exterior walls (none: 0).
     #[serde(default)]
     pub frieze: Length,
+    /// Insulating value of the roof and ceiling assembly (R).
+    #[serde(default)]
+    pub r_value: f64,
     /// Degrees above horizontal (6 in 12 = 26.57°).
     pub pitch: f64,
     /// Eave overhang beyond the walls' outer faces.
@@ -554,6 +557,7 @@ impl Default for RoofDefaults {
             ridge_caps: true,
             gutters: true,
             frieze: Length::ZERO,
+            r_value: 0.0,
             pitch: (6.0f64 / 12.0).atan().to_degrees(),
             overhang: Length::from_inches(16.0),
             rake_overhang: Length::from_inches(12.0),

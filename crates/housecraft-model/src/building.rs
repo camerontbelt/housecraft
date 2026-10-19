@@ -60,6 +60,12 @@ pub struct Foundation {
     pub pier_spacing: Length,
     #[serde(default = "pier_diameter")]
     pub pier_diameter: Length,
+    /// Square piers (and pads) instead of round ones.
+    #[serde(default)]
+    pub square_piers: bool,
+    /// Slabs: a curb this high round garages on the floor above (0: none).
+    #[serde(default)]
+    pub garage_curb: Length,
 }
 
 fn pier_spacing() -> Length {
@@ -84,6 +90,7 @@ pub fn default_platform() -> Vec<WallLayer> {
         thickness: Length::from_inches(inches),
         material: material.into(),
         main: false,
+        r_value: 0.0,
     };
     vec![
         layer("Finish floor", 0.75, "Hardwood"),
@@ -536,6 +543,9 @@ pub struct WallLayer {
     /// A main (structural) layer: framing, the concrete of ICF, a SIP core.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub main: bool,
+    /// Insulating value of the layer (R, imperial units).
+    #[serde(default, skip_serializing_if = "is_zero_f64")]
+    pub r_value: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -577,6 +587,8 @@ pub struct WallShape {
     pub niches: Vec<Niche>,
     /// Extra newel posts on railings, at distances from the start.
     pub newels: Vec<Length>,
+    /// A bearing wall: carries load, so it gets a footing.
+    pub bearing: bool,
 }
 
 impl WallShape {
@@ -1195,4 +1207,22 @@ pub enum DormerStyle {
     #[default]
     Gable,
     Shed,
+}
+
+fn is_zero_f64(v: &f64) -> bool {
+    *v == 0.0
+}
+
+impl Wall {
+    /// The wall's footing: its own, or a standard one under a bearing wall.
+    pub fn effective_footing(&self) -> Option<Footing> {
+        self.footing.or(self.shape.bearing.then_some(Footing { width: Length::from_inches(20.0), depth: Length::from_inches(10.0) }))
+    }
+}
+
+impl WallType {
+    /// Total R-value of the layers.
+    pub fn r_value(&self) -> f64 {
+        self.layers.iter().map(|l| l.r_value).sum()
+    }
 }

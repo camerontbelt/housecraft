@@ -257,7 +257,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
                 }
             }
         }
-        if let Some(f) = wall.footing {
+        if let Some(f) = wall.effective_footing() {
             let hw = f.width.mm() / 2.0;
             let (a, b) = (g.start - g.dir * hw, g.end + g.dir * hw);
             let n = g.left * hw;

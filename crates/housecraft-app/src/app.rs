@@ -2097,6 +2097,13 @@ impl App {
                         }
                     }
                     ui.separator();
+                    let boxes: Vec<Id> = self.selection.iter().copied().filter(|id| self.doc().kind_of(*id) == Some(ObjectKind::Cad)).collect();
+                    if item(ui, "Convert Space Plan to Rooms", "", !boxes.is_empty())
+                        && self.run1(Command::ConvertSpacePlan { ids: boxes }).is_some()
+                    {
+                        self.selection.clear();
+                        self.info("Walls built round the space-planning boxes");
+                    }
                     if item(ui, "Wall Types…", "", true) {
                         self.dialogs.wall_types.open = true;
                     }
@@ -2144,6 +2151,12 @@ impl App {
                         if tool_item(ui, *tool) {
                             self.set_tool(*tool);
                         }
+                    }
+                    ui.separator();
+                    if item(ui, "Auto Place Outlets", "", true)
+                        && let Some(out) = self.run1(Command::AutoOutlets { floor: Some(self.plan.floor) })
+                    {
+                        self.info(format!("{} outlets placed", out.created.len()));
                     }
                 });
                 ui.menu_button("Renovation", |ui| {
@@ -3050,6 +3063,19 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
             if resp.on_hover_text(tool.tooltip()).clicked() {
                 self.set_tool(*tool);
             }
+        }
+        if self.plan.tool == Tool::SpaceBox {
+            ui.horizontal(|ui| {
+                ui.label("Room type");
+                let types: Vec<String> = self.doc().iter::<RoomType>().map(|t| t.name.clone()).collect();
+                egui::ComboBox::from_id_salt("space_type")
+                    .selected_text(self.plan.space_type.clone())
+                    .show_ui(ui, |ui| {
+                        for t in types {
+                            ui.selectable_value(&mut self.plan.space_type, t.clone(), t);
+                        }
+                    });
+            });
         }
         if self.plan.tool == Tool::RegularPolygon {
             ui.horizontal(|ui| {

@@ -2376,3 +2376,27 @@ fn roof_pitch_pivots_on_eave_or_ridge() {
     let r2 = s.document().get::<RoofPlane>(plane.id).unwrap().clone();
     assert!((high(&r2) - high(&r)).abs() < 1.0, "ridge kept");
 }
+
+#[test]
+fn space_plan_boxes_become_typed_rooms_and_get_outlets() {
+    let mut s = Session::new(Document::new("Plan"));
+    let kitchen = s.document().iter::<RoomType>().find(|t| t.name == "Kitchen").unwrap().id;
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_cad", "shape": {"shape": "polyline", "closed": true, "points": [[0,0],["12'",0],["12'","10'"],[0,"10'"]]}},
+            {"op": "add_text", "position": ["6'","5'"], "text": "Kitchen"},
+            {"op": "add_cad", "shape": {"shape": "polyline", "closed": true, "points": [["12'",0],["24'",0],["24'","10'"],["12'","10'"]]}}]"#,
+    );
+    let boxes = vec![out.created[0], out.created[2]];
+    s.apply(&[Command::ConvertSpacePlan { ids: boxes }]).unwrap();
+    let doc = s.document();
+    // Seven walls: the shared side once.
+    assert_eq!(doc.iter::<Wall>().count(), 7);
+    assert_eq!(doc.iter::<Room>().count(), 2);
+    assert!(doc.iter::<Room>().any(|r| r.room_type == kitchen));
+    s.apply(&[Command::AutoOutlets { floor: None }]).unwrap();
+    let doc = s.document();
+    let gfci = doc.iter::<Electrical>().filter(|e| e.electrical_kind == ElectricalKind::GfciOutlet).count();
+    let plain = doc.iter::<Electrical>().filter(|e| e.electrical_kind == ElectricalKind::Outlet).count();
+    assert!(gfci >= 3 && plain >= 3, "kitchen GFCI {gfci}, other {plain}");
+}

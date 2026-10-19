@@ -11,6 +11,10 @@ use crate::icons::Icon;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tool {
+    /// A rectangular room of interior walls from two corners.
+    RoomBox,
+    /// Space planning: a labelled box to turn into a room later.
+    SpaceBox,
     /// A dormer on the roof.
     Dormer(housecraft_api::model::DormerStyle),
     /// A skylight in a roof plane.
@@ -277,7 +281,7 @@ impl Family {
         use WindowStyle as W;
         match self {
             Family::Select => &[Tool::Select],
-            Family::Walls => &[Tool::ExteriorWall, Tool::InteriorWall],
+            Family::Walls => &[Tool::ExteriorWall, Tool::InteriorWall, Tool::RoomBox, Tool::SpaceBox],
             Family::Doors => &[
                 Tool::Door(D::Hinged),
                 Tool::Door(D::Double),
@@ -405,7 +409,7 @@ impl Tool {
     pub fn family(self) -> Family {
         match self {
             Tool::Select => Family::Select,
-            Tool::ExteriorWall | Tool::InteriorWall => Family::Walls,
+            Tool::ExteriorWall | Tool::InteriorWall | Tool::RoomBox | Tool::SpaceBox => Family::Walls,
             Tool::Door(_) => Family::Doors,
             Tool::Window(_) | Tool::BayWindow(_) | Tool::CornerWindow => Family::Windows,
             Tool::Dimension | Tool::AngularDimension => Family::Dimensions,
@@ -431,6 +435,8 @@ impl Tool {
             Tool::Select => "Select Objects",
             Tool::ExteriorWall => "Straight Exterior Wall",
             Tool::InteriorWall => "Straight Interior Wall",
+            Tool::RoomBox => "Room Box",
+            Tool::SpaceBox => "Space Planning Box",
             Tool::Door(d) => d.name(),
             Tool::Window(w) => w.name(),
             Tool::BayWindow(housecraft_api::BayStyle::Bay) => "Bay Window",
@@ -517,6 +523,8 @@ impl Tool {
             Tool::Select => Icon::Select,
             Tool::ExteriorWall => Icon::ExteriorWall,
             Tool::InteriorWall => Icon::InteriorWall,
+            Tool::RoomBox => Icon::Box,
+            Tool::SpaceBox => Icon::Box,
             Tool::Door(D::Hinged) => Icon::Door,
             Tool::Door(D::Double) => Icon::DoubleDoor,
             Tool::Door(D::Sliding) => Icon::SlidingDoor,
@@ -600,6 +608,8 @@ impl Tool {
             Tool::Select => {
                 "Click to select, Ctrl+click to add, drag to move or box-select. Double-click to open."
             }
+            Tool::RoomBox => "Click two opposite corners: a room walled all round.",
+            Tool::SpaceBox => "Click two opposite corners of a room-sized box; pick its room type in the Tool Palette. Build > Wall > Convert Space Plan makes the walls.",
             Tool::ExteriorWall | Tool::InteriorWall => {
                 "Click to start, click for each corner; type a length and Enter for exact walls. Esc or double-click ends."
             }

@@ -1180,8 +1180,9 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
         mesh.begin(floor.id, Category::Foundation);
         let beam_bottom = l.top - crate::piers::BEAM_DEPTH;
         for p in &l.piers {
+            let column = if l.square { rect(*p, DVec2::X, l.diameter, l.diameter) } else { disc(*p, l.diameter / 2.0, 16) };
             mesh.prism(
-                &disc(*p, l.diameter / 2.0, 16),
+                &column,
                 l.bottom,
                 beam_bottom,
                 Surface::Concrete,
@@ -1313,7 +1314,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                 mesh.prism(&quad, z0, z0 + sill, wall_color);
             }
         }
-        if let Some(f) = wall.footing {
+        if let Some(f) = wall.effective_footing() {
             // Footing centred under the wall, running past each end by half its width.
             let hw = f.width.mm() / 2.0;
             let (a, b) = (g.start - g.dir * hw, g.end + g.dir * hw);
@@ -1387,6 +1388,21 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
             }
         }
 
+        // A curb round a garage on a slab with one.
+        if let (Some(room), true) = (room, foundation.is_none()) {
+            let curb = doc
+                .floors_by_elevation()
+                .iter()
+                .filter_map(|f| f.foundation.as_ref())
+                .find(|fd| fd.kind == FoundationKind::Slab)
+                .map_or(0.0, |fd| fd.garage_curb.mm());
+            let garage = doc.get::<housecraft_model::RoomType>(room.room_type).is_some_and(|t| t.name.to_lowercase().contains("garage"));
+            if lowest && garage && curb > 1.0 {
+                mesh.begin(owner, Category::Foundation);
+                garage_curb(doc, floor.id, &region.polygon, z0, curb, mesh);
+                mesh.end();
+            }
+        }
         // Ceiling.
         let Some(room) = room else {
             continue;
@@ -1685,6 +1701,58 @@ fn clip_u(poly: &[DVec2], g: &WallGeom, u: f64, keep_above: bool) -> Vec<DVec2> 
         }
     }
     out
+}
+
+/// A concrete curb along the inside of a garage, broken at doors.
+fn garage_curb(doc: &Document, floor: Id, poly: &[DVec2], z0: f64, height: f64, mesh: &mut Mesh) {
+    // Door spans in plan.
+    let mut doors: Vec<(DVec2, f64)> = Vec::new();
+    for g in wall_geoms(doc, floor) {
+        for o in doc.openings_in(g.id).filter(|o| o.opening_kind.is_door()) {
+            doors.push((g.center_at(o.position.mm()), o.width.mm() / 2.0 + 20.0));
+        }
+    }
+    let width = 150.0;
+    let n = poly.len();
+    let inward = if crate::math::signed_area(poly) > 0.0 { 1.0 } else { -1.0 };
+    for i in 0..n {
+        let (a, b) = (poly[i], poly[(i + 1) % n]);
+        let len = a.distance(b);
+        if len < 50.0 {
+            continue;
+        }
+        let d = (b - a) / len;
+        let inn = crate::math::perp(d) * inward;
+        // Pieces of the edge clear of doors.
+        let mut cuts: Vec<(f64, f64)> = doors
+            .iter()
+            .filter(|(c, _)| (*c - a).dot(inn).abs() < 400.0)
+            .map(|(c, hw)| {
+                let u = (*c - a).dot(d);
+                (u - hw, u + hw)
+            })
+            .collect();
+        cuts.sort_by(|x, y| x.0.total_cmp(&y.0));
+        let mut from = 0.0;
+        let mut pieces = Vec::new();
+        for (c0, c1) in cuts {
+            if c0 > from {
+                pieces.push((from, c0.min(len)));
+            }
+            from = from.max(c1);
+        }
+        if from < len {
+            pieces.push((from, len));
+        }
+        for (u0, u1) in pieces {
+            if u1 - u0 < 30.0 {
+                continue;
+            }
+            let (p0, p1) = (a + d * u0, a + d * u1);
+            let quad = vec![p0, p1, p1 + inn * width, p0 + inn * width];
+            mesh.prism(&ccw(quad), z0, z0 + height, Surface::Concrete);
+        }
+    }
 }
 
 fn span_of(g: &WallGeom, o: &Opening) -> (f64, f64) {

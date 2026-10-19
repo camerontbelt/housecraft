@@ -96,6 +96,12 @@ pub enum Command {
         pier_spacing: Option<Length>,
         /// Pier foundations: pier diameter (default 12").
         pier_diameter: Option<Length>,
+        /// Pier foundations: square piers.
+        #[serde(default)]
+        square_piers: bool,
+        /// Slabs: a curb this high round garages.
+        #[serde(default)]
+        garage_curb: Option<Length>,
     },
     /// Build a roof over a floor's exterior walls (default: the top storey).
     /// Each wall's `roof` settings choose gable or hip, pitch and overhang.
@@ -789,6 +795,13 @@ pub enum Command {
     /// Type an object's own label (replacing its kind's template from the
     /// default set; "-" hides it), or `None` to go back to the template.
     SetObjectLabel { id: Id, text: Option<String> },
+    /// Outlets round every room on `floor` (default: the lowest storey): at
+    /// most 12' apart along the walls, clear of doors; GFCI outlets in
+    /// kitchens, baths, laundries and garages.
+    AutoOutlets { floor: Option<Id> },
+    /// Space planning: turn closed CAD boxes into rooms with walls, each
+    /// room typed by the room-type name written inside its box.
+    ConvertSpacePlan { ids: Vec<Id> },
     /// A dormer on the roof at plan point `at`, facing down the roof plane
     /// there unless `facing` is given.
     AddDormer {
@@ -1175,6 +1188,8 @@ impl Command {
             Command::SetAngleFormat { .. } => "set_angle_format",
             Command::AddCornerWindow { .. } => "add_corner_window",
             Command::AddDormer { .. } => "add_dormer",
+            Command::AutoOutlets { .. } => "auto_outlets",
+            Command::ConvertSpacePlan { .. } => "convert_space_plan",
             Command::AddSkylight { .. } => "add_skylight",
             Command::SetRoofPitch { .. } => "set_roof_pitch",
             Command::AddBayWindow { .. } => "add_bay_window",
@@ -1293,6 +1308,8 @@ impl Command {
                 auto_rebuild,
                 pier_spacing,
                 pier_diameter,
+                square_piers,
+                garage_curb,
             } => {
                 let inch = Length::from_inches;
                 let spec = Foundation {
@@ -1316,6 +1333,8 @@ impl Command {
                     auto_rebuild: *auto_rebuild,
                     pier_spacing: pier_spacing.unwrap_or(Length::from_feet(6.0)),
                     pier_diameter: pier_diameter.unwrap_or(inch(12.0)),
+                    square_piers: *square_piers,
+                    garage_curb: garage_curb.unwrap_or(Length::ZERO),
                 };
                 if spec.pier_spacing.mm() < Length::from_feet(2.0).mm() {
                     return invalid("pier_spacing must be at least 2'");
@@ -2894,6 +2913,8 @@ impl Command {
             }
             Command::AddStandardPlanViews => ops::standard_plan_views(doc, &mut out)?,
             Command::SetAngleFormat { format } => doc.settings.angle_format = *format,
+            Command::AutoOutlets { floor } => ops::auto_outlets(doc, *floor, &mut out)?,
+            Command::ConvertSpacePlan { ids } => ops::convert_space_plan(doc, ids, &mut out)?,
             Command::AddDormer { floor, at, facing, width, wall_height, pitch, style } => {
                 let p = housecraft_geom::v2(*at);
                 // The roof plane under the point gives the floor and facing.
