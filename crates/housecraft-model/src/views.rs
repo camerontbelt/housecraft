@@ -167,6 +167,10 @@ pub enum LayoutSource {
     View {
         view: Id,
     },
+    /// A CAD detail.
+    Detail {
+        detail: Id,
+    },
     /// A schedule table.
     Schedule {
         schedule_kind: crate::ScheduleKind,

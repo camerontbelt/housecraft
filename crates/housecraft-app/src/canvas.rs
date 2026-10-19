@@ -48,6 +48,9 @@ enum Handle {
 
 pub struct PlanState {
     pub floor: Id,
+    /// An elevation/section view or CAD detail shown in place of the floor
+    /// plan; drafting tools then draw on it.
+    pub sheet: Option<Id>,
     pub layer_set: Id,
     pub view: Option<Id>,
     pub reference_floor: bool,
@@ -89,6 +92,7 @@ impl PlanState {
                 .or_else(|| doc.iter::<LayerSet>().next().map(|s| s.id))
                 .unwrap_or(Id(0)),
             view: view.map(|v| v.id),
+            sheet: None,
             reference_floor: false,
             references: Vec::new(),
             phase: Phase::All,
@@ -110,6 +114,11 @@ impl PlanState {
             temp_dim_edit: None,
             wiring: None,
         }
+    }
+
+    /// Where drafting goes: the open view or CAD detail, else the floor.
+    pub fn target(&self) -> Id {
+        self.sheet.unwrap_or(self.floor)
     }
 
     pub fn set_tool(&mut self, tool: Tool) {
@@ -137,7 +146,7 @@ impl PlanState {
     fn ensure_cache(&mut self, doc: &Document, rev: u64) {
         let key = (
             rev,
-            self.floor,
+            self.target(),
             self.layer_set,
             self.reference_floor,
             self.references.clone(),
@@ -156,7 +165,13 @@ impl PlanState {
             sun_shadows: self.sun_shadows,
             default_set: None,
         };
-        let drawing = housecraft_draft::plan(doc, &opts);
+        let drawing = match self.sheet.and_then(|s| doc.object(s)) {
+            Some(Object::SectionView(v)) => housecraft_draft::elevation::section_view(doc, v),
+            Some(Object::CadDetail(d)) => {
+                housecraft_draft::detail::cad_detail(doc, d.id, Some(self.layer_set))
+            }
+            _ => housecraft_draft::plan(doc, &opts),
+        };
         let fills = drawing
             .items
             .iter()
@@ -167,13 +182,20 @@ impl PlanState {
                 _ => None,
             })
             .collect();
-        let mut floors = vec![self.floor];
-        floors.extend(opts.reference_floor_ids(doc));
+        let mut floors = vec![self.target()];
+        let mut targets;
+        if self.sheet.is_some() {
+            targets = SnapTargets::build(doc, &floors);
+            targets.add_drawing(&drawing);
+        } else {
+            floors.extend(opts.reference_floor_ids(doc));
+            targets = SnapTargets::build(doc, &floors);
+        }
         self.cache = Some(Cache {
             key,
             fills,
-            regions: housecraft_api::geom::rooms::detect(doc, self.floor),
-            targets: SnapTargets::build(doc, &floors),
+            regions: housecraft_api::geom::rooms::detect(doc, self.target()),
+            targets,
             drawing,
         });
     }
@@ -311,6 +333,27 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     }
 
     paint(app, ui, &painter, &view);
+    if let Some(sheet) = app.plan.sheet {
+        let doc = app.session.document();
+        let name = match doc.object(sheet) {
+            Some(Object::SectionView(v)) => v.name.clone(),
+            Some(Object::CadDetail(d)) => format!("CAD Detail: {}", d.name),
+            _ => String::new(),
+        };
+        let text = format!("{name}  ·  draw with the CAD, text and dimension tools  ·  F2 for plan");
+        let at = rect.left_top() + egui::vec2(10.0, 8.0);
+        let galley = painter.layout_no_wrap(
+            text,
+            egui::FontId::proportional(13.0),
+            ui.visuals().strong_text_color(),
+        );
+        painter.rect_filled(
+            egui::Rect::from_min_size(at, galley.size()).expand(4.0),
+            3.0,
+            ui.visuals().extreme_bg_color,
+        );
+        painter.galley(at, galley, ui.visuals().strong_text_color());
+    }
     overlays(app, ui, &view, &mut commands);
 
     if !commands.is_empty() {
@@ -326,7 +369,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
                     .iter()
                     .find(|id| app.doc().kind_of(**id) == Some(ObjectKind::SectionView))
             {
-                app.mode = crate::app::Mode::Drawing(crate::drawing_view::DrawingSource::View(*id));
+                app.open_sheet(*id);
             }
         }
     }
@@ -382,11 +425,13 @@ fn navigate(app: &mut App, ui: &Ui, resp: &Response) {
 /// Objects under a model point, most specific first.
 fn hit_test(doc: &Document, cache: &Cache, p: DVec2, tol: f64) -> Vec<Id> {
     let mut hits: Vec<Id> = Vec::new();
+    let sheet = cache.key.1;
+    let on_sheet = doc.kind_of(sheet) != Some(ObjectKind::Floor);
     for item in cache.drawing.items.iter().rev() {
         let Some(id) = item.object else {
             continue;
         };
-        if hits.contains(&id) {
+        if hits.contains(&id) || (on_sheet && doc.floor_of(id) != Some(sheet)) {
             continue;
         }
         let hit = match &item.prim {
@@ -727,8 +772,17 @@ fn move_command(doc: &Document, ids: &[Id], d: DVec2) -> Command {
 
 fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &mut Vec<Command>) {
     let tool = app.plan.tool;
-    let floor = Some(app.plan.floor);
+    let floor = Some(app.plan.target());
     let doc = app.session.document();
+    if app.plan.sheet.is_some() && !tool.is_drafting() {
+        if resp.clicked() {
+            app.error(format!(
+                "{} works on floor plans; in views and CAD details use the CAD, text and dimension tools.",
+                tool.name()
+            ));
+        }
+        return;
+    }
 
     // Typed length while drawing walls and lines (DIM-05).
     let length_tools = matches!(
@@ -1056,6 +1110,14 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 }
             }
             Tool::Point => commands.push(cad(floor, Shape::Point { at: pt(p) })),
+            Tool::PlaceBlock(block) => commands.push(Command::AddBlockRef {
+                floor,
+                block,
+                at: pt(p),
+                rotation: 0.0,
+                scale: None,
+                layer: None,
+            }),
             Tool::Dimension => {
                 pending.push(p);
                 if pending.len() == 3 {
@@ -1257,11 +1319,26 @@ fn paint(app: &App, ui: &Ui, painter: &Painter, view: &View) {
         _ => None,
     };
 
-    for (points, tris, fill) in &cache.fills {
-        paint_fill(painter, view, points, tris, fill_color(ui, *fill));
-    }
-    for item in &cache.drawing.items {
-        paint_prim(ui, painter, view, &item.prim, None, 0.0);
+    if app.plan.sheet.is_some() {
+        // Views paint far to near: fills and lines in the drawing's order, so
+        // nearer surfaces hide what is behind them.
+        let mut fills = cache.fills.iter();
+        for item in &cache.drawing.items {
+            if let Prim::Polygon { .. } = item.prim {
+                if let Some((points, tris, fill)) = fills.next() {
+                    paint_fill(painter, view, points, tris, fill_color(ui, *fill));
+                }
+            } else {
+                paint_prim(ui, painter, view, &item.prim, None, 0.0);
+            }
+        }
+    } else {
+        for (points, tris, fill) in &cache.fills {
+            paint_fill(painter, view, points, tris, fill_color(ui, *fill));
+        }
+        for item in &cache.drawing.items {
+            paint_prim(ui, painter, view, &item.prim, None, 0.0);
+        }
     }
     for item in &cache.drawing.items {
         if selected(item.object) {
@@ -1720,7 +1797,7 @@ fn overlays(app: &mut App, ui: &mut Ui, view: &View, commands: &mut Vec<Command>
                         || ui.input(|i| i.key_pressed(egui::Key::Enter) && i.modifiers.command);
                     if ok && !buf.trim().is_empty() {
                         commands.push(Command::AddText {
-                            floor: Some(app.plan.floor),
+                            floor: Some(app.plan.target()),
                             layer: None,
                             position: pt(p),
                             text: buf.trim_end().to_string(),

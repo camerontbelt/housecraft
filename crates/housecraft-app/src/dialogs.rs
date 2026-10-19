@@ -634,6 +634,52 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
             });
             ui.separator();
             egui::ScrollArea::vertical().show(ui, |ui| {
+                egui::CollapsingHeader::new("Camera Default Sets")
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        ui.weak(
+                            "The default set each kind of view uses when you draw dimensions,                              text and lines in it.",
+                        );
+                        let vd = doc.settings.view_defaults;
+                        egui::Grid::new("view_defaults").num_columns(2).show(ui, |ui| {
+                            for (kind, label) in [
+                                (ViewKind::Elevation, "Elevations"),
+                                (ViewKind::Section, "Cross sections"),
+                                (ViewKind::Detail, "CAD details"),
+                            ] {
+                                ui.label(label);
+                                let current = vd.get(kind);
+                                let name = current
+                                    .and_then(|c| doc.get::<DefaultSet>(c))
+                                    .map_or("Active default set".to_string(), |s| s.name.clone());
+                                egui::ComboBox::from_id_salt(("view_defaults", label))
+                                    .selected_text(name)
+                                    .show_ui(ui, |ui| {
+                                        if ui
+                                            .selectable_label(current.is_none(), "Active default set")
+                                            .clicked()
+                                            && current.is_some()
+                                        {
+                                            commands.push(Command::SetViewDefaults {
+                                                view_kind: kind,
+                                                default_set: None,
+                                            });
+                                        }
+                                        for s in doc.iter::<DefaultSet>() {
+                                            if ui.selectable_label(current == Some(s.id), &s.name).clicked()
+                                                && current != Some(s.id)
+                                            {
+                                                commands.push(Command::SetViewDefaults {
+                                                    view_kind: kind,
+                                                    default_set: Some(s.id),
+                                                });
+                                            }
+                                        }
+                                    });
+                                ui.end_row();
+                            }
+                        });
+                    });
                 egui::CollapsingHeader::new("Walls")
                     .default_open(true)
                     .show(ui, |ui| {

@@ -4,6 +4,7 @@
 //! model millimetres, each tagged with the object it came from. The GUI paints
 //! it on screen, [`svg`] and [`pdf`] write it out, so screen and paper match.
 
+pub mod detail;
 mod dims;
 pub mod elevation;
 pub mod layout;
@@ -16,7 +17,7 @@ use housecraft_geom::DVec2;
 use housecraft_model::{Color, Id, Justify};
 
 pub use dims::format_dimension;
-pub use plan::{PlanOptions, plan};
+pub use plan::{PlanOptions, drafting, plan};
 
 /// What colour to draw with.
 #[derive(Debug, Clone, Copy, PartialEq)]

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
-use housecraft_api::model::{Document, Id, ObjectKind, Phase, SectionView};
+use housecraft_api::model::{Block, CadDetail, Document, Id, ObjectKind, Phase, SectionView};
 use housecraft_api::{Command, Session, query};
 use housecraft_draft::pdf::{Paper, PdfOptions, Scale};
 use housecraft_draft::svg::SvgOptions;
@@ -83,7 +83,7 @@ enum Cmd {
         /// Show this floor (name or id) faded instead of the floor below; repeatable.
         #[arg(long)]
         reference_floor: Vec<String>,
-        /// Export this elevation or section view (name or id) instead of a plan.
+        /// Export this elevation, section view or CAD detail (name or id) instead of a plan.
         #[arg(long)]
         view: Option<String>,
         /// Draw sun shadows on the ground around the lowest storey.
@@ -165,10 +165,41 @@ enum Cmd {
         #[arg(long, default_value_t = 2000)]
         pixels: u32,
     },
+    /// Make a CAD detail of editable lines and text from a floor plan or an
+    /// elevation/section view (CAD Detail from View).
+    DetailFromView {
+        path: PathBuf,
+        /// Name for the new CAD detail.
+        #[arg(long)]
+        name: String,
+        /// Elevation or section view (name or id); a floor plan when omitted.
+        #[arg(long)]
+        view: Option<String>,
+        /// Floor (name or id) when converting a plan (default: lowest floor).
+        #[arg(long)]
+        floor: Option<String>,
+        /// Write the result here instead of overwriting the input.
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+    /// Save a CAD block (name or id) to the user library, or to `--library`.
+    SaveBlock {
+        path: PathBuf,
+        block: String,
+        #[arg(long)]
+        library: Option<PathBuf>,
+    },
     /// Print the JSON Schema for command batches.
     Schema,
     /// Run the MCP server on stdin/stdout.
     Mcp,
+}
+
+/// A CAD detail by name or `#id`.
+fn find_detail(doc: &Document, key: &str) -> Option<Id> {
+    doc.iter::<CadDetail>()
+        .find(|d| d.name.eq_ignore_ascii_case(key) || format!("#{}", d.id.0) == key || d.id.0.to_string() == key)
+        .map(|d| d.id)
 }
 
 fn parse_kind(s: &str) -> Result<ObjectKind> {
@@ -272,6 +303,59 @@ fn main() -> Result<()> {
                 eprintln!("saved {}", target.display());
             }
         }
+        Cmd::DetailFromView {
+            path,
+            name,
+            view,
+            floor,
+            output,
+        } => {
+            let doc = load(&path)?;
+            let drawing = match &view {
+                Some(v) => {
+                    let sv = doc
+                        .iter::<SectionView>()
+                        .find(|s| s.name.eq_ignore_ascii_case(v) || format!("#{}", s.id.0) == *v)
+                        .with_context(|| format!("no elevation or section view {v:?}"))?;
+                    housecraft_draft::elevation::section_view(&doc, sv)
+                }
+                None => {
+                    let opts = PlanOptions::resolve(&doc, floor.as_deref(), None)
+                        .map_err(anyhow::Error::msg)?;
+                    plan(&doc, &opts)
+                }
+            };
+            let command = housecraft_draft::detail::detail_from_drawing(&drawing, &name);
+            let mut session = Session::new(doc);
+            let outcome = session.apply(&[command])?;
+            print_json(&outcome)?;
+            let target = output.as_deref().unwrap_or(&path);
+            save(session.document(), target)?;
+            eprintln!("saved {}", target.display());
+        }
+        Cmd::SaveBlock {
+            path,
+            block,
+            library,
+        } => {
+            use housecraft_io_native::library;
+            let doc = load(&path)?;
+            let b = doc
+                .iter::<Block>()
+                .find(|b| b.name.eq_ignore_ascii_case(&block) || format!("#{}", b.id.0) == block)
+                .with_context(|| format!("no block {block:?}"))?;
+            let dir = library
+                .or_else(library::library_dir)
+                .context("no library folder; pass --library")?;
+            let saved = library::save_block(
+                &dir,
+                &library::LibraryBlock {
+                    name: b.name.clone(),
+                    shapes: housecraft_api::blocks::block_shapes(&doc, b.id),
+                },
+            )?;
+            println!("{}", saved.display());
+        }
         Cmd::Export {
             path,
             output,
@@ -317,12 +401,20 @@ fn main() -> Result<()> {
                             doc.iter::<SectionView>()
                                 .find(|s| s.name.eq_ignore_ascii_case(v))
                         });
-                    let Some(sv) = found else {
-                        let names: Vec<&str> =
-                            doc.iter::<SectionView>().map(|s| s.name.as_str()).collect();
-                        bail!("no view {v:?} (have: {})", names.join(", "));
-                    };
-                    housecraft_draft::elevation::section_view(&doc, sv)
+                    match (found, find_detail(&doc, v)) {
+                        (Some(sv), _) => housecraft_draft::elevation::section_view(&doc, sv),
+                        (None, Some(d)) => {
+                            housecraft_draft::detail::cad_detail(&doc, d, Some(opts.layer_set))
+                        }
+                        (None, None) => {
+                            let names: Vec<&str> = doc
+                                .iter::<SectionView>()
+                                .map(|s| s.name.as_str())
+                                .chain(doc.iter::<CadDetail>().map(|d| d.name.as_str()))
+                                .collect();
+                            bail!("no view or detail {v:?} (have: {})", names.join(", "));
+                        }
+                    }
                 }
                 None => plan(&doc, &opts),
             };

@@ -1,12 +1,13 @@
-//! The 2D drawing view: elevations, cross sections and layout pages, with
-//! pan, zoom and fit, painted in the drawing's own order (far faces first).
-//! On a layout page, dragging a box moves it and double-clicking opens it.
+//! The layout page view, with pan, zoom and fit, painted in the drawing's
+//! own order. Dragging a box moves it and double-clicking opens it.
+//! (Elevations, sections and CAD details open in the plan window, where
+//! they can be drafted on.)
 
 use egui::{Color32, Sense, Ui};
 use housecraft_api::Command;
 use housecraft_api::geom::DVec2;
 use housecraft_api::geom::triangulate::triangulate;
-use housecraft_api::model::{Id, Layout, LayoutBox, SectionView};
+use housecraft_api::model::{Id, Layout, LayoutBox};
 use housecraft_api::units::Length;
 use housecraft_draft::{Drawing, Prim};
 
@@ -16,7 +17,6 @@ use crate::canvas::{View, fill_color, paint_fill, paint_prim};
 /// What the drawing view shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DrawingSource {
-    View(Id),
     /// A layout and page index.
     Layout(Id, usize),
 }
@@ -42,13 +42,6 @@ struct Cached {
 fn build(app: &App, source: DrawingSource) -> Option<(Drawing, String)> {
     let doc = app.session.document();
     match source {
-        DrawingSource::View(id) => {
-            let v = doc.get::<SectionView>(id)?;
-            Some((
-                housecraft_draft::elevation::section_view(doc, v),
-                v.name.clone(),
-            ))
-        }
         DrawingSource::Layout(id, page) => {
             let l = doc.get::<Layout>(id)?;
             let mut d = housecraft_draft::layout::layout_page(doc, l, page);
@@ -152,9 +145,7 @@ pub fn show(app: &mut App, ui: &mut Ui, source: DrawingSource) {
 
     // The layout box under a point (the last drawn wins).
     let box_at = |p: DVec2| -> Option<Id> {
-        let DrawingSource::Layout(layout, page) = source else {
-            return None;
-        };
+        let DrawingSource::Layout(layout, page) = source;
         doc.iter::<LayoutBox>()
             .filter(|b| b.layout == layout && b.page as usize == page)
             .filter(|b| {
@@ -215,11 +206,7 @@ pub fn show(app: &mut App, ui: &mut Ui, source: DrawingSource) {
     }
 
     let v = to_view(state);
-    let background = if matches!(source, DrawingSource::Layout(..)) {
-        Color32::from_gray(110)
-    } else {
-        Color32::WHITE
-    };
+    let background = Color32::from_gray(110);
     painter.rect_filled(rect, 0.0, background);
     // Paint with light-theme inks: drawings are on paper.
     let mut paper = ui.new_child(egui::UiBuilder::new().max_rect(rect));
@@ -268,12 +255,8 @@ pub fn show(app: &mut App, ui: &mut Ui, source: DrawingSource) {
             );
         }
     }
-    let hint = match source {
-        DrawingSource::View(_) => "drag to pan, scroll to zoom, double-click to fit, F2 for plan",
-        DrawingSource::Layout(..) => {
-            "drag a box to move it, double-click to edit it; drag elsewhere to pan, F2 for plan"
-        }
-    };
+    let hint =
+        "drag a box to move it, double-click to edit it; drag elsewhere to pan, F2 for plan";
     painter.text(
         rect.left_top() + egui::vec2(10.0, 8.0),
         egui::Align2::LEFT_TOP,
@@ -298,7 +281,6 @@ pub fn show(app: &mut App, ui: &mut Ui, source: DrawingSource) {
 fn build_title(app: &App, source: DrawingSource) -> Option<((), String)> {
     let doc = app.session.document();
     match source {
-        DrawingSource::View(id) => doc.get::<SectionView>(id).map(|v| ((), v.name.clone())),
         DrawingSource::Layout(id, page) => doc.get::<Layout>(id).map(|l| {
             let name = l.pages.get(page).cloned().unwrap_or_default();
             ((), format!("{} · {}", l.name, name))

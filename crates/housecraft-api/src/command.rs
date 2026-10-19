@@ -8,6 +8,18 @@ use serde::{Deserialize, Serialize};
 use crate::ApiError;
 use crate::ops::{self, expect, invalid, positive};
 
+/// Text for [`Command::AddCadDetail`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct DetailText {
+    pub position: Point2,
+    pub text: String,
+    pub height: Option<Length>,
+    #[serde(default)]
+    pub rotation: f64,
+    #[serde(default)]
+    pub justify: Justify,
+}
+
 /// A single edit to a document. Serialized with an `"op"` tag, e.g.
 /// `{"op": "add_wall", "start": [0, 0], "end": ["20'", 0]}`.
 ///
@@ -205,6 +217,47 @@ pub enum Command {
         at: Point2,
         target: Option<Point2>,
         marker: Option<MarkerShape>,
+    },
+    /// Add a CAD detail: a blank, named drafting sheet for construction
+    /// details. `shapes` and `texts` fill it (e.g. linework converted from a
+    /// plan or elevation by `housecraft-draft`'s detail-from-view).
+    AddCadDetail {
+        name: String,
+        #[serde(default)]
+        shapes: Vec<DetailShape>,
+        #[serde(default)]
+        texts: Vec<DetailText>,
+    },
+    /// Make a CAD block. With `ids`, those CAD shapes (all on one sheet) move
+    /// into the block, relative to the insertion point `base` (default: their
+    /// bounds' bottom-left corner), and a copy of the block is placed where
+    /// they were. With `shapes`, the block is made from shapes given relative
+    /// to its insertion point (e.g. from a library file).
+    AddBlock {
+        name: String,
+        #[serde(default)]
+        ids: Vec<Id>,
+        base: Option<Point2>,
+        #[serde(default)]
+        shapes: Vec<DetailShape>,
+    },
+    /// Place a copy of a block with its insertion point at `at`.
+    AddBlockRef {
+        floor: Option<Id>,
+        block: Id,
+        at: Point2,
+        #[serde(default)]
+        rotation: f64,
+        scale: Option<f64>,
+        layer: Option<Id>,
+    },
+    /// Replace a placed block with separate copies of its CAD shapes.
+    ExplodeBlock { id: Id },
+    /// Choose the default set an elevation, section or detail view uses for
+    /// drafting (dimension and text styles, layers); `None` uses the active one.
+    SetViewDefaults {
+        view_kind: ViewKind,
+        default_set: Option<Id>,
     },
     /// Add a revision cloud around `points`; `label` defaults to the next
     /// revision number.
@@ -538,6 +591,11 @@ impl Command {
             Command::AddStair { .. } => "add_stair",
             Command::AddCallout { .. } => "add_callout",
             Command::AddRevisionCloud { .. } => "add_revision_cloud",
+            Command::AddCadDetail { .. } => "add_cad_detail",
+            Command::AddBlock { .. } => "add_block",
+            Command::AddBlockRef { .. } => "add_block_ref",
+            Command::ExplodeBlock { .. } => "explode_block",
+            Command::SetViewDefaults { .. } => "set_view_defaults",
             Command::AddLayout { .. } => "add_layout",
             Command::AddLayoutPage { .. } => "add_layout_page",
             Command::SendToLayout { .. } => "send_to_layout",
@@ -1064,11 +1122,12 @@ impl Command {
                 target,
                 marker,
             } => {
-                let floor = ops::resolve_floor(doc, *floor)?;
+                let floor = ops::resolve_sheet(doc, *floor, false)?;
+                let layer = doc.defaults_for(floor).layers.text;
                 out.created.push(doc.insert(Callout {
                     id: Id(0),
                     floor,
-                    layer: d.layers.text,
+                    layer,
                     text: text.clone(),
                     at: *at,
                     target: *target,
@@ -1082,19 +1141,101 @@ impl Command {
                 arc,
                 label,
             } => {
-                let floor = ops::resolve_floor(doc, *floor)?;
+                let floor = ops::resolve_sheet(doc, *floor, false)?;
                 if points.len() < 3 {
                     return invalid("a revision cloud needs at least three points");
                 }
                 let next = doc.count::<RevisionCloud>() + 1;
+                let layer = doc.defaults_for(floor).layers.text;
                 out.created.push(doc.insert(RevisionCloud {
                     id: Id(0),
                     floor,
-                    layer: d.layers.text,
+                    layer,
                     points: points.clone(),
                     arc: arc.unwrap_or(Length::from_inches(18.0)),
                     label: Some(label.clone().unwrap_or_else(|| next.to_string())),
                 }));
+            }
+            Command::AddCadDetail {
+                name,
+                shapes,
+                texts,
+            } => {
+                if name.trim().is_empty() {
+                    return invalid("a CAD detail needs a name");
+                }
+                let detail = doc.insert(CadDetail {
+                    id: Id(0),
+                    name: name.clone(),
+                });
+                out.created.push(detail);
+                let layers = doc.defaults_for(detail).layers.clone();
+                for s in shapes {
+                    doc.insert(Cad {
+                        id: Id(0),
+                        floor: detail,
+                        layer: layers.cad,
+                        shape: s.shape.clone(),
+                        color: s.color,
+                        fill: s.fill,
+                    });
+                }
+                for t in texts {
+                    doc.insert(Text {
+                        id: Id(0),
+                        floor: detail,
+                        layer: layers.text,
+                        position: t.position,
+                        text: t.text.clone(),
+                        style: None,
+                        rotation: t.rotation,
+                        justify: t.justify,
+                        height: t.height,
+                        bold: None,
+                        color: None,
+                    });
+                }
+            }
+            Command::AddBlock {
+                name,
+                ids,
+                base,
+                shapes,
+            } => crate::blocks::add_block(doc, &d, name, ids, *base, shapes, &mut out)?,
+            Command::AddBlockRef {
+                floor,
+                block,
+                at,
+                rotation,
+                scale,
+                layer,
+            } => {
+                expect::<Block>(doc, *block)?;
+                let floor = ops::resolve_sheet(doc, *floor, false)?;
+                let cad_layer = doc.defaults_for(floor).layers.cad;
+                if scale.is_some_and(|k| !(k.is_finite() && k > 0.0)) {
+                    return invalid("scale must be positive");
+                }
+                out.created.push(doc.insert(BlockRef {
+                    id: Id(0),
+                    floor,
+                    layer: layer.unwrap_or(cad_layer),
+                    block: *block,
+                    at: *at,
+                    rotation: *rotation,
+                    scale: scale.unwrap_or(1.0),
+                    mirrored: false,
+                }));
+            }
+            Command::ExplodeBlock { id } => crate::blocks::explode(doc, *id, &mut out)?,
+            Command::SetViewDefaults {
+                view_kind,
+                default_set,
+            } => {
+                if let Some(s) = default_set {
+                    expect::<DefaultSet>(doc, *s)?;
+                }
+                doc.settings.view_defaults.set(*view_kind, *default_set);
             }
             Command::SwapFloors { a, b } => {
                 expect::<Floor>(doc, *a)?;
@@ -1367,11 +1508,12 @@ impl Command {
                 color,
                 fill,
             } => {
-                let floor = ops::resolve_floor(doc, *floor)?;
+                let floor = ops::resolve_sheet(doc, *floor, true)?;
+                let cad_layer = doc.defaults_for(floor).layers.cad;
                 out.created.push(doc.insert(Cad {
                     id: Id(0),
                     floor,
-                    layer: layer.unwrap_or(d.layers.cad),
+                    layer: layer.unwrap_or(cad_layer),
                     shape: shape.clone(),
                     color: *color,
                     fill: *fill,
@@ -1383,11 +1525,12 @@ impl Command {
                 geometry,
                 text_override,
             } => {
-                let floor = ops::resolve_floor(doc, *floor)?;
+                let floor = ops::resolve_sheet(doc, *floor, false)?;
+                let dim_layer = doc.defaults_for(floor).layers.dimensions;
                 out.created.push(doc.insert(Dimension {
                     id: Id(0),
                     floor,
-                    layer: layer.unwrap_or(d.layers.dimensions),
+                    layer: layer.unwrap_or(dim_layer),
                     geometry: geometry.clone(),
                     text_override: text_override.clone(),
                 }));
@@ -1406,11 +1549,12 @@ impl Command {
                 justify,
                 height,
             } => {
-                let floor = ops::resolve_floor(doc, *floor)?;
+                let floor = ops::resolve_sheet(doc, *floor, false)?;
+                let text_layer = doc.defaults_for(floor).layers.text;
                 out.created.push(doc.insert(Text {
                     id: Id(0),
                     floor,
-                    layer: layer.unwrap_or(d.layers.text),
+                    layer: layer.unwrap_or(text_layer),
                     position: *position,
                     text: text.clone(),
                     style: *style,

@@ -52,6 +52,16 @@ impl Transform2 {
         }
     }
 
+    /// Where a placed block's shapes go: mirrored left to right (if asked),
+    /// scaled, rotated by `degrees`, then moved to `at`.
+    pub fn placement(at: DVec2, degrees: f64, scale: f64, mirrored: bool) -> Self {
+        let flip = DMat2::from_diagonal(DVec2::new(if mirrored { -1.0 } else { 1.0 }, 1.0));
+        Transform2 {
+            m: DMat2::from_angle(degrees.to_radians()) * DMat2::from_diagonal(DVec2::splat(scale)) * flip,
+            t: at,
+        }
+    }
+
     pub fn then(self, next: Transform2) -> Transform2 {
         Transform2 {
             m: next.m * self.m,

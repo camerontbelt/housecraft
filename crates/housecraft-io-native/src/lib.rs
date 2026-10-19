@@ -7,6 +7,8 @@
 //! Older format versions are upgraded in [`migrate`] before deserializing.
 //! Files from early builds used the `.hcraft` extension; they are identical inside.
 
+pub mod library;
+
 use std::io::{Read, Seek, Write};
 use std::path::Path;
 

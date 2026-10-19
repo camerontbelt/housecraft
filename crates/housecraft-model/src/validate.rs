@@ -39,6 +39,22 @@ impl Checker<'_> {
         }
     }
 
+    /// A drafting object's `floor`: a floor plan, elevation/section view or
+    /// CAD detail, or (for shapes inside a block) a block.
+    fn sheet(&mut self, from: Id, to: Id, block: bool) {
+        let ok = self.doc.is_sheet(to)
+            || (block && self.doc.kind_of(to) == Some(ObjectKind::Block));
+        if !ok {
+            match self.doc.kind_of(to) {
+                Some(k) => self.issue(
+                    from,
+                    format!("floor {to} is a {k}, expected a floor, view or CAD detail"),
+                ),
+                None => self.issue(from, format!("floor references missing sheet {to}")),
+            }
+        }
+    }
+
     fn positive(&mut self, from: Id, field: &str, len: Length) {
         if !(len.is_finite() && len.mm() > 0.0) {
             self.issue(from, format!("{field} must be positive"));
@@ -79,6 +95,15 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
         doc.settings.active_default_set,
         K::DefaultSet,
     );
+    for (field, set) in [
+        ("elevation", doc.settings.view_defaults.elevation),
+        ("section", doc.settings.view_defaults.section),
+        ("detail", doc.settings.view_defaults.detail),
+    ] {
+        if let Some(set) = set {
+            c.reference(Id(0), &format!("settings.view_defaults.{field}"), set, K::DefaultSet);
+        }
+    }
     if doc.count::<Floor>() == 0 {
         c.issue(Id(0), "document has no floors");
     }
@@ -252,7 +277,7 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
             }
             Object::Cad(cad) => {
-                c.reference(id, "floor", cad.floor, K::Floor);
+                c.sheet(id, cad.floor, true);
                 c.reference(id, "layer", cad.layer, K::Layer);
                 match &cad.shape {
                     Shape::Point { at } => c.finite(id, "point", &at.mm()),
@@ -312,7 +337,7 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
             }
             Object::Dimension(d) => {
-                c.reference(id, "floor", d.floor, K::Floor);
+                c.sheet(id, d.floor, false);
                 c.reference(id, "layer", d.layer, K::Layer);
                 match &d.geometry {
                     DimensionGeometry::Linear { points, offset, .. } => {
@@ -338,7 +363,7 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
             }
             Object::Text(t) => {
-                c.reference(id, "floor", t.floor, K::Floor);
+                c.sheet(id, t.floor, false);
                 c.reference(id, "layer", t.layer, K::Layer);
                 if let Some(s) = t.style {
                     c.reference(id, "style", s, K::TextStyle);
@@ -491,6 +516,9 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     LayoutSource::View { view } => {
                         c.reference(id, "source.view", *view, K::SectionView)
                     }
+                    LayoutSource::Detail { detail } => {
+                        c.reference(id, "source.detail", *detail, K::CadDetail)
+                    }
                     LayoutSource::Schedule { floor: Some(f), .. } => {
                         c.reference(id, "source.floor", *f, K::Floor)
                     }
@@ -498,7 +526,7 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
             }
             Object::Callout(co) => {
-                c.reference(id, "floor", co.floor, K::Floor);
+                c.sheet(id, co.floor, false);
                 c.reference(id, "layer", co.layer, K::Layer);
                 c.finite(id, "at", &co.at.mm());
                 if let Some(t) = co.target {
@@ -509,7 +537,7 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
             }
             Object::RevisionCloud(rc) => {
-                c.reference(id, "floor", rc.floor, K::Floor);
+                c.sheet(id, rc.floor, false);
                 c.reference(id, "layer", rc.layer, K::Layer);
                 c.positive(id, "arc", rc.arc);
                 if rc.points.len() < 3 {
@@ -517,6 +545,19 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
                 let flat: Vec<f64> = rc.points.iter().flat_map(|p| p.mm()).collect();
                 c.finite(id, "points", &flat);
+            }
+            Object::CadDetail(_) | Object::Block(_) => {}
+            Object::BlockRef(b) => {
+                c.sheet(id, b.floor, false);
+                c.reference(id, "layer", b.layer, K::Layer);
+                c.reference(id, "block", b.block, K::Block);
+                c.finite(id, "at", &b.at.mm());
+                if !(b.scale.is_finite() && b.scale > 0.0) {
+                    c.issue(id, "scale must be positive");
+                }
+                if !b.rotation.is_finite() {
+                    c.issue(id, "rotation must be finite");
+                }
             }
             Object::Camera(cam) => {
                 c.reference(id, "layer_set", cam.layer_set, K::LayerSet);

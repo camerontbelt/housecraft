@@ -380,73 +380,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         }
     }
 
-    for cad in doc.iter::<Cad>().filter(|c| c.floor == opts.floor) {
-        let look = ctx.look(cad.layer);
-        if !look.visible {
-            continue;
-        }
-        let ink = cad.color.map_or(look.ink, Ink::Color);
-        let stroke = Stroke { ink, ..look.stroke };
-        for (points, closed) in shape_polylines(&cad.shape) {
-            if let (Some(fill), true) = (cad.fill, closed) {
-                out.push(
-                    Some(cad.id),
-                    Prim::Polygon {
-                        points: points.clone(),
-                        fill: Fill::Ink(Ink::Color(fill)),
-                    },
-                );
-            }
-            if points.len() == 1 {
-                // A point: small cross.
-                let p = points[0];
-                let s = 75.0;
-                for d in [DVec2::new(s, s), DVec2::new(s, -s)] {
-                    out.push(
-                        Some(cad.id),
-                        Prim::Polyline {
-                            points: vec![p - d, p + d],
-                            closed: false,
-                            stroke,
-                        },
-                    );
-                }
-            } else {
-                out.push(
-                    Some(cad.id),
-                    Prim::Polyline {
-                        points,
-                        closed,
-                        stroke,
-                    },
-                );
-            }
-        }
-        if let Shape::Line {
-            a,
-            b,
-            arrow_start,
-            arrow_end,
-        } = &cad.shape
-        {
-            let (a, b) = (v2(*a), v2(*b));
-            let size = 150.0;
-            for (on, tip, from) in [(*arrow_start, a, b), (*arrow_end, b, a)] {
-                if on {
-                    let dir = (from - tip).normalize_or_zero();
-                    let back = tip + dir * size;
-                    let side = perp(dir) * size * 0.35;
-                    out.push(
-                        Some(cad.id),
-                        Prim::Polygon {
-                            points: vec![tip, back + side, back - side],
-                            fill: Fill::Ink(ink),
-                        },
-                    );
-                }
-            }
-        }
-    }
+    cad_shapes(&ctx, opts.floor, &mut out);
 
     for plane in doc.iter::<RoofPlane>().filter(|r| r.floor == opts.floor) {
         let look = ctx.look(plane.layer);
@@ -551,25 +485,6 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         north_pointer(v2(at), doc.settings.north, &mut out);
     }
 
-    for c in doc.iter::<Callout>().filter(|c| c.floor == opts.floor) {
-        let look = ctx.look(c.layer);
-        if look.visible {
-            let style = ctx.text_style(None, &look);
-            let h = c.height.unwrap_or(style.height).mm();
-            callout(doc, c, h, look.stroke, &mut out);
-        }
-    }
-    for rc in doc
-        .iter::<RevisionCloud>()
-        .filter(|c| c.floor == opts.floor)
-    {
-        let look = ctx.look(rc.layer);
-        if look.visible {
-            let style = ctx.text_style(None, &look);
-            revision_cloud(rc, style.height.mm(), look.stroke, &mut out);
-        }
-    }
-
     for v in doc.iter::<SectionView>().filter(|v| v.floor == opts.floor) {
         let look = ctx.look(v.layer);
         if look.visible {
@@ -588,28 +503,147 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         }
     }
 
-    for dim in doc.iter::<Dimension>().filter(|d| d.floor == opts.floor) {
+    notes(&ctx, opts.floor, &mut out);
+    out
+}
+
+/// CAD shapes and placed blocks drawn on `sheet`.
+fn cad_shapes(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
+    let doc = ctx.doc;
+    for cad in doc.iter::<Cad>().filter(|c| c.floor == sheet) {
+        let look = ctx.look(cad.layer);
+        if look.visible {
+            cad_shape(cad.id, &cad.shape, cad.color, cad.fill, look, out);
+        }
+    }
+    for b in doc.iter::<BlockRef>().filter(|b| b.floor == sheet) {
+        let look = ctx.look(b.layer);
+        if !look.visible {
+            continue;
+        }
+        let t = housecraft_api::blocks::placement(b);
+        for cad in doc.iter::<Cad>().filter(|c| c.floor == b.block) {
+            cad_shape(b.id, &t.apply_shape(&cad.shape), cad.color, cad.fill, look, out);
+        }
+    }
+}
+
+/// One CAD shape, tagged with `id` for selection.
+fn cad_shape(
+    id: Id,
+    shape: &Shape,
+    color: Option<Color>,
+    fill: Option<Color>,
+    look: Look,
+    out: &mut Drawing,
+) {
+    let ink = color.map_or(look.ink, Ink::Color);
+    let stroke = Stroke { ink, ..look.stroke };
+    for (points, closed) in shape_polylines(shape) {
+        if let (Some(fill), true) = (fill, closed) {
+            out.push(
+                Some(id),
+                Prim::Polygon {
+                    points: points.clone(),
+                    fill: Fill::Ink(Ink::Color(fill)),
+                },
+            );
+        }
+        if points.len() == 1 {
+            // A point: small cross.
+            let p = points[0];
+            let s = 75.0;
+            for d in [DVec2::new(s, s), DVec2::new(s, -s)] {
+                out.push(
+                    Some(id),
+                    Prim::Polyline {
+                        points: vec![p - d, p + d],
+                        closed: false,
+                        stroke,
+                    },
+                );
+            }
+        } else {
+            out.push(
+                Some(id),
+                Prim::Polyline {
+                    points,
+                    closed,
+                    stroke,
+                },
+            );
+        }
+    }
+    if let Shape::Line {
+        a,
+        b,
+        arrow_start,
+        arrow_end,
+    } = shape
+    {
+        let (a, b) = (v2(*a), v2(*b));
+        let size = 150.0;
+        for (on, tip, from) in [(*arrow_start, a, b), (*arrow_end, b, a)] {
+            if on {
+                let dir = (from - tip).normalize_or_zero();
+                let back = tip + dir * size;
+                let side = perp(dir) * size * 0.35;
+                out.push(
+                    Some(id),
+                    Prim::Polygon {
+                        points: vec![tip, back + side, back - side],
+                        fill: Fill::Ink(ink),
+                    },
+                );
+            }
+        }
+    }
+}
+
+/// Callouts, revision clouds, dimensions and text drawn on `sheet`.
+fn notes(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
+    let doc = ctx.doc;
+    for c in doc.iter::<Callout>().filter(|c| c.floor == sheet) {
+        let look = ctx.look(c.layer);
+        if look.visible {
+            let style = ctx.text_style(None, &look);
+            let h = c.height.unwrap_or(style.height).mm();
+            callout(doc, c, h, look.stroke, out);
+        }
+    }
+    for rc in doc
+        .iter::<RevisionCloud>()
+        .filter(|c| c.floor == sheet)
+    {
+        let look = ctx.look(rc.layer);
+        if look.visible {
+            let style = ctx.text_style(None, &look);
+            revision_cloud(rc, style.height.mm(), look.stroke, out);
+        }
+    }
+
+    for dim in doc.iter::<Dimension>().filter(|d| d.floor == sheet) {
         let look = ctx.look(dim.layer);
         if !look.visible {
             continue;
         }
         let ts = ctx
             .doc
-            .get::<TextStyle>(defaults.dimensions.text_style)
+            .get::<TextStyle>(ctx.defaults.dimensions.text_style)
             .cloned()
             .unwrap_or_else(|| ctx.text_style(None, &look));
         let style = DimStyle {
             stroke: look.stroke,
             ink: ts.color.map_or(look.ink, Ink::Color),
             text_height: ts.height.mm(),
-            arrow: defaults.dimensions.arrow,
-            gap: defaults.dimensions.extension_gap.mm(),
-            overshoot: defaults.dimensions.extension_overshoot.mm(),
+            arrow: ctx.defaults.dimensions.arrow,
+            gap: ctx.defaults.dimensions.extension_gap.mm(),
+            overshoot: ctx.defaults.dimensions.extension_overshoot.mm(),
         };
-        draw_dimension(doc, defaults, dim, &style, &mut out);
+        draw_dimension(doc, ctx.defaults, dim, &style, out);
     }
 
-    for text in doc.iter::<Text>().filter(|t| t.floor == opts.floor) {
+    for text in doc.iter::<Text>().filter(|t| t.floor == sheet) {
         let look = ctx.look(text.layer);
         if !look.visible {
             continue;
@@ -629,6 +663,22 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             },
         );
     }
+}
+
+/// The drafting on a 2D view or CAD detail `sheet` (its lines, blocks,
+/// dimensions, text and callouts), as `layer_set` shows it (`None`: the
+/// first layer set), using the sheet's camera default set.
+pub fn drafting(doc: &Document, sheet: Id, layer_set: Option<Id>) -> Drawing {
+    let ctx = Ctx {
+        doc,
+        set: layer_set
+            .and_then(|s| doc.get::<LayerSet>(s))
+            .or_else(|| doc.iter::<LayerSet>().next()),
+        defaults: doc.defaults_for(sheet),
+    };
+    let mut out = Drawing::default();
+    cad_shapes(&ctx, sheet, &mut out);
+    notes(&ctx, sheet, &mut out);
     out
 }
 

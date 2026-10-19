@@ -123,6 +123,24 @@ impl SnapTargets {
     }
 }
 
+impl SnapTargets {
+    /// Snap to a drawing's linework too (an elevation's edges and corners).
+    pub fn add_drawing(&mut self, drawing: &housecraft_draft::Drawing) {
+        for item in &drawing.items {
+            if let housecraft_draft::Prim::Polyline { points, closed, .. } = &item.prim {
+                self.points
+                    .extend(points.iter().map(|p| (*p, SnapKind::Endpoint)));
+                for w in points.windows(2) {
+                    self.segments.push((w[0], w[1]));
+                }
+                if *closed && points.len() > 2 {
+                    self.segments.push((points[points.len() - 1], points[0]));
+                }
+            }
+        }
+    }
+}
+
 /// Snap `cursor` (model mm). `tol` is the pick radius in mm; `from` is the
 /// previous point of the tool, enabling angle snapping.
 pub fn snap(

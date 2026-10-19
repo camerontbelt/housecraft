@@ -2,7 +2,7 @@
 //! Tool Palette. Names and hotkeys follow the conventions residential CAD users
 //! already know, so muscle memory carries over.
 
-use housecraft_api::model::{DoorStyle, ElectricalKind, SectionKind, WindowStyle};
+use housecraft_api::model::{DoorStyle, ElectricalKind, Id, SectionKind, WindowStyle};
 
 use crate::icons::Icon;
 
@@ -38,6 +38,8 @@ pub enum Tool {
     Electrical(ElectricalKind),
     /// Wire switches to the fixtures they control.
     ConnectSwitch,
+    /// Place copies of a CAD block.
+    PlaceBlock(Id),
 }
 
 /// The shapes offered by the stair tools.
@@ -238,6 +240,15 @@ impl Family {
 }
 
 impl Tool {
+    /// Tools that draft (lines, dimensions, text): the ones that work in
+    /// elevation, section and CAD detail views as well as on plans.
+    pub fn is_drafting(self) -> bool {
+        matches!(
+            self.family(),
+            Family::Select | Family::Dimensions | Family::Text | Family::Cad
+        )
+    }
+
     pub fn family(self) -> Family {
         match self {
             Tool::Select => Family::Select,
@@ -287,6 +298,7 @@ impl Tool {
             Tool::Stair(StairKind::U) => "U-Shaped Stair",
             Tool::Electrical(k) => k.name(),
             Tool::ConnectSwitch => "Connect Electrical",
+            Tool::PlaceBlock(_) => "Place Block",
         }
     }
 
@@ -324,6 +336,7 @@ impl Tool {
             Tool::SectionLine(_) => Icon::Camera,
             Tool::Stair(_) => Icon::Stairs,
             Tool::Electrical(_) | Tool::ConnectSwitch => Icon::Electrical,
+            Tool::PlaceBlock(_) => Icon::Box,
         }
     }
 
@@ -396,6 +409,7 @@ impl Tool {
             Tool::RoofPlane => {
                 "Click the two ends of the eave, then the other corners; double-click or Enter to finish."
             }
+            Tool::PlaceBlock(_) => "Click to place a copy of the block; Esc when done.",
         }
     }
 }

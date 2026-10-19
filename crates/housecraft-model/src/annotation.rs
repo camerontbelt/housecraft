@@ -256,3 +256,55 @@ pub struct RevisionCloud {
     #[serde(default)]
     pub label: Option<String>,
 }
+
+/// A CAD shape with its own colours, outside the document (a block in a
+/// library file, or linework for a new CAD detail).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct DetailShape {
+    pub shape: Shape,
+    #[serde(default)]
+    pub color: Option<Color>,
+    #[serde(default)]
+    pub fill: Option<Color>,
+}
+
+/// A CAD detail: a blank drafting sheet, not tied to any floor, for
+/// construction details and other 2D drawings. Drafting objects whose `floor`
+/// is the detail's id are drawn on it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct CadDetail {
+    pub id: Id,
+    pub name: String,
+}
+
+/// A CAD block definition: a named group of CAD shapes. Its shapes are `Cad`
+/// objects whose `floor` is the block's id, drawn relative to the insertion
+/// point at the origin. Blocks are placed with [`BlockRef`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Block {
+    pub id: Id,
+    pub name: String,
+}
+
+/// A placed copy of a block on a floor plan, view or CAD detail.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct BlockRef {
+    pub id: Id,
+    pub floor: Id,
+    pub layer: Id,
+    pub block: Id,
+    /// Where the block's insertion point sits.
+    pub at: Point2,
+    /// Degrees counter-clockwise.
+    #[serde(default)]
+    pub rotation: f64,
+    #[serde(default = "one")]
+    pub scale: f64,
+    /// Drawn mirrored left to right (before rotation).
+    #[serde(default)]
+    pub mirrored: bool,
+}
+
+fn one() -> f64 {
+    1.0
+}

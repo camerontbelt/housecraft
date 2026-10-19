@@ -1412,6 +1412,7 @@ name = "housecraft-io-native"
 version = "0.1.0"
 dependencies = [
  "housecraft-model",
+ "housecraft-units",
  "serde",
  "serde_json",
  "thiserror 2.0.21",

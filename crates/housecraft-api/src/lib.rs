@@ -4,6 +4,7 @@
 //! which also owns undo/redo, keeps rooms in sync with walls and validates
 //! the document after every transaction. Read access goes through [`query`].
 
+pub mod blocks;
 mod command;
 mod foundation;
 pub mod layouts;
@@ -16,7 +17,7 @@ pub mod schedule;
 mod session;
 mod views;
 
-pub use command::{Command, LengthAnchor, Outcome, TransformOp};
+pub use command::{Command, DetailText, LengthAnchor, Outcome, TransformOp};
 pub use housecraft_geom as geom;
 pub use housecraft_model as model;
 pub use housecraft_units as units;

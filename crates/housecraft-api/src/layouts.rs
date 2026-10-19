@@ -24,6 +24,9 @@ pub fn source_name(doc: &Document, s: &LayoutSource) -> String {
         LayoutSource::View { view } => doc
             .get::<SectionView>(*view)
             .map_or("?".into(), |v| v.name.clone()),
+        LayoutSource::Detail { detail } => doc
+            .get::<CadDetail>(*detail)
+            .map_or("?".into(), |d| d.name.clone()),
         LayoutSource::Schedule { schedule_kind, .. } => schedule_kind.name().to_string(),
         LayoutSource::MaterialsList => "Materials List".into(),
         LayoutSource::Text { .. } => "Notes".into(),

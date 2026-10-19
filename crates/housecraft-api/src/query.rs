@@ -235,6 +235,12 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
             b.page + 1
         ),
         Object::Callout(c) => format!("callout {:?}", c.text),
+        Object::CadDetail(c) => format!("CAD detail {:?}", c.name),
+        Object::Block(b) => format!("block {:?}", b.name),
+        Object::BlockRef(r) => format!(
+            "block {:?}",
+            doc.get::<Block>(r.block).map_or("?", |b| b.name.as_str())
+        ),
         Object::RevisionCloud(c) => format!(
             "revision cloud{}",
             c.label.as_ref().map_or(String::new(), |l| format!(" {l}"))

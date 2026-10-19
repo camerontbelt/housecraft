@@ -192,6 +192,14 @@ impl App {
         if doc.get::<Floor>(self.plan.floor).is_none() {
             self.plan.floor = doc.floors_by_elevation()[0].id;
         }
+        if self
+            .plan
+            .sheet
+            .is_some_and(|s| !doc.is_sheet(s) || doc.kind_of(s) == Some(ObjectKind::Floor))
+        {
+            self.plan.sheet = None;
+            self.plan.fit_requested = true;
+        }
         if doc.get::<LayerSet>(self.plan.layer_set).is_none() {
             self.plan.layer_set = doc.iter::<LayerSet>().next().map_or(Id(0), |s| s.id);
         }
@@ -201,6 +209,202 @@ impl App {
         self.plan.set_tool(tool);
         self.palette = tool.family();
         self.mode = Mode::Plan;
+        if !tool.is_drafting() {
+            self.close_sheet();
+        }
+    }
+
+    /// Show an elevation/section view or CAD detail in the plan window, where
+    /// the CAD, text and dimension tools draw on it.
+    pub fn open_sheet(&mut self, id: Id) {
+        self.mode = Mode::Plan;
+        if self.plan.sheet != Some(id) {
+            self.plan.sheet = Some(id);
+            self.plan.fit_requested = true;
+            self.selection.clear();
+        }
+        if !self.plan.tool.is_drafting() {
+            self.plan.set_tool(Tool::Select);
+        }
+    }
+
+    /// Back to the floor plan from a view or CAD detail.
+    fn close_sheet(&mut self) {
+        if self.plan.sheet.take().is_some() {
+            self.plan.fit_requested = true;
+            self.selection.clear();
+        }
+    }
+
+    /// The plan window: back to the floor plan.
+    pub fn show_plan(&mut self) {
+        self.mode = Mode::Plan;
+        self.close_sheet();
+    }
+
+    /// What the plan window shows (the floor plan, or the open view or CAD
+    /// detail), and a name for it.
+    pub fn current_drawing(&self) -> (housecraft_draft::Drawing, String) {
+        let doc = self.doc();
+        match self.plan.sheet.and_then(|s| doc.object(s)) {
+            Some(Object::SectionView(v)) => {
+                (housecraft_draft::elevation::section_view(doc, v), v.name.clone())
+            }
+            Some(Object::CadDetail(d)) => (
+                housecraft_draft::detail::cad_detail(doc, d.id, Some(self.plan.layer_set)),
+                d.name.clone(),
+            ),
+            _ => {
+                let opts = housecraft_draft::PlanOptions {
+                    floor: self.plan.floor,
+                    layer_set: self.plan.layer_set,
+                    reference_floor: self.plan.reference_floor,
+                    references: self.plan.references.clone(),
+                    phase: self.plan.phase,
+                    sun_shadows: self.plan.sun_shadows,
+                    default_set: None,
+                };
+                let name = doc
+                    .get::<Floor>(self.plan.floor)
+                    .map_or("Plan".into(), |f| format!("{} Plan", f.name));
+                (housecraft_draft::plan(doc, &opts), name)
+            }
+        }
+    }
+
+    /// CAD > CAD Detail from View: copy what the plan window shows into a
+    /// new CAD detail of plain, editable lines and text, and open it.
+    pub fn detail_from_view(&mut self) {
+        let (drawing, name) = self.current_drawing();
+        let mut n = 1;
+        let mut detail_name = format!("{name} Detail");
+        while self.doc().iter::<CadDetail>().any(|d| d.name == detail_name) {
+            n += 1;
+            detail_name = format!("{name} Detail {n}");
+        }
+        let command = housecraft_draft::detail::detail_from_drawing(&drawing, &detail_name);
+        if let Some(out) = self.run1(command)
+            && let Some(id) = out.created.first()
+        {
+            self.open_sheet(*id);
+            self.info(format!("Made CAD detail {detail_name:?}"));
+        }
+    }
+
+    /// CAD > CAD Details > New CAD Detail.
+    pub fn new_cad_detail(&mut self) {
+        let n = self.doc().count::<CadDetail>() + 1;
+        if let Some(out) = self.run1(Command::AddCadDetail {
+            name: format!("CAD Detail {n}"),
+            shapes: Vec::new(),
+            texts: Vec::new(),
+        }) && let Some(id) = out.created.first()
+        {
+            self.open_sheet(*id);
+        }
+    }
+
+    /// CAD > Blocks > Make Block: the selected CAD shapes become a block.
+    pub fn make_block(&mut self) {
+        let doc = self.doc();
+        let ids: Vec<Id> = self
+            .selection
+            .iter()
+            .copied()
+            .filter(|id| doc.kind_of(*id) == Some(ObjectKind::Cad))
+            .collect();
+        if ids.is_empty() {
+            self.error("Select the lines and shapes to make into a block first.");
+            return;
+        }
+        let mut n = doc.count::<Block>() + 1;
+        while doc.iter::<Block>().any(|b| b.name == format!("Block {n}")) {
+            n += 1;
+        }
+        if let Some(out) = self.run1(Command::AddBlock {
+            name: format!("Block {n}"),
+            ids,
+            base: None,
+            shapes: Vec::new(),
+        }) {
+            self.selection = out
+                .created
+                .iter()
+                .copied()
+                .filter(|id| self.doc().kind_of(*id) == Some(ObjectKind::BlockRef))
+                .collect();
+            self.info(format!("Made Block {n}; rename it in its specification"));
+        }
+    }
+
+    /// The selected placed block, if exactly one is selected.
+    fn selected_block_ref(&self) -> Option<BlockRef> {
+        match self.selection.as_slice() {
+            [id] => self.doc().get::<BlockRef>(*id).cloned(),
+            _ => None,
+        }
+    }
+
+    /// CAD > Blocks > Explode Block.
+    pub fn explode_block(&mut self) {
+        if let Some(b) = self.selected_block_ref()
+            && let Some(out) = self.run1(Command::ExplodeBlock { id: b.id })
+        {
+            self.selection = out.created.clone();
+        }
+    }
+
+    /// CAD > Blocks > Save Block to Library.
+    pub fn save_block_to_library(&mut self) {
+        use housecraft_io_native::library;
+        let Some(b) = self.selected_block_ref() else {
+            return;
+        };
+        let doc = self.doc();
+        let Some(block) = doc.get::<Block>(b.block) else {
+            return;
+        };
+        let Some(dir) = library::library_dir() else {
+            self.error("No library folder (set HOUSECRAFT_LIBRARY)");
+            return;
+        };
+        let saved = library::save_block(
+            &dir,
+            &library::LibraryBlock {
+                name: block.name.clone(),
+                shapes: housecraft_api::blocks::block_shapes(doc, block.id),
+            },
+        );
+        match saved {
+            Ok(path) => self.info(format!("Saved to {}", path.display())),
+            Err(e) => self.error(format!("Could not save the block: {e}")),
+        }
+    }
+
+    /// Place a library block: add it to the plan (once) and pick the
+    /// Place Block tool.
+    pub fn place_library_block(&mut self, block: &housecraft_io_native::library::LibraryBlock) {
+        let existing = self
+            .doc()
+            .iter::<Block>()
+            .find(|b| b.name == block.name)
+            .map(|b| b.id);
+        let id = match existing {
+            Some(id) => Some(id),
+            None => self
+                .run1(Command::AddBlock {
+                    name: block.name.clone(),
+                    ids: Vec::new(),
+                    base: None,
+                    shapes: block.shapes.clone(),
+                })
+                .and_then(|o| o.created.first().copied()),
+        };
+        if let Some(id) = id {
+            self.plan.set_tool(Tool::PlaceBlock(id));
+            self.palette = Family::Cad;
+            self.mode = Mode::Plan;
+        }
     }
 
     pub fn undo(&mut self) {
@@ -378,6 +582,7 @@ impl App {
         }
         self.plan.floor = floors[j];
         self.selection.clear();
+        self.close_sheet();
     }
 
     pub fn camera_action(&mut self, action: CameraAction) {
@@ -464,16 +669,7 @@ impl App {
         let Some(path) = pick_save_path(&doc.name, ext) else {
             return;
         };
-        let opts = housecraft_draft::PlanOptions {
-            floor: self.plan.floor,
-            layer_set: self.plan.layer_set,
-            reference_floor: self.plan.reference_floor,
-            references: self.plan.references.clone(),
-            phase: self.plan.phase,
-            sun_shadows: self.plan.sun_shadows,
-            default_set: None,
-        };
-        let drawing = housecraft_draft::plan(doc, &opts);
+        let drawing = self.current_drawing().0;
         let imperial = crate::util::input_unit(doc) == housecraft_api::units::LengthUnit::Inches;
         let bytes = if ext == "pdf" {
             let floor = doc
@@ -891,11 +1087,16 @@ impl App {
                         && let Some(out) = self.run1(Command::RoomElevations { room })
                         && let Some(first) = out.created.first()
                     {
-                        self.mode = Mode::Drawing(crate::drawing_view::DrawingSource::View(*first));
+                        self.open_sheet(*first);
                     }
                 });
-                if item(ui, "Back to Plan View", "F2", self.mode != Mode::Plan) {
-                    self.mode = Mode::Plan;
+                if item(
+                    ui,
+                    "Back to Plan View",
+                    "F2",
+                    self.mode != Mode::Plan || self.plan.sheet.is_some(),
+                ) {
+                    self.show_plan();
                 }
             });
             ui.menu_button("CAD", |ui| {
@@ -918,6 +1119,58 @@ impl App {
                 if tool_item(ui, Tool::Text) {
                     self.set_tool(Tool::Text);
                 }
+                ui.separator();
+                ui.menu_button("CAD Details", |ui| {
+                    if item(ui, "New CAD Detail", "", true) {
+                        self.new_cad_detail();
+                    }
+                    if item(ui, "CAD Detail from View", "", true) {
+                        self.detail_from_view();
+                    }
+                    let details: Vec<(Id, String)> = self
+                        .doc()
+                        .iter::<CadDetail>()
+                        .map(|d| (d.id, d.name.clone()))
+                        .collect();
+                    if !details.is_empty() {
+                        ui.separator();
+                    }
+                    for (id, name) in details {
+                        if item(ui, &name, "", true) {
+                            self.open_sheet(id);
+                        }
+                    }
+                });
+                ui.menu_button("Blocks", |ui| {
+                    let cad_selected = self
+                        .selection
+                        .iter()
+                        .any(|id| self.doc().kind_of(*id) == Some(ObjectKind::Cad));
+                    if item(ui, "Make Block from Selection", "", cad_selected) {
+                        self.make_block();
+                    }
+                    let one = self.selected_block_ref().is_some();
+                    if item(ui, "Explode Block", "", one) {
+                        self.explode_block();
+                    }
+                    if item(ui, "Save Block to Library", "", one) {
+                        self.save_block_to_library();
+                    }
+                    let blocks: Vec<(Id, String)> = self
+                        .doc()
+                        .iter::<Block>()
+                        .map(|b| (b.id, b.name.clone()))
+                        .collect();
+                    if !blocks.is_empty() {
+                        ui.separator();
+                        ui.weak("Place:");
+                    }
+                    for (id, name) in blocks {
+                        if item(ui, &name, "", true) {
+                            self.set_tool(Tool::PlaceBlock(id));
+                        }
+                    }
+                });
             });
             ui.menu_button("Tools", |ui| {
                 ui.menu_button("Schedules", |ui| {
@@ -1028,7 +1281,7 @@ impl App {
             });
             ui.menu_button("Window", |ui| {
                 if item(ui, "Plan View", "F2", true) {
-                    self.mode = Mode::Plan;
+                    self.show_plan();
                 }
                 if item(ui, "3D View", "F3", true) {
                     self.mode = Mode::ThreeD;
@@ -1152,13 +1405,13 @@ impl App {
             if icons::button(
                 ui,
                 Icon::Plan,
-                self.mode == Mode::Plan,
+                self.mode == Mode::Plan && self.plan.sheet.is_none(),
                 true,
                 "Plan View (F2)",
             )
             .clicked()
             {
-                self.mode = Mode::Plan;
+                self.show_plan();
             }
             if icons::button(
                 ui,
@@ -1446,10 +1699,31 @@ impl App {
             SideTab::ProjectBrowser => self.project_browser(ui),
             SideTab::LayerDisplay => self.layer_display(ui),
             SideTab::Library => {
+                use housecraft_io_native::library;
+                let dir = library::library_dir();
+                egui::CollapsingHeader::new("CAD Blocks")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        let blocks = dir.as_deref().map(library::list_blocks).unwrap_or_default();
+                        if blocks.is_empty() {
+                            ui.weak(
+                                "Select a placed block and use CAD > Blocks > Save Block to \
+                                 Library to keep it here for any plan.",
+                            );
+                        }
+                        for (_, block) in blocks {
+                            let resp = ui
+                                .selectable_label(false, &block.name)
+                                .on_hover_text("Click, then click in the plan to place it");
+                            if resp.clicked() {
+                                self.place_library_block(&block);
+                            }
+                        }
+                    });
+                ui.add_space(6.0);
                 ui.weak(
-                    "The Library Browser will hold wall types, symbols, materials and \
-                     manufacturer catalogs (backlog LIB-01). Wall types and room types are \
-                     managed from the Tools menu for now.",
+                    "Wall types, symbols, materials and manufacturer catalogs come later \
+                     (backlog LIB-01). Wall types and room types are managed from the Tools menu.",
                 );
             }
         });
@@ -1589,14 +1863,45 @@ impl App {
                 }
                 for (id, name) in views {
                     let resp = ui.selectable_label(
-                        self.mode == Mode::Drawing(crate::drawing_view::DrawingSource::View(id)),
+                        self.mode == Mode::Plan && self.plan.sheet == Some(id),
                         &name,
                     );
                     if resp.clicked() {
-                        self.mode = Mode::Drawing(crate::drawing_view::DrawingSource::View(id));
+                        self.open_sheet(id);
                     }
                     resp.context_menu(|ui| {
                         if ui.button("Open Object").clicked() {
+                            self.spec.push(id);
+                            ui.close();
+                        }
+                        if ui.button("Delete").clicked() {
+                            self.run1(Command::Delete { ids: vec![id] });
+                            ui.close();
+                        }
+                    });
+                }
+            });
+        egui::CollapsingHeader::new("CAD Details")
+            .default_open(true)
+            .show(ui, |ui| {
+                let details: Vec<(Id, String)> = self
+                    .doc()
+                    .iter::<CadDetail>()
+                    .map(|d| (d.id, d.name.clone()))
+                    .collect();
+                if details.is_empty() {
+                    ui.weak("CAD > CAD Details");
+                }
+                for (id, name) in details {
+                    let resp = ui.selectable_label(
+                        self.mode == Mode::Plan && self.plan.sheet == Some(id),
+                        &name,
+                    );
+                    if resp.clicked() {
+                        self.open_sheet(id);
+                    }
+                    resp.context_menu(|ui| {
+                        if ui.button("Rename…").clicked() {
                             self.spec.push(id);
                             ui.close();
                         }
@@ -1719,14 +2024,19 @@ impl App {
     /// What "Send to Layout" sends from the current view.
     fn current_layout_source(&self) -> Option<LayoutSource> {
         match self.mode {
-            Mode::Plan => Some(LayoutSource::Plan {
-                floor: self.plan.floor,
-                layer_set: Some(self.plan.layer_set),
-                phase: self.plan.phase,
-            }),
-            Mode::Drawing(crate::drawing_view::DrawingSource::View(view)) => {
-                Some(LayoutSource::View { view })
-            }
+            Mode::Plan => match self.plan.sheet.and_then(|s| self.doc().kind_of(s)) {
+                Some(ObjectKind::SectionView) => Some(LayoutSource::View {
+                    view: self.plan.sheet?,
+                }),
+                Some(ObjectKind::CadDetail) => Some(LayoutSource::Detail {
+                    detail: self.plan.sheet?,
+                }),
+                _ => Some(LayoutSource::Plan {
+                    floor: self.plan.floor,
+                    layer_set: Some(self.plan.layer_set),
+                    phase: self.plan.phase,
+                }),
+            },
             _ => None,
         }
     }
@@ -1920,7 +2230,7 @@ impl App {
             self.delete_selection();
         }
         if consume(none, Key::F2) {
-            self.mode = Mode::Plan;
+            self.show_plan();
         }
         if consume(none, Key::F3) {
             self.mode = Mode::ThreeD;

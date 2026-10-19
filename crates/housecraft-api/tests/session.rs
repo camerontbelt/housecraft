@@ -367,16 +367,20 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_layout", "name": "Sheets"}},
                 {{"op": "add_callout", "text": "note", "at": [0,0]}},
                 {{"op": "add_revision_cloud", "points": [[0,0],[1000,0],[0,1000]]}},
+                {{"op": "add_cad_detail", "name": "Eave", "shapes": [{{"shape": {{"shape": "line", "a": [0,0], "b": [100,0]}}, "fill": "#808080"}}], "texts": [{{"position": [0,0], "text": "x"}}]}},
+                {{"op": "add_block", "name": "B", "shapes": [{{"shape": {{"shape": "point", "at": [0,0]}}}}]}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
             w = wall.0
         ),
     );
     let layout = s.document().iter::<Layout>().next().unwrap().id;
+    let block = s.document().iter::<Block>().next().unwrap().id;
     apply(
         &mut s,
         &format!(
-            r#"[{{"op": "send_to_layout", "layout": {}, "source": {{"type": "text", "text": "notes"}}}}]"#,
-            layout.0
+            r#"[{{"op": "send_to_layout", "layout": {}, "source": {{"type": "text", "text": "notes"}}}},
+                {{"op": "add_block_ref", "block": {}, "at": [0,0], "rotation": 30}}]"#,
+            layout.0, block.0
         ),
     );
     let doc = s.document();
@@ -1336,4 +1340,151 @@ fn elevations_and_sections() {
         .is_err(),
         "a view needs a real line"
     );
+}
+
+#[test]
+fn drafting_in_views_and_details() {
+    let mut s = boxed();
+    apply(&mut s, r#"[{"op": "auto_elevations"}]"#);
+    let view = s.document().iter::<SectionView>().next().unwrap().id;
+    let out = apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_dimension", "floor": {v}, "geometry": {{"type": "linear", "points": [[0,0], [0,"8'"]], "orientation": "vertical", "offset": "-2'"}}}},
+                {{"op": "add_text", "floor": {v}, "position": [0,"9'"], "text": "Ridge"}},
+                {{"op": "add_cad_detail", "name": "Eave"}}]"#,
+            v = view.0
+        ),
+    );
+    let doc = s.document();
+    assert_eq!(doc.floor_of(out.created[0]), Some(view));
+    let detail = out.created[2];
+    assert_eq!(doc.get::<CadDetail>(detail).unwrap().name, "Eave");
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_cad", "floor": {}, "shape": {{"shape": "line", "a": [0,0], "b": ["2'",0]}}}}]"#,
+            detail.0
+        ),
+    );
+    // Drafting can't go on a wall, and walls can't go on a view.
+    let wall = walls(&s)[0].id;
+    assert!(
+        s.apply(&commands(&format!(
+            r#"[{{"op": "add_text", "floor": {}, "position": [0,0], "text": "x"}}]"#,
+            wall.0
+        )))
+        .is_err()
+    );
+    assert!(
+        s.apply(&commands(&format!(
+            r#"[{{"op": "add_wall", "floor": {}, "start": [0,0], "end": ["8'",0]}}]"#,
+            view.0
+        )))
+        .is_err()
+    );
+    // Deleting a floor removes its views and the drafting on them.
+    let floor = s.document().floors_by_elevation()[0].id;
+    apply(&mut s, r#"[{"op": "add_floor"}]"#);
+    let out = apply(&mut s, &format!(r#"[{{"op": "delete", "ids": [{}]}}]"#, floor.0));
+    assert!(out.deleted.contains(&view));
+    let doc = s.document();
+    assert_eq!(doc.count::<SectionView>(), 0);
+    assert_eq!(doc.count::<Dimension>(), 0);
+    assert!(doc.iter::<Text>().all(|t| t.text != "Ridge"));
+    // The CAD detail is not on a floor, so it stays.
+    assert_eq!(doc.count::<CadDetail>(), 1);
+    assert!(doc.validate().is_empty(), "{:?}", doc.validate());
+}
+
+#[test]
+fn blocks_make_place_mirror_and_explode() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_cad", "shape": {"shape": "line", "a": ["40'",0], "b": ["42'",0]}},
+            {"op": "add_cad", "shape": {"shape": "circle", "center": ["41'","1'"], "radius": "6\""}}]"#,
+    );
+    let ids: Vec<u64> = out.created.iter().map(|i| i.0).collect();
+    let out = apply(
+        &mut s,
+        &format!(r#"[{{"op": "add_block", "name": "Sink", "ids": {ids:?}}}]"#),
+    );
+    let doc = s.document();
+    let block = out.created[0];
+    let placed = out.created[1];
+    let r = doc.get::<BlockRef>(placed).unwrap();
+    // Inserted at the shapes' bottom-left corner: the line's start.
+    assert!((r.at.x().feet() - 40.0).abs() < 1e-9);
+    assert!(r.at.y().feet().abs() < 1e-9);
+    assert_eq!(doc.iter::<Cad>().filter(|c| c.floor == block).count(), 2);
+    assert!(doc.validate().is_empty(), "{:?}", doc.validate());
+    assert!(
+        s.apply(&commands(r#"[{"op": "add_block", "name": "Sink", "shapes": []}]"#))
+            .is_err(),
+        "names are unique"
+    );
+
+    // Mirror across x = 50': the copy flips and stays where the mirror puts it.
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "transform", "ids": [{}], "transform": {{"type": "mirror", "a": ["50'",0], "b": ["50'","10'"]}}}}]"#,
+            placed.0
+        ),
+    );
+    let r = s.document().get::<BlockRef>(placed).unwrap().clone();
+    assert!(r.mirrored);
+    let out = apply(&mut s, &format!(r#"[{{"op": "explode_block", "id": {}}}]"#, placed.0));
+    let doc = s.document();
+    assert!(doc.get::<BlockRef>(placed).is_none());
+    let line = out
+        .created
+        .iter()
+        .find_map(|id| match &doc.get::<Cad>(*id)?.shape {
+            Shape::Line { a, b, .. } => Some((a.x().feet(), b.x().feet())),
+            _ => None,
+        })
+        .unwrap();
+    // The 40'..42' line mirrored about 50' lies at 60'..58'.
+    assert!((line.0 - 60.0).abs() < 1e-6 && (line.1 - 58.0).abs() < 1e-6, "{line:?}");
+    // Deleting the block removes its definition shapes and any copies.
+    apply(
+        &mut s,
+        &format!(r#"[{{"op": "add_block_ref", "block": {b}, "at": [0,0]}}, {{"op": "delete", "ids": [{b}]}}]"#, b = block.0),
+    );
+    let doc = s.document();
+    assert_eq!(doc.count::<BlockRef>(), 0);
+    assert!(doc.iter::<Cad>().all(|c| c.floor != block));
+    assert!(doc.validate().is_empty(), "{:?}", doc.validate());
+}
+
+#[test]
+fn camera_default_sets_choose_drafting_layers() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_default_set", "name": "Sections"}, {"op": "add_layer", "name": "Section Notes"}, {"op": "auto_elevations"}]"#,
+    );
+    let (set, layer) = (out.created[0], out.created[1]);
+    let view = s.document().iter::<SectionView>().next().unwrap().id;
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "update", "id": {set}, "set": {{"layers": {{"text": {layer}}}}}}},
+                {{"op": "set_view_defaults", "view_kind": "elevation", "default_set": {set}}},
+                {{"op": "add_text", "floor": {view}, "position": [0,0], "text": "A"}},
+                {{"op": "add_text", "position": [0,0], "text": "B"}}]"#,
+            set = set.0,
+            layer = layer.0,
+            view = view.0
+        ),
+    );
+    let doc = s.document();
+    let layer_of = |t: &str| doc.iter::<Text>().find(|x| x.text == t).unwrap().layer;
+    assert_eq!(layer_of("A"), layer);
+    assert_ne!(layer_of("B"), layer);
+    // Deleting the set falls back to the active one.
+    apply(&mut s, &format!(r#"[{{"op": "delete", "ids": [{}]}}]"#, set.0));
+    assert_eq!(s.document().settings.view_defaults.elevation, None);
 }

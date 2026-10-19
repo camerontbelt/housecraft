@@ -145,6 +145,9 @@ objects! {
     LayoutBox => "layout_box",
     Callout => "callout",
     RevisionCloud => "revision_cloud",
+    CadDetail => "cad_detail",
+    Block => "block",
+    BlockRef => "block_ref",
 }
 
 impl fmt::Display for ObjectKind {
@@ -169,6 +172,7 @@ impl ObjectKind {
                 | ObjectKind::Schedule
                 | ObjectKind::Callout
                 | ObjectKind::RevisionCloud
+                | ObjectKind::BlockRef
         )
     }
 }
@@ -202,6 +206,48 @@ pub struct Settings {
     /// Markup applied to the materials list total, percent.
     #[serde(default)]
     pub markup_percent: f64,
+    /// Default sets used for drafting in each kind of 2D view.
+    #[serde(default)]
+    pub view_defaults: ViewDefaults,
+}
+
+/// Camera default sets: the default set (dimension, text and layer
+/// defaults) each kind of 2D view uses for drafting; `None` uses the active one.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct ViewDefaults {
+    #[serde(default)]
+    pub elevation: Option<Id>,
+    #[serde(default)]
+    pub section: Option<Id>,
+    #[serde(default)]
+    pub detail: Option<Id>,
+}
+
+/// Kinds of 2D view with their own camera default set.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ViewKind {
+    Elevation,
+    Section,
+    Detail,
+}
+
+impl ViewDefaults {
+    pub fn get(&self, kind: ViewKind) -> Option<Id> {
+        match kind {
+            ViewKind::Elevation => self.elevation,
+            ViewKind::Section => self.section,
+            ViewKind::Detail => self.detail,
+        }
+    }
+
+    pub fn set(&mut self, kind: ViewKind, set: Option<Id>) {
+        match kind {
+            ViewKind::Elevation => self.elevation = set,
+            ViewKind::Section => self.section = set,
+            ViewKind::Detail => self.detail = set,
+        }
+    }
 }
 
 fn north_up() -> f64 {
@@ -248,6 +294,7 @@ impl Document {
                 sun: Sun::default(),
                 prices: BTreeMap::new(),
                 markup_percent: 0.0,
+                view_defaults: ViewDefaults::default(),
             },
             next_id: 1,
             objects: BTreeMap::new(),
@@ -364,6 +411,7 @@ impl Document {
             Object::SectionView(v) => Some(v.floor),
             Object::Callout(c) => Some(c.floor),
             Object::RevisionCloud(c) => Some(c.floor),
+            Object::BlockRef(b) => Some(b.floor),
             _ => None,
         }
     }
@@ -384,6 +432,7 @@ impl Document {
             Object::SectionView(v) => Some(v.layer),
             Object::Callout(c) => Some(c.layer),
             Object::RevisionCloud(c) => Some(c.layer),
+            Object::BlockRef(b) => Some(b.layer),
             _ => None,
         }
     }
@@ -437,6 +486,36 @@ impl Document {
         labels
     }
     /// The active default set. Panics only on a document that fails [`Document::validate`].
+    /// Whether drafting objects (lines, dimensions, text...) can be drawn
+    /// on `id`: a floor plan, an elevation or section view, or a CAD detail.
+    pub fn is_sheet(&self, id: Id) -> bool {
+        matches!(
+            self.kind_of(id),
+            Some(ObjectKind::Floor | ObjectKind::SectionView | ObjectKind::CadDetail)
+        )
+    }
+
+    /// The kind of 2D view `sheet` is, if it is not a floor plan.
+    pub fn view_kind(&self, sheet: Id) -> Option<ViewKind> {
+        match self.object(sheet)? {
+            Object::SectionView(v) => Some(match v.section_kind {
+                SectionKind::Elevation => ViewKind::Elevation,
+                SectionKind::Section => ViewKind::Section,
+            }),
+            Object::CadDetail(_) => Some(ViewKind::Detail),
+            _ => None,
+        }
+    }
+
+    /// The default set drafting on `sheet` uses: its view kind's camera
+    /// default set, or else the active one.
+    pub fn defaults_for(&self, sheet: Id) -> &DefaultSet {
+        self.view_kind(sheet)
+            .and_then(|k| self.settings.view_defaults.get(k))
+            .and_then(|d| self.get::<DefaultSet>(d))
+            .unwrap_or_else(|| self.active_defaults())
+    }
+
     pub fn active_defaults(&self) -> &DefaultSet {
         self.get::<DefaultSet>(self.settings.active_default_set)
             .or_else(|| self.iter::<DefaultSet>().next())
@@ -511,7 +590,8 @@ macro_rules! named {
     };
 }
 named!(
-    Floor, WallType, RoomType, Layer, LayerSet, TextStyle, DefaultSet, PlanView, Camera
+    Floor, WallType, RoomType, Layer, LayerSet, TextStyle, DefaultSet, PlanView, Camera, SectionView,
+    CadDetail, Block, Layout
 );
 
 #[cfg(test)]

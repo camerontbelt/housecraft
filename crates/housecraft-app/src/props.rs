@@ -86,6 +86,16 @@ impl Ed<'_> {
         ui.end_row();
     }
 
+    /// Edit a text field of another object (e.g. a placed block's block).
+    fn text_of(&mut self, ui: &mut Ui, other: Id, label: &str, field: &str, value: &str) {
+        Self::label(ui, label);
+        let key = egui::Id::unique(("spec", other, field));
+        if let Some(t) = self.bufs.text(ui, key, value, 180.0) {
+            self.out.push(patch(other, json!({ field: t })));
+        }
+        ui.end_row();
+    }
+
     fn number(&mut self, ui: &mut Ui, label: &str, field: &str, value: f64) -> Option<f64> {
         Self::label(ui, label);
         let key = self.key(field);
@@ -517,6 +527,45 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             }
             ui.end_row();
             ed.pick::<Layer>(ui, "Layer", "layer", Some(c.layer), None);
+        }
+        Object::CadDetail(d) => {
+            ed.text(ui, "Name", "name", &d.name);
+            Ed::label(ui, "Contents");
+            let n = doc.objects.keys().filter(|o| doc.floor_of(**o) == Some(id)).count();
+            ui.label(format!("{n} object{}", if n == 1 { "" } else { "s" }));
+            ui.end_row();
+        }
+        Object::Block(b) => {
+            ed.text(ui, "Name", "name", &b.name);
+            Ed::label(ui, "Placed");
+            let n = doc.iter::<BlockRef>().filter(|r| r.block == id).count();
+            ui.label(format!("{n} time{}", if n == 1 { "" } else { "s" }));
+            ui.end_row();
+        }
+        Object::BlockRef(r) => {
+            ed.pick::<Block>(ui, "Block", "block", Some(r.block), None);
+            if let Some(b) = doc.get::<Block>(r.block) {
+                let block_id = b.id;
+                ed.text_of(ui, block_id, "Block Name", "name", &b.name);
+            }
+            if let Some(p) = ed.point(ui, "Insertion Point", "at", r.at) {
+                ed.out.push(patch(id, json!({ "at": p })));
+            }
+            if let Some(n) = ed.number(ui, "Rotation (°)", "rotation", r.rotation) {
+                ed.out.push(patch(id, json!({ "rotation": n })));
+            }
+            if let Some(k) = ed.number(ui, "Scale", "scale", r.scale)
+                && k > 0.0
+            {
+                ed.out.push(patch(id, json!({ "scale": k })));
+            }
+            Ed::label(ui, "Mirrored");
+            let mut m = r.mirrored;
+            if ui.checkbox(&mut m, "Flip left to right").changed() {
+                ed.out.push(patch(id, json!({ "mirrored": m })));
+            }
+            ui.end_row();
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(r.layer), None);
         }
         Object::RevisionCloud(rc) => {
             let label = rc.label.clone().unwrap_or_default();

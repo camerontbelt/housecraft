@@ -184,6 +184,8 @@ pub fn section_view(doc: &Document, view: &SectionView) -> Drawing {
             },
         );
     }
+    // Lines, dimensions and notes drawn on the view.
+    out.items.extend(crate::plan::drafting(doc, view.id, None).items);
     out
 }
 

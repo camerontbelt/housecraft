@@ -45,6 +45,23 @@ pub(crate) fn resolve_floor(doc: &Document, floor: Option<Id>) -> Result<Id, Api
     }
 }
 
+/// Where a drafting object goes: a floor plan, an elevation or section
+/// view, a CAD detail, or (when `block` is set) a block; the first floor when
+/// `None`.
+pub(crate) fn resolve_sheet(doc: &Document, sheet: Option<Id>, block: bool) -> Result<Id, ApiError> {
+    match sheet {
+        Some(s) if doc.is_sheet(s) => Ok(s),
+        Some(s) if block && doc.kind_of(s) == Some(ObjectKind::Block) => Ok(s),
+        Some(s) => match doc.kind_of(s) {
+            Some(k) => invalid(format!(
+                "{s} is a {k}; drafting goes on a floor, an elevation or section view, or a CAD detail"
+            )),
+            None => Err(ApiError::NotFound(s)),
+        },
+        None => resolve_floor(doc, None),
+    }
+}
+
 pub(crate) fn resolve_wall_type(
     doc: &Document,
     d: &DefaultSet,
@@ -390,6 +407,16 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
                 *p = housecraft_units::Point3::from_mm(q.x, q.y, z);
             }
             Object::RoofPlane(r)
+        }
+        Object::BlockRef(b) => {
+            let mut b = b.clone();
+            let flip = |m: bool| if m { 180.0 } else { 0.0 };
+            let mirrored = b.mirrored != t.is_reflection();
+            b.rotation = t.apply_angle(b.rotation + flip(b.mirrored)) - flip(mirrored);
+            b.mirrored = mirrored;
+            b.at = t.apply_point(b.at);
+            b.scale *= t.scale_factor();
+            Object::BlockRef(b)
         }
         Object::Text(x) => {
             let mut x = x.clone();
@@ -821,17 +848,27 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
     for id in ids {
         let object = doc.object(*id).ok_or(ApiError::NotFound(*id))?;
         doomed.insert(*id);
-        match object {
-            Object::Floor(_) => {
-                for oid in doc.objects.keys() {
-                    if doc.floor_of(*oid) == Some(*id) {
-                        doomed.insert(*oid);
-                    }
-                }
-            }
-            Object::Wall(_) => doomed.extend(doc.openings_in(*id).map(|o| o.id)),
-            _ => {}
+        if let Object::Wall(_) = object {
+            doomed.extend(doc.openings_in(*id).map(|o| o.id));
         }
+    }
+    // What is drawn on a doomed floor, view, detail or block goes with it, as
+    // do the placed copies of a doomed block; repeat for views on a floor.
+    loop {
+        let more: Vec<Id> = doc
+            .objects
+            .values()
+            .filter(|o| !doomed.contains(&o.id()))
+            .filter(|o| {
+                doc.floor_of(o.id()).is_some_and(|f| doomed.contains(&f))
+                    || matches!(o, Object::BlockRef(b) if doomed.contains(&b.block))
+            })
+            .map(Object::id)
+            .collect();
+        if more.is_empty() {
+            break;
+        }
+        doomed.extend(more);
     }
     // Layout boxes go with their layout and with whatever they show.
     for b in doc.iter::<LayoutBox>() {
@@ -840,6 +877,7 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
                 floor, layer_set, ..
             } => doomed.contains(floor) || layer_set.is_some_and(|s| doomed.contains(&s)),
             LayoutSource::View { view } => doomed.contains(view),
+            LayoutSource::Detail { detail } => doomed.contains(detail),
             LayoutSource::Schedule { floor, .. } => floor.is_some_and(|f| doomed.contains(&f)),
             _ => false,
         };
@@ -881,6 +919,12 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
             _ => {}
         }
     }
+    let vd = &mut doc.settings.view_defaults;
+    for set in [&mut vd.elevation, &mut vd.section, &mut vd.detail] {
+        if set.is_some_and(|s| doomed.contains(&s)) {
+            *set = None;
+        }
+    }
     Ok(())
 }
 
@@ -893,7 +937,7 @@ pub(crate) fn insert_objects(
     out: &mut Outcome,
 ) -> Result<(), ApiError> {
     if let Some(f) = floor {
-        expect::<Floor>(doc, f)?;
+        resolve_sheet(doc, Some(f), false)?;
     }
     let shift = Transform2::translate(DVec2::new(dx.mm(), dy.mm()));
     let mut parsed: Vec<Object> = objects
@@ -929,6 +973,7 @@ pub(crate) fn insert_objects(
                 Object::Callout(c) => c.floor = f,
                 Object::RevisionCloud(c) => c.floor = f,
                 Object::Schedule(s) => s.floor = f,
+                Object::BlockRef(b) => b.floor = f,
                 _ => {}
             }
         }
@@ -974,6 +1019,7 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::Callout(c) => &mut c.floor,
             Object::RevisionCloud(c) => &mut c.floor,
             Object::Schedule(s) => &mut s.floor,
+            Object::BlockRef(b) => &mut b.floor,
             _ => continue,
         };
         let before = *floor;

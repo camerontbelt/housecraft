@@ -183,15 +183,19 @@ pub fn table_window(app: &mut App, ctx: &Context) {
 
 /// Select `ids` in plan, switching to the floor the first one is on.
 fn select(app: &mut App, ids: &[Id]) {
-    if let Some(f) = ids
+    let sheet = ids
         .first()
-        .and_then(|id| app.session.document().floor_of(*id))
-    {
-        app.plan.floor = f;
+        .and_then(|id| app.session.document().floor_of(*id));
+    match sheet {
+        Some(f) if app.session.document().get::<housecraft_api::model::Floor>(f).is_some() => {
+            app.show_plan();
+            app.plan.floor = f;
+        }
+        Some(s) if app.session.document().is_sheet(s) => app.open_sheet(s),
+        _ => app.show_plan(),
     }
     app.selection = ids.to_vec();
     app.plan.zoom_to_selection = true;
-    app.mode = crate::app::Mode::Plan;
 }
 
 fn export_table(app: &mut App, table: &ScheduleTable, title: &str, f: TableFormat) {

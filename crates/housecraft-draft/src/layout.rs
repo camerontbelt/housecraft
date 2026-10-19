@@ -60,6 +60,7 @@ fn source_drawing(doc: &Document, s: &LayoutSource) -> (Drawing, bool) {
             }
             None => (Drawing::default(), true),
         },
+        LayoutSource::Detail { detail } => (crate::detail::cad_detail(doc, *detail, None), true),
         LayoutSource::Schedule {
             schedule_kind,
             floor,
