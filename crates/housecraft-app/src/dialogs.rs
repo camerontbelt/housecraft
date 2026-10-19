@@ -198,6 +198,8 @@ pub struct Dialogs {
     pub layers: bool,
     pub text_styles: bool,
     pub line_styles: bool,
+    /// Auto Dimension Tiers being chosen, and a preset name being typed.
+    pub auto_dims: Option<(AutoDims, String)>,
     pub find_replace: FindReplace,
     pub macros: MacrosDialog,
     /// Project Information being edited (open while `Some`).
@@ -275,6 +277,7 @@ pub fn show(app: &mut App, ctx: &Context) {
     );
     save_view_dialog(app, ctx);
     line_styles_dialog(app, ctx);
+    auto_dims_dialog(app, ctx);
     find_replace_dialog(app, ctx);
     macros_dialog(app, ctx);
     project_dialog(app, ctx);
@@ -1967,6 +1970,62 @@ fn project_dialog(app: &mut App, ctx: &Context) {
     }
     if open {
         app.dialogs.project = Some(info);
+    }
+    if !commands.is_empty() {
+        app.run(commands);
+    }
+}
+
+/// Build > Dimensions > Auto Dimension Tiers: which rows automatic
+/// exterior dimensions draw on this floor, and named presets.
+fn auto_dims_dialog(app: &mut App, ctx: &Context) {
+    let Some((mut dims, mut name)) = app.dialogs.auto_dims.take() else {
+        return;
+    };
+    let mut open = true;
+    let mut commands = Vec::new();
+    let mut close = false;
+    egui::Window::new("Auto Dimension Tiers").open(&mut open).resizable(false).show(ctx, |ui| {
+        ui.label("Rows of dimensions round the building, from the walls outward:");
+        ui.checkbox(&mut dims.openings, "Door and window centres");
+        ui.checkbox(&mut dims.interior_walls, "Interior walls meeting the outside walls");
+        ui.checkbox(&mut dims.corners, "Every jog of the outline");
+        ui.checkbox(&mut dims.overall, "Overall length");
+        ui.horizontal(|ui| {
+            if ui.button("Dimension This Floor").clicked() {
+                commands.push(Command::AddExteriorDimensions { floor: Some(app.plan.floor), options: Some(dims) });
+                close = true;
+            }
+            if ui.button("Make Default").on_hover_text("Use these tiers in the active default set").clicked() {
+                let set = app.session.document().settings.active_default_set;
+                commands.push(Command::Update {
+                    id: set,
+                    set: json!({"dimensions": {"auto": dims}}).as_object().cloned().unwrap_or_default(),
+                });
+            }
+        });
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.add(egui::TextEdit::singleline(&mut name).hint_text("Preset name").desired_width(140.0));
+            if ui.add_enabled(!name.trim().is_empty(), egui::Button::new("Save as Preset")).clicked() {
+                commands.push(Command::SetAutoDimPreset { name: name.trim().to_string(), dims: Some(dims) });
+                name.clear();
+            }
+        });
+        let presets = app.session.document().settings.auto_dim_presets.clone();
+        for p in presets {
+            ui.horizontal(|ui| {
+                if ui.button(&p.name).on_hover_text("Load these tiers").clicked() {
+                    dims = p.dims;
+                }
+                if ui.small_button("Delete").clicked() {
+                    commands.push(Command::SetAutoDimPreset { name: p.name.clone(), dims: None });
+                }
+            });
+        }
+    });
+    if open && !close {
+        app.dialogs.auto_dims = Some((dims, name));
     }
     if !commands.is_empty() {
         app.run(commands);

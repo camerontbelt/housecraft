@@ -262,6 +262,36 @@ pub struct DimensionDefaults {
     /// What the dimension tool snaps to.
     #[serde(default)]
     pub locate: DimLocate,
+    /// Which tiers automatic exterior dimensions draw.
+    #[serde(default)]
+    pub auto: AutoDims,
+}
+
+/// The rows of automatic exterior dimensions, inner to outer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct AutoDims {
+    /// Centres of doors and windows in exterior walls (innermost).
+    pub openings: bool,
+    /// Where interior walls meet the exterior walls.
+    pub interior_walls: bool,
+    /// Every jog of the building's outline.
+    pub corners: bool,
+    /// Overall length of each side (outermost).
+    pub overall: bool,
+}
+
+impl Default for AutoDims {
+    fn default() -> Self {
+        AutoDims { openings: false, interior_walls: false, corners: true, overall: true }
+    }
+}
+
+/// A named set of automatic dimension tiers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct NamedAutoDims {
+    pub name: String,
+    pub dims: AutoDims,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

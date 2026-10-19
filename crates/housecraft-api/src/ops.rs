@@ -215,13 +215,59 @@ pub(crate) fn exterior_dimensions(
         return invalid("no enclosed building outline on this floor");
     }
     let off = d.dimensions.exterior_offset.mm();
+    let tiers = doc.settings.auto_dims.get(&floor).copied().unwrap_or(d.dimensions.auto);
+    let geoms = housecraft_geom::walls::wall_geoms(doc, floor);
     for fp in &regions.footprints {
         let (lo, hi) = housecraft_geom::math::bounds(fp.iter().copied()).expect("non-empty");
-        let mut xs: Vec<f64> = fp.iter().map(|p| p.x).collect();
-        let mut ys: Vec<f64> = fp.iter().map(|p| p.y).collect();
+        // Real corners only: walls meeting the outline leave straight-through points.
+        let n = fp.len();
+        let corners: Vec<DVec2> = (0..n)
+            .filter(|&i| {
+                let (p, q, r) = (fp[(i + n - 1) % n], fp[i], fp[(i + 1) % n]);
+                (q - p).perp_dot(r - q).abs() > 1.0 * (q - p).length().max(1.0)
+            })
+            .map(|i| fp[i])
+            .collect();
+        let mut xs: Vec<f64> = corners.iter().map(|p| p.x).collect();
+        let mut ys: Vec<f64> = corners.iter().map(|p| p.y).collect();
         for v in [&mut xs, &mut ys] {
             v.sort_by(f64::total_cmp);
             v.dedup_by(|a, b| (*a - *b).abs() < EPS);
+        }
+        // Positions on each side (bottom, top, left, right) for the inner
+        // tiers: opening centres, and interior walls meeting the outline.
+        let near_outline = |p: DVec2, tol: f64| {
+            (0..fp.len()).any(|i| housecraft_geom::math::distance_to_segment(p, fp[i], fp[(i + 1) % fp.len()]) < tol)
+        };
+        let mid = (lo + hi) / 2.0;
+        let mut openings: [Vec<f64>; 4] = Default::default();
+        let mut partitions: [Vec<f64>; 4] = Default::default();
+        for g in &geoms {
+            let horizontal = g.dir.y.abs() < 0.1;
+            let vertical = g.dir.x.abs() < 0.1;
+            let centre = (g.start + g.end) / 2.0;
+            let outer = near_outline(centre + g.left * g.half, 60.0) || near_outline(centre - g.left * g.half, 60.0);
+            if outer {
+                for o in doc.openings_in(g.id) {
+                    let c = g.center_at(o.position.mm());
+                    if horizontal {
+                        openings[if c.y < mid.y { 0 } else { 1 }].push(c.x);
+                    } else if vertical {
+                        openings[if c.x < mid.x { 2 } else { 3 }].push(c.y);
+                    }
+                }
+            } else {
+                for end in [g.start, g.end] {
+                    if !near_outline(end, g.half + 250.0) {
+                        continue;
+                    }
+                    if vertical {
+                        partitions[if end.y < mid.y { 0 } else { 1 }].push(end.x);
+                    } else if horizontal {
+                        partitions[if end.x < mid.x { 2 } else { 3 }].push(end.y);
+                    }
+                }
+            }
         }
         let mut add = |points: Vec<Point2>, orientation: DimOrientation, offset: f64| {
             out.created.push(doc.insert(Dimension {
@@ -249,29 +295,47 @@ pub(crate) fn exterior_dimensions(
                 .collect::<Vec<_>>()
         };
         let ends = |v: &[f64]| vec![v[0], v[v.len() - 1]];
-        // Detail tier, then overall tier further out, on all four sides.
-        for (tier, scale) in [(false, 1.0), (true, 1.6)] {
-            let pick = |v: &Vec<f64>| if tier { ends(v) } else { v.clone() };
-            if tier || xs.len() > 2 {
-                add(
-                    row(&pick(&xs), lo.y),
-                    DimOrientation::Horizontal,
-                    -off * scale,
-                );
-                add(
-                    row(&pick(&xs), hi.y),
-                    DimOrientation::Horizontal,
-                    off * scale,
-                );
+        let with_ends = |extent: &[f64], extra: &[f64]| {
+            let mut v: Vec<f64> = ends(extent).into_iter().chain(extra.iter().copied()).collect();
+            v.sort_by(f64::total_cmp);
+            v.dedup_by(|a, b| (*a - *b).abs() < EPS);
+            v
+        };
+        // Tiers from the building outward; each side gets the ones it has.
+        let mut k = 0.0;
+        let mut tier = |sides: [Vec<f64>; 4], k: &mut f64| {
+            let scale = 1.0 + 0.6 * *k;
+            let mut any = false;
+            for (side, v) in sides.into_iter().enumerate() {
+                if v.len() < 2 {
+                    continue;
+                }
+                any = true;
+                match side {
+                    0 => add(row(&v, lo.y), DimOrientation::Horizontal, -off * scale),
+                    1 => add(row(&v, hi.y), DimOrientation::Horizontal, off * scale),
+                    2 => add(col(&v, lo.x), DimOrientation::Vertical, -off * scale),
+                    _ => add(col(&v, hi.x), DimOrientation::Vertical, off * scale),
+                }
             }
-            if tier || ys.len() > 2 {
-                add(
-                    col(&pick(&ys), lo.x),
-                    DimOrientation::Vertical,
-                    -off * scale,
-                );
-                add(col(&pick(&ys), hi.x), DimOrientation::Vertical, off * scale);
+            if any {
+                *k += 1.0;
             }
+        };
+        if tiers.openings {
+            let s = [0, 1, 2, 3].map(|i| if openings[i].is_empty() { Vec::new() } else { with_ends(if i < 2 { &xs } else { &ys }, &openings[i]) });
+            tier(s, &mut k);
+        }
+        if tiers.interior_walls {
+            let s = [0, 1, 2, 3].map(|i| if partitions[i].is_empty() { Vec::new() } else { with_ends(if i < 2 { &xs } else { &ys }, &partitions[i]) });
+            tier(s, &mut k);
+        }
+        if tiers.corners {
+            let pick = |v: &Vec<f64>| if v.len() > 2 { v.clone() } else { Vec::new() };
+            tier([pick(&xs), pick(&xs), pick(&ys), pick(&ys)], &mut k);
+        }
+        if tiers.overall {
+            tier([ends(&xs), ends(&xs), ends(&ys), ends(&ys)], &mut k);
         }
     }
     Ok(())

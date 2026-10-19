@@ -299,6 +299,13 @@ pub struct Settings {
     /// use other macros).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub macros: BTreeMap<String, String>,
+    /// The dimension tiers a floor's automatic exterior dimensions were
+    /// made with (they refresh the same way); the default set's otherwise.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub auto_dims: BTreeMap<Id, AutoDims>,
+    /// Saved sets of automatic dimension tiers.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub auto_dim_presets: Vec<NamedAutoDims>,
 }
 
 /// An object's own materials list lines.
@@ -501,6 +508,8 @@ impl Document {
                 watermark: None,
                 components: BTreeMap::new(),
                 macros: BTreeMap::new(),
+                auto_dims: BTreeMap::new(),
+                auto_dim_presets: Vec::new(),
             },
             next_id: 1,
             objects: BTreeMap::new(),

@@ -262,6 +262,7 @@ pub(crate) fn new_document(name: String) -> Document {
             exterior_offset: ft(4.0),
             inches_below: inch(24.0),
             locate: Default::default(),
+            auto: Default::default(),
         },
         door: DoorDefaults {
             style: DoorStyle::Hinged,

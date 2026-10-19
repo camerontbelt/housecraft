@@ -838,7 +838,23 @@ pub enum Command {
         text_override: Option<String>,
     },
     /// Add overall and per-jog dimensions around the outside of the building.
-    AddExteriorDimensions { floor: Option<Id> },
+    AddExteriorDimensions {
+        floor: Option<Id>,
+        /// Which tiers to draw (kept for refreshes); the default set's when `None`.
+        #[serde(default)]
+        options: Option<AutoDims>,
+    },
+    /// Save (or with `null`, delete) a named set of automatic dimension tiers.
+    SetAutoDimPreset { name: String, dims: Option<AutoDims> },
+    /// Vertical dimensions in elevation or section `view`: each floor, its
+    /// ceiling, and the ridge, beside the building.
+    ElevationDimensions { view: Id },
+    /// A story pole in elevation or section `view`: a marked staff of levels
+    /// (floors, plates, ridge) with their heights.
+    StoryPole { view: Id },
+    /// A column-grid line from `a` to `b` with a bubble at `a`; grid lines
+    /// are numbered 1, 2, 3 left to right and lettered A, B, C bottom to top.
+    AddGridLine { floor: Option<Id>, a: Point2, b: Point2 },
     /// Add a text note.
     AddText {
         floor: Option<Id>,
@@ -1254,6 +1270,10 @@ impl Command {
             Command::AddCad { .. } => "add_cad",
             Command::AddDimension { .. } => "add_dimension",
             Command::AddExteriorDimensions { .. } => "add_exterior_dimensions",
+            Command::SetAutoDimPreset { .. } => "set_auto_dim_preset",
+            Command::ElevationDimensions { .. } => "elevation_dimensions",
+            Command::StoryPole { .. } => "story_pole",
+            Command::AddGridLine { .. } => "add_grid_line",
             Command::AddText { .. } => "add_text",
             Command::SetObjectLabel { .. } => "set_object_label",
             Command::RoomPolyline { .. } => "room_polyline",
@@ -3087,9 +3107,29 @@ impl Command {
                     style: doc.defaults_for(floor).dimension_style.clone(),
                 }));
             }
-            Command::AddExteriorDimensions { floor } => {
+            Command::AddExteriorDimensions { floor, options } => {
                 let floor = ops::resolve_floor(doc, *floor)?;
+                match options {
+                    Some(o) => doc.settings.auto_dims.insert(floor, *o),
+                    None => doc.settings.auto_dims.remove(&floor),
+                };
                 ops::exterior_dimensions(doc, floor, &d, &mut out)?;
+            }
+            Command::SetAutoDimPreset { name, dims } => {
+                let name = name.trim();
+                if name.is_empty() {
+                    return invalid("a preset needs a name");
+                }
+                doc.settings.auto_dim_presets.retain(|p| p.name != name);
+                if let Some(dims) = dims {
+                    doc.settings.auto_dim_presets.push(NamedAutoDims { name: name.to_string(), dims: *dims });
+                }
+            }
+            Command::ElevationDimensions { view } => crate::grids::elevation_dimensions(doc, *view, &mut out)?,
+            Command::StoryPole { view } => crate::grids::story_pole(doc, *view, &mut out)?,
+            Command::AddGridLine { floor, a, b } => {
+                let floor = ops::resolve_sheet(doc, *floor, false)?;
+                crate::grids::add_grid_line(doc, floor, *a, *b, &mut out)?;
             }
             Command::AddText {
                 floor,

@@ -2746,6 +2746,33 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                     if item(ui, "Auto Exterior Dimensions", "Shift+A", true) {
                         self.auto_exterior_dimensions();
                     }
+                    let presets = self.doc().settings.auto_dim_presets.clone();
+                    if !presets.is_empty() {
+                        ui.menu_button("Auto Exterior Dimensions With", |ui| {
+                            for p in presets {
+                                if ui.button(&p.name).clicked() {
+                                    self.run1(Command::AddExteriorDimensions { floor: Some(self.plan.floor), options: Some(p.dims) });
+                                    ui.close();
+                                }
+                            }
+                        });
+                    }
+                    if item(ui, "Auto Dimension Tiers…", "", true) {
+                        let d = self.doc().active_defaults().dimensions.auto;
+                        self.dialogs.auto_dims = Some((self.doc().settings.auto_dims.get(&self.plan.floor).copied().unwrap_or(d), String::new()));
+                    }
+                    let view = self.plan.sheet.filter(|s| self.doc().get::<SectionView>(*s).is_some());
+                    ui.separator();
+                    if item(ui, "Elevation Dimensions", "", view.is_some())
+                        && let Some(v) = view
+                    {
+                        self.run1(Command::ElevationDimensions { view: v });
+                    }
+                    if item(ui, "Story Pole", "", view.is_some())
+                        && let Some(v) = view
+                    {
+                        self.run1(Command::StoryPole { view: v });
+                    }
                 });
                 if tool_item(ui, Tool::Text) {
                     self.set_tool(Tool::Text);
@@ -3045,6 +3072,7 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
     pub fn auto_exterior_dimensions(&mut self) {
         self.run1(Command::AddExteriorDimensions {
             floor: Some(self.plan.floor),
+            options: None,
         });
     }
 
@@ -3971,7 +3999,9 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                 self.apply_plan_view(&v);
             }
             Some(Object::Layout(_)) => self.mode = Mode::Drawing(crate::drawing_view::DrawingSource::Layout(id, 0)),
-            _ => self.info("The callout's link is gone"),
+            // A grid bubble's line, say: select it.
+            Some(_) => self.selection = vec![id],
+            None => self.info("The callout's link is gone"),
         }
     }
 

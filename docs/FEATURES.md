@@ -374,7 +374,7 @@ These come from reading the whole list and change the architecture, not just the
 | DIM-04 | Auto exterior dimensions with auto-refresh | P1 | M1 ✓ Auto Exterior Dimensions are marked automatic and rebuilt whenever that floor's walls or openings change |
 | DIM-05 | Wall length editing via dimensions; type exact length while drawing | P0 | M1 ✓ |
 | DIM-06 | Dimension snapping rules; hotkey override | P1 | M1 ✓ Default Settings > Text and Dimensions: dimension tool snaps to wall surfaces, framing, centres and opening edges as chosen; hold Alt to snap to nothing |
-| DIM-07 | Column/bubble grid lines with auto labeling | P2 | M4 |
+| DIM-07 | Column/bubble grid lines with auto labeling | P2 | M4 ✓ Column Grid Line tool: bubbles number 1, 2, 3 left to right and A, B, C bottom to top, renumbering as lines move or go |
 | DIM-08 | Units/accuracy (to 1/128" or 0.0078125), text and arrow styles | P0 | M0 ✓ / M1 ✓ |
 | DIM-09 | Dimension defaults table editor | P2 | GUI |
 | DIM-10 | Centerline markers | P2 | M1 |
@@ -383,14 +383,14 @@ These come from reading the whole list and change the architecture, not just the
 | DIM-13 | Custom/override dimension text | P1 | M1 ✓ dimension Text Override; {} puts the measured value back in |
 | DIM-14 | Rotatable dimension text | P2 | M1 |
 | DIM-15 | Laser distance meter (Bluetooth) input | P3 | M8 |
-| DIM-16 | Auto elevation dimensions in elevation/section views | P2 | M4 |
+| DIM-16 | Auto elevation dimensions in elevation/section views | P2 | M4 ✓ Build > Dimensions > Elevation Dimensions in a view: floors, ceilings, ridge and overall |
 | DIM-17 | Multiple named dimension defaults | P1 | M1 ✓ named dimension styles saved in the plan; each dimension and each default set can pick one |
 | DIM-18 | Per-tool locate defaults | P2 | M1 |
-| DIM-19 | Multiple auto-dimension defaults | P2 | M4 |
-| DIM-20 | Inner/outer auto-dimension controls | P2 | M4 |
+| DIM-19 | Multiple auto-dimension defaults | P2 | M4 ✓ named tier presets; per-floor tiers kept for refreshes |
+| DIM-20 | Inner/outer auto-dimension controls | P2 | M4 ✓ Auto Dimension Tiers: openings, interior walls, outline jogs, overall |
 | DIM-21 | NKBA automatic dimensions | P2 | M5 ✓ |
 | DIM-22 | Angled dimension behaviour | P2 | M1 |
-| DIM-23 | Story pole dimensions | P3 | M4 |
+| DIM-23 | Story pole dimensions | P3 | M4 ✓ Story Pole in a view: marked staff with each level's height |
 
 ## 16. Lighting, electrical & HVAC
 

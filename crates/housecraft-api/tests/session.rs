@@ -2305,7 +2305,7 @@ fn standard_plan_views_have_their_own_sets() {
 #[test]
 fn auto_exterior_dimensions_follow_the_walls() {
     let mut s = boxed();
-    s.apply(&[Command::AddExteriorDimensions { floor: None }]).unwrap();
+    s.apply(&[Command::AddExteriorDimensions { floor: None, options: None }]).unwrap();
     let longest = |s: &Session| {
         s.document()
             .iter::<Dimension>()
@@ -2470,4 +2470,62 @@ fn materials_components_insulation_and_master_prices() {
     assert_eq!(s.document().settings.prices[&key], 3.0);
     s.apply(&[Command::ImportPrices { prices, overwrite: true }]).unwrap();
     assert_eq!(s.document().settings.prices["Doors: x"], 99.0);
+}
+
+#[test]
+fn auto_dimension_tiers_presets_grids_and_view_heights() {
+    let mut s = boxed();
+    let w = walls(&s);
+    // A window in the west wall, an interior wall meeting the south wall.
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_window", "wall": {w}, "position": "10'"}},
+                {{"op": "add_wall", "start": ["8'",0], "end": ["8'","12'"], "interior": true}}]"#,
+            w = w[0].id.0
+        ),
+    );
+    let count = |s: &Session| s.document().iter::<Dimension>().filter(|d| d.auto).count();
+    s.apply(&[Command::AddExteriorDimensions { floor: None, options: None }]).unwrap();
+    let plain = count(&s);
+    let all = AutoDims { openings: true, interior_walls: true, corners: true, overall: true };
+    s.apply(&[Command::AddExteriorDimensions { floor: None, options: Some(all) }]).unwrap();
+    let tiered = count(&s);
+    assert_eq!(tiered, plain + 2, "an openings row on the west and a partition row on the south");
+    // The chosen tiers stay when walls change.
+    apply(&mut s, r#"[{"op": "add_wall", "start": ["14'","30'"], "end": ["14'","20'"], "interior": true}]"#);
+    assert_eq!(count(&s), tiered + 1, "a partition row on the north too");
+    s.apply(&[Command::SetAutoDimPreset { name: "Permit".into(), dims: Some(all) }]).unwrap();
+    assert_eq!(s.document().settings.auto_dim_presets[0].name, "Permit");
+
+    // Grid lines number and letter themselves by position.
+    let floor = s.document().floors_by_elevation()[0].id;
+    let p = |x: f64, y: f64| housecraft_api::units::Point2::from_mm(x * 304.8, y * 304.8);
+    s.apply(&[
+        Command::AddGridLine { floor: None, a: p(10.0, -5.0), b: p(10.0, 35.0) },
+        Command::AddGridLine { floor: None, a: p(0.0, -5.0), b: p(0.0, 35.0) },
+        Command::AddGridLine { floor: None, a: p(-5.0, 0.0), b: p(25.0, 0.0) },
+    ])
+    .unwrap();
+    let labels = |s: &Session| -> Vec<String> {
+        let mut v: Vec<String> = s.document().iter::<Callout>().filter(|c| c.floor == floor && c.marker.is_some()).map(|c| c.text.clone()).collect();
+        v.sort();
+        v
+    };
+    assert_eq!(labels(&s), ["1", "2", "A"]);
+    let first = s.document().iter::<Cad>().find(|c| matches!(c.shape, Shape::Line { a, .. } if a == p(10.0, -5.0))).unwrap().id;
+    s.apply(&[Command::Delete { ids: vec![first] }]).unwrap();
+    assert_eq!(labels(&s), ["1", "A"], "the bubble goes with its line");
+
+    // Heights in an elevation view.
+    apply(&mut s, r#"[{"op": "set_roof_style", "style": "gable"}, {"op": "add_section_view", "name": "South", "a": ["-10'","-10'"], "b": ["30'","-10'"]}]"#);
+    let view = s.document().iter::<SectionView>().next().unwrap().id;
+    let out = s.apply(&[Command::ElevationDimensions { view }, Command::StoryPole { view }]).unwrap();
+    let doc = s.document();
+    let dims: Vec<&Dimension> = doc.iter::<Dimension>().filter(|d| d.floor == view).collect();
+    assert_eq!(dims.len(), 2);
+    let DimensionGeometry::Linear { points, .. } = &dims[0].geometry else { panic!() };
+    assert!(points.len() >= 3, "floor, ceiling and ridge");
+    assert!(doc.iter::<Text>().any(|t| t.floor == view && t.text.starts_with("Ridge")));
+    assert!(out.created.len() > 4);
 }

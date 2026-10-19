@@ -1501,6 +1501,15 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     pending.push(p);
                 }
             }
+            Tool::GridLine => {
+                if let Some(a) = pending.pop() {
+                    if a.distance(p) > 100.0 {
+                        commands.push(Command::AddGridLine { floor, a: pt(a), b: pt(p) });
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
             Tool::RegularPolygon => {
                 if let Some(c) = pending.pop() {
                     let r = c.distance(p);

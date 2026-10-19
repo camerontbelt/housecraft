@@ -11,6 +11,8 @@ use crate::icons::Icon;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tool {
+    /// A column-grid line with a numbered bubble.
+    GridLine,
     /// A rectangular room of interior walls from two corners.
     RoomBox,
     /// Space planning: a labelled box to turn into a room later.
@@ -308,7 +310,7 @@ impl Family {
                 Tool::BayWindow(housecraft_api::BayStyle::Box),
                 Tool::BayWindow(housecraft_api::BayStyle::Bow),
             ],
-            Family::Dimensions => &[Tool::Dimension, Tool::AngularDimension],
+            Family::Dimensions => &[Tool::Dimension, Tool::AngularDimension, Tool::GridLine],
             Family::Text => &[Tool::Text, Tool::TextArrow, Tool::Callout, Tool::Marker, Tool::RevisionCloud],
             Family::Cad => &[
                 Tool::Line,
@@ -412,7 +414,7 @@ impl Tool {
             Tool::ExteriorWall | Tool::InteriorWall | Tool::RoomBox | Tool::SpaceBox => Family::Walls,
             Tool::Door(_) => Family::Doors,
             Tool::Window(_) | Tool::BayWindow(_) | Tool::CornerWindow => Family::Windows,
-            Tool::Dimension | Tool::AngularDimension => Family::Dimensions,
+            Tool::Dimension | Tool::AngularDimension | Tool::GridLine => Family::Dimensions,
             Tool::Text | Tool::TextArrow | Tool::Callout | Tool::Marker | Tool::RevisionCloud => Family::Text,
             Tool::RoofPlane | Tool::Dormer(_) | Tool::Skylight => Family::Roofs,
             Tool::SectionLine(_) => Family::Cameras,
@@ -445,6 +447,7 @@ impl Tool {
             Tool::CornerWindow => "Corner Window",
             Tool::Dimension => "Manual Dimension",
             Tool::AngularDimension => "Angular Dimension",
+            Tool::GridLine => "Column Grid Line",
             Tool::Text => "Text",
             Tool::TextArrow => "Text with Arrow",
             Tool::Line => "Draw Line",
@@ -537,6 +540,7 @@ impl Tool {
             Tool::Window(_) | Tool::BayWindow(_) | Tool::CornerWindow => Icon::Window,
             Tool::Dimension => Icon::Dimension,
             Tool::AngularDimension => Icon::AngularDimension,
+            Tool::GridLine => Icon::Dimension,
             Tool::Text => Icon::Text,
             Tool::TextArrow => Icon::Arrow,
             Tool::Line => Icon::Line,
@@ -618,6 +622,7 @@ impl Tool {
             Tool::CornerWindow => "Click near the end of a wall at a corner.",
             Tool::Dimension => "Click two points, then click where the dimension line goes.",
             Tool::AngularDimension => "Click the vertex, a point on each side, then the radius.",
+            Tool::GridLine => "Click where the grid bubble goes, then the line's far end. Lines number themselves 1, 2, 3 and A, B, C.",
             Tool::Text => "Click where the text goes. Markup: **bold**, __underline__, [label](link), {#ff0000}colour{/}.",
             Tool::TextArrow => "Click where the arrow points, then where the text goes.",
             Tool::Line | Tool::Arrow => "Click the start and end points.",
