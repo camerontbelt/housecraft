@@ -1637,6 +1637,14 @@ impl Command {
                     section_kind: *section_kind,
                     depth: *depth,
                     clip_sides: *clip_sides,
+                    crop_left: None,
+            crop_right: None,
+            crop_bottom: None,
+            crop_top: None,
+            ignore_above: false,
+            steps: Vec::new(),
+            hidden_below_grade: true,
+            schedule_labels: true,
                 }));
             }
             Command::AutoElevations { floor } => {

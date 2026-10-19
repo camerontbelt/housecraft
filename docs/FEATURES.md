@@ -91,16 +91,16 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | SEC-01 | Cross-section, elevation, and back-clipped section views; side clipping | P1 | M4 ◐ elevations, cross sections, depth (back) clipping and side clipping; cut poché fill later |
-| SEC-02 | Convert wall elevations to section views; expand/crop extents | P2 | M4 |
-| SEC-03 | Vaulted ceilings shown in wall elevations; "ignore walls above" crop | P2 | M4 |
-| SEC-04 | Stepped (jogged) cutting planes | P2 | M4 |
-| SEC-05 | Below-grade items as hidden lines | P2 | M4 |
+| SEC-02 | Convert wall elevations to section views; expand/crop extents | P2 | M4 ✓ Type switches elevation ↔ cross section; Left/Right/Bottom/Top extents crop or expand any view |
+| SEC-03 | Vaulted ceilings shown in wall elevations; "ignore walls above" crop | P2 | M4 ✓ room elevations outline the ceiling profile; "Ignore everything above this floor" |
+| SEC-04 | Stepped (jogged) cutting planes | P2 | M4 ✓ jogs (at, depth) in a cross section's cut, edited in its properties |
+| SEC-05 | Below-grade items as hidden lines | P2 | M4 ✓ elevations dash whatever is under grade (on by default) |
 | SEC-06 | Full drafting/dimensioning in section & elevation views; auto-detail tool | P1 | M4 ◐ CAD, dimensions, text, callouts and blocks drawn in elevation/section views; auto-detail tool later |
-| SEC-07 | Center CAD objects in elevation | P3 | M4 |
-| SEC-08 | Copying a section camera copies its annotations | P2 | M4 |
+| SEC-07 | Center CAD objects in elevation | P3 | M4 ✓ Edit > Center in View |
+| SEC-08 | Copying a section camera copies its annotations | P2 | M4 ✓ pasting a view copies the lines, text, dimensions and callouts drawn on it |
 | SEC-09 | Cameras shown as callouts in plan (labels, descriptions; survive to layout) | P1 | M4 ◐ elevation/section callouts in plan; 3D camera callouts later |
-| SEC-10 | Callouts auto-filled with layout page/label info | P2 | M4 |
-| SEC-11 | Automatic schedule labels in camera views | P2 | M4 |
+| SEC-10 | Callouts auto-filled with layout page/label info | P2 | M4 ✓ plan callout markers show the layout page (sheet number) the view is on |
+| SEC-11 | Automatic schedule labels in camera views | P2 | M4 ◐ door/window schedule numbers in elevations and sections; 3D camera views later |
 | SEC-12 | Auto-generate exterior and interior room elevations | P1 | M4 ✓ |
 
 ## 4. Plans, layouts & project management

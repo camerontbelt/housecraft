@@ -299,6 +299,37 @@ pub struct SectionView {
     /// Only draw what lies between the line's ends (room elevations).
     #[serde(default)]
     pub clip_sides: bool,
+    /// Extents: left and right along the line from its start, bottom and
+    /// top as heights. Unset sides show everything (or the line's ends when
+    /// clipping sides); values past the ends expand the view.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crop_left: Option<Length>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crop_right: Option<Length>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crop_bottom: Option<Length>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crop_top: Option<Length>,
+    /// Leave out whatever is above the top of the callout's floor.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ignore_above: bool,
+    /// Jogs in a cross section's cutting plane, in order along the line.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub steps: Vec<SectionStep>,
+    /// Draw what is below grade as hidden (dashed) lines.
+    #[serde(default = "yes")]
+    pub hidden_below_grade: bool,
+    /// Label doors and windows with their schedule numbers (D01, W03).
+    #[serde(default = "yes")]
+    pub schedule_labels: bool,
+}
+
+/// A jog in a stepped cutting plane: from `at` along the line onward, the
+/// cut lies `offset` beyond the line (toward where the view looks).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct SectionStep {
+    pub at: Length,
+    pub offset: Length,
 }
 
 /// A layout: sheets of paper holding scaled, live views of the model.

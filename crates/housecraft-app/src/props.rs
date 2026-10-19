@@ -777,6 +777,50 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "clip_sides": c })));
             }
             ui.end_row();
+            let len = Length::from_mm(housecraft_api::geom::v2(v.a).distance(housecraft_api::geom::v2(v.b)));
+            ed.opt_length(ui, "Left Extent", "crop_left", v.crop_left, Some(Length::ZERO));
+            ed.opt_length(ui, "Right Extent", "crop_right", v.crop_right, Some(len));
+            ed.opt_length(ui, "Bottom Extent", "crop_bottom", v.crop_bottom, Some(Length::ZERO));
+            ed.opt_length(ui, "Top Extent", "crop_top", v.crop_top, Some(Length::from_feet(10.0)));
+            ed.check(ui, "Walls Above", "ignore_above", "Ignore everything above this floor", v.ignore_above);
+            ed.check(ui, "Below Grade", "hidden_below_grade", "Show as hidden (dashed) lines", v.hidden_below_grade);
+            ed.check(ui, "Schedule Labels", "schedule_labels", "Label doors and windows (D01, W01)", v.schedule_labels);
+            if v.section_kind == SectionKind::Section {
+                let mut steps = v.steps.clone();
+                let mut changed = false;
+                let mut remove = None;
+                for (i, s) in steps.iter_mut().enumerate() {
+                    if let Some(l) = ed.length(ui, &format!("Jog {} At", i + 1), &format!("jog_at_{i}"), s.at) {
+                        s.at = l;
+                        changed = true;
+                    }
+                    Ed::label(ui, &format!("Jog {} Depth", i + 1));
+                    ui.horizontal(|ui| {
+                        let key = ed.key(&format!("jog_off_{i}"));
+                        if let Some(l) = ed.bufs.length(ui, ed.doc, key, s.offset) {
+                            s.offset = l;
+                            changed = true;
+                        }
+                        if ui.small_button("✕").on_hover_text("Remove this jog").clicked() {
+                            remove = Some(i);
+                        }
+                    });
+                    ui.end_row();
+                }
+                if let Some(i) = remove {
+                    steps.remove(i);
+                    changed = true;
+                }
+                Ed::label(ui, "Stepped Cut");
+                if ui.button("Add Jog").on_hover_text("From halfway along the line the cut steps 4' further in").clicked() {
+                    steps.push(SectionStep { at: Length::from_mm(len.mm() / 2.0), offset: Length::from_feet(4.0) });
+                    changed = true;
+                }
+                ui.end_row();
+                if changed {
+                    ed.out.push(patch(id, json!({ "steps": steps })));
+                }
+            }
             ed.pick::<Layer>(ui, "Callout Layer", "layer", Some(v.layer), None);
         }
         Object::Layout(l) => {

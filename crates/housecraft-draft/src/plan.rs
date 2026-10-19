@@ -720,7 +720,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         let look = ctx.look(v.layer);
         if look.visible {
             let style = ctx.text_style(None, &look);
-            section_callout(v, look.stroke, style.height.mm(), &mut out);
+            section_callout(doc, v, look.stroke, style.height.mm(), &mut out);
         }
     }
 
@@ -1226,7 +1226,7 @@ pub(crate) fn table_drawing(
 
 /// Plan callout for an elevation / section view: its line (dashed for a
 /// cut), a marker whose arrow points the way the view looks, and its name.
-fn section_callout(v: &SectionView, stroke: Stroke, text: f64, out: &mut Drawing) {
+fn section_callout(doc: &Document, v: &SectionView, stroke: Stroke, text: f64, out: &mut Drawing) {
     let id = Some(v.id);
     let (a, b) = (v2(v.a), v2(v.b));
     let dir = (b - a).normalize_or_zero();
@@ -1248,6 +1248,7 @@ fn section_callout(v: &SectionView, stroke: Stroke, text: f64, out: &mut Drawing
         },
     );
     let r = text * 1.6;
+    let placed = layout_page_of(doc, LayoutSource::View { view: v.id });
     // Markers at both ends for a section, the middle for an elevation.
     let marks = if v.section_kind == SectionKind::Section {
         vec![a, b]
@@ -1271,6 +1272,22 @@ fn section_callout(v: &SectionView, stroke: Stroke, text: f64, out: &mut Drawing
                 fill: Fill::Ink(stroke.ink),
             },
         );
+        // The layout page the view is placed on, inside the marker.
+        if let Some(page) = &placed {
+            out.push(
+                id,
+                Prim::Text {
+                    at: c,
+                    text: page.clone(),
+                    height: text * 0.6,
+                    rotation: 0.0,
+                    justify: Justify::Center,
+                    middle: true,
+                    bold: true,
+                    ink: stroke.ink,
+                },
+            );
+        }
     }
     let mid = (a + b) / 2.0;
     out.push(
@@ -1286,6 +1303,19 @@ fn section_callout(v: &SectionView, stroke: Stroke, text: f64, out: &mut Drawing
             ink: stroke.ink,
         },
     );
+}
+
+/// Where `source` is placed on a layout: the page's name when it is a short
+/// sheet number like "A-3", else the page's number.
+pub fn layout_page_of(doc: &Document, source: LayoutSource) -> Option<String> {
+    let b = doc.iter::<LayoutBox>().find(|b| b.source == source)?;
+    let layout = doc.get::<Layout>(b.layout)?;
+    let name = layout.pages.get(b.page as usize).map(|p| p.trim()).unwrap_or("");
+    Some(if !name.is_empty() && !name.starts_with("Page") && name.chars().count() <= 6 {
+        name.to_string()
+    } else {
+        format!("{}", b.page + 1)
+    })
 }
 
 /// A callout: text, optionally inside a marker shape, with an optional

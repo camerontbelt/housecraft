@@ -1398,6 +1398,39 @@ pub(crate) fn insert_objects(
         remap.insert(old, new);
         out.created.push(new);
     }
+    // A copied elevation or section brings along the lines, text and
+    // dimensions drawn on it (unless they were copied with it).
+    let views: Vec<(Id, Id)> = remap
+        .iter()
+        .filter(|(old, new)| old != new && doc.get::<SectionView>(**new).is_some() && doc.get::<SectionView>(**old).is_some())
+        .map(|(o, n)| (*o, *n))
+        .collect();
+    for (old, new) in views {
+        let notes: Vec<Object> = doc
+            .objects
+            .values()
+            .filter(|o| doc.floor_of(o.id()) == Some(old) && !remap.contains_key(&o.id()))
+            .filter(|o| {
+                matches!(
+                    o,
+                    Object::Cad(_) | Object::Text(_) | Object::Dimension(_) | Object::Callout(_) | Object::BlockRef(_) | Object::RevisionCloud(_)
+                )
+            })
+            .cloned()
+            .collect();
+        for mut o in notes {
+            match &mut o {
+                Object::Cad(c) => c.floor = new,
+                Object::Text(t) => t.floor = new,
+                Object::Dimension(d) => d.floor = new,
+                Object::Callout(c) => c.floor = new,
+                Object::BlockRef(b) => b.floor = new,
+                Object::RevisionCloud(c) => c.floor = new,
+                _ => {}
+            }
+            out.created.push(doc.insert(o));
+        }
+    }
     // Pasted switches control the pasted copies of their fixtures; controls
     // that were not pasted along are dropped.
     for new in &out.created {

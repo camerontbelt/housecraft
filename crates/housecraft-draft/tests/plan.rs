@@ -398,3 +398,105 @@ fn annotations_and_detailing() {
         3
     );
 }
+
+#[test]
+fn section_view_extents_jogs_hidden_lines_and_labels() {
+    use housecraft_api::model::{Id, SectionView};
+    let mut s = house();
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "build_foundation", "kind": "crawlspace"},
+            {"op": "set_roof_style", "style": "gable"},
+            {"op": "add_section_view", "name": "West", "a": ["-10'","40'"], "b": ["-10'","-10'"]},
+            {"op": "add_section_view", "name": "Cut", "a": ["-10'","15'"], "b": ["50'","15'"], "section_kind": "section"}]"#,
+    )
+    .unwrap();
+    s.apply(&cmds).unwrap();
+    let by_name = |s: &Session, n: &str| s.document().iter::<SectionView>().find(|v| v.name == n).unwrap().id;
+    let (west, cut) = (by_name(&s, "West"), by_name(&s, "Cut"));
+    let draw = |s: &Session, id: Id| housecraft_draft::elevation::section_view(s.document(), s.document().get::<SectionView>(id).unwrap());
+    let texts = |d: &housecraft_draft::Drawing| -> Vec<String> {
+        d.items.iter().filter_map(|i| match &i.prim {
+            Prim::Text { text, .. } => Some(text.clone()),
+            _ => None,
+        }).collect()
+    };
+    let dashed = |d: &housecraft_draft::Drawing| d.items.iter().filter(|i| matches!(&i.prim, Prim::Polyline { stroke, .. } if !stroke.dash.is_empty())).count();
+    let span = |d: &housecraft_draft::Drawing| {
+        let (mut lo, mut hi, mut top) = (f64::MAX, f64::MIN, f64::MIN);
+        for i in &d.items {
+            if let Prim::Polygon { points, .. } = &i.prim {
+                for p in points {
+                    lo = lo.min(p.x);
+                    hi = hi.max(p.x);
+                    top = top.max(p.y);
+                }
+            }
+        }
+        (lo, hi, top)
+    };
+    let ft = 304.8;
+    // The west wall's door and window carry their schedule numbers; the
+    // crawlspace below grade is dashed.
+    let d = draw(&s, west);
+    let t = texts(&d);
+    assert!(t.iter().any(|x| x == "D01") && t.iter().any(|x| x == "W01"), "{t:?}");
+    assert!(dashed(&d) > 0);
+    let upd = |s: &mut Session, id: Id, set: serde_json::Value| {
+        s.apply(&[Command::Update { id, set: set.as_object().unwrap().clone() }]).unwrap();
+    };
+    upd(&mut s, west, serde_json::json!({"schedule_labels": false, "hidden_below_grade": false}));
+    let d = draw(&s, west);
+    assert!(!texts(&d).iter().any(|x| x == "D01"));
+    assert_eq!(dashed(&d), 0);
+    // Cropped extents, and nothing above the floor's ceiling.
+    upd(&mut s, west, serde_json::json!({"crop_left": "20'", "crop_right": "35'", "ignore_above": true}));
+    let (lo, hi, top) = span(&draw(&s, west));
+    assert!(lo >= 20.0 * ft - 1.0 && hi <= 35.0 * ft + 1.0, "{lo} {hi}");
+    assert!(top < 10.0 * ft, "roof cropped off: {top}");
+    // A jog moves the cut beyond the interior wall's line part of the way.
+    let heavy = |d: &housecraft_draft::Drawing| -> Vec<(i64, i64)> {
+        let mut v: Vec<(i64, i64)> = d.items.iter().filter_map(|i| match &i.prim {
+            Prim::Polyline { stroke, points, .. } if stroke.width >= 0.5 => Some((points[0].x as i64, points[0].y as i64)),
+            _ => None,
+        }).collect();
+        v.sort();
+        v
+    };
+    let plain = heavy(&draw(&s, cut));
+    upd(&mut s, cut, serde_json::json!({"steps": [{"at": "30'", "offset": "10'"}]}));
+    let stepped = heavy(&draw(&s, cut));
+    assert_ne!(plain, stepped);
+}
+
+#[test]
+fn copied_views_keep_their_annotations_and_callouts_show_pages() {
+    use housecraft_api::model::{SectionView, Text};
+    let mut s = house();
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "add_section_view", "name": "South", "a": ["-10'","-10'"], "b": ["50'","-10'"]},
+            {"op": "add_layout", "name": "Set", "pages": 3}]"#,
+    )
+    .unwrap();
+    let out = s.apply(&cmds).unwrap();
+    let (view, layout) = (out.created[0], out.created[1]);
+    let cmds: Vec<Command> = serde_json::from_str(&format!(
+        r#"[{{"op": "add_text", "floor": {v}, "position": ["5'","5'"], "text": "Brick veneer"}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 2, "source": {{"type": "view", "view": {v}}}}}]"#,
+        v = view.0,
+        l = layout.0
+    ))
+    .unwrap();
+    s.apply(&cmds).unwrap();
+    let doc = s.document();
+    let plan_d = plan(doc, &PlanOptions::first(doc).unwrap());
+    assert!(plan_d.items.iter().any(|i| i.object == Some(view) && matches!(&i.prim, Prim::Text { text, .. } if text == "A-3")));
+    // Copy and paste the view: the note comes along onto the copy.
+    let copy = serde_json::to_value(doc.object(view).unwrap()).unwrap();
+    let out = s
+        .apply(&[serde_json::from_value(serde_json::json!({"op": "insert_objects", "objects": [copy], "dx": "1'", "dy": 0})).unwrap()])
+        .unwrap();
+    let doc = s.document();
+    let new = out.created.iter().copied().find(|id| doc.get::<SectionView>(*id).is_some()).unwrap();
+    assert!(doc.iter::<Text>().any(|t| t.floor == new && t.text == "Brick veneer"));
+    assert!(doc.iter::<Text>().any(|t| t.floor == view));
+}

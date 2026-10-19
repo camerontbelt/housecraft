@@ -2061,6 +2061,19 @@ impl App {
                     if item(ui, "Center Object", "", has_sel) {
                         self.start_pick(crate::canvas::Pick::Center(self.selection.clone()));
                     }
+                    let view = self.plan.sheet.and_then(|s| self.doc().get::<SectionView>(s).cloned());
+                    if item(ui, "Center in View", "", has_sel && view.is_some())
+                        && let Some(v) = view
+                        && let Some((l, r)) = housecraft_draft::elevation::model_span(self.doc(), &v)
+                        && let Some((lo, hi)) = self.plan.bounds_of(&self.selection)
+                    {
+                        let dx = (l + r) / 2.0 - (lo.x + hi.x) / 2.0;
+                        self.run1(Command::Transform {
+                            ids: self.selection.clone(),
+                            transform: housecraft_api::TransformOp::Translate { dx: Length::from_mm(dx), dy: Length::ZERO },
+                            copies: 0,
+                        });
+                    }
                     ui.menu_button("Align and Distribute", |ui| {
                         for a in Align::ALL {
                             let need = if a.is_distribute() { 3 } else { 2 };

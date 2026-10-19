@@ -79,6 +79,14 @@ pub(crate) fn auto_elevations(
             section_kind: SectionKind::Elevation,
             depth: None,
             clip_sides: false,
+            crop_left: None,
+            crop_right: None,
+            crop_bottom: None,
+            crop_top: None,
+            ignore_above: false,
+            steps: Vec::new(),
+            hidden_below_grade: true,
+            schedule_labels: true,
         }));
     }
     Ok(())
@@ -126,6 +134,14 @@ pub(crate) fn room_elevations(
                 depth + 2.0 * inset + Length::from_feet(1.0).mm(),
             )),
             clip_sides: true,
+            crop_left: None,
+            crop_right: None,
+            crop_bottom: None,
+            crop_top: None,
+            ignore_above: false,
+            steps: Vec::new(),
+            hidden_below_grade: true,
+            schedule_labels: true,
         }));
     }
     Ok(())
