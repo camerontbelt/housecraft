@@ -398,9 +398,9 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | EL-01 | Electrical, plumbing, HVAC symbols; circuits/wiring with auto 3-way/4-way; auto-orient to slopes | P1 | M3 ◐ electrical, plumbing and HVAC symbols; switch wiring with automatic 3-way/4-way; slope orientation later |
 | EL-02 | Auto-place outlets by room type (GFCI) | P2 | M3 |
-| EL-03 | Light fixtures emit light in renders | P1 | M5 |
+| EL-03 | Light fixtures emit light in renders | P1 | M5 ✓ |
 | EL-04 | Rope lighting along paths | P3 | M7 |
-| EL-05 | Per-fixture light controls (shadows, intensity, dimming, on/off) | P1 | M5 |
+| EL-05 | Per-fixture light controls (shadows, intensity, dimming, on/off) | P1 | M5 ◐ on/off, brightness, dimmer, colour temperature and a shadows switch; light from fixtures doesn't cast shadows yet |
 | EL-06 | Lighting manager table | P2 | M7 |
 | EL-07 | Kelvin color temperature (X18+) | P2 | M5 |
 | EL-08 | Lighting sets per view/camera | P2 | M7 |

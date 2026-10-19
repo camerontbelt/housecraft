@@ -257,6 +257,26 @@ impl ElectricalKind {
         }
     }
 
+    /// Light fixtures (ceiling fans have a light kit).
+    pub fn emits_light(self) -> bool {
+        matches!(
+            self,
+            ElectricalKind::CeilingLight
+                | ElectricalKind::RecessedLight
+                | ElectricalKind::WallLight
+                | ElectricalKind::CeilingFan
+        )
+    }
+
+    /// Typical light output, lumens.
+    pub fn typical_lumens(self) -> f64 {
+        match self {
+            ElectricalKind::RecessedLight => 650.0,
+            ElectricalKind::WallLight => 450.0,
+            _ => 1100.0,
+        }
+    }
+
     pub fn is_switch(self) -> bool {
         matches!(self, ElectricalKind::Switch | ElectricalKind::Dimmer)
     }
@@ -317,6 +337,72 @@ pub struct Electrical {
     #[serde(default)]
     pub renovation: Renovation,
     pub layer: Id,
+    /// How a light fixture lights the 3D view; `None` uses the kind's typical
+    /// output, on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub light: Option<LightSettings>,
+}
+
+/// A light fixture's output.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct LightSettings {
+    pub on: bool,
+    /// Full output, lumens.
+    pub lumens: f64,
+    /// Dimmed to this fraction of full output, 0–1.
+    #[serde(default = "full_dimmer")]
+    pub dimmer: f64,
+    /// Colour temperature, kelvin (2700 warm white – 6500 daylight).
+    #[serde(default = "warm_white")]
+    pub kelvin: f64,
+    /// Casts shadows in renders.
+    #[serde(default = "yes_shadows")]
+    pub shadows: bool,
+}
+
+fn full_dimmer() -> f64 {
+    1.0
+}
+
+fn warm_white() -> f64 {
+    2700.0
+}
+
+fn yes_shadows() -> bool {
+    true
+}
+
+impl LightSettings {
+    pub fn typical(kind: ElectricalKind) -> Self {
+        LightSettings {
+            on: true,
+            lumens: kind.typical_lumens(),
+            dimmer: 1.0,
+            kelvin: 2700.0,
+            shadows: true,
+        }
+    }
+
+    /// The light's colour (linear RGB, 0–1) from its colour temperature.
+    pub fn rgb(&self) -> [f64; 3] {
+        // Tanner Helland's blackbody fit, normalised to the brightest channel.
+        let t = (self.kelvin.clamp(1000.0, 40000.0)) / 100.0;
+        let r = if t <= 66.0 { 255.0 } else { 329.698_727_446 * (t - 60.0).powf(-0.133_204_759_2) };
+        let g = if t <= 66.0 {
+            99.470_802_586_1 * t.ln() - 161.119_568_166_1
+        } else {
+            288.122_169_528_3 * (t - 60.0).powf(-0.075_514_849_2)
+        };
+        let b = if t >= 66.0 {
+            255.0
+        } else if t <= 19.0 {
+            0.0
+        } else {
+            138.517_731_223_1 * (t - 10.0).ln() - 305.044_792_730_7
+        };
+        let c = |v: f64| (v / 255.0).clamp(0.0, 1.0);
+        [c(r), c(g), c(b)]
+    }
 }
 /// A stair from its floor up to the floor above.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

@@ -877,7 +877,9 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     }
                 });
             if kind != e.electrical_kind {
-                ed.out.push(patch(id, json!({ "electrical_kind": kind })));
+                // Light settings only belong on light fixtures.
+                let light = if kind.emits_light() { json!(e.light) } else { Value::Null };
+                ed.out.push(patch(id, json!({ "electrical_kind": kind, "light": light })));
             }
             ui.end_row();
             if let Some(p) = ed.point(ui, "Position", "position", e.position) {
@@ -892,6 +894,37 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     Ed::label(ui, "Height");
                     ui.weak("At the ceiling");
                     ui.end_row();
+                }
+            }
+            if e.electrical_kind.emits_light() {
+                let mut l = e.light.unwrap_or_else(|| LightSettings::typical(e.electrical_kind));
+                let before = l;
+                Ed::label(ui, "Light");
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut l.on, "On");
+                    ui.checkbox(&mut l.shadows, "Casts shadows");
+                });
+                ui.end_row();
+                Ed::label(ui, "Brightness");
+                ui.add(egui::DragValue::new(&mut l.lumens).range(0.0..=20000.0).speed(10.0).suffix(" lm"));
+                ui.end_row();
+                Ed::label(ui, "Dimmer");
+                let mut pct = l.dimmer * 100.0;
+                if ui.add(egui::Slider::new(&mut pct, 0.0..=100.0).suffix("%")).changed() {
+                    l.dimmer = pct / 100.0;
+                }
+                ui.end_row();
+                Ed::label(ui, "Color Temperature");
+                ui.horizontal(|ui| {
+                    ui.add(egui::Slider::new(&mut l.kelvin, 1800.0..=6500.0).suffix(" K"));
+                    let [r, g, b] = l.rgb();
+                    let c = |v: f64| (v * 255.0) as u8;
+                    let (rect, _) = ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::hover());
+                    ui.painter().rect_filled(rect, 2.0, egui::Color32::from_rgb(c(r), c(g), c(b)));
+                });
+                ui.end_row();
+                if l != before {
+                    ed.out.push(patch(id, json!({ "light": l })));
                 }
             }
             if e.electrical_kind.is_switch() {

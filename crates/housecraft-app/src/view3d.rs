@@ -40,7 +40,13 @@ struct Uniforms {
     clip: [f32; 4],
     /// Camera position (m), for highlights.
     eye: [f32; 4],
+    /// Fixture lights: position (m) then colour and strength, per light;
+    /// `params.w` is how many.
+    lights: [[f32; 4]; 2 * MAX_LIGHTS],
 }
+
+/// Most fixture lights drawn at once (the nearest to the view).
+const MAX_LIGHTS: usize = 16;
 
 /// What a material painter click covers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -118,7 +124,7 @@ const SHADOW_SIZE: u32 = 2048;
 const SHADOW_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
 const SHADER: &str = r#"
-struct U { view_proj: mat4x4<f32>, light_vp: mat4x4<f32>, light: vec4<f32>, params: vec4<f32>, clip: vec4<f32>, eye: vec4<f32> };
+struct U { view_proj: mat4x4<f32>, light_vp: mat4x4<f32>, light: vec4<f32>, params: vec4<f32>, clip: vec4<f32>, eye: vec4<f32>, lights: array<vec4<f32>, 32> };
 @group(0) @binding(0) var<uniform> u: U;
 @group(1) @binding(0) var shadow_map: texture_depth_2d;
 @group(1) @binding(1) var shadow_sampler: sampler_comparison;
@@ -194,7 +200,31 @@ fn shade(i: VOut) -> vec4<f32> {
     // Without an environment map, reflections take the scene's lighting;
     // metals reflect it at their own colour, others only faintly.
     let env = fresnel * (0.2 + 0.8 * lit) * mix(0.3, 1.0, metal) * (1.0 - 0.4 * rough);
-    let color = base * (1.0 - metal) * lit + fresnel * spec * 0.6 + env + base * i.pbr.z;
+    // Light fixtures: point lights with inverse-square falloff.
+    var lamps = vec3<f32>(0.0);
+    let count = i32(u.params.w);
+    for (var k = 0; k < count; k++) {
+        let lp = u.lights[2 * k];
+        let lc = u.lights[2 * k + 1];
+        let dv = lp.xyz - i.world;
+        let dist2 = max(dot(dv, dv), 0.01);
+        let ld = dv * inverseSqrt(dist2);
+        let ndl = max(dot(n, ld), 0.0);
+        // Downlights: nothing above a ceiling fixture, a cone under a can.
+        // How far below the light the surface is (1 straight down).
+        let down = ld.z;
+        var spread = 1.0;
+        if (lp.w > 1.5) {
+            spread = smoothstep(0.25, 0.7, down);
+        } else if (lp.w > 0.5) {
+            spread = smoothstep(-0.15, 0.25, down);
+        }
+        let falloff = lc.w * spread * 2.0 / (dist2 + 1.0);
+        let lh = normalize(ld + v);
+        let lspec = pow(max(dot(n, lh), 0.0), power) * (power + 8.0) / 25.13 * ndl;
+        lamps += lc.rgb * falloff * (base * (1.0 - metal) * ndl + f0 * lspec * 0.5);
+    }
+    let color = base * (1.0 - metal) * lit + fresnel * spec * 0.6 + env + lamps + base * i.pbr.z;
     return vec4<f32>(color, clamp(i.pbr.w, 0.0, 1.0));
 }
 @fragment fn fs(i: VOut) -> @location(0) vec4<f32> {
@@ -1072,6 +1102,26 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         }
     });
     let eye = v.eye();
+    // The fixture lights nearest the view target.
+    let mut near: Vec<&housecraft_api::geom::mesh::MeshLight> = v
+        .mesh
+        .as_ref()
+        .map(|(_, m)| m.lights.iter().collect())
+        .unwrap_or_default();
+    near.sort_by(|a, b| {
+        let d = |l: &housecraft_api::geom::mesh::MeshLight| Vec3::from_array(l.position).distance(v.target);
+        d(a).total_cmp(&d(b))
+    });
+    let lamps: Vec<[f32; 4]> = near
+        .iter()
+        .take(MAX_LIGHTS)
+        .flat_map(|l| {
+            [
+                [l.position[0], l.position[1], l.position[2], l.spread as f32],
+                [l.color[0], l.color[1], l.color[2], l.intensity],
+            ]
+        })
+        .collect();
     painter.add(egui_wgpu::Callback::new_paint_callback(
         rect,
         Paint3d {
@@ -1086,10 +1136,15 @@ pub fn show(app: &mut App, ui: &mut Ui) {
                     if shadows { 1.0 } else { 0.0 },
                     strength,
                     if clip.is_some() { 1.0 } else { 0.0 },
-                    0.0,
+                    lamps.len() as f32 / 2.0,
                 ],
                 clip: clip.unwrap_or([0.0; 4]),
                 eye: eye.extend(1.0).to_array(),
+                lights: {
+                    let mut a = [[0.0; 4]; 2 * MAX_LIGHTS];
+                    a[..lamps.len()].copy_from_slice(&lamps);
+                    a
+                },
             },
         },
     ));

@@ -420,6 +420,20 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
             }
             Object::Electrical(e) => {
+                if let Some(l) = &e.light {
+                    if !(l.lumens.is_finite() && l.lumens >= 0.0) {
+                        c.issue(id, "light lumens must not be negative");
+                    }
+                    if !(0.0..=1.0).contains(&l.dimmer) {
+                        c.issue(id, "light dimmer must be between 0 and 1");
+                    }
+                    if !(1000.0..=40000.0).contains(&l.kelvin) {
+                        c.issue(id, "light colour temperature must be 1000–40000 K");
+                    }
+                    if !e.electrical_kind.emits_light() {
+                        c.issue(id, "only light fixtures have light settings");
+                    }
+                }
                 c.reference(id, "floor", e.floor, K::Floor);
                 c.reference(id, "layer", e.layer, K::Layer);
                 c.finite(

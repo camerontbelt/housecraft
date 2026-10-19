@@ -64,6 +64,9 @@ pub struct MeshLight {
     /// Relative brightness (1 = a typical fixture).
     pub intensity: f32,
     pub shadows: bool,
+    /// How the light spreads: 0 all round (wall sconce), 1 the lower half
+    /// (ceiling fixture), 2 a downward cone (recessed can).
+    pub spread: u8,
 }
 
 /// Resolved materials for the surfaces being built.
@@ -348,8 +351,39 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
             continue;
         }
         mesh.begin(e.id, Category::Fixture);
+        let start = mesh.pbr.len();
         electrical_mesh(doc, e, &mut mesh);
         mesh.end();
+        if e.electrical_kind.emits_light() {
+            let settings = e
+                .light
+                .unwrap_or_else(|| housecraft_model::LightSettings::typical(e.electrical_kind));
+            let level = if settings.on { settings.dimmer } else { 0.0 };
+            // Lenses glow only as much as the fixture is turned up.
+            for (pbr, surface) in mesh.pbr[start..].iter_mut().zip(&mesh.surfaces[start..]) {
+                if *surface == Some(Surface::Lamp) {
+                    pbr[2] *= level as f32;
+                }
+            }
+            if level > 0.0
+                && settings.lumens > 0.0
+                && let Some(at) = light_position(doc, e)
+            {
+                let [r, g, b] = settings.rgb();
+                mesh.lights.push(MeshLight {
+                    object: e.id,
+                    position: to_m(at),
+                    color: [r as f32, g as f32, b as f32],
+                    intensity: (settings.lumens / 800.0 * level) as f32,
+                    shadows: settings.shadows,
+                    spread: match e.electrical_kind {
+                        housecraft_model::ElectricalKind::RecessedLight => 2,
+                        housecraft_model::ElectricalKind::WallLight => 0,
+                        _ => 1,
+                    },
+                });
+            }
+        }
     }
     for c in doc.iter::<housecraft_model::Cabinet>() {
         if only_floor.is_some_and(|f| f != c.floor) || c.renovation == Renovation::Demolish {
@@ -389,6 +423,29 @@ fn disc(c: DVec2, r: f64, sides: usize) -> Vec<DVec2> {
 fn rect(c: DVec2, dir: DVec2, w: f64, d: f64) -> Vec<DVec2> {
     let (u, v) = (dir * (w / 2.0), crate::math::perp(dir) * (d / 2.0));
     ccw(vec![c - u - v, c + u - v, c + u + v, c - u + v])
+}
+
+/// Where a light fixture's light comes from (mm): just below or in front of
+/// its lens.
+pub fn light_position(doc: &Document, e: &housecraft_model::Electrical) -> Option<DVec3> {
+    use housecraft_model::ElectricalKind as K;
+    let floor = doc.get::<Floor>(e.floor)?;
+    let z0 = floor.elevation.mm();
+    let ceiling = z0 + floor.ceiling_height.mm();
+    let p = v2(e.position);
+    let out = DVec2::from_angle(e.rotation.to_radians());
+    let z = e
+        .height
+        .or(e.electrical_kind.default_height())
+        .map(|h| z0 + h.mm());
+    let (q, zz) = match e.electrical_kind {
+        K::CeilingLight => (p, ceiling - 150.0),
+        K::RecessedLight => (p, ceiling - 40.0),
+        K::WallLight => (p + out * 160.0, z.unwrap_or(z0 + 1800.0) + 40.0),
+        K::CeilingFan => (p, ceiling - 560.0),
+        _ => return None,
+    };
+    Some(q.extend(zz))
 }
 
 fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut Mesh) {

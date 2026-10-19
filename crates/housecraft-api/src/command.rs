@@ -992,6 +992,7 @@ impl Command {
                     controls: controls.clone(),
                     renovation: Default::default(),
                     layer: d.layers.electrical.unwrap_or(d.layers.cad),
+                    light: None,
                 }));
             }
             Command::ConnectSwitch {

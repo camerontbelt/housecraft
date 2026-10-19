@@ -1607,3 +1607,51 @@ fn cabinets_snap_fill_mirror_and_mesh() {
         assert!(mesh.surfaces.contains(&Some(surface)), "{surface:?}");
     }
 }
+
+#[test]
+fn light_fixtures_light_the_model() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_electrical", "electrical_kind": "ceiling_light", "at": ["10'","15'"]},
+            {"op": "add_electrical", "electrical_kind": "recessed_light", "at": ["5'","5'"]},
+            {"op": "add_electrical", "electrical_kind": "outlet", "at": ["0'","5'"]}]"#,
+    );
+    let (ceiling, recessed) = (out.created[0], out.created[1]);
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    assert_eq!(mesh.lights.len(), 2, "outlets give no light");
+    let l = mesh.lights.iter().find(|l| l.object == ceiling).unwrap();
+    // Just under an 8' ceiling.
+    assert!(l.position[2] > 2.2 && l.position[2] < 2.44, "{:?}", l.position);
+    assert!(l.color[0] > l.color[2], "warm white is redder than it is blue");
+    // Dim one, switch the other off.
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "update", "id": {}, "set": {{"light": {{"on": true, "lumens": 1100, "dimmer": 0.5, "kelvin": 5000, "shadows": false}}}}}},
+                {{"op": "update", "id": {}, "set": {{"light": {{"on": false, "lumens": 650}}}}}}]"#,
+            ceiling.0, recessed.0
+        ),
+    );
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    assert_eq!(mesh.lights.len(), 1);
+    let l = mesh.lights[0];
+    assert!((l.intensity - 1100.0 / 800.0 * 0.5).abs() < 1e-4 && !l.shadows);
+    // Lenses of the switched-off light no longer glow.
+    let lit = mesh
+        .surfaces
+        .iter()
+        .zip(&mesh.pbr)
+        .filter(|(s, p)| **s == Some(Surface::Lamp) && p[2] > 0.0)
+        .count();
+    assert!(lit > 0);
+    // Light settings on an outlet are rejected.
+    let outlet = out.created[2];
+    assert!(
+        s.apply(&commands(&format!(
+            r#"[{{"op": "update", "id": {}, "set": {{"light": {{"on": true, "lumens": 100}}}}}}]"#,
+            outlet.0
+        )))
+        .is_err()
+    );
+}
