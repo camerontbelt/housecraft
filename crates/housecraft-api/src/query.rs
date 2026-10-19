@@ -236,6 +236,13 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         ),
         Object::Callout(c) => format!("callout {:?}", c.text),
         Object::CadDetail(c) => format!("CAD detail {:?}", c.name),
+        Object::Material(m) => format!("material {:?} ({})", m.name, m.class.name()),
+        Object::MaterialAssignment(a) => format!(
+            "{} painted on {}{}",
+            doc.get::<Material>(a.material).map_or("?", |m| m.name.as_str()),
+            a.object,
+            a.surface.map_or(String::new(), |s| format!(" ({})", s.name()))
+        ),
         Object::Block(b) => format!("block {:?}", b.name),
         Object::BlockRef(r) => format!(
             "block {:?}",

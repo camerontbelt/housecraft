@@ -862,6 +862,8 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
             .filter(|o| {
                 doc.floor_of(o.id()).is_some_and(|f| doomed.contains(&f))
                     || matches!(o, Object::BlockRef(b) if doomed.contains(&b.block))
+                    || matches!(o, Object::MaterialAssignment(a)
+                        if doomed.contains(&a.object) || doomed.contains(&a.material))
             })
             .map(Object::id)
             .collect();
@@ -916,6 +918,7 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
                 t.style = None;
             }
             Object::Electrical(e) => e.controls.retain(|c| !doomed.contains(c)),
+            Object::DefaultSet(d) => d.materials.retain(|_, m| !doomed.contains(m)),
             _ => {}
         }
     }

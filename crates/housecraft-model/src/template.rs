@@ -8,6 +8,69 @@ use crate::*;
 
 const PLACEHOLDER: Id = Id(0);
 
+/// The starter material catalogue, and the default material for each surface.
+pub(crate) fn standard_materials(doc: &mut Document) -> SurfaceMaterials {
+    use MaterialClass as C;
+    let mut add = |name: &str, category: &str, class: C, (r, g, b): (u8, u8, u8)| {
+        doc.insert(Material::new(name, category, class, Color::rgb(r, g, b)))
+    };
+    let paint = add("Eggshell White Paint", "Paint", C::Generic, (237, 232, 222));
+    let ceiling = add("Flat Ceiling White", "Paint", C::Generic, (245, 245, 242));
+    let oak = add("Oak Flooring", "Wood", C::Plastic, (184, 153, 115));
+    add("Walnut Flooring", "Wood", C::Plastic, (110, 78, 54));
+    add("Porcelain Tile", "Tile", C::Plastic, (214, 210, 202));
+    add("Gray Carpet", "Carpet", C::Generic, (140, 138, 134));
+    let shingles = add("Charcoal Asphalt Shingles", "Roofing", C::Generic, (92, 87, 84));
+    add("Galvalume Metal Roofing", "Roofing", C::Metal, (170, 172, 172));
+    let trim = add("White Trim Paint", "Paint", C::Plastic, (247, 247, 247));
+    let door = add("Stained Wood Door", "Wood", C::Plastic, (140, 97, 61));
+    let glass = add("Clear Glass", "Glass", C::Glass, (140, 191, 224));
+    add("Frosted Glass", "Glass", C::Translucent, (225, 232, 236));
+    add("Mirror", "Glass", C::Mirror, (235, 238, 240));
+    let concrete = add("Concrete", "Masonry", C::Generic, (173, 173, 168));
+    add("Red Brick", "Masonry", C::Generic, (150, 74, 54));
+    add("Fiber Cement Siding", "Siding", C::Generic, (191, 196, 189));
+    let plywood = add("Plywood Subfloor", "Wood", C::Generic, (209, 189, 153));
+    let tread = add("Red Oak Treads", "Wood", C::Plastic, (173, 133, 92));
+    let stringer = add("Painted Stringer", "Paint", C::Plastic, (148, 112, 77));
+    let rail = add("White Rail Paint", "Paint", C::Plastic, (242, 242, 237));
+    let device = add("White Device Plastic", "Plastic", C::Plastic, (245, 242, 235));
+    let lamp = add("Warm Lamp Lens", "Lighting", C::Emissive, (255, 237, 158));
+    let maple = add("Natural Maple Cabinet", "Cabinets", C::Plastic, (214, 182, 138));
+    add("White Painted Cabinet", "Cabinets", C::Plastic, (240, 238, 232));
+    add("Espresso Cabinet", "Cabinets", C::Plastic, (66, 46, 36));
+    let granite = add("Granite Countertop", "Stone", C::Plastic, (120, 112, 104));
+    add("White Quartz Countertop", "Stone", C::Plastic, (235, 233, 228));
+    add("Butcher Block", "Wood", C::Plastic, (196, 151, 102));
+    let subway = add("White Subway Tile", "Tile", C::Plastic, (240, 240, 236));
+    let nickel = add("Brushed Nickel", "Metal", C::Metal, (196, 194, 188));
+    add("Stainless Steel", "Metal", C::Metal, (206, 208, 210));
+    add("Matte Black Metal", "Metal", C::Metal, (38, 38, 40));
+    use Surface as S;
+    SurfaceMaterials::from([
+        (S::Wall, paint),
+        (S::Floor, oak),
+        (S::Ceiling, ceiling),
+        (S::Roof, shingles),
+        (S::Soffit, trim),
+        (S::Door, door),
+        (S::Glass, glass),
+        (S::Frame, trim),
+        (S::Concrete, concrete),
+        (S::Platform, plywood),
+        (S::Stair, tread),
+        (S::Stringer, stringer),
+        (S::Railing, rail),
+        (S::Device, device),
+        (S::Lamp, lamp),
+        (S::CabinetBox, maple),
+        (S::CabinetDoor, maple),
+        (S::Countertop, granite),
+        (S::Backsplash, subway),
+        (S::Hardware, nickel),
+    ])
+}
+
 pub(crate) fn new_document(name: String) -> Document {
     let mut doc = Document::empty(name);
     let ft = Length::from_feet;
@@ -151,6 +214,7 @@ pub(crate) fn new_document(name: String) -> Document {
         }
     }
 
+    let materials = standard_materials(&mut doc);
     let defaults = doc.insert(DefaultSet {
         id: PLACEHOLDER,
         name: "Default".into(),
@@ -194,6 +258,7 @@ pub(crate) fn new_document(name: String) -> Document {
         roof: RoofDefaults::default(),
         stair: StairDefaults::default(),
         exterior_stair: StairDefaults::exterior(),
+        materials,
     });
     doc.settings.active_default_set = defaults;
 

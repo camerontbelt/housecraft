@@ -85,6 +85,7 @@ pub struct App {
     pub view3d: View3d,
     pub prefs: Prefs,
     pub dialogs: Dialogs,
+    pub materials: crate::materials::MaterialsDialog,
     pub bufs: EditBuffers,
     /// Objects whose specification windows are open.
     pub spec: Vec<Id>,
@@ -122,6 +123,7 @@ impl App {
             view3d: View3d::default(),
             prefs,
             dialogs: Dialogs::default(),
+            materials: Default::default(),
             bufs: EditBuffers::default(),
             spec: Vec::new(),
             room_multi: None,
@@ -1040,6 +1042,12 @@ impl App {
                 }
             });
             ui.menu_button("3D", |ui| {
+                if item(ui, "Material Painter", "", true) {
+                    self.mode = Mode::ThreeD;
+                    self.view3d.painter.get_or_insert_with(|| {
+                        crate::view3d::Painter::new(self.session.document())
+                    });
+                }
                 ui.menu_button("Create Camera View", |ui| {
                     for a in CameraAction::ALL {
                         if item(ui, a.name(), a.hotkey(), true) {
@@ -1173,6 +1181,9 @@ impl App {
                 });
             });
             ui.menu_button("Tools", |ui| {
+                if item(ui, "Plan Materials…", "", true) {
+                    self.materials.open = true;
+                }
                 ui.menu_button("Schedules", |ui| {
                     for kind in ScheduleKind::ALL {
                         if item(ui, &format!("{}…", kind.name()), "", true) {
@@ -2443,6 +2454,7 @@ impl eframe::App for App {
         crate::props::room_multi_window(self, &ctx);
         crate::schedules::table_window(self, &ctx);
         crate::dialogs::show(self, &ctx);
+        crate::materials::materials_dialog(self, &ctx);
         self.confirm_discard(&ctx);
     }
 

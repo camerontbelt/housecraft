@@ -270,6 +270,9 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 if let Some(l) = d.layers.electrical {
                     c.reference(id, "layers.electrical", l, K::Layer);
                 }
+                for (surface, m) in &d.materials {
+                    c.reference(id, &format!("materials.{}", surface.name()), *m, K::Material);
+                }
                 c.positive(id, "window.width", d.window.width);
                 c.positive(id, "window.height", d.window.height);
                 if d.window.head_height.mm() < d.window.height.mm() {
@@ -547,6 +550,32 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 c.finite(id, "points", &flat);
             }
             Object::CadDetail(_) | Object::Block(_) => {}
+            Object::Material(m) => {
+                for (field, v) in [
+                    ("roughness", m.roughness),
+                    ("metallic", m.metallic),
+                    ("opacity", m.opacity),
+                ] {
+                    if !(0.0..=1.0).contains(&v) {
+                        c.issue(id, format!("{field} must be between 0 and 1"));
+                    }
+                }
+                if !(m.emissive.is_finite() && m.emissive >= 0.0) {
+                    c.issue(id, "emissive must not be negative");
+                }
+                if !(-1.0..=1.0).contains(&m.anisotropy) {
+                    c.issue(id, "anisotropy must be between -1 and 1");
+                }
+                for t in [m.texture_width, m.texture_height].into_iter().flatten() {
+                    c.positive(id, "texture size", t);
+                }
+            }
+            Object::MaterialAssignment(a) => {
+                if doc.object(a.object).is_none() {
+                    c.issue(id, format!("object references missing object {}", a.object));
+                }
+                c.reference(id, "material", a.material, K::Material);
+            }
             Object::BlockRef(b) => {
                 c.sheet(id, b.floor, false);
                 c.reference(id, "layer", b.layer, K::Layer);

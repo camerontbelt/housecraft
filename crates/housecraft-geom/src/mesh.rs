@@ -1,8 +1,11 @@
 //! 3D triangle meshes of the building model for the viewer and exports.
 
 use glam::{DVec2, DVec3, Vec3};
+use std::collections::HashMap;
+
 use housecraft_model::{
-    CeilingStyle, Document, Floor, FoundationKind, Id, Opening, OpeningKind, Renovation, Room,
+    CeilingStyle, Document, Floor, FoundationKind, Id, Material, MaterialAssignment, Opening,
+    OpeningKind, Renovation, Room, Surface,
 };
 
 use crate::math::v2;
@@ -10,13 +13,20 @@ use crate::rooms;
 use crate::triangulate::triangulate;
 use crate::walls::{DoorSwing, WallGeom, opening_spans, wall_geoms};
 
-/// Flat-shaded triangles with per-vertex colour. Coordinates are metres,
-/// z up, so the viewer works with comfortable magnitudes.
+/// Flat-shaded triangles with per-vertex colour and material. Coordinates
+/// are metres, z up, so the viewer works with comfortable magnitudes.
 #[derive(Debug, Clone, Default)]
 pub struct Mesh {
     pub positions: Vec<[f32; 3]>,
     pub normals: Vec<[f32; 3]>,
     pub colors: Vec<[f32; 4]>,
+    /// Per vertex: roughness, metallic, emissive, opacity.
+    pub pbr: Vec<[f32; 4]>,
+    /// Per vertex: the surface role (for the material painter).
+    pub surfaces: Vec<Option<Surface>>,
+    /// Lights given off by emissive fixtures: position (m), colour, strength.
+    pub lights: Vec<MeshLight>,
+    palette: Palette,
     pub indices: Vec<u32>,
     /// Which object each index range belongs to (for picking).
     pub parts: Vec<MeshPart>,
@@ -32,6 +42,129 @@ pub struct Face {
     pub points: Vec<DVec3>,
     pub normal: DVec3,
     pub color: [f32; 4],
+}
+
+/// How a surface looks: colour (alpha unused) and roughness, metallic,
+/// emissive, opacity.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Look {
+    pub color: [f32; 4],
+    pub pbr: [f32; 4],
+    /// The surface role it was resolved for (none for one-off colours).
+    pub surface: Option<Surface>,
+}
+
+/// A point light in the model (a light fixture).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MeshLight {
+    pub object: Id,
+    /// Metres.
+    pub position: [f32; 3],
+    pub color: [f32; 3],
+    /// Relative brightness (1 = a typical fixture).
+    pub intensity: f32,
+    pub shadows: bool,
+}
+
+/// Resolved materials for the surfaces being built.
+#[derive(Debug, Clone, Default)]
+struct Palette {
+    painted: HashMap<(Id, Option<Surface>), Look>,
+    defaults: HashMap<Surface, Look>,
+    /// The floor of every object that has one.
+    floors: HashMap<Id, Id>,
+    /// Object and floor of the part being built.
+    object: Option<Id>,
+    floor: Option<Id>,
+}
+
+impl Palette {
+    fn new(doc: &Document) -> Self {
+        let mut p = Palette::default();
+        for a in doc.iter::<MaterialAssignment>() {
+            if let Some(m) = doc.get::<Material>(a.material) {
+                p.painted.insert((a.object, a.surface), look_of(m));
+            }
+        }
+        p.floors = doc
+            .objects
+            .keys()
+            .filter_map(|id| Some((*id, doc.floor_of(*id)?)))
+            .collect();
+        for (s, m) in &doc.active_defaults().materials {
+            if let Some(m) = doc.get::<Material>(*m) {
+                p.defaults.insert(*s, look_of(m));
+            }
+        }
+        p
+    }
+
+    fn look(&self, surface: Surface) -> Look {
+        [self.object, self.floor]
+            .into_iter()
+            .flatten()
+            .flat_map(|o| [(o, Some(surface)), (o, None)])
+            .find_map(|k| self.painted.get(&k))
+            .or_else(|| self.defaults.get(&surface))
+            .copied()
+            .unwrap_or_else(|| builtin_look(surface))
+            .with_surface(surface)
+    }
+}
+
+impl Look {
+    fn with_surface(self, surface: Surface) -> Look {
+        Look {
+            surface: Some(surface),
+            ..self
+        }
+    }
+}
+
+/// The 3D look of a material.
+pub fn look_of(m: &Material) -> Look {
+    let [r, g, b, _] = m.color.0;
+    let c = |v: u8| v as f32 / 255.0;
+    Look {
+        color: [c(r), c(g), c(b), 1.0],
+        pbr: [
+            m.roughness as f32,
+            m.metallic as f32,
+            m.emissive as f32,
+            m.opacity as f32,
+        ],
+        surface: None,
+    }
+}
+
+/// Colours used when a plan has no material for a surface.
+pub fn builtin_look(surface: Surface) -> Look {
+    let (color, pbr) = match surface {
+        Surface::Wall => ([0.93, 0.91, 0.87, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::Floor => ([0.72, 0.6, 0.45, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::Door => ([0.55, 0.38, 0.24, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::Glass => ([0.55, 0.75, 0.88, 1.0], [0.05, 0.0, 0.0, 0.25]),
+        Surface::Frame => ([0.97, 0.97, 0.97, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::Ceiling => ([0.96, 0.96, 0.95, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::Concrete => ([0.68, 0.68, 0.66, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::Roof => ([0.36, 0.34, 0.33, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::Soffit => ([0.9, 0.89, 0.86, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::Stair => ([0.68, 0.52, 0.36, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::Stringer => ([0.58, 0.44, 0.30, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::Railing => ([0.95, 0.95, 0.93, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::Device => ([0.96, 0.95, 0.92, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::Lamp => ([1.0, 0.93, 0.62, 1.0], [0.5, 0.0, 1.0, 1.0]),
+        Surface::Platform => ([0.82, 0.74, 0.6, 1.0], [0.8, 0.0, 0.0, 1.0]),
+        Surface::CabinetBox | Surface::CabinetDoor => ([0.84, 0.71, 0.54, 1.0], [0.4, 0.0, 0.0, 1.0]),
+        Surface::Countertop => ([0.47, 0.44, 0.41, 1.0], [0.3, 0.0, 0.0, 1.0]),
+        Surface::Backsplash => ([0.94, 0.94, 0.92, 1.0], [0.3, 0.0, 0.0, 1.0]),
+        Surface::Hardware => ([0.77, 0.76, 0.74, 1.0], [0.3, 1.0, 0.0, 1.0]),
+    };
+    Look {
+        color,
+        pbr,
+        surface: None,
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -55,24 +188,26 @@ pub enum Category {
     Fixture,
 }
 
-pub const WALL_COLOR: [f32; 4] = [0.93, 0.91, 0.87, 1.0];
-pub const FLOOR_COLOR: [f32; 4] = [0.72, 0.6, 0.45, 1.0];
-pub const DOOR_COLOR: [f32; 4] = [0.55, 0.38, 0.24, 1.0];
-pub const GLASS_COLOR: [f32; 4] = [0.55, 0.75, 0.88, 1.0];
-pub const FRAME_COLOR: [f32; 4] = [0.97, 0.97, 0.97, 1.0];
-pub const CEILING_COLOR: [f32; 4] = [0.96, 0.96, 0.95, 1.0];
-pub const CONCRETE_COLOR: [f32; 4] = [0.68, 0.68, 0.66, 1.0];
-pub const ROOF_COLOR: [f32; 4] = [0.36, 0.34, 0.33, 1.0];
-pub const SOFFIT_COLOR: [f32; 4] = [0.9, 0.89, 0.86, 1.0];
-pub const STAIR_COLOR: [f32; 4] = [0.68, 0.52, 0.36, 1.0];
-pub const STRINGER_COLOR: [f32; 4] = [0.58, 0.44, 0.30, 1.0];
-pub const RAIL_COLOR: [f32; 4] = [0.95, 0.95, 0.93, 1.0];
-pub const DEVICE_COLOR: [f32; 4] = [0.96, 0.95, 0.92, 1.0];
-pub const LAMP_COLOR: [f32; 4] = [1.0, 0.93, 0.62, 1.0];
-pub const PLATFORM_COLOR: [f32; 4] = [0.82, 0.74, 0.6, 1.0];
 
 impl Mesh {
+    /// A mesh whose surfaces take their materials from `doc`.
+    pub fn for_document(doc: &Document) -> Self {
+        Mesh {
+            palette: Palette::new(doc),
+            ..Mesh::default()
+        }
+    }
+
+    /// The look `surface` gets on the part being built.
+    pub fn look(&self, surface: Surface) -> Look {
+        self.palette.look(surface)
+    }
+
+    /// Start a part for `object` (its surfaces take materials painted on it
+    /// or on its floor).
     pub fn begin(&mut self, object: Id, category: Category) -> u32 {
+        self.palette.object = Some(object);
+        self.palette.floor = self.palette.floors.get(&object).copied();
         let first = self.indices.len() as u32;
         self.parts.push(MeshPart {
             object,
@@ -91,7 +226,14 @@ impl Mesh {
     }
 
     /// Add a planar polygon (counter-clockwise when seen from its normal side).
-    pub fn polygon(&mut self, pts: &[DVec3], color: [f32; 4]) {
+    pub fn polygon(&mut self, pts: &[DVec3], surface: Surface) {
+        let look = self.palette.look(surface);
+        self.polygon_look(pts, look);
+    }
+
+    /// [`Mesh::polygon`] with an explicit look.
+    pub fn polygon_look(&mut self, pts: &[DVec3], look: Look) {
+        let color = look.color;
         if pts.len() < 3 {
             return;
         }
@@ -116,6 +258,8 @@ impl Mesh {
             self.positions.push(to_m(*p));
             self.normals.push(n.as_vec3().to_array());
             self.colors.push(color);
+            self.pbr.push(look.pbr);
+            self.surfaces.push(look.surface);
         }
         for t in triangulate(&flat) {
             self.indices
@@ -124,19 +268,25 @@ impl Mesh {
     }
 
     /// Extrude a counter-clockwise plan polygon between two heights (mm).
-    pub fn prism(&mut self, poly: &[DVec2], z0: f64, z1: f64, color: [f32; 4]) {
+    pub fn prism(&mut self, poly: &[DVec2], z0: f64, z1: f64, surface: Surface) {
+        let look = self.palette.look(surface);
+        self.prism_look(poly, z0, z1, look);
+    }
+
+    /// [`Mesh::prism`] with an explicit look.
+    pub fn prism_look(&mut self, poly: &[DVec2], z0: f64, z1: f64, color: Look) {
         if z1 - z0 < 0.01 || poly.len() < 3 {
             return;
         }
         let at = |p: DVec2, z: f64| DVec3::new(p.x, p.y, z);
         let top: Vec<DVec3> = poly.iter().map(|p| at(*p, z1)).collect();
         let bottom: Vec<DVec3> = poly.iter().rev().map(|p| at(*p, z0)).collect();
-        self.polygon(&top, color);
-        self.polygon(&bottom, color);
+        self.polygon_look(&top, color);
+        self.polygon_look(&bottom, color);
         for i in 0..poly.len() {
             let (a, b) = (poly[i], poly[(i + 1) % poly.len()]);
             if a.distance(b) > 0.01 {
-                self.polygon(&[at(a, z0), at(b, z0), at(b, z1), at(a, z1)], color);
+                self.polygon_look(&[at(a, z0), at(b, z0), at(b, z1), at(a, z1)], color);
             }
         }
     }
@@ -168,7 +318,7 @@ fn basis(n: DVec3) -> (DVec3, DVec3) {
 
 /// Build the mesh for every floor, or only `only_floor` when given.
 pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
-    let mut mesh = Mesh::default();
+    let mut mesh = Mesh::for_document(doc);
     for floor in doc.floors_by_elevation() {
         if only_floor.is_some_and(|f| f != floor.id) {
             continue;
@@ -234,7 +384,7 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
             // Cover plate standing proud of the wall face.
             let zc = z.unwrap_or(z0 + 300.0);
             let plate = rect(p + out * 4.0, along, 70.0, 8.0);
-            mesh.prism(&plate, zc - 57.0, zc + 57.0, DEVICE_COLOR);
+            mesh.prism(&plate, zc - 57.0, zc + 57.0, Surface::Device);
         }
         K::WallLight => {
             let zc = z.unwrap_or(z0 + 1800.0);
@@ -242,32 +392,36 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
                 &rect(p + out * 10.0, along, 120.0, 20.0),
                 zc - 100.0,
                 zc + 100.0,
-                DEVICE_COLOR,
+                Surface::Device,
             );
             mesh.prism(
                 &rect(p + out * 70.0, along, 150.0, 100.0),
                 zc - 60.0,
                 zc + 140.0,
-                LAMP_COLOR,
+                Surface::Lamp,
             );
         }
         K::CeilingLight => {
-            mesh.prism(&disc(p, 170.0, 16), ceiling - 90.0, ceiling, LAMP_COLOR);
+            mesh.prism(&disc(p, 170.0, 16), ceiling - 90.0, ceiling, Surface::Lamp);
         }
         K::RecessedLight => {
-            mesh.prism(&disc(p, 90.0, 16), ceiling - 6.0, ceiling, LAMP_COLOR);
+            mesh.prism(&disc(p, 90.0, 16), ceiling - 6.0, ceiling, Surface::Lamp);
         }
         K::SmokeDetector => {
-            mesh.prism(&disc(p, 65.0, 12), ceiling - 40.0, ceiling, DEVICE_COLOR);
+            mesh.prism(&disc(p, 65.0, 12), ceiling - 40.0, ceiling, Surface::Device);
         }
         K::HoseBibb | K::GasOutlet => {
             let zc = z.unwrap_or(z0 + 450.0);
-            let color = if e.electrical_kind == K::GasOutlet {
-                [0.85, 0.75, 0.2, 1.0]
-            } else {
-                [0.72, 0.55, 0.25, 1.0]
+            let color = Look {
+                color: if e.electrical_kind == K::GasOutlet {
+                    [0.85, 0.75, 0.2, 1.0]
+                } else {
+                    [0.72, 0.55, 0.25, 1.0]
+                },
+                pbr: [0.4, 1.0, 0.0, 1.0],
+                surface: None,
             };
-            mesh.prism(
+            mesh.prism_look(
                 &rect(p + out * 40.0, along, 40.0, 80.0),
                 zc - 20.0,
                 zc + 20.0,
@@ -275,14 +429,19 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
             );
         }
         K::FloorDrain => {
-            mesh.prism(&disc(p, 75.0, 16), z0, z0 + 3.0, [0.35, 0.35, 0.37, 1.0]);
+            let grate = Look {
+                color: [0.35, 0.35, 0.37, 1.0],
+                pbr: [0.4, 1.0, 0.0, 1.0],
+                surface: None,
+            };
+            mesh.prism_look(&disc(p, 75.0, 16), z0, z0 + 3.0, grate);
         }
         K::SupplyRegister => {
             mesh.prism(
                 &rect(p, out, 250.0, 100.0),
                 ceiling - 8.0,
                 ceiling,
-                DEVICE_COLOR,
+                Surface::Device,
             );
         }
         K::ReturnGrille => {
@@ -291,7 +450,7 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
                 &rect(p + out * 4.0, along, 500.0, 8.0),
                 zc - 150.0,
                 zc + 150.0,
-                DEVICE_COLOR,
+                Surface::Device,
             );
         }
         K::Thermostat => {
@@ -300,7 +459,7 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
                 &rect(p + out * 12.0, along, 100.0, 24.0),
                 zc - 50.0,
                 zc + 50.0,
-                DEVICE_COLOR,
+                Surface::Device,
             );
         }
         K::ExhaustFan => {
@@ -308,7 +467,7 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
                 &rect(p, DVec2::X, 250.0, 250.0),
                 ceiling - 12.0,
                 ceiling,
-                DEVICE_COLOR,
+                Surface::Device,
             );
         }
         K::JunctionBox => {
@@ -316,13 +475,13 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
                 &rect(p, DVec2::X, 100.0, 100.0),
                 ceiling - 50.0,
                 ceiling,
-                DEVICE_COLOR,
+                Surface::Device,
             );
         }
         K::CeilingFan => {
             let hub = ceiling - 300.0;
-            mesh.prism(&disc(p, 20.0, 8), hub, ceiling, DEVICE_COLOR);
-            mesh.prism(&disc(p, 110.0, 16), hub - 120.0, hub, DEVICE_COLOR);
+            mesh.prism(&disc(p, 20.0, 8), hub, ceiling, Surface::Device);
+            mesh.prism(&disc(p, 110.0, 16), hub - 120.0, hub, Surface::Device);
             for i in 0..4 {
                 let d = DVec2::from_angle(
                     e.rotation.to_radians() + i as f64 * std::f64::consts::FRAC_PI_2,
@@ -331,10 +490,10 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
                     &rect(p + d * 420.0, d, 640.0, 130.0),
                     hub - 60.0,
                     hub - 48.0,
-                    STAIR_COLOR,
+                    Surface::Stair,
                 );
             }
-            mesh.prism(&disc(p, 80.0, 12), hub - 200.0, hub - 120.0, LAMP_COLOR);
+            mesh.prism(&disc(p, 80.0, 12), hub - 200.0, hub - 120.0, Surface::Lamp);
         }
     }
 }
@@ -342,20 +501,20 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
 fn stair_mesh(doc: &Document, stair: &housecraft_model::Stair, mesh: &mut Mesh) {
     let g = crate::stairs::geometry(doc, stair);
     for step in &g.steps {
-        mesh.prism(&ccw(step.poly.clone()), g.base_z, step.z, STAIR_COLOR);
+        mesh.prism(&ccw(step.poly.clone()), g.base_z, step.z, Surface::Stair);
         if !step.nosing.is_empty() {
             mesh.prism(
                 &ccw(step.nosing.clone()),
                 step.z - 25.0,
                 step.z,
-                STAIR_COLOR,
+                Surface::Stair,
             );
         }
     }
     // Stringers: boards under each side, their top edge just above the nosings.
     for [a, b] in &g.stringers {
         let lift = DVec3::Z * 20.0;
-        sloped_board(*a + lift, *b + lift, 19.0, 300.0, STRINGER_COLOR, mesh);
+        sloped_board(*a + lift, *b + lift, 19.0, 300.0, Surface::Stringer, mesh);
     }
     let spacing = 4.0 * 25.4;
     for rail in &g.rails {
@@ -387,10 +546,10 @@ fn rail_segment(a: DVec3, b: DVec3, spacing: f64, along_stair: bool, mesh: &mut 
     let [b_l, b_r] = corners(b, 0.0);
     let [a_lb, a_rb] = corners(a, -rail_depth);
     let [b_lb, b_rb] = corners(b, -rail_depth);
-    mesh.polygon(&[a_r, b_r, b_l, a_l], RAIL_COLOR);
-    mesh.polygon(&[a_lb, b_lb, b_rb, a_rb], RAIL_COLOR);
-    mesh.polygon(&[a_l, b_l, b_lb, a_lb], RAIL_COLOR);
-    mesh.polygon(&[a_rb, b_rb, b_r, a_r], RAIL_COLOR);
+    mesh.polygon(&[a_r, b_r, b_l, a_l], Surface::Railing);
+    mesh.polygon(&[a_lb, b_lb, b_rb, a_rb], Surface::Railing);
+    mesh.polygon(&[a_l, b_l, b_lb, a_lb], Surface::Railing);
+    mesh.polygon(&[a_rb, b_rb, b_r, a_r], Surface::Railing);
     // Balusters.
     let n = (len / spacing).floor() as usize;
     let rail_height_above_base = if along_stair { 36.0 * 25.4 } else { 0.0 };
@@ -414,12 +573,12 @@ fn rail_segment(a: DVec3, b: DVec3, spacing: f64, along_stair: bool, mesh: &mut 
             c + DVec2::new(q, q),
             c + DVec2::new(-q, q),
         ];
-        mesh.prism(&square, bottom, top, RAIL_COLOR);
+        mesh.prism(&square, bottom, top, Surface::Railing);
     }
 }
 
 /// A board along a->b (top edge), `half` thick either side, `depth` deep below.
-fn sloped_board(a: DVec3, b: DVec3, half: f64, depth: f64, color: [f32; 4], mesh: &mut Mesh) {
+fn sloped_board(a: DVec3, b: DVec3, half: f64, depth: f64, color: Surface, mesh: &mut Mesh) {
     let flat = (b - a).truncate();
     if flat.length() < 1.0 {
         return;
@@ -490,7 +649,7 @@ fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, mesh: &mut 
         return;
     }
     if plane.gable {
-        mesh.polygon(&top, WALL_COLOR);
+        mesh.polygon(&top, Surface::Wall);
         return;
     }
     // Underside: the same outline dropped by the vertical thickness.
@@ -500,14 +659,14 @@ fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, mesh: &mut 
     if crate::roof::newell(&up).z < 0.0 {
         up.reverse();
     }
-    mesh.polygon(&up, ROOF_COLOR);
-    mesh.polygon(&bottom, SOFFIT_COLOR);
+    mesh.polygon(&up, Surface::Roof);
+    mesh.polygon(&bottom, Surface::Soffit);
     let n = top.len();
     for i in 0..n {
         let (a, b) = (top[i], top[(i + 1) % n]);
         mesh.polygon(
             &[a, b, b - DVec3::Z * drop, a - DVec3::Z * drop],
-            FRAME_COLOR,
+            Surface::Frame,
         );
     }
     // Fascia: a trim board on the level edge(s) at the bottom of the plane.
@@ -526,7 +685,7 @@ fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, mesh: &mut 
             }
             let board = vec![a2, b2, b2 + out * 25.0, a2 + out * 25.0];
             let depth = fascia.max(drop);
-            mesh.prism(&ccw(board), low - depth, low + 10.0, FRAME_COLOR);
+            mesh.prism(&ccw(board), low - depth, low + 10.0, Surface::Frame);
         }
     }
 }
@@ -599,7 +758,7 @@ fn vaulted_ceiling(doc: &Document, floor: Id, room_poly: &[DVec2], mesh: &mut Me
                 })
                 .collect();
             if pts.len() == piece.len() {
-                mesh.polygon(&pts, CEILING_COLOR);
+                mesh.polygon(&pts, Surface::Ceiling);
                 any = true;
             }
         }
@@ -617,13 +776,13 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                 &disc(*p, l.diameter / 2.0, 16),
                 l.bottom,
                 beam_bottom,
-                CONCRETE_COLOR,
+                Surface::Concrete,
             );
             mesh.prism(
                 &rect(*p, DVec2::X, l.footing, l.footing),
                 l.bottom - l.footing_depth,
                 l.bottom,
-                CONCRETE_COLOR,
+                Surface::Concrete,
             );
         }
         for [a, b] in &l.beams {
@@ -633,16 +792,16 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                 &ccw(vec![*a - n, *b - n, *b + n, *a + n]),
                 beam_bottom,
                 l.top,
-                STAIR_COLOR,
+                Surface::Stair,
             );
         }
         mesh.end();
     }
     let foundation = floor.foundation.as_ref();
     let (wall_category, wall_color) = if foundation.is_some() {
-        (Category::Foundation, CONCRETE_COLOR)
+        (Category::Foundation, Surface::Concrete)
     } else {
-        (Category::Wall, WALL_COLOR)
+        (Category::Wall, Surface::Wall)
     };
     let geoms = wall_geoms(doc, floor.id);
     for g in &geoms {
@@ -679,7 +838,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                 &[g.start - n, g.end - n, g.end + n, g.start + n],
                 z0,
                 z0 + 40.0,
-                RAIL_COLOR,
+                Surface::Railing,
             );
             mesh.end();
             continue;
@@ -693,7 +852,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
             let (a, b) = (g.start - g.dir * hw, g.end + g.dir * hw);
             let n = g.left * hw;
             let quad = vec![a - n, b - n, b + n, a + n];
-            mesh.prism(&quad, z0 - f.depth.mm(), z0, CONCRETE_COLOR);
+            mesh.prism(&quad, z0 - f.depth.mm(), z0, Surface::Concrete);
         }
         // Wall above and below each opening span.
         for o in &openings {
@@ -740,7 +899,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                         &region.polygon,
                         z0 - fd.slab_thickness.mm(),
                         z0,
-                        CONCRETE_COLOR,
+                        Surface::Concrete,
                     );
                     mesh.end();
                 }
@@ -752,7 +911,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                 mesh.begin(owner, Category::Floor);
                 for piece in crate::math::minus_convex_holes(&region.polygon, &platform_holes) {
                     let pts: Vec<DVec3> = piece.iter().map(|p| DVec3::new(p.x, p.y, z0)).collect();
-                    mesh.polygon(&pts, FLOOR_COLOR);
+                    mesh.polygon(&pts, Surface::Floor);
                     if !lowest && floor.floor_structure.mm() > 1.0 {
                         platform_mesh(floor, &ccw(piece.clone()), z0, mesh);
                     }
@@ -773,12 +932,12 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
             CeilingStyle::Flat => {
                 for piece in crate::math::minus_convex_holes(&region.polygon, &ceiling_holes) {
                     let pts: Vec<DVec3> = piece.iter().map(|p| DVec3::new(p.x, p.y, zc)).collect();
-                    mesh.polygon(&pts, CEILING_COLOR);
+                    mesh.polygon(&pts, Surface::Ceiling);
                 }
             }
             CeilingStyle::Vaulted => {
                 if !vaulted_ceiling(doc, floor.id, &region.polygon, mesh) {
-                    mesh.polygon(&at(zc), CEILING_COLOR);
+                    mesh.polygon(&at(zc), Surface::Ceiling);
                 }
             }
             CeilingStyle::Coffered {
@@ -788,7 +947,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
             } => {
                 for piece in crate::math::minus_convex_holes(&region.polygon, &ceiling_holes) {
                     let pts: Vec<DVec3> = piece.iter().map(|p| DVec3::new(p.x, p.y, zc)).collect();
-                    mesh.polygon(&pts, CEILING_COLOR);
+                    mesh.polygon(&pts, Surface::Ceiling);
                 }
                 coffer_beams(
                     &region.polygon,
@@ -817,7 +976,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                                 DVec3::new(i1.x, i1.y, zc),
                                 DVec3::new(i0.x, i0.y, zc),
                             ],
-                            CEILING_COLOR,
+                            Surface::Ceiling,
                         );
                         mesh.polygon(
                             &[
@@ -826,13 +985,13 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                                 DVec3::new(i1.x, i1.y, zr),
                                 DVec3::new(i0.x, i0.y, zr),
                             ],
-                            CEILING_COLOR,
+                            Surface::Ceiling,
                         );
                     }
                     let top: Vec<DVec3> = inner.iter().map(|p| DVec3::new(p.x, p.y, zr)).collect();
-                    mesh.polygon(&top, CEILING_COLOR);
+                    mesh.polygon(&top, Surface::Ceiling);
                 } else {
-                    mesh.polygon(&at(zc), CEILING_COLOR);
+                    mesh.polygon(&at(zc), Surface::Ceiling);
                 }
             }
         }
@@ -847,7 +1006,7 @@ fn platform_mesh(floor: &Floor, poly: &[DVec2], z0: f64, mesh: &mut Mesh) {
             poly,
             z0 - floor.floor_structure.mm(),
             z0 - 1.0,
-            PLATFORM_COLOR,
+            Surface::Platform,
         );
         return;
     }
@@ -856,8 +1015,11 @@ fn platform_mesh(floor: &Floor, poly: &[DVec2], z0: f64, mesh: &mut Mesh) {
         let bottom = top - layer.thickness.mm();
         // Alternate shades so the layers read in a cutaway.
         let k = if i % 2 == 0 { 1.0 } else { 0.85 };
-        let c = PLATFORM_COLOR;
-        mesh.prism(poly, bottom, top, [c[0] * k, c[1] * k, c[2] * k, 1.0]);
+        let mut look = mesh.look(Surface::Platform);
+        for v in &mut look.color[..3] {
+            *v *= k;
+        }
+        mesh.prism_look(poly, bottom, top, look);
         top = bottom;
     }
 }
@@ -893,7 +1055,7 @@ fn coffer_beams(poly: &[DVec2], zc: f64, spacing: f64, width: f64, depth: f64, m
                 along * alo + across * (c + width / 2.0),
             ];
             for piece in crate::math::intersect_convex(poly, &rect) {
-                mesh.prism(&ccw(piece), zc - depth, zc, CEILING_COLOR);
+                mesh.prism(&ccw(piece), zc - depth, zc, Surface::Ceiling);
             }
         }
     }
@@ -932,7 +1094,7 @@ fn barrel_ceiling(poly: &[DVec2], zc: f64, rise: f64, mesh: &mut Mesh) {
             DVec3::new(p.x, p.y, z0 + (z1 - z0) * s)
         };
         let pts: Vec<DVec3> = band.iter().map(lift).collect();
-        mesh.polygon(&pts, CEILING_COLOR);
+        mesh.polygon(&pts, Surface::Ceiling);
     }
     // Close the ends: infill from the wall tops up to the curve.
     for i in 0..poly.len() {
@@ -946,7 +1108,7 @@ fn barrel_ceiling(poly: &[DVec2], zc: f64, rise: f64, mesh: &mut Mesh) {
         }
         let mut face: Vec<DVec3> = pts.iter().map(|p| DVec3::new(p.x, p.y, zc)).collect();
         face.extend(pts.iter().rev().map(|p| DVec3::new(p.x, p.y, height(*p))));
-        mesh.polygon(&face, CEILING_COLOR);
+        mesh.polygon(&face, Surface::Ceiling);
     }
 }
 
@@ -978,7 +1140,7 @@ fn swung_leaf(
         pivot + d * width + n * DOOR_THICKNESS,
         pivot + n * DOOR_THICKNESS,
     ];
-    mesh.prism(&ccw(quad), z.0, z.1, DOOR_COLOR);
+    mesh.prism(&ccw(quad), z.0, z.1, Surface::Door);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1005,7 +1167,7 @@ fn door_mesh(
             &ccw(vec![c0 - t, c1 - t, c1 + t, c0 + t]),
             z0,
             z1,
-            DOOR_COLOR,
+            Surface::Door,
         );
     };
     let angle = open * std::f64::consts::FRAC_PI_2;
@@ -1026,9 +1188,10 @@ fn door_mesh(
                 mesh,
             );
             if style == D::Shower {
-                for c in &mut mesh.colors[start..] {
-                    *c = GLASS_COLOR;
-                }
+                let glass = mesh.look(Surface::Glass);
+                mesh.colors[start..].fill(glass.color);
+                mesh.pbr[start..].fill(glass.pbr);
+                mesh.surfaces[start..].fill(glass.surface);
             }
         }
         D::Atrium => {
@@ -1067,7 +1230,7 @@ fn door_mesh(
                 &ccw(vec![c0 - t, c1 - t, c1 + t, c0 + t]),
                 bottom + frame,
                 top - frame,
-                GLASS_COLOR,
+                Surface::Glass,
             );
         }
         D::Double => {
@@ -1114,7 +1277,7 @@ fn door_mesh(
                         &ccw(vec![p, p + d * w, p + d * w + n, p + n]),
                         bottom,
                         top,
-                        DOOR_COLOR,
+                        Surface::Door,
                     );
                 }
             }
@@ -1142,7 +1305,7 @@ fn door_mesh(
                         f1 + side * (d + h - gap),
                         f0 + side * (d + h - gap),
                     ];
-                    mesh.prism(&ccw(quad), top, top + DOOR_THICKNESS, DOOR_COLOR);
+                    mesh.prism(&ccw(quad), top, top + DOOR_THICKNESS, Surface::Door);
                 }
             }
         }
@@ -1158,7 +1321,7 @@ fn door_mesh(
                 swing.face(g, u1) + s * (15.0 + DOOR_THICKNESS),
                 swing.face(g, u0) + s * (15.0 + DOOR_THICKNESS),
             ];
-            mesh.prism(&ccw(quad), bottom, top + 30.0, DOOR_COLOR);
+            mesh.prism(&ccw(quad), bottom, top + 30.0, Surface::Door);
             // Track above the opening.
             let t_end = b + (b - a) + lap * dir;
             let track = vec![
@@ -1167,7 +1330,7 @@ fn door_mesh(
                 swing.face(g, t_end) + s * 40.0,
                 swing.face(g, a - lap * dir) + s * 40.0,
             ];
-            mesh.prism(&ccw(track), top + 30.0, top + 70.0, FRAME_COLOR);
+            mesh.prism(&ccw(track), top + 30.0, top + 70.0, Surface::Frame);
         }
     }
 }
@@ -1198,7 +1361,7 @@ fn opening_mesh(g: &WallGeom, o: &Opening, z0: f64, mesh: &mut Mesh) {
                 b - frame,
                 bottom + frame,
                 top - frame,
-                GLASS_COLOR,
+                Surface::Glass,
             );
             slab(
                 mesh,
@@ -1207,11 +1370,11 @@ fn opening_mesh(g: &WallGeom, o: &Opening, z0: f64, mesh: &mut Mesh) {
                 b,
                 bottom,
                 bottom + frame,
-                FRAME_COLOR,
+                Surface::Frame,
             );
-            slab(mesh, 2.0 * g.half, a, b, top - frame, top, FRAME_COLOR);
-            slab(mesh, 2.0 * g.half, a, a + frame, bottom, top, FRAME_COLOR);
-            slab(mesh, 2.0 * g.half, b - frame, b, bottom, top, FRAME_COLOR);
+            slab(mesh, 2.0 * g.half, a, b, top - frame, top, Surface::Frame);
+            slab(mesh, 2.0 * g.half, a, a + frame, bottom, top, Surface::Frame);
+            slab(mesh, 2.0 * g.half, b - frame, b, bottom, top, Surface::Frame);
         }
     }
 }

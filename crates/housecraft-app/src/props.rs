@@ -528,6 +528,116 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.end_row();
             ed.pick::<Layer>(ui, "Layer", "layer", Some(c.layer), None);
         }
+        Object::Material(m) => {
+            ed.text(ui, "Name", "name", &m.name);
+            ed.text(ui, "Category", "category", &m.category);
+            Ed::label(ui, "Type");
+            let mut class = m.class;
+            egui::ComboBox::from_id_salt(ed.key("class"))
+                .selected_text(class.name())
+                .show_ui(ui, |ui| {
+                    for c in MaterialClass::ALL {
+                        ui.selectable_value(&mut class, c, c.name());
+                    }
+                });
+            if class != m.class {
+                // Switching type takes that type's typical finish.
+                let fresh = Material::new(&m.name, &m.category, class, m.color);
+                ed.out.push(patch(
+                    id,
+                    json!({
+                        "class": class,
+                        "roughness": fresh.roughness,
+                        "metallic": fresh.metallic,
+                        "opacity": fresh.opacity,
+                        "emissive": fresh.emissive,
+                    }),
+                ));
+            }
+            ui.end_row();
+            Ed::label(ui, "Color");
+            let mut c32 = to_color32(m.color);
+            if ui.color_edit_button_srgba(&mut c32).changed() {
+                ed.out.push(patch(id, json!({ "color": from_color32(c32) })));
+            }
+            ui.end_row();
+            for (label, field, value) in [
+                ("Roughness (0 shiny – 1 matte)", "roughness", m.roughness),
+                ("Metallic (0–1)", "metallic", m.metallic),
+                ("Opacity (0 clear – 1 solid)", "opacity", m.opacity),
+                ("Glow (emissive)", "emissive", m.emissive),
+                ("Anisotropy (-1–1)", "anisotropy", m.anisotropy),
+            ] {
+                if let Some(v) = ed.number(ui, label, field, value) {
+                    let v = if field == "emissive" {
+                        v.max(0.0)
+                    } else if field == "anisotropy" {
+                        v.clamp(-1.0, 1.0)
+                    } else {
+                        v.clamp(0.0, 1.0)
+                    };
+                    ed.out.push(patch(id, json!({ field: v })));
+                }
+            }
+            for (label, key) in [
+                ("Texture Image", "color"),
+                ("Normal Map", "normal"),
+                ("Bump Map", "bump"),
+                ("Roughness Map", "roughness"),
+                ("Metallic Map", "metallic"),
+                ("Ambient Occlusion", "ao"),
+                ("Emissive Map", "emissive"),
+                ("Opacity Map", "opacity"),
+            ] {
+                let maps = &m.maps;
+                let current = match key {
+                    "color" => &maps.color,
+                    "normal" => &maps.normal,
+                    "bump" => &maps.bump,
+                    "roughness" => &maps.roughness,
+                    "metallic" => &maps.metallic,
+                    "ao" => &maps.ao,
+                    "emissive" => &maps.emissive,
+                    _ => &maps.opacity,
+                };
+                Ed::label(ui, label);
+                ui.horizontal(|ui| {
+                    let path = current.as_ref().map_or("", |t| t.path.as_str());
+                    let shown = std::path::Path::new(path)
+                        .file_name()
+                        .map_or("(none)".to_string(), |f| f.to_string_lossy().into_owned());
+                    ui.label(shown).on_hover_text(path);
+                    if ui.small_button("Browse…").clicked()
+                        && let Some(file) = rfd::FileDialog::new()
+                            .add_filter("Images", &["png", "jpg", "jpeg", "bmp", "tif", "tiff", "webp"])
+                            .pick_file()
+                    {
+                        let map = json!({ "path": file.to_string_lossy(), "strength": 1.0 });
+                        ed.out.push(patch(id, json!({ "maps": { key: map } })));
+                    }
+                    if current.is_some() && ui.small_button("Clear").clicked() {
+                        ed.out.push(patch(id, json!({ "maps": { key: Value::Null } })));
+                    }
+                });
+                ui.end_row();
+            }
+            if m.maps.roughness.is_some() {
+                Ed::label(ui, "Roughness Map");
+                let mut g = m.gloss_map;
+                if ui.checkbox(&mut g, "Map holds gloss (invert)").changed() {
+                    ed.out.push(patch(id, json!({ "gloss_map": g })));
+                }
+                ui.end_row();
+            }
+            ed.opt_length(ui, "Texture Width", "texture_width", m.texture_width, Some(Length::from_feet(4.0)));
+            ed.opt_length(ui, "Texture Height", "texture_height", m.texture_height, Some(Length::from_feet(4.0)));
+        }
+        Object::MaterialAssignment(a) => {
+            ed.pick::<Material>(ui, "Material", "material", Some(a.material), None);
+            Ed::label(ui, "Surface");
+            ui.label(a.surface.map_or("All surfaces", |s| s.name()));
+            ui.end_row();
+        }
         Object::CadDetail(d) => {
             ed.text(ui, "Name", "name", &d.name);
             Ed::label(ui, "Contents");

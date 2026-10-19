@@ -307,6 +307,9 @@ pub struct DefaultSet {
     /// Used for stairs that start outside the building.
     #[serde(default = "StairDefaults::exterior")]
     pub exterior_stair: StairDefaults,
+    /// Default material for each surface role (empty: built-in colours).
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub materials: crate::SurfaceMaterials,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

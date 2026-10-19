@@ -8,6 +8,19 @@ use serde::{Deserialize, Serialize};
 use crate::ApiError;
 use crate::ops::{self, expect, invalid, positive};
 
+/// How far the material painter reaches.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PaintScope {
+    /// The chosen objects.
+    #[default]
+    Object,
+    /// Everything on the chosen floors.
+    Floor,
+    /// The whole plan (the default set's material for the surface).
+    Plan,
+}
+
 /// Text for [`Command::AddCadDetail`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct DetailText {
@@ -217,6 +230,35 @@ pub enum Command {
         at: Point2,
         target: Option<Point2>,
         marker: Option<MarkerShape>,
+    },
+    /// Add a material. Unset properties come from `copy_from`, or suit the class.
+    AddMaterial {
+        name: String,
+        category: Option<String>,
+        class: Option<MaterialClass>,
+        color: Option<Color>,
+        copy_from: Option<Id>,
+    },
+    /// Material painter. `scope` object: paint `surface` (every surface when
+    /// `None`) of each of `ids`; floor: of everything on the floors `ids` (or
+    /// the floors of the objects `ids`); plan: make `material` the default
+    /// for `surface` in the active default set. `material: None` resets to
+    /// the default (the default painter).
+    PaintMaterial {
+        material: Option<Id>,
+        #[serde(default)]
+        scope: PaintScope,
+        #[serde(default)]
+        ids: Vec<Id>,
+        surface: Option<Surface>,
+    },
+    /// Make everything that uses material `from` use `to` instead; with
+    /// `delete`, `from` is removed (merging the two).
+    ReplaceMaterial {
+        from: Id,
+        to: Id,
+        #[serde(default)]
+        delete: bool,
     },
     /// Add a CAD detail: a blank, named drafting sheet for construction
     /// details. `shapes` and `texts` fill it (e.g. linework converted from a
@@ -592,6 +634,9 @@ impl Command {
             Command::AddCallout { .. } => "add_callout",
             Command::AddRevisionCloud { .. } => "add_revision_cloud",
             Command::AddCadDetail { .. } => "add_cad_detail",
+            Command::AddMaterial { .. } => "add_material",
+            Command::PaintMaterial { .. } => "paint_material",
+            Command::ReplaceMaterial { .. } => "replace_material",
             Command::AddBlock { .. } => "add_block",
             Command::AddBlockRef { .. } => "add_block_ref",
             Command::ExplodeBlock { .. } => "explode_block",
@@ -1155,6 +1200,50 @@ impl Command {
                     arc: arc.unwrap_or(Length::from_inches(18.0)),
                     label: Some(label.clone().unwrap_or_else(|| next.to_string())),
                 }));
+            }
+            Command::AddMaterial {
+                name,
+                category,
+                class,
+                color,
+                copy_from,
+            } => {
+                if name.trim().is_empty() {
+                    return invalid("a material needs a name");
+                }
+                let mut m = match copy_from {
+                    Some(src) => expect::<Material>(doc, *src)?.clone(),
+                    None => Material::new(
+                        name,
+                        "",
+                        class.unwrap_or_default(),
+                        color.unwrap_or(Color::rgb(200, 200, 200)),
+                    ),
+                };
+                if copy_from.is_some()
+                    && let Some(c) = class
+                {
+                    let fresh = Material::new(name, "", *c, m.color);
+                    (m.class, m.roughness, m.metallic, m.opacity, m.emissive) =
+                        (*c, fresh.roughness, fresh.metallic, fresh.opacity, fresh.emissive);
+                }
+                m.name = name.clone();
+                if let Some(c) = category {
+                    m.category = c.clone();
+                }
+                if let Some(c) = color {
+                    m.color = *c;
+                }
+                out.created.push(doc.insert(m));
+            }
+            Command::PaintMaterial {
+                material,
+                scope,
+                ids,
+                surface,
+            } => crate::paint::paint(doc, *material, *scope, ids, *surface, &mut out)?,
+            Command::ReplaceMaterial { from, to, delete } => {
+                crate::paint::replace(doc, *from, *to, *delete, &mut out)?
             }
             Command::AddCadDetail {
                 name,

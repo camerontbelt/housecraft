@@ -8,6 +8,7 @@
 mod annotation;
 mod building;
 mod display;
+mod material;
 mod template;
 mod validate;
 mod views;
@@ -22,6 +23,7 @@ use serde::{Deserialize, Serialize};
 pub use annotation::*;
 pub use building::*;
 pub use display::*;
+pub use material::*;
 pub use validate::Issue;
 pub use views::*;
 
@@ -148,6 +150,8 @@ objects! {
     CadDetail => "cad_detail",
     Block => "block",
     BlockRef => "block_ref",
+    Material => "material",
+    MaterialAssignment => "material_assignment",
 }
 
 impl fmt::Display for ObjectKind {
@@ -591,7 +595,7 @@ macro_rules! named {
 }
 named!(
     Floor, WallType, RoomType, Layer, LayerSet, TextStyle, DefaultSet, PlanView, Camera, SectionView,
-    CadDetail, Block, Layout
+    CadDetail, Block, Layout, Material
 );
 
 #[cfg(test)]

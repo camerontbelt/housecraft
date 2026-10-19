@@ -8,6 +8,7 @@ mod canvas;
 mod dialogs;
 mod drawing_view;
 mod icons;
+mod materials;
 mod props;
 mod schedules;
 mod snap;

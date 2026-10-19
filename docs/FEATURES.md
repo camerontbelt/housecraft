@@ -440,7 +440,7 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | MAT-01 | Edit any architectural object in 2D or 3D | P0 | M1 ✓ (select and edit from 3D; direct 3D dragging later) |
 | MAT-02 | Object painter / eyedropper with attribute choice and scope | P2 | M5 |
-| MAT-03 | Material painter with scope; default painter (reset) | P1 | M5 |
+| MAT-03 | Material painter with scope; default painter (reset) | P1 | M5 ✓ |
 | MAT-04 | Material eyedropper; color chooser from image | P2 | M5 |
 | MAT-05 | Adjust-material scoping (whole plan vs copy for subset) | P2 | M5 |
 | MAT-06 | Fill styles: pattern scale/angle/offset/transparency; gradients; fill painter | P1 | M1 |
@@ -448,12 +448,12 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-08 | Custom patterns to library (X18+) | P2 | M5 |
 | MAT-09 | Animated water materials | P3 | M7 |
 | MAT-10 | Emissive materials as area lights | P2 | M7 |
-| MAT-11 | PBR maps: AO, roughness, metal, emissive, anisotropic, normal, bump | P1 | M5 |
+| MAT-11 | PBR maps: AO, roughness, metal, emissive, anisotropic, normal, bump | P1 | M5 ◐ colour, roughness, metallic, emissive, opacity and anisotropy values shaded live; all eight image maps stored with the material, drawn from textures later |
 | MAT-12 | Interactive material editing (scale/rotation/origin in 3D) | P2 | M5 |
 | MAT-13 | Material builder: custom tiles, grout; Substance (.sbsar) import | P2/P3 | M5/M8 |
-| MAT-14 | Material classes (plastic, metal, mirror, glass, translucent…) | P1 | M5 |
-| MAT-15 | Material maps incl. opacity; roughness/gloss inversion | P1 | M5 |
-| MAT-16 | Plan materials manager (replace, merge, search) | P1 | M5 |
+| MAT-14 | Material classes (plastic, metal, mirror, glass, translucent…) | P1 | M5 ✓ |
+| MAT-15 | Material maps incl. opacity; roughness/gloss inversion | P1 | M5 ◐ opacity map and gloss inversion stored; texture rendering later |
+| MAT-16 | Plan materials manager (replace, merge, search) | P1 | M5 ✓ |
 | MAT-17 | Hatch pattern editor | P2 | M4 |
 | MAT-18 | Generate vector hatch pattern from texture | P3 | M5 |
 | MAT-19 | Screen-capture image as material | P3 | M5 |

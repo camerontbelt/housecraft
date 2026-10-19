@@ -7,9 +7,9 @@ use egui::{Rect, Sense, Ui};
 use egui_wgpu::wgpu;
 use glam::{Mat4, Vec3, Vec4};
 
-use housecraft_api::Command;
+use housecraft_api::{Command, PaintScope};
 use housecraft_api::geom::mesh::{Category, Mesh, build, mesh_bounds};
-use housecraft_api::model::{Camera, Id, Projection};
+use housecraft_api::model::{Camera, Id, MaterialIndex, Projection};
 use housecraft_api::units::{Length, Point3};
 use wgpu::util::DeviceExt as _;
 
@@ -22,6 +22,8 @@ struct Vertex {
     pos: [f32; 3],
     normal: [f32; 3],
     color: [f32; 4],
+    /// Roughness, metallic, emissive, opacity.
+    pbr: [f32; 4],
 }
 
 #[repr(C)]
@@ -36,6 +38,59 @@ struct Uniforms {
     params: [f32; 4],
     /// Cutaway plane: fragments with dot(xyz, p) > w are discarded (when params.z is 1).
     clip: [f32; 4],
+    /// Camera position (m), for highlights.
+    eye: [f32; 4],
+}
+
+/// What a material painter click covers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PaintReach {
+    /// The clicked surface of the clicked object.
+    Surface,
+    /// Every surface of the clicked object.
+    Object,
+    /// That kind of surface on everything on the object's floor.
+    Floor,
+    /// That kind of surface everywhere (the default material).
+    Plan,
+}
+
+impl PaintReach {
+    const ALL: [PaintReach; 4] = [
+        PaintReach::Surface,
+        PaintReach::Object,
+        PaintReach::Floor,
+        PaintReach::Plan,
+    ];
+
+    fn name(self) -> &'static str {
+        match self {
+            PaintReach::Surface => "This surface",
+            PaintReach::Object => "Whole object",
+            PaintReach::Floor => "Whole floor",
+            PaintReach::Plan => "Whole plan",
+        }
+    }
+}
+
+/// The material painter: clicks paint `material` (or reset to the default
+/// when `None`) instead of selecting; Alt-click picks up a material.
+#[derive(Debug, Clone, Copy)]
+pub struct Painter {
+    pub material: Option<Id>,
+    pub reach: PaintReach,
+}
+
+impl Painter {
+    pub fn new(doc: &housecraft_api::model::Document) -> Self {
+        Painter {
+            material: doc
+                .iter::<housecraft_api::model::Material>()
+                .next()
+                .map(|m| m.id),
+            reach: PaintReach::Surface,
+        }
+    }
 }
 
 /// Live cross-section cutaway in the 3D view.
@@ -63,16 +118,17 @@ const SHADOW_SIZE: u32 = 2048;
 const SHADOW_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
 const SHADER: &str = r#"
-struct U { view_proj: mat4x4<f32>, light_vp: mat4x4<f32>, light: vec4<f32>, params: vec4<f32>, clip: vec4<f32> };
+struct U { view_proj: mat4x4<f32>, light_vp: mat4x4<f32>, light: vec4<f32>, params: vec4<f32>, clip: vec4<f32>, eye: vec4<f32> };
 @group(0) @binding(0) var<uniform> u: U;
 @group(1) @binding(0) var shadow_map: texture_depth_2d;
 @group(1) @binding(1) var shadow_sampler: sampler_comparison;
-struct VIn { @location(0) pos: vec3<f32>, @location(1) normal: vec3<f32>, @location(2) color: vec4<f32> };
+struct VIn { @location(0) pos: vec3<f32>, @location(1) normal: vec3<f32>, @location(2) color: vec4<f32>, @location(3) pbr: vec4<f32> };
 struct VOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) normal: vec3<f32>,
     @location(1) color: vec4<f32>,
     @location(2) world: vec3<f32>,
+    @location(3) pbr: vec4<f32>,
 };
 @vertex fn vs(v: VIn) -> VOut {
     var o: VOut;
@@ -80,6 +136,7 @@ struct VOut {
     o.normal = v.normal;
     o.color = v.color;
     o.world = v.pos;
+    o.pbr = v.pbr;
     return o;
 }
 @vertex fn vs_shadow(v: VIn) -> @builtin(position) vec4<f32> {
@@ -106,22 +163,60 @@ fn sunlit(world: vec3<f32>) -> f32 {
     }
     return sum / 9.0;
 }
-@fragment fn fs(i: VOut) -> @location(0) vec4<f32> {
+// Physically based shading: diffuse plus a roughness-dependent highlight
+// from the sun and a soft sky reflection; metals tint their reflections;
+// emissive surfaces add their own light. Alpha is the material's opacity.
+fn shade(i: VOut) -> vec4<f32> {
     // Ground vertices carry alpha 0: the cutaway never removes the ground.
     if (u.params.z > 0.5 && i.color.a > 0.5 && dot(u.clip.xyz, i.world) > u.clip.w) {
         discard;
     }
-    let n = normalize(i.normal);
+    let v = normalize(u.eye.xyz - i.world);
+    var n = normalize(i.normal);
+    if (dot(n, v) < 0.0) {
+        n = -n;
+    }
     let l = normalize(u.light.xyz);
-    let diffuse = abs(dot(n, l)) * sunlit(i.world) * u.params.y;
+    let rough = clamp(i.pbr.x, 0.04, 1.0);
+    let metal = clamp(i.pbr.y, 0.0, 1.0);
+    let base = i.color.rgb;
+    let sun = sunlit(i.world) * u.params.y;
+    let diffuse = abs(dot(n, l)) * sun;
     let sky = 0.5 + 0.5 * n.z;
-    let shade = 0.35 + 0.5 * diffuse + 0.15 * sky;
-    return vec4<f32>(i.color.rgb * shade, 1.0);
+    let lit = 0.35 + 0.5 * diffuse + 0.15 * sky;
+    // Blinn-Phong lobe matched to roughness, energy-normalised.
+    let h = normalize(l + v);
+    let a = rough * rough;
+    let power = clamp(2.0 / (a * a) - 2.0, 1.0, 4096.0);
+    let spec = pow(max(dot(n, h), 0.0), power) * (power + 8.0) / 25.13 * max(dot(n, l), 0.0) * sun;
+    let f0 = mix(vec3<f32>(0.04), base, metal);
+    let fresnel = f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - max(dot(n, v), 0.0), 5.0) * (1.0 - rough);
+    // Without an environment map, reflections take the scene's lighting;
+    // metals reflect it at their own colour, others only faintly.
+    let env = fresnel * (0.2 + 0.8 * lit) * mix(0.3, 1.0, metal) * (1.0 - 0.4 * rough);
+    let color = base * (1.0 - metal) * lit + fresnel * spec * 0.6 + env + base * i.pbr.z;
+    return vec4<f32>(color, clamp(i.pbr.w, 0.0, 1.0));
+}
+@fragment fn fs(i: VOut) -> @location(0) vec4<f32> {
+    let c = shade(i);
+    if (c.a < 0.99) {
+        discard;
+    }
+    return vec4<f32>(c.rgb, 1.0);
+}
+// See-through surfaces, blended over the opaque scene.
+@fragment fn fs_clear(i: VOut) -> @location(0) vec4<f32> {
+    let c = shade(i);
+    if (c.a >= 0.99) {
+        discard;
+    }
+    return c;
 }
 "#;
 
 struct Renderer3d {
     pipeline: wgpu::RenderPipeline,
+    clear_pipeline: wgpu::RenderPipeline,
     shadow_pipeline: wgpu::RenderPipeline,
     uniforms: wgpu::Buffer,
     bind: wgpu::BindGroup,
@@ -183,7 +278,8 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
         bind_group_layouts: &[Some(&bgl)],
         immediate_size: 0,
     });
-    let attributes = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x4];
+    let attributes =
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x4, 3 => Float32x4];
     let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("housecraft 3d"),
         layout: Some(&layout),
@@ -217,6 +313,45 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
             targets: &[Some(wgpu::ColorTargetState {
                 format: rs.target_format,
                 blend: Some(wgpu::BlendState::REPLACE),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview_mask: None,
+        cache: None,
+    });
+    let clear_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("housecraft 3d see-through"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: Some("vs"),
+            compilation_options: Default::default(),
+            buffers: &[Some(wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<Vertex>() as u64,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &attributes,
+            })],
+        },
+        primitive: wgpu::PrimitiveState::default(),
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: crate::DEPTH_FORMAT,
+            depth_write_enabled: Some(false),
+            depth_compare: Some(wgpu::CompareFunction::Less),
+            stencil: Default::default(),
+            bias: Default::default(),
+        }),
+        multisample: wgpu::MultisampleState {
+            count: crate::MSAA,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: Some("fs_clear"),
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: rs.target_format,
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -306,6 +441,7 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
     });
     rs.renderer.write().callback_resources.insert(Renderer3d {
         pipeline,
+        clear_pipeline,
         shadow_pipeline,
         uniforms,
         bind,
@@ -402,6 +538,8 @@ impl egui_wgpu::CallbackTrait for Paint3d {
         pass.set_vertex_buffer(0, v.slice(..));
         pass.set_index_buffer(i.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..r.count, 0, 0..1);
+        pass.set_pipeline(&r.clear_pipeline);
+        pass.draw_indexed(0..r.count, 0, 0..1);
     }
 }
 
@@ -455,6 +593,8 @@ pub struct View3d {
     pub cutaway: Cutaway,
     /// How far the cutaway has sliced through, 0 to 1.
     pub cut: f32,
+    /// The material painter, when active.
+    pub painter: Option<Painter>,
     mesh: Option<(u64, Mesh)>,
     gpu: Option<GpuMesh>,
     gpu_key: u64,
@@ -477,6 +617,7 @@ impl Default for View3d {
             mesh: None,
             gpu: None,
             gpu_key: 0,
+            painter: None,
         }
     }
 }
@@ -628,10 +769,12 @@ fn to_gpu(
         .iter()
         .zip(&mesh.normals)
         .zip(&mesh.colors)
-        .map(|((p, n), c)| Vertex {
+        .zip(&mesh.pbr)
+        .map(|(((p, n), c), m)| Vertex {
             pos: *p,
             normal: *n,
             color: *c,
+            pbr: *m,
         })
         .collect();
     let accent = [1.0, 0.55, 0.1, 1.0];
@@ -663,6 +806,7 @@ fn to_gpu(
                 pos: [x, y, z],
                 normal: [0.0, 0.0, 1.0],
                 color: g,
+                pbr: [0.95, 0.0, 0.0, 1.0],
             });
         }
         let mut indices = visible_indices(mesh, hidden);
@@ -684,9 +828,15 @@ fn visible_indices(mesh: &Mesh, hidden: &[Category]) -> Vec<u32> {
         .collect()
 }
 
-/// Nearest object hit by a ray (Möller–Trumbore over the mesh).
-fn pick(mesh: &Mesh, origin: Vec3, dir: Vec3, hidden: &[Category]) -> Option<Id> {
-    let mut best: Option<(f32, Id)> = None;
+/// Nearest object hit by a ray (Möller–Trumbore over the mesh), and the
+/// surface role of the triangle hit.
+fn pick(
+    mesh: &Mesh,
+    origin: Vec3,
+    dir: Vec3,
+    hidden: &[Category],
+) -> Option<(Id, Option<housecraft_api::model::Surface>)> {
+    let mut best: Option<(f32, Id, u32)> = None;
     for part in &mesh.parts {
         if part.object == Id(0) || hidden.contains(&part.category) {
             continue;
@@ -712,17 +862,19 @@ fn pick(mesh: &Mesh, origin: Vec3, dir: Vec3, hidden: &[Category]) -> Option<Id>
                 continue;
             }
             let t = e2.dot(q) * inv;
-            if t > 0.0 && best.is_none_or(|(bt, _)| t < bt) {
-                best = Some((t, part.object));
+            if t > 0.0 && best.is_none_or(|(bt, _, _)| t < bt) {
+                best = Some((t, part.object, tri[0]));
             }
         }
     }
-    best.map(|(_, id)| id)
+    best.map(|(_, id, v)| (id, mesh.surfaces.get(v as usize).copied().flatten()))
 }
 
 pub fn show(app: &mut App, ui: &mut Ui) {
     let (rect, resp) = ui.allocate_exact_size(ui.available_size(), Sense::click_and_drag());
     let v = &mut app.view3d;
+    // The revision the mesh shows (a click below may change the document).
+    let mesh_rev = app.rev;
     let mesh = match v.mesh.take() {
         Some((rev, mesh)) if rev == app.rev => mesh,
         _ => build(app.session.document(), None),
@@ -817,7 +969,40 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         let far = inv * Vec4::new(ndc.x, ndc.y, 1.0, 1.0);
         let (near, far) = (near.truncate() / near.w, far.truncate() / far.w);
         let hit = pick(&mesh, near, (far - near).normalize(), &app.view3d.hidden);
-        let ctrl = ui.input(|i| i.modifiers.command);
+        let (ctrl, alt) = ui.input(|i| (i.modifiers.command, i.modifiers.alt));
+        if let Some(painter) = app.view3d.painter {
+            match hit {
+                Some((id, Some(surface))) if alt => {
+                    // Eyedropper: take the material this surface shows.
+                    let doc = app.session.document();
+                    let found = MaterialIndex::new(doc).resolve(id, surface).map(|m| m.id);
+                    if let (Some(p), Some(m)) = (&mut app.view3d.painter, found) {
+                        p.material = Some(m);
+                    }
+                }
+                Some((id, surface)) => {
+                    let (scope, surface) = match painter.reach {
+                        PaintReach::Surface => (PaintScope::Object, surface),
+                        PaintReach::Object => (PaintScope::Object, None),
+                        PaintReach::Floor => (PaintScope::Floor, surface),
+                        PaintReach::Plan => (PaintScope::Plan, surface),
+                    };
+                    if scope == PaintScope::Plan && surface.is_none() {
+                        app.error("That surface can't be painted plan-wide.");
+                    } else {
+                        app.run1(Command::PaintMaterial {
+                            material: painter.material,
+                            scope,
+                            ids: vec![id],
+                            surface,
+                        });
+                    }
+                }
+                None => {}
+            }
+        }
+        let painting = app.view3d.painter.is_some();
+        let hit = hit.map(|(id, _)| id).filter(|_| !painting);
         match hit {
             Some(id) if ctrl => {
                 if let Some(i) = app.selection.iter().position(|x| *x == id) {
@@ -827,7 +1012,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
                 }
             }
             Some(id) => app.selection = vec![id],
-            None if !ctrl => app.selection.clear(),
+            None if !ctrl && !painting => app.selection.clear(),
             None => {}
         }
     }
@@ -841,7 +1026,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         .selection
         .iter()
         .chain(v.hidden.iter().map(|c| &CATEGORY_KEYS[*c as usize]))
-        .fold(app.rev.wrapping_mul(1_000_003), |h, id| {
+        .fold(mesh_rev.wrapping_mul(1_000_003), |h, id| {
             h.wrapping_mul(31).wrapping_add(id.0)
         });
     if v.gpu.as_ref().is_none_or(|g| g.0 != sel_hash) {
@@ -855,7 +1040,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         v.gpu = Some((sel_hash, Arc::new(verts), Arc::new(idx)));
     }
     let (_, verts, idx) = v.gpu.clone().expect("uploaded");
-    v.mesh = Some((app.rev, mesh));
+    v.mesh = Some((mesh_rev, mesh));
 
     let painter = ui.painter_at(rect);
     let dark = ui.visuals().dark_mode;
@@ -885,6 +1070,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             Cutaway::TopDown => Some([0.0, 0.0, 1.0, hi.z - t * (hi.z - lo.z)]),
         }
     });
+    let eye = v.eye();
     painter.add(egui_wgpu::Callback::new_paint_callback(
         rect,
         Paint3d {
@@ -902,10 +1088,12 @@ pub fn show(app: &mut App, ui: &mut Ui) {
                     0.0,
                 ],
                 clip: clip.unwrap_or([0.0; 4]),
+                eye: eye.extend(1.0).to_array(),
             },
         },
     ));
     overlay(app, ui, rect);
+    painter_bar(app, ui, rect);
 }
 
 fn overlay(app: &mut App, ui: &mut Ui, rect: Rect) {
@@ -976,4 +1164,45 @@ fn overlay(app: &mut App, ui: &mut Ui, rect: Rect) {
             });
         });
     });
+}
+
+/// The material painter's controls, along the bottom of the 3D view.
+fn painter_bar(app: &mut App, ui: &mut Ui, rect: Rect) {
+    let Some(mut p) = app.view3d.painter else {
+        return;
+    };
+    let area = Rect::from_min_size(
+        egui::pos2(rect.left() + 8.0, rect.bottom() - 42.0),
+        egui::vec2(rect.width() - 16.0, 34.0),
+    );
+    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(area));
+    let mut close = false;
+    child.horizontal(|ui| {
+        egui::Frame::popup(ui.style()).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.strong("Material Painter");
+                let doc = app.session.document();
+                if let Some(m) = p.material.and_then(|m| doc.get::<housecraft_api::model::Material>(m)) {
+                    crate::materials::swatch(ui, m.color, 16.0);
+                }
+                if let Some(c) =
+                    crate::materials::material_combo(ui, doc, "painter_material", p.material, "Default (reset)")
+                {
+                    p.material = c;
+                }
+                egui::ComboBox::from_id_salt("painter_reach")
+                    .selected_text(p.reach.name())
+                    .show_ui(ui, |ui| {
+                        for r in PaintReach::ALL {
+                            ui.selectable_value(&mut p.reach, r, r.name());
+                        }
+                    });
+                ui.weak("Click to paint · Alt+click picks up a material");
+                if ui.button("Done").clicked() {
+                    close = true;
+                }
+            });
+        });
+    });
+    app.view3d.painter = (!close).then_some(p);
 }

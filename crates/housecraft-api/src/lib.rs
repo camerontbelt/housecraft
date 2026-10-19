@@ -6,6 +6,7 @@
 
 pub mod blocks;
 mod command;
+mod paint;
 mod foundation;
 pub mod layouts;
 pub mod materials;
@@ -17,7 +18,7 @@ pub mod schedule;
 mod session;
 mod views;
 
-pub use command::{Command, DetailText, LengthAnchor, Outcome, TransformOp};
+pub use command::{Command, DetailText, PaintScope, LengthAnchor, Outcome, TransformOp};
 pub use housecraft_geom as geom;
 pub use housecraft_model as model;
 pub use housecraft_units as units;

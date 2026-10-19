@@ -375,12 +375,14 @@ fn every_object_kind_round_trips_through_json() {
     );
     let layout = s.document().iter::<Layout>().next().unwrap().id;
     let block = s.document().iter::<Block>().next().unwrap().id;
+    let material = s.document().iter::<Material>().next().unwrap().id;
     apply(
         &mut s,
         &format!(
             r#"[{{"op": "send_to_layout", "layout": {}, "source": {{"type": "text", "text": "notes"}}}},
-                {{"op": "add_block_ref", "block": {}, "at": [0,0], "rotation": 30}}]"#,
-            layout.0, block.0
+                {{"op": "add_block_ref", "block": {}, "at": [0,0], "rotation": 30}},
+                {{"op": "paint_material", "material": {}, "ids": [{}], "surface": "wall"}}]"#,
+            layout.0, block.0, material.0, wall.0
         ),
     );
     let doc = s.document();
@@ -1487,4 +1489,54 @@ fn camera_default_sets_choose_drafting_layers() {
     // Deleting the set falls back to the active one.
     apply(&mut s, &format!(r#"[{{"op": "delete", "ids": [{}]}}]"#, set.0));
     assert_eq!(s.document().settings.view_defaults.elevation, None);
+}
+
+#[test]
+fn materials_paint_replace_and_merge() {
+    let mut s = boxed();
+    let doc = s.document();
+    let find = |doc: &Document, name: &str| doc.iter::<Material>().find(|m| m.name == name).unwrap().id;
+    let (walnut, oak, tile) = (find(doc, "Walnut Flooring"), find(doc, "Oak Flooring"), find(doc, "Porcelain Tile"));
+    let room = doc.iter::<Room>().next().unwrap().id;
+    let wall = walls(&s)[0].id;
+    let floor = doc.floors_by_elevation()[0].id;
+    let index = |s: &Session, id: Id, surf: Surface| {
+        MaterialIndex::new(s.document()).resolve(id, surf).map(|m| m.name.clone())
+    };
+    // Defaults come from the default set.
+    assert_eq!(index(&s, room, Surface::Floor).as_deref(), Some("Oak Flooring"));
+    // Paint the floor of the room, then the whole floor level.
+    apply(
+        &mut s,
+        &format!(r#"[{{"op": "paint_material", "material": {}, "ids": [{}], "surface": "floor"}}]"#, walnut.0, room.0),
+    );
+    assert_eq!(index(&s, room, Surface::Floor).as_deref(), Some("Walnut Flooring"));
+    apply(
+        &mut s,
+        &format!(r#"[{{"op": "paint_material", "material": {}, "scope": "floor", "ids": [{}], "surface": "wall"}}]"#, tile.0, wall.0),
+    );
+    assert_eq!(index(&s, wall, Surface::Wall).as_deref(), Some("Porcelain Tile"));
+    assert!(s.document().iter::<MaterialAssignment>().any(|a| a.object == floor));
+    // Default painter: reset the room's floor.
+    apply(
+        &mut s,
+        &format!(r#"[{{"op": "paint_material", "material": null, "ids": [{}], "surface": "floor"}}]"#, room.0),
+    );
+    assert_eq!(index(&s, room, Surface::Floor).as_deref(), Some("Oak Flooring"));
+    // Merge oak into walnut: the default slot follows, oak is gone.
+    apply(
+        &mut s,
+        &format!(r#"[{{"op": "replace_material", "from": {}, "to": {}, "delete": true}}]"#, oak.0, walnut.0),
+    );
+    assert!(s.document().get::<Material>(oak).is_none());
+    assert_eq!(index(&s, room, Surface::Floor).as_deref(), Some("Walnut Flooring"));
+    // Deleting a material drops its paint and default slot; deleting the
+    // painted floor's wall keeps the floor-level paint.
+    apply(&mut s, &format!(r#"[{{"op": "delete", "ids": [{}]}}]"#, tile.0));
+    assert_eq!(s.document().count::<MaterialAssignment>(), 0);
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
+    // The 3D mesh shows the resolved colour.
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    let walnut_rgb = housecraft_api::geom::mesh::look_of(s.document().get::<Material>(walnut).unwrap()).color;
+    assert!(mesh.colors.contains(&walnut_rgb));
 }
