@@ -412,6 +412,11 @@ fn every_object_kind_round_trips_through_json() {
     let json = serde_json::to_string(doc).unwrap();
     let back: Document = serde_json::from_str(&json).unwrap();
     assert_eq!(&back, doc);
+    // Saving goes through a JSON value, where a field that clashes with the
+    // "kind" tag would be lost.
+    let value = serde_json::to_value(doc).unwrap();
+    let back: Document = serde_json::from_value(value).unwrap();
+    assert_eq!(&back, doc);
 }
 
 #[test]
