@@ -786,6 +786,9 @@ pub enum Command {
     /// Type an object's own label (replacing its kind's template from the
     /// default set; "-" hides it), or `None` to go back to the template.
     SetObjectLabel { id: Id, text: Option<String> },
+    /// Trace a room's interior outline as a closed CAD polyline (on the CAD
+    /// layer), e.g. for area takeoffs, slabs or custom moldings.
+    RoomPolyline { room: Id },
     /// Save a plan view (floor, layer set, default set).
     AddPlanView {
         name: String,
@@ -1049,6 +1052,7 @@ impl Command {
             Command::AddExteriorDimensions { .. } => "add_exterior_dimensions",
             Command::AddText { .. } => "add_text",
             Command::SetObjectLabel { .. } => "set_object_label",
+            Command::RoomPolyline { .. } => "room_polyline",
             Command::AddPlanView { .. } => "add_plan_view",
             Command::AddCamera { .. } => "add_camera",
             Command::Update { .. } => "update",
@@ -2749,6 +2753,22 @@ impl Command {
                     leaders: leaders.clone(),
                     border: false,
                     wrap: None,
+                }));
+            }
+            Command::RoomPolyline { room } => {
+                let r = expect::<Room>(doc, *room)?.clone();
+                let regions = housecraft_geom::rooms::detect(doc, r.floor);
+                let Some(i) = regions.room_at(housecraft_geom::v2(r.anchor)) else {
+                    return invalid("that room is not enclosed by walls");
+                };
+                let points = regions.rooms[i].polygon.iter().map(|p| housecraft_geom::pt(*p)).collect();
+                out.created.push(doc.insert(Cad {
+                    id: Id(0),
+                    floor: r.floor,
+                    layer: doc.defaults_for(r.floor).layers.cad,
+                    shape: Shape::Polyline { points, closed: true },
+                    color: None,
+                    fill: None,
                 }));
             }
             Command::SetObjectLabel { id, text } => {

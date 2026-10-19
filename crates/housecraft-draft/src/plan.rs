@@ -364,12 +364,35 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
                 ink,
             },
         );
+        let rl = ctx.defaults.room_labels;
+        let mut lines: Vec<String> = Vec::new();
         if let Some(i) = regions.room_at(at) {
+            let region = &regions.rooms[i];
+            if rl.show_area {
+                lines.push(format_area(region.area, doc.settings.display_unit));
+            }
+            if rl.size != RoomSizeFormat::Off
+                && let Some((lo, hi)) = housecraft_geom::math::bounds(region.polygon.iter().copied())
+            {
+                let (w, d) = (hi.x - lo.x, hi.y - lo.y);
+                lines.push(room_size(doc, rl.size, w, d));
+            }
+        }
+        if rl.show_ceiling_height {
+            let height = room
+                .ceiling_height
+                .or_else(|| doc.get::<RoomType>(room.room_type).and_then(|t| t.ceiling_height))
+                .or_else(|| doc.get::<Floor>(room.floor).map(|f| f.ceiling_height));
+            if let Some(height) = height {
+                lines.push(format!("Clg. {}", height.format(doc.settings.display_unit)));
+            }
+        }
+        for (k, line) in lines.into_iter().enumerate() {
             out.push(
                 Some(room.id),
                 Prim::Text {
-                    at: at - DVec2::Y * h * 1.1,
-                    text: format_area(regions.rooms[i].area, doc.settings.display_unit),
+                    at: at - DVec2::Y * h * (1.1 + k as f64 * 0.95),
+                    text: line,
                     height: h * 0.7,
                     rotation: 0.0,
                     justify: Justify::Center,
@@ -760,6 +783,21 @@ fn cad_shape(
 }
 
 /// Callouts, revision clouds, dimensions and text drawn on `sheet`.
+/// A room's interior width x depth for its label.
+fn room_size(doc: &Document, format: RoomSizeFormat, w: f64, d: f64) -> String {
+    let unit = doc.settings.display_unit;
+    let metric = matches!(unit, housecraft_units::DisplayUnit::Millimeters | housecraft_units::DisplayUnit::Meters { .. });
+    match format {
+        RoomSizeFormat::Rounded if metric => format!("{:.1} x {:.1} m", w / 1000.0, d / 1000.0),
+        RoomSizeFormat::Rounded => format!("{:.0}' x {:.0}'", w / 304.8, d / 304.8),
+        _ => format!(
+            "{} x {}",
+            housecraft_units::Length::from_mm(w).format(unit),
+            housecraft_units::Length::from_mm(d).format(unit)
+        ),
+    }
+}
+
 /// Labels on doors, windows, cabinets and fixtures: each object's own
 /// label, else its kind's template from the default set.
 fn object_labels(ctx: &Ctx, floor: Id, out: &mut Drawing) {

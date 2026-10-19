@@ -280,6 +280,8 @@ pub(crate) fn new_document(name: String) -> Document {
         framing: Default::default(),
         materials,
         labels: Default::default(),
+        wall_reference: Default::default(),
+        room_labels: Default::default(),
     });
     doc.settings.active_default_set = defaults;
 

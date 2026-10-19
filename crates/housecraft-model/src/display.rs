@@ -325,6 +325,66 @@ pub struct DefaultSet {
     /// Labels shown on objects in plan.
     #[serde(default)]
     pub labels: LabelDefaults,
+    /// Which line of a wall you click along when drawing walls.
+    #[serde(default)]
+    pub wall_reference: WallReference,
+    /// What room labels show under the room's name.
+    #[serde(default)]
+    pub room_labels: RoomLabelDefaults,
+}
+
+/// The line of a wall the wall tools draw along.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum WallReference {
+    #[default]
+    Center,
+    /// The exterior surface (on the left looking from start to end).
+    Exterior,
+    Interior,
+    /// The middle of the main (thickest, usually framing) layer.
+    Main,
+}
+
+impl WallReference {
+    pub const ALL: [WallReference; 4] = [WallReference::Center, WallReference::Exterior, WallReference::Interior, WallReference::Main];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            WallReference::Center => "Wall centre",
+            WallReference::Exterior => "Exterior surface",
+            WallReference::Interior => "Interior surface",
+            WallReference::Main => "Main layer (framing)",
+        }
+    }
+}
+
+/// How a room's size appears on its label.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RoomSizeFormat {
+    #[default]
+    Off,
+    /// Rounded to whole feet (or tenths of a metre): 12' x 14'.
+    Rounded,
+    /// In the plan's display unit: 12'-0" x 14'-6".
+    Exact,
+}
+
+/// What room labels show under the name.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct RoomLabelDefaults {
+    pub show_area: bool,
+    /// Interior width x depth.
+    pub size: RoomSizeFormat,
+    pub show_ceiling_height: bool,
+}
+
+impl Default for RoomLabelDefaults {
+    fn default() -> Self {
+        RoomLabelDefaults { show_area: true, size: RoomSizeFormat::Off, show_ceiling_height: false }
+    }
 }
 
 /// Object labels in plan: a template per kind of object, with object

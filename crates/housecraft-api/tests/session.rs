@@ -2220,3 +2220,29 @@ fn match_properties_copies_settings_not_placement() {
     let err = s.apply(&[Command::MatchProperties { from: src, to: vec![w[0].id] }]).unwrap_err();
     assert!(err.to_string().contains("can't match"), "{err}");
 }
+
+#[test]
+fn room_polyline_and_living_area_override() {
+    let mut s = boxed();
+    let room = s.document().iter::<Room>().next().unwrap().id;
+    let living = |s: &Session| query::summary(s.document()).living_area;
+    let before = living(&s);
+    let out = s.apply(&[Command::RoomPolyline { room }]).unwrap();
+    let cad = s.document().get::<Cad>(out.created[0]).unwrap();
+    assert!(matches!(&cad.shape, Shape::Polyline { points, closed: true } if points.len() == 4));
+    s.apply(&[Command::Update { id: room, set: patch(serde_json::json!({ "living_area": false })) }]).unwrap();
+    assert_ne!(living(&s), before, "excluded room drops out of the living area");
+}
+
+#[test]
+fn wall_reference_offsets() {
+    let doc = Document::new("x");
+    let d = doc.active_defaults();
+    let t = doc.get::<WallType>(d.exterior_wall_type).unwrap();
+    let half = t.thickness().mm() / 2.0;
+    assert_eq!(t.centerline_offset(WallReference::Center), 0.0);
+    assert!((t.centerline_offset(WallReference::Exterior) + half).abs() < 1e-9);
+    assert!((t.centerline_offset(WallReference::Interior) - half).abs() < 1e-9);
+    let m = t.centerline_offset(WallReference::Main);
+    assert!(m.abs() < half, "main layer lies within the wall: {m}");
+}

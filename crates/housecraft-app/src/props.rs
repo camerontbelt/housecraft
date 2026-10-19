@@ -1845,6 +1845,29 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 doc.settings.display_unit,
             ));
             ui.end_row();
+            Ed::label(ui, "Living Area");
+            let by_type = doc.get::<RoomType>(r.room_type).is_some_and(|t| t.living_area);
+            let mut living = r.living_area;
+            egui::ComboBox::from_id_salt(ed.key("living_area"))
+                .selected_text(match living {
+                    None => if by_type { "By type (counted)" } else { "By type (not counted)" },
+                    Some(true) => "Include",
+                    Some(false) => "Exclude",
+                })
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut living, None, "By room type");
+                    ui.selectable_value(&mut living, Some(true), "Include");
+                    ui.selectable_value(&mut living, Some(false), "Exclude");
+                });
+            if living != r.living_area {
+                ed.out.push(patch(id, json!({ "living_area": living })));
+            }
+            ui.end_row();
+            Ed::label(ui, "Outline");
+            if ui.button("Make Room Polyline").on_hover_text("Trace the room's inside outline as a CAD polyline").clicked() {
+                ed.out.push(Command::RoomPolyline { room: id });
+            }
+            ui.end_row();
             let type_height = doc
                 .get::<RoomType>(r.room_type)
                 .and_then(|t| t.ceiling_height)

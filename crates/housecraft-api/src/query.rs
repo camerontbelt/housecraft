@@ -80,7 +80,7 @@ pub fn summary(doc: &Document) -> DocumentSummary {
                         .foundation
                         .as_ref()
                         .is_some_and(|fd| fd.kind != FoundationKind::Basement);
-                    if ty.is_some_and(|t| t.living_area) && !below_grade_shell {
+                    if r.living_area.unwrap_or(ty.is_some_and(|t| t.living_area)) && !below_grade_shell {
                         living += area;
                     }
                     RoomSummary {

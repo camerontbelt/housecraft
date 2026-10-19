@@ -701,6 +701,20 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                             d.interior_wall_type,
                             |v| commands.push(p(json!({"interior_wall_type": v}))),
                         );
+                        ui.horizontal(|ui| {
+                            ui.label("Draw walls along");
+                            let mut r = d.wall_reference;
+                            egui::ComboBox::from_id_salt("wall_reference")
+                                .selected_text(r.name())
+                                .show_ui(ui, |ui| {
+                                    for v in WallReference::ALL {
+                                        ui.selectable_value(&mut r, v, v.name());
+                                    }
+                                });
+                            if r != d.wall_reference {
+                                commands.push(p(json!({"wall_reference": r})));
+                            }
+                        });
                     });
                 egui::CollapsingHeader::new("Doors")
                     .default_open(true)
@@ -950,6 +964,29 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                         pick_row::<RoomType>(ui, doc, "New room type", d.room_type, |v| {
                             commands.push(p(json!({"room_type": v})))
                         });
+                        let rl = d.room_labels;
+                        let mut area = rl.show_area;
+                        if ui.checkbox(&mut area, "Labels show the area").changed() {
+                            commands.push(p(json!({"room_labels": {"show_area": area}})));
+                        }
+                        ui.horizontal(|ui| {
+                            ui.label("Labels show the size");
+                            let mut s = rl.size;
+                            for (v, name) in [
+                                (RoomSizeFormat::Off, "No"),
+                                (RoomSizeFormat::Rounded, "Rounded (12' x 14')"),
+                                (RoomSizeFormat::Exact, "Exact (12'-0\" x 14'-6\")"),
+                            ] {
+                                ui.radio_value(&mut s, v, name);
+                            }
+                            if s != rl.size {
+                                commands.push(p(json!({"room_labels": {"size": s}})));
+                            }
+                        });
+                        let mut clg = rl.show_ceiling_height;
+                        if ui.checkbox(&mut clg, "Labels show the ceiling height").changed() {
+                            commands.push(p(json!({"room_labels": {"show_ceiling_height": clg}})));
+                        }
                     });
                 egui::CollapsingHeader::new("Text and Dimensions")
                     .default_open(true)

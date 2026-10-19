@@ -147,18 +147,18 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | RM-01 | Room defaults by room type (ceiling height, moldings, finishes) | P0 | M1 ✓ |
-| RM-02 | Custom room type definitions | P1 | M1 |
-| RM-03 | Living-area calculation with include/exclude | P1 | M1 |
+| RM-02 | Custom room type definitions | P1 | M1 ✓ Tools > Room Types…: add, edit (ceiling height, finishes, living area, moldings) and delete |
+| RM-03 | Living-area calculation with include/exclude | P1 | M1 ✓ living area counts room types marked living; each room can be set to Include or Exclude |
 | RM-04 | Room polygon tool (preset shapes) | P2 | M3 |
 | RM-05 | Room molding polylines; 3D molding polylines (stacked profiles) | P2 | M5 ✓ |
-| RM-06 | Room polyline (perimeter for area, materials, slabs, moldings) | P1 | M1 |
+| RM-06 | Room polyline (perimeter for area, materials, slabs, moldings) | P1 | M1 ◐ room's Make Room Polyline traces its inside outline as a CAD polyline; editing a room by its polyline isn't supported |
 | RM-07 | Layered floor & ceiling platforms (finish, structure, sub-layers) | P1 | M3 ✓ |
 | RM-08 | Floor material regions (inlays without room boundaries) | P2 | M5 ✓ Floor Material Region tool; tile joints drawn in plan |
 | RM-09 | Raised floor platforms (auto-framed) | P2 | M6 ✓ Raised Platform tool: a solid floor framed on joists |
 | RM-10 | Conditioned/unconditioned spaces → insulation in materials list | P2 | M4 |
 | RM-11 | Multi-select edit rooms (type, vaulted, heights, platform) | P1 | M3 ✓ |
 | RM-12 | Object Information Panel (custom fields) for rooms | P1 | M1 |
-| RM-13 | Room label dimension formats | P1 | M1 |
+| RM-13 | Room label dimension formats | P1 | M1 ✓ Default Settings > Rooms: labels show area, size (rounded or exact) and ceiling height |
 
 ## 6. Walls
 
@@ -181,7 +181,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-15 | Corner boards & quoins (auto/manual) | P2 | M5 ✓ |
 | WL-16 | Wall material regions | P2 | M5 ✓ Wall Material Region tool (wainscot from two clicks, editable extents) |
 | WL-17 | Double walls (marriage/multi-family) incl. openings | P3 | M3 |
-| WL-18 | Control which layer intersecting walls snap to | P1 | M1 |
+| WL-18 | Control which layer intersecting walls snap to | P1 | M1 ◐ Default Settings > Walls > Draw walls along: centre, exterior or interior surface, or main (framing) layer, with mitred corners; walls still join at centrelines |
 | WL-19 | Continuous wall draw mode | P0 | M1 ✓ |
 
 ## 7. Cabinets

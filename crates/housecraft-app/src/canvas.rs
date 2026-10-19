@@ -81,6 +81,10 @@ pub struct PlanState {
     text_prompt: Option<(DVec2, String)>,
     /// Arrow tips for the text being typed (Text with Arrow).
     prompt_leaders: Vec<DVec2>,
+    /// The wall drawn last in the current run (its end is mitred to the next).
+    pub last_wall: Option<Id>,
+    /// The first wall of the current run (its start is mitred on closing).
+    pub first_wall: Option<Id>,
     temp_dim_edit: Option<(Id, String, bool)>,
     /// The switch being wired by the Connect Electrical tool.
     pub wiring: Option<Id>,
@@ -120,6 +124,8 @@ impl PlanState {
             polygon_sides: 6,
             text_prompt: None,
             prompt_leaders: Vec::new(),
+            last_wall: None,
+            first_wall: None,
             temp_dim_edit: None,
             wiring: None,
         }
@@ -379,6 +385,15 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         if let Some(out) = app.run(commands) {
             if tool == Tool::Select && !out.created.is_empty() {
                 app.selection = out.created.clone();
+            }
+            if matches!(tool, Tool::ExteriorWall | Tool::InteriorWall) {
+                let doc = app.session.document();
+                if let Some(w) = out.created.iter().find(|id| doc.kind_of(**id) == Some(ObjectKind::Wall)) {
+                    app.plan.last_wall = Some(*w);
+                    if app.plan.first_wall.is_none() {
+                        app.plan.first_wall = Some(*w);
+                    }
+                }
             }
             // A new elevation or section opens straight away.
             if matches!(tool, Tool::SectionLine(_))
@@ -843,6 +858,31 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
     }
 }
 
+/// How far the centreline lies left of the line the wall tools draw along.
+fn wall_offset(doc: &Document, interior: bool) -> f64 {
+    let d = doc.active_defaults();
+    let ty = if interior { d.interior_wall_type } else { d.exterior_wall_type };
+    doc.get::<WallType>(ty).map_or(0.0, |t| t.centerline_offset(d.wall_reference))
+}
+
+/// `p` moved `o` to the left of the direction a→b.
+fn offset_pt(a: DVec2, b: DVec2, p: DVec2, o: f64) -> DVec2 {
+    let d = (b - a).normalize_or_zero();
+    p + DVec2::new(-d.y, d.x) * o
+}
+
+/// Where the lines a→b and b→c, each moved `o` to their left, meet.
+fn miter(a: DVec2, b: DVec2, c: DVec2, o: f64) -> DVec2 {
+    let (p1, d1) = (offset_pt(a, b, a, o), (b - a).normalize_or_zero());
+    let (p2, d2) = (offset_pt(b, c, b, o), (c - b).normalize_or_zero());
+    let den = d1.perp_dot(d2);
+    if den.abs() < 1e-9 {
+        return offset_pt(a, b, b, o);
+    }
+    let t = (p2 - p1).perp_dot(d2) / den;
+    p1 + d1 * t
+}
+
 /// What the next plan click is for, after an edit button.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Pick {
@@ -992,16 +1032,48 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
             Tool::ExteriorWall | Tool::InteriorWall => {
                 if let Some(last) = pending.last().copied() {
                     if last.distance(p) >= 1.0 {
-                        commands.push(Command::AddWall {
-                            floor,
-                            start: pt(last),
-                            end: pt(p),
-                            wall_type: None,
-                            interior: tool == Tool::InteriorWall,
-                            height: None,
-                        });
+                        let o = wall_offset(doc, tool == Tool::InteriorWall);
                         let closes = pending.first().is_some_and(|f| f.distance(p) < 1.0)
                             && pending.len() > 1;
+                        if o.abs() < 0.01 {
+                            commands.push(Command::AddWall {
+                                floor,
+                                start: pt(last),
+                                end: pt(p),
+                                wall_type: None,
+                                interior: tool == Tool::InteriorWall,
+                                height: None,
+                            });
+                        } else {
+                            // Drawn along a surface: offset to the centreline and
+                            // mitre the corner with the previous wall.
+                            let prev = pending.len().checked_sub(2).map(|i| pending[i]);
+                            let start = match prev {
+                                Some(a) => miter(a, last, p, o),
+                                None => offset_pt(last, p, last, o),
+                            };
+                            let mut end = offset_pt(last, p, p, o);
+                            if let (Some(prev_wall), Some(_)) = (app.plan.last_wall, prev) {
+                                commands.push(Command::MoveWall { id: prev_wall, start: None, end: Some(pt(start)), detach: true });
+                            }
+                            if closes && pending.len() > 2 {
+                                // Closing: mitre the last corner with the first wall too.
+                                end = miter(last, pending[0], pending[1], o);
+                            }
+                            commands.push(Command::AddWall {
+                                floor,
+                                start: pt(start),
+                                end: pt(end),
+                                wall_type: None,
+                                interior: tool == Tool::InteriorWall,
+                                height: None,
+                            });
+                            if closes && pending.len() > 2
+                                && let Some(first) = app.plan.first_wall
+                            {
+                                commands.push(Command::MoveWall { id: first, start: Some(pt(end)), end: None, detach: true });
+                            }
+                        }
                         if closes {
                             pending.clear();
                         } else {
@@ -1010,6 +1082,8 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     }
                 } else {
                     pending.push(p);
+                    app.plan.last_wall = None;
+                    app.plan.first_wall = None;
                 }
             }
             Tool::Door(_) | Tool::Window(_) => {
@@ -2173,9 +2247,12 @@ fn rubber_band(
             let half = doc
                 .get::<WallType>(ty)
                 .map_or(70.0, |t| t.thickness().mm() / 2.0);
+            let o = wall_offset(doc, app.plan.tool == Tool::InteriorWall);
             let dir = (cursor - last).normalize_or_zero();
-            let n = DVec2::new(-dir.y, dir.x) * half;
-            let quad = [last + n, cursor + n, cursor - n, last - n];
+            let left = DVec2::new(-dir.y, dir.x);
+            let shift = left * o;
+            let n = left * half;
+            let quad = [last + shift + n, cursor + shift + n, cursor + shift - n, last + shift - n];
             let mut pts: Vec<Pos2> = quad.iter().map(|p| view.to_screen(*p)).collect();
             pts.push(pts[0]);
             painter.add(EShape::line(pts, stroke));

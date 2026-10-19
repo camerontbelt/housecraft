@@ -450,6 +450,31 @@ impl WallType {
     pub fn thickness(&self) -> Length {
         self.layers.iter().map(|l| l.thickness).sum()
     }
+
+    /// Where the centreline sits relative to a line drawn along `r`, in mm
+    /// to the left (the exterior side) of the drawing direction.
+    pub fn centerline_offset(&self, r: crate::WallReference) -> f64 {
+        let half = self.thickness().mm() / 2.0;
+        match r {
+            crate::WallReference::Center => 0.0,
+            crate::WallReference::Exterior => -half,
+            crate::WallReference::Interior => half,
+            crate::WallReference::Main => {
+                // The thickest layer; its middle measured from the exterior face.
+                let Some(main) = self
+                    .layers
+                    .iter()
+                    .enumerate()
+                    .max_by(|a, b| a.1.thickness.mm().total_cmp(&b.1.thickness.mm()))
+                    .map(|(i, _)| i)
+                else {
+                    return 0.0;
+                };
+                let before: f64 = self.layers[..main].iter().map(|l| l.thickness.mm()).sum();
+                before + self.layers[main].thickness.mm() / 2.0 - half
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -897,6 +922,9 @@ pub struct Room {
     pub layer: Id,
     #[serde(default)]
     pub ceiling: CeilingStyle,
+    /// Counted in the living area: `None` follows the room type.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub living_area: Option<bool>,
     /// Overrides the room type's moldings.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub moldings: Option<Vec<RoomMolding>>,
