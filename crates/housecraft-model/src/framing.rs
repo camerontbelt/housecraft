@@ -33,10 +33,14 @@ pub enum FramingRole {
     Chord,
     /// A truss web.
     Web,
+    /// A board fastened to a wall that joists hang from (decks).
+    Ledger,
+    /// Concrete under a post.
+    Footing,
 }
 
 impl FramingRole {
-    pub const ALL: [FramingRole; 18] = [
+    pub const ALL: [FramingRole; 20] = [
         FramingRole::Stud,
         FramingRole::KingStud,
         FramingRole::JackStud,
@@ -55,6 +59,8 @@ impl FramingRole {
         FramingRole::Post,
         FramingRole::Chord,
         FramingRole::Web,
+        FramingRole::Ledger,
+        FramingRole::Footing,
     ];
 
     pub fn name(self) -> &'static str {
@@ -77,6 +83,8 @@ impl FramingRole {
             FramingRole::Post => "Post",
             FramingRole::Chord => "Truss Chord",
             FramingRole::Web => "Truss Web",
+            FramingRole::Ledger => "Ledger",
+            FramingRole::Footing => "Footing",
         }
     }
 }

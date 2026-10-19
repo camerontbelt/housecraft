@@ -9,6 +9,7 @@ mod annotation;
 mod building;
 mod cabinet;
 mod display;
+mod deck;
 mod framing;
 mod imported;
 mod site;
@@ -30,6 +31,7 @@ pub use annotation::*;
 pub use building::*;
 pub use cabinet::*;
 pub use display::*;
+pub use deck::*;
 pub use framing::*;
 pub use imported::*;
 pub use site::*;
@@ -182,6 +184,7 @@ objects! {
     Plant => "plant",
     FramingMember => "framing_member",
     JoistDirection => "joist_direction",
+    Deck => "deck",
 }
 
 impl fmt::Display for ObjectKind {
@@ -221,6 +224,7 @@ impl ObjectKind {
                 | ObjectKind::Plant
                 | ObjectKind::FramingMember
                 | ObjectKind::JoistDirection
+                | ObjectKind::Deck
                 | ObjectKind::MaterialRegion
         )
     }
@@ -475,6 +479,7 @@ impl Document {
             Object::Plant(p) => Some(p.floor),
             Object::FramingMember(m) => Some(m.floor),
             Object::JoistDirection(j) => Some(j.floor),
+            Object::Deck(d) => Some(d.floor),
             Object::MaterialRegion(r) => Some(r.floor),
             _ => None,
         }
@@ -511,6 +516,7 @@ impl Document {
             Object::Plant(p) => Some(p.layer),
             Object::FramingMember(m) => Some(m.layer),
             Object::JoistDirection(j) => Some(j.layer),
+            Object::Deck(d) => Some(d.layer),
             Object::MaterialRegion(r) => Some(r.layer),
             _ => None,
         }

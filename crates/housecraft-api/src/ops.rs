@@ -475,6 +475,15 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             m.manual = true;
             Object::FramingMember(m)
         }
+        Object::Deck(dk) => {
+            let mut dk = dk.clone();
+            dk.outline = dk.outline.iter().map(|p| t.apply_point(*p)).collect();
+            if t.is_reflection() {
+                dk.outline.reverse();
+            }
+            dk.plank_angle = t.apply_angle(dk.plank_angle);
+            Object::Deck(dk)
+        }
         Object::JoistDirection(j) => {
             let mut j = j.clone();
             j.at = t.apply_point(j.at);
@@ -1221,6 +1230,7 @@ pub(crate) fn insert_objects(
                 Object::SiteFeature(s) => s.floor = f,
                 Object::FramingMember(m) => m.floor = f,
                 Object::JoistDirection(j) => j.floor = f,
+                Object::Deck(dk) => dk.floor = f,
                 Object::Plant(p) => p.floor = f,
                 Object::ElevationData(e) => e.floor = f,
                 Object::MaterialRegion(r) => r.floor = f,
@@ -1282,6 +1292,7 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::SiteFeature(s) => &mut s.floor,
             Object::FramingMember(m) => &mut m.floor,
             Object::JoistDirection(j) => &mut j.floor,
+            Object::Deck(dk) => &mut dk.floor,
             Object::Plant(p) => &mut p.floor,
             Object::ElevationData(e) => &mut e.floor,
             Object::MaterialRegion(r) => &mut r.floor,

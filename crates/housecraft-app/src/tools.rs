@@ -92,6 +92,8 @@ pub enum Tool {
     Post,
     /// A beam at the ceiling between two clicks.
     Beam,
+    Deck,
+    RaisedPlatform,
 }
 
 impl Tool {
@@ -106,7 +108,9 @@ impl Tool {
     ];
 
     /// The site tools, in menu order.
-    pub const SITE: [Tool; 12] = [
+    pub const SITE: [Tool; 14] = [
+        Tool::Deck,
+        Tool::RaisedPlatform,
         Tool::RetainingWall,
         Tool::Road(RoadStyle::Road),
         Tool::Road(RoadStyle::Driveway),
@@ -461,6 +465,8 @@ impl Tool {
             Tool::JoistDirection => "Joist Direction",
             Tool::Post => "Post",
             Tool::Beam => "Beam",
+            Tool::Deck => "Deck",
+            Tool::RaisedPlatform => "Raised Platform",
             Tool::PlaceGroup => "Place Group",
         }
     }
@@ -501,6 +507,7 @@ impl Tool {
             Tool::JoistDirection => Icon::Arrow,
             Tool::Post => Icon::Box,
             Tool::Beam => Icon::Line,
+            Tool::Deck | Tool::RaisedPlatform => Icon::Polyline,
             Tool::RetainingWall | Tool::Road(_) | Tool::Fence | Tool::GardenBed | Tool::Stream => Icon::Polyline,
             Tool::ObjectPainter => Icon::Select,
             Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => Icon::Box,
@@ -626,6 +633,8 @@ impl Tool {
             Tool::JoistDirection => "Click in a room, then click the direction its floor joists run.",
             Tool::Post => "Click to place a 6x6 post from the floor to the ceiling.",
             Tool::Beam => "Click the two ends of a 2-ply beam under the ceiling.",
+            Tool::Deck => "Click the deck's corners (against the house for a ledger); double-click or Enter to finish.",
+            Tool::RaisedPlatform => "Click the platform's corners; double-click or Enter to finish.",
             Tool::WallRegion => "Click the two ends of the region on one side of a wall.",
             Tool::ObjectPainter => {
                 "Alt+click an object to copy from, tick what to copy, then click objects to paint them."

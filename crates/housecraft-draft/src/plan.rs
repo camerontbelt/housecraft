@@ -525,6 +525,30 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             }
         }
     }
+    for dk in doc.iter::<Deck>().filter(|d| d.floor == opts.floor) {
+        let look = ctx.look(dk.layer);
+        if look.visible
+            && let Some(parts) = housecraft_geom::deck::parts(doc, dk)
+        {
+            let thin = Stroke { width: look.stroke.width * 0.4, ..look.stroke };
+            for p in parts.planks.iter().chain(&parts.border) {
+                out.push(Some(dk.id), Prim::Polyline { points: p.clone(), closed: true, stroke: thin });
+            }
+            out.push(Some(dk.id), Prim::Polyline { points: parts.outline.clone(), closed: true, stroke: look.stroke });
+            for (a, b) in &parts.rails {
+                let n = perp((*b - *a).normalize_or_zero()) * 60.0;
+                out.push(Some(dk.id), Prim::Polyline { points: vec![*a + n, *b + n], closed: false, stroke: look.stroke });
+            }
+            for m in parts.members.iter().filter(|m| m.role == FramingRole::Post) {
+                let c = m.a.truncate();
+                let h = m.width / 2.0;
+                out.push(
+                    Some(dk.id),
+                    Prim::Polyline { points: vec![c + DVec2::new(-h, -h), c + DVec2::new(h, -h), c + DVec2::new(h, h), c + DVec2::new(-h, h)], closed: true, stroke: look.stroke },
+                );
+            }
+        }
+    }
     for j in doc.iter::<JoistDirection>().filter(|j| j.floor == opts.floor) {
         let look = ctx.look(j.layer);
         if look.visible {

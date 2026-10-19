@@ -726,6 +726,27 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     c.issue(id, "a framing member needs some length");
                 }
             }
+            Object::Deck(dk) => {
+                c.reference(id, "floor", dk.floor, K::Floor);
+                c.reference(id, "layer", dk.layer, K::Layer);
+                if dk.outline.len() < 3 {
+                    c.issue(id, "a deck outline needs at least three points");
+                }
+                for (field, v) in [
+                    ("plank_width", dk.plank_width),
+                    ("plank_thickness", dk.plank_thickness),
+                    ("joist_spacing", dk.joist_spacing),
+                    ("joist_depth", dk.joist_depth),
+                    ("max_span", dk.max_span),
+                    ("post_spacing", dk.post_spacing),
+                    ("railing_height", dk.railing_height),
+                ] {
+                    c.positive(id, field, v);
+                }
+                c.non_negative(id, "plank_gap", dk.plank_gap);
+                let flat: Vec<f64> = dk.outline.iter().flat_map(|p| p.mm()).collect();
+                c.finite(id, "outline", &flat);
+            }
             Object::JoistDirection(j) => {
                 c.reference(id, "floor", j.floor, K::Floor);
                 c.reference(id, "layer", j.layer, K::Layer);

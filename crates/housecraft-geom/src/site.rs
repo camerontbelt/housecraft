@@ -81,7 +81,7 @@ fn strip(samples: &[(DVec2, f64)], half: f64, lo: f64, hi: f64, z: &dyn Fn(DVec2
     }
 }
 
-fn post(c: DVec2, half: f64, z0: f64, z1: f64, look: Look, mesh: &mut Mesh) {
+pub fn post(c: DVec2, half: f64, z0: f64, z1: f64, look: Look, mesh: &mut Mesh) {
     let sq = [
         c + DVec2::new(-half, -half),
         c + DVec2::new(half, -half),

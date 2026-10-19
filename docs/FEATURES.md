@@ -154,7 +154,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-06 | Room polyline (perimeter for area, materials, slabs, moldings) | P1 | M1 |
 | RM-07 | Layered floor & ceiling platforms (finish, structure, sub-layers) | P1 | M3 ✓ |
 | RM-08 | Floor material regions (inlays without room boundaries) | P2 | M5 ✓ Floor Material Region tool; tile joints drawn in plan |
-| RM-09 | Raised floor platforms (auto-framed) | P2 | M6 |
+| RM-09 | Raised floor platforms (auto-framed) | P2 | M6 ✓ Raised Platform tool: a solid floor framed on joists |
 | RM-10 | Conditioned/unconditioned spaces → insulation in materials list | P2 | M4 |
 | RM-11 | Multi-select edit rooms (type, vaulted, heights, platform) | P1 | M3 ✓ |
 | RM-12 | Object Information Panel (custom fields) for rooms | P1 | M1 |
@@ -321,9 +321,9 @@ These come from reading the whole list and change the architecture, not just the
 | FR-27 | Bearing walls (butt/lap framing) | P2 | M6 |
 | FR-28 | Platform holes with auto framing | P2 | M6 ✓ joists stop at stairwell holes, with headers |
 | FR-29 | Tray ceiling framing | P3 | M6 |
-| FR-30 | Deck framing: planks, borders, beams, joists, posts, footings, blocking; auto-rebuild | P2 | M6 |
-| FR-31 | Deck ledger controls (X18+) | P3 | M6 |
-| FR-32 | Deck beam controls | P3 | M6 |
+| FR-30 | Deck framing: planks, borders, beams, joists, posts, footings, blocking; auto-rebuild | P2 | M6 ◐ decks rebuild themselves: planks, border, joists, rims, ledger, beams, posts, footings, railings; no blocking |
+| FR-31 | Deck ledger controls (X18+) | P3 | M6 ◐ a ledger is used automatically where a deck meets the house (on/off per deck) |
+| FR-32 | Deck beam controls | P3 | M6 ◐ beam inset and largest joist span set where beams go; no per-beam editing |
 
 ## 13. CAD tools
 
@@ -423,7 +423,7 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-12 | Roads, medians, striping, curbs, gutters, driveways, sidewalks, cul-de-sacs | P2 | M6 ◐ roads (curbs, gutters, centre striping), driveways and sidewalks that follow the ground; no medians or cul-de-sacs |
 | SITE-13 | Road/driveway/sidewalk volumes in materials list | P3 | M6 ✓ paving area and base volume in the materials list |
 | SITE-14 | Auto plan footprint CAD detail for site plans | P2 | M6 ✓ Terrain > Site Plan Detail makes a CAD detail of the lot, footprints, site work and plants |
-| SITE-15 | Deck designer (straight, curved, polygon, covered) | P2 | M6 |
+| SITE-15 | Deck designer (straight, curved, polygon, covered) | P2 | M6 ✓ Deck tool: straight, polygon or curved outlines, optional cover on posts |
 | SITE-16 | Fences that follow terrain; gates | P2 | M6 ✓ picket, privacy and split-rail fences with posts following the ground; gates |
 | SITE-17 | Sprinkler designer (zones, runs) | P3 | M8 |
 | SITE-18 | Plant images/symbols in 2D/3D | P2 | M6 ✓ trees, conifers, shrubs and grasses as plan canopies and 3D shapes |

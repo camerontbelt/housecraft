@@ -646,6 +646,44 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.end_row();
             ed.pick::<Layer>(ui, "Layer", "layer", Some(m.layer), None);
         }
+        Object::Deck(dk) => {
+            for (label, field, v) in [
+                ("Top Height", "height", dk.height),
+                ("Plank Width", "plank_width", dk.plank_width),
+                ("Plank Gap", "plank_gap", dk.plank_gap),
+                ("Plank Thickness", "plank_thickness", dk.plank_thickness),
+                ("Joist Spacing", "joist_spacing", dk.joist_spacing),
+                ("Joist Depth", "joist_depth", dk.joist_depth),
+                ("Beam Inset", "beam_inset", dk.beam_inset),
+                ("Largest Joist Span", "max_span", dk.max_span),
+                ("Post Spacing", "post_spacing", dk.post_spacing),
+                ("Railing Height", "railing_height", dk.railing_height),
+            ] {
+                if let Some(l) = ed.length(ui, label, field, v) {
+                    ed.out.push(patch(id, json!({ field: l })));
+                }
+            }
+            if let Some(a) = ed.number(ui, "Plank Angle (°)", "plank_angle", dk.plank_angle) {
+                ed.out.push(patch(id, json!({ "plank_angle": a })));
+            }
+            for (label, field, text, v) in [
+                ("Platform", "platform", "Solid raised floor (no planks)", dk.platform),
+                ("Curved", "curved", "Round the outline into a curve", dk.curved),
+                ("Border", "border", "Picture-frame border board", dk.border),
+                ("Ledger", "ledger", "Fasten to the house where it touches", dk.ledger),
+                ("Railing", "railing", "Railing round the free edges", dk.railing),
+                ("Covered", "covered", "Roof over it on posts", dk.covered),
+            ] {
+                ed.check(ui, label, field, text, v);
+            }
+            Ed::label(ui, "Colour");
+            let mut c32 = to_color32(dk.color);
+            if ui.color_edit_button_srgba(&mut c32).changed() {
+                ed.out.push(patch(id, json!({ "color": from_color32(c32) })));
+            }
+            ui.end_row();
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(dk.layer), None);
+        }
         Object::JoistDirection(j) => {
             if let Some(a) = ed.number(ui, "Angle (°)", "angle", j.angle) {
                 ed.out.push(patch(id, json!({ "angle": a })));

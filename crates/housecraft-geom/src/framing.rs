@@ -210,7 +210,7 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
 }
 
 /// Where a line through `o` along `dir` is inside `poly`: (t0, t1) pairs.
-fn clip_line(poly: &[DVec2], o: DVec2, dir: DVec2) -> Vec<(f64, f64)> {
+pub fn clip_line(poly: &[DVec2], o: DVec2, dir: DVec2) -> Vec<(f64, f64)> {
     let n = poly.len();
     let mut ts = Vec::new();
     for i in 0..n {

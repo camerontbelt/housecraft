@@ -1176,7 +1176,9 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
             | Tool::Fence
             | Tool::GardenBed
             | Tool::SteppingStones
-            | Tool::Stream => pending.push(p),
+            | Tool::Stream
+            | Tool::Deck
+            | Tool::RaisedPlatform => pending.push(p),
             Tool::Plant(form) => commands.push(Command::AddPlant {
                 floor,
                 at: pt(p),
@@ -1434,6 +1436,19 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 points: pending.iter().map(|p| pt(*p)).collect(),
                 arc: None,
                 label: None,
+            });
+        }
+        return;
+    }
+    if finish && matches!(tool, Tool::Deck | Tool::RaisedPlatform) {
+        let pending = std::mem::take(&mut app.plan.pending);
+        if pending.len() >= 3 {
+            commands.push(Command::AddDeck {
+                floor,
+                points: pending.iter().map(|p| pt(*p)).collect(),
+                height: None,
+                platform: tool == Tool::RaisedPlatform,
+                curved: false,
             });
         }
         return;

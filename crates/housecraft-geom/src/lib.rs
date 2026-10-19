@@ -6,6 +6,7 @@
 
 pub mod boolean;
 pub mod cabinets;
+pub mod deck;
 pub mod electrical;
 pub mod framing;
 pub mod math;

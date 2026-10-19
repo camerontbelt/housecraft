@@ -473,6 +473,18 @@ pub enum Command {
         #[serde(default)]
         ceiling: bool,
     },
+    /// Add a deck (or with `platform`, a raised floor platform) with
+    /// typical sizes; `height` is the top above the floor (default: 8"
+    /// below it for decks, 12" above for platforms).
+    AddDeck {
+        floor: Option<Id>,
+        points: Vec<Point2>,
+        height: Option<Length>,
+        #[serde(default)]
+        platform: bool,
+        #[serde(default)]
+        curved: bool,
+    },
     /// Draw a wall's framing (seen from outside) as a new CAD detail.
     WallFramingDetail { wall: Id },
     /// Draw a lot from a survey's bearings and distances, starting at
@@ -937,6 +949,7 @@ impl Command {
             Command::AddJoistDirection { .. } => "add_joist_direction",
             Command::TrussDetail { .. } => "truss_detail",
             Command::WallFramingDetail { .. } => "wall_framing_detail",
+            Command::AddDeck { .. } => "add_deck",
             Command::AddPlotLines { .. } => "add_plot_lines",
             Command::SitePlanDetail { .. } => "site_plan_detail",
             Command::AddSiteFeature { .. } => "add_site_feature",
@@ -2065,6 +2078,21 @@ impl Command {
                 let (name, shapes, texts) = crate::framing::truss_detail(doc, *member)?;
                 let more = Command::AddCadDetail { name, shapes, texts }.apply(doc)?;
                 out.created.extend(more.created);
+            }
+            Command::AddDeck { floor, points, height, platform, curved } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                if points.len() < 3 {
+                    return invalid("a deck needs at least three corners");
+                }
+                let layer = d.layers.framing.unwrap_or(d.layers.cad);
+                let mut dk = if *platform {
+                    Deck::platform(floor, layer, points.clone(), height.unwrap_or(Length::from_inches(12.0)))
+                } else {
+                    Deck::new(floor, layer, points.clone(), height.unwrap_or(Length::from_inches(-8.0)))
+                };
+                dk.layer = d.layers.cad;
+                dk.curved = *curved;
+                out.created.push(doc.insert(dk));
             }
             Command::WallFramingDetail { wall } => {
                 let (name, shapes, texts) = crate::framing::wall_detail(doc, *wall)?;

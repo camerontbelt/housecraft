@@ -395,6 +395,44 @@ pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
         let stock = (8..=24).step_by(2).map(|s| s as f64).find(|s| *s + 1e-6 >= ft).unwrap_or(ft.ceil());
         t.add("Framing", format!("{} x {}'", m.size_name(), stock), Measure::Count, 1.0, m.id);
     }
+    // Decks: decking, framing from stock lengths, posts, footings, railing.
+    for dk in doc.iter::<Deck>().filter(|d| on_floor(d.floor) && shown(d.id)) {
+        let Some(parts) = housecraft_geom::deck::parts(doc, dk) else {
+            continue;
+        };
+        let area = housecraft_geom::math::signed_area(&parts.outline).abs();
+        let what = if dk.platform { "Platform" } else { "Deck" };
+        if dk.platform {
+            t.add("Decks", "Platform subfloor", Measure::Area, area, dk.id);
+        } else {
+            let run: f64 = parts
+                .planks
+                .iter()
+                .map(|p| p.windows(2).map(|w| w[0].distance(w[1])).fold(0.0, f64::max))
+                .sum();
+            t.add("Decks", format!("Deck plank {} wide", fmt(dk.plank_width)), Measure::Length, run, dk.id);
+            t.add("Decks", "Decking area", Measure::Area, area, dk.id);
+        }
+        for m in &parts.members {
+            match m.role {
+                FramingRole::Footing => t.add("Decks", format!("{what} footing"), Measure::Count, 1.0, dk.id),
+                FramingRole::Post => t.add("Decks", format!("{what} post 6x6 x {}'", (m.a.distance(m.b) / 304.8).ceil().max(4.0)), Measure::Count, 1.0, dk.id),
+                // Rims and ledgers by run (curved decks have many short pieces).
+                FramingRole::RimJoist | FramingRole::Ledger => {
+                    let size = format!("2x{}", (m.depth / 25.4 + 0.75).round());
+                    t.add("Decks", format!("{what} {} {size}", m.role.name().to_lowercase()), Measure::Length, m.a.distance(m.b), dk.id);
+                }
+                _ => {
+                    let ft = m.a.distance(m.b) / 304.8;
+                    let stock = (8..=20).step_by(2).map(|s| s as f64).find(|s| *s + 1e-6 >= ft).unwrap_or(ft.ceil());
+                    let size = if m.role == FramingRole::Beam { "2-ply 2x10".to_string() } else { format!("2x{}", (m.depth / 25.4 + 0.75).round()) };
+                    t.add("Decks", format!("{what} {} {size} x {stock}'", m.role.name().to_lowercase()), Measure::Count, 1.0, dk.id);
+                }
+            }
+        }
+        let rail: f64 = parts.rails.iter().map(|(a, b)| a.distance(*b)).sum();
+        t.add("Decks", format!("Deck railing {} high", fmt(dk.railing_height)), Measure::Length, rail, dk.id);
+    }
     for p in doc.iter::<Plant>().filter(|p| on_floor(p.floor) && shown(p.id)) {
         t.add("Plants", p.name.clone(), Measure::Count, 1.0, p.id);
     }
