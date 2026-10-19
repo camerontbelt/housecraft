@@ -1191,6 +1191,17 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                 None,
                 mesh,
             );
+            // Newel posts: at the ends, every `newel_spacing`, and where asked.
+            for u in newel_positions(g.length, r.newel_spacing.map(|s| s.mm()), &wall.shape.newels) {
+                let c = g.start + g.dir * u;
+                let s = 45.0;
+                mesh.prism(
+                    &[c + DVec2::new(-s, -s), c + DVec2::new(s, -s), c + DVec2::new(s, s), c + DVec2::new(-s, s)],
+                    z0,
+                    h + 60.0,
+                    Surface::Railing,
+                );
+            }
             // Bottom rail so the balusters have something to stand on.
             let half = g.half.min(30.0);
             let n = g.left * half;
@@ -1203,8 +1214,55 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
             mesh.end();
             continue;
         }
-        for piece in g.pieces(&openings) {
-            mesh.prism(&piece, z0, z0 + height, wall_color);
+        let shape = &wall.shape;
+        let top = |u: f64| z0 + shape.top_at(u, height);
+        let breaks = shape.breaks();
+        let shared = crate::walls::shared_openings(doc, &geoms, g);
+        let niche_spans: Vec<(f64, f64)> = shape
+            .niches
+            .iter()
+            .map(|n| (n.position.mm() - n.width.mm() / 2.0, n.position.mm() + n.width.mm() / 2.0))
+            .collect();
+        let extra: Vec<(f64, f64)> = niche_spans.iter().copied().chain(shared.iter().map(|s| (s.0, s.1))).collect();
+        // A pony wall's lower type, flush with the exterior face.
+        let pony = shape.pony.as_ref().and_then(|p| {
+            doc.get::<housecraft_model::WallType>(p.lower_type).map(|t| (p.split.mm(), t.thickness().mm()))
+        });
+        let wall_bottom = pony.map_or(z0, |(split, _)| z0 + split);
+        for piece in g.pieces_with(&openings, &extra) {
+            wall_piece(mesh, g, &piece, wall_bottom, &top, &breaks, wall_color);
+            if let Some((split, lower)) = pony {
+                let us: Vec<f64> = piece.iter().map(|p| (*p - g.start).dot(g.dir)).collect();
+                let (ua, ub) = (us.iter().copied().fold(f64::MAX, f64::min), us.iter().copied().fold(f64::MIN, f64::max));
+                let q = vec![g.left_at(ua) - g.left * lower, g.left_at(ub) - g.left * lower, g.left_at(ub), g.left_at(ua)];
+                mesh.prism(&crate::walls::ccw_pub(q), z0, z0 + split, wall_color);
+            }
+        }
+        for n in &shape.niches {
+            let (a, b) = ((n.position.mm() - n.width.mm() / 2.0).max(0.0), (n.position.mm() + n.width.mm() / 2.0).min(g.length));
+            if b <= a {
+                continue;
+            }
+            let quad = vec![g.right_at(a), g.right_at(b), g.left_at(b), g.left_at(a)];
+            let (sill, head) = (z0 + n.sill.mm(), z0 + (n.sill + n.height).mm());
+            mesh.prism(&quad, z0, sill, wall_color);
+            wall_piece(mesh, g, &quad, head, &top, &breaks, wall_color);
+            // What is left behind the recess.
+            let d = n.depth.mm().min(2.0 * g.half - 10.0);
+            let back = if n.interior {
+                vec![g.right_at(a) + g.left * d, g.right_at(b) + g.left * d, g.left_at(b), g.left_at(a)]
+            } else {
+                vec![g.right_at(a), g.right_at(b), g.left_at(b) - g.left * d, g.left_at(a) - g.left * d]
+            };
+            mesh.prism(&back, sill, head, wall_color);
+        }
+        // Wall above and below the openings of a wall built back to back.
+        for (a, b, sill, h) in &shared {
+            let quad = vec![g.right_at(*a), g.right_at(*b), g.left_at(*b), g.left_at(*a)];
+            wall_piece(mesh, g, &quad, z0 + sill + h, &top, &breaks, wall_color);
+            if *sill > 0.0 {
+                mesh.prism(&quad, z0, z0 + sill, wall_color);
+            }
         }
         if let Some(f) = wall.footing {
             // Footing centred under the wall, running past each end by half its width.
@@ -1219,7 +1277,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
             let (a, b) = span_of(g, o);
             let quad = vec![g.right_at(a), g.right_at(b), g.left_at(b), g.left_at(a)];
             let head = z0 + (o.sill + o.height).mm();
-            mesh.prism(&quad, head, z0 + height, wall_color);
+            wall_piece(mesh, g, &quad, head, &top, &breaks, wall_color);
             if o.sill.mm() > 0.0 {
                 mesh.prism(&quad, z0, z0 + o.sill.mm(), wall_color);
             }
@@ -1470,6 +1528,87 @@ fn barrel_ceiling(poly: &[DVec2], zc: f64, rise: f64, mesh: &mut Mesh) {
         face.extend(pts.iter().rev().map(|p| DVec3::new(p.x, p.y, height(*p))));
         mesh.polygon(&face, Surface::Ceiling);
     }
+}
+
+/// Newel posts along a railing `len` long: both ends, every `spacing` at
+/// most, and any extra positions.
+pub fn newel_positions(len: f64, spacing: Option<f64>, extra: &[housecraft_units::Length]) -> Vec<f64> {
+    let mut us = vec![0.0, len];
+    if let Some(s) = spacing.filter(|s| *s > 100.0) {
+        let n = (len / s).ceil() as usize;
+        for i in 1..n {
+            us.push(len * i as f64 / n as f64);
+        }
+    }
+    if spacing.is_none() && extra.is_empty() {
+        return Vec::new();
+    }
+    us.extend(extra.iter().map(|u| u.mm().clamp(0.0, len)));
+    us.sort_by(f64::total_cmp);
+    us.dedup_by(|a, b| (*a - *b).abs() < 1.0);
+    us
+}
+
+/// One piece of wall from `zb` up to its top (`top(u)` at each distance
+/// along the wall), sliced where the top bends or steps.
+fn wall_piece(mesh: &mut Mesh, g: &WallGeom, piece: &[DVec2], zb: f64, top: &dyn Fn(f64) -> f64, breaks: &[f64], surface: Surface) {
+    let u_of = |p: DVec2| (p - g.start).dot(g.dir);
+    if breaks.is_empty() {
+        let zt = top(u_of(piece[0]));
+        mesh.prism(piece, zb, zt, surface);
+        return;
+    }
+    let us: Vec<f64> = piece.iter().map(|p| u_of(*p)).collect();
+    let (lo, hi) = (us.iter().copied().fold(f64::MAX, f64::min), us.iter().copied().fold(f64::MIN, f64::max));
+    let mut cuts = vec![lo];
+    cuts.extend(breaks.iter().copied().filter(|b| *b > lo + 0.5 && *b < hi - 0.5));
+    cuts.push(hi);
+    cuts.dedup_by(|a, b| (*a - *b).abs() < 0.5);
+    for w in cuts.windows(2) {
+        let (u0, u1) = (w[0], w[1]);
+        let slab = clip_u(&clip_u(piece, g, u0, true), g, u1, false);
+        if slab.len() < 3 {
+            continue;
+        }
+        // Inside the slab (so a step belongs to the side it is on).
+        let z_at = |p: DVec2| top(u_of(p).clamp(u0 + 1e-3, u1 - 1e-3));
+        let at = |p: DVec2, z: f64| DVec3::new(p.x, p.y, z);
+        let tops: Vec<f64> = slab.iter().map(|p| z_at(*p).max(zb)).collect();
+        if tops.iter().all(|z| *z - zb < 0.01) {
+            continue;
+        }
+        let top_face: Vec<DVec3> = slab.iter().zip(&tops).map(|(p, z)| at(*p, *z)).collect();
+        let bottom: Vec<DVec3> = slab.iter().rev().map(|p| at(*p, zb)).collect();
+        mesh.polygon(&top_face, surface);
+        mesh.polygon(&bottom, surface);
+        for i in 0..slab.len() {
+            let j = (i + 1) % slab.len();
+            if slab[i].distance(slab[j]) > 0.01 {
+                mesh.polygon(&[at(slab[i], zb), at(slab[j], zb), at(slab[j], tops[j]), at(slab[i], tops[i])], surface);
+            }
+        }
+    }
+}
+
+/// The part of `poly` with distance along `g` at least (`keep_above`) or at
+/// most `u`.
+fn clip_u(poly: &[DVec2], g: &WallGeom, u: f64, keep_above: bool) -> Vec<DVec2> {
+    let side = |p: DVec2| {
+        let d = (p - g.start).dot(g.dir) - u;
+        if keep_above { d } else { -d }
+    };
+    let mut out = Vec::new();
+    for i in 0..poly.len() {
+        let (a, b) = (poly[i], poly[(i + 1) % poly.len()]);
+        let (sa, sb) = (side(a), side(b));
+        if sa >= 0.0 {
+            out.push(a);
+        }
+        if (sa >= 0.0) != (sb >= 0.0) {
+            out.push(a + (b - a) * (sa / (sa - sb)));
+        }
+    }
+    out
 }
 
 fn span_of(g: &WallGeom, o: &Opening) -> (f64, f64) {

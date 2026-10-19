@@ -110,7 +110,8 @@ impl CadOpDialog {
     }
 }
 
-type LayerRow = (String, String, String);
+/// (name, thickness, material, main layer)
+type LayerRow = (String, String, String, bool);
 
 #[derive(Default)]
 pub struct WallTypesDialog {
@@ -1382,7 +1383,7 @@ fn wall_types_dialog(app: &mut App, ctx: &Context) {
                         sel.id,
                         sel.layers
                             .iter()
-                            .map(|l| (l.name.clone(), fmt(doc, l.thickness), l.material.clone()))
+                            .map(|l| (l.name.clone(), fmt(doc, l.thickness), l.material.clone(), l.main))
                             .collect(),
                     )
                 })
@@ -1399,13 +1400,15 @@ fn wall_types_dialog(app: &mut App, ctx: &Context) {
                     ui.strong("Name");
                     ui.strong("Thickness");
                     ui.strong("Material");
+                    ui.strong("Main").on_hover_text("Main (structural) layer: framing, ICF concrete, SIP core");
                     ui.end_row();
                     let n = rows.len();
-                    for (i, (name, thick, mat)) in rows.iter_mut().enumerate() {
+                    for (i, (name, thick, mat, main)) in rows.iter_mut().enumerate() {
                         ui.label((i + 1).to_string());
                         ui.add(egui::TextEdit::singleline(name).desired_width(120.0));
                         ui.add(egui::TextEdit::singleline(thick).desired_width(80.0));
                         ui.add(egui::TextEdit::singleline(mat).desired_width(120.0));
+                        ui.checkbox(main, "");
                         ui.horizontal(|ui| {
                             if ui.add_enabled(i > 0, egui::Button::new("↑")).clicked() {
                                 swap = Some((i, i - 1));
@@ -1428,13 +1431,14 @@ fn wall_types_dialog(app: &mut App, ctx: &Context) {
             }
             let parsed: Option<Vec<WallLayer>> = rows
                 .iter()
-                .map(|(name, thick, mat)| {
+                .map(|(name, thick, mat, main)| {
                     parse(doc, thick)
                         .filter(|l| l.mm() > 0.0)
                         .map(|thickness| WallLayer {
                             name: name.clone(),
                             thickness,
                             material: mat.clone(),
+                            main: *main,
                         })
                 })
                 .collect();
@@ -1442,7 +1446,7 @@ fn wall_types_dialog(app: &mut App, ctx: &Context) {
                 parsed.as_ref().map(|v| v.iter().map(|l| l.thickness).sum());
             ui.horizontal(|ui| {
                 if ui.button("Add layer").clicked() {
-                    rows.push(("New layer".into(), "1/2\"".into(), String::new()));
+                    rows.push(("New layer".into(), "1/2\"".into(), String::new(), false));
                 }
                 ui.separator();
                 match total {
@@ -1472,6 +1476,47 @@ fn wall_types_dialog(app: &mut App, ctx: &Context) {
                     dlg.edit = None;
                 }
             });
+            // Railing walls: rail height, balusters and newel posts.
+            ui.separator();
+            let mut railing = sel.railing;
+            let mut on = railing.is_some();
+            if ui.checkbox(&mut on, "This type is a railing (rail and balusters, not a solid wall)").changed() {
+                railing = on.then(Railing::default);
+            }
+            if let Some(r) = &mut railing {
+                egui::Grid::new("railing_type").num_columns(2).show(ui, |ui| {
+                    for (label, v) in [("Rail height", &mut r.height), ("Baluster spacing", &mut r.baluster_spacing)] {
+                        ui.label(label);
+                        let key = egui::Id::unique(("railing_type", sel.id, label));
+                        if let Some(l) = app.bufs.length(ui, doc, key, *v) {
+                            *v = l;
+                        }
+                        ui.end_row();
+                    }
+                    ui.label("Newels at most every");
+                    ui.horizontal(|ui| {
+                        let mut has = r.newel_spacing.is_some();
+                        if ui.checkbox(&mut has, "").changed() {
+                            r.newel_spacing = has.then(|| Length::from_feet(6.0));
+                        }
+                        if let Some(s) = &mut r.newel_spacing {
+                            let key = egui::Id::unique(("railing_type", sel.id, "newel"));
+                            if let Some(l) = app.bufs.length(ui, doc, key, *s) {
+                                *s = l;
+                            }
+                        } else {
+                            ui.weak("no newels");
+                        }
+                    });
+                    ui.end_row();
+                });
+            }
+            if railing != sel.railing {
+                commands.push(Command::Update {
+                    id: sel.id,
+                    set: json!({ "railing": railing }).as_object().cloned().unwrap_or_default(),
+                });
+            }
         });
     app.dialogs.wall_types.open = open;
     if !commands.is_empty() {

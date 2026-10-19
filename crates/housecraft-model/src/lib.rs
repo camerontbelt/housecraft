@@ -735,6 +735,7 @@ mod tests {
             footing: None,
             roof: Default::default(),
             renovation: Default::default(),
+            shape: Default::default(),
         });
         assert_eq!(doc.validate().len(), 2, "{:?}", doc.validate());
     }
@@ -755,6 +756,7 @@ mod tests {
             footing: None,
             roof: Default::default(),
             renovation: Default::default(),
+            shape: Default::default(),
         });
         doc.insert(Opening {
             id: Id(0),

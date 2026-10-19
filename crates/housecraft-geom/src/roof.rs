@@ -342,6 +342,7 @@ mod tests {
                     upper: None,
                 },
                 renovation: Default::default(),
+                shape: Default::default(),
             });
         }
         (doc, floor)

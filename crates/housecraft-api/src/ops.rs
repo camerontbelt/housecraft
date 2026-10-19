@@ -99,6 +99,7 @@ pub(crate) fn add_wall(
         footing: None,
         roof: Default::default(),
         renovation: Default::default(),
+        shape: Default::default(),
     }))
 }
 

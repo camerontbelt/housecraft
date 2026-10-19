@@ -60,6 +60,7 @@ fn foundation_wall_type(doc: &mut Document, thickness: Length, out: &mut Outcome
             name: "Concrete".into(),
             thickness,
             material: "Concrete".into(),
+            main: false,
         }],
         railing: None,
         cladding: None,
@@ -136,6 +137,7 @@ fn rebuild_walls(
             footing,
             roof: Default::default(),
             renovation: Default::default(),
+            shape: Default::default(),
         }));
     }
     true

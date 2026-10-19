@@ -80,6 +80,154 @@ fn fill_style_row(ui: &mut Ui, ed: &mut Ed<'_>, label: &str, field: &str, curren
     ui.end_row();
 }
 
+/// Pony wall, raked or stepped top, niches and newels of a wall.
+fn wall_shape_rows(ui: &mut Ui, ed: &mut Ed<'_>, w: &Wall) {
+    let doc = ed.doc;
+    let id = ed.id;
+    let mut shape = w.shape.clone();
+    let height = doc.wall_height(w).unwrap_or(Length::from_feet(8.0));
+    let len = w.length();
+    // Pony wall.
+    Ed::label(ui, "Pony Wall");
+    ui.vertical(|ui| {
+        let mut on = shape.pony.is_some();
+        if ui.checkbox(&mut on, "Lower part of another type").changed() {
+            shape.pony = on.then(|| PonyWall {
+                lower_type: doc.iter::<WallType>().find(|t| t.id != w.wall_type).map_or(w.wall_type, |t| t.id),
+                split: Length::from_feet(3.0),
+            });
+        }
+        if let Some(p) = &mut shape.pony {
+            ui.horizontal(|ui| {
+                ui.label("Lower type");
+                egui::ComboBox::from_id_salt(ed.key("pony_type"))
+                    .selected_text(doc.get::<WallType>(p.lower_type).map_or("?", |t| t.name.as_str()))
+                    .show_ui(ui, |ui| {
+                        for t in doc.iter::<WallType>() {
+                            ui.selectable_value(&mut p.lower_type, t.id, &t.name);
+                        }
+                    });
+            });
+            ui.horizontal(|ui| {
+                ui.label("Split at");
+                if let Some(l) = ed.bufs.length(ui, doc, ed.key("pony_split"), p.split) {
+                    p.split = l;
+                }
+            });
+        }
+    });
+    ui.end_row();
+    // Top: level, raked or stepped.
+    Ed::label(ui, "Top");
+    ui.vertical(|ui| {
+        let kind = match shape.top.len() {
+            0 => 0,
+            2 if shape.top[0].along != shape.top[1].along => 1,
+            _ => 2,
+        };
+        let mut pick = kind;
+        ui.horizontal(|ui| {
+            ui.radio_value(&mut pick, 0, "Level");
+            ui.radio_value(&mut pick, 1, "Raked");
+            ui.radio_value(&mut pick, 2, "Stepped");
+        });
+        if pick != kind {
+            shape.top = match pick {
+                1 => vec![TopPoint { along: Length::ZERO, height }, TopPoint { along: len, height: height + Length::from_feet(2.0) }],
+                2 => {
+                    let mid = Length::from_mm(len.mm() / 2.0);
+                    vec![
+                        TopPoint { along: Length::ZERO, height },
+                        TopPoint { along: mid, height },
+                        TopPoint { along: mid, height: height + Length::from_feet(2.0) },
+                        TopPoint { along: len, height: height + Length::from_feet(2.0) },
+                    ]
+                }
+                _ => Vec::new(),
+            };
+        }
+        match pick {
+            1 => {
+                for (i, label) in [(0, "Start height"), (1, "End height")] {
+                    ui.horizontal(|ui| {
+                        ui.label(label);
+                        if let Some(l) = ed.bufs.length(ui, doc, ed.key(&format!("rake{i}")), shape.top[i].height) {
+                            shape.top[i].height = l;
+                        }
+                    });
+                }
+                shape.top[1].along = len;
+            }
+            2 => {
+                ui.horizontal(|ui| {
+                    ui.label("Step at");
+                    if let Some(l) = ed.bufs.length(ui, doc, ed.key("step_at"), shape.top[1].along) {
+                        shape.top[1].along = l;
+                        shape.top[2].along = l;
+                    }
+                });
+                for (i, label) in [(0, "Height before"), (2, "Height after")] {
+                    ui.horizontal(|ui| {
+                        ui.label(label);
+                        if let Some(l) = ed.bufs.length(ui, doc, ed.key(&format!("step{i}")), shape.top[i].height) {
+                            shape.top[i].height = l;
+                            shape.top[i + 1].height = l;
+                        }
+                    });
+                }
+                shape.top[3].along = len;
+            }
+            _ => {}
+        }
+    });
+    ui.end_row();
+    // Niches.
+    Ed::label(ui, "Niches");
+    ui.vertical(|ui| {
+        let mut remove = None;
+        for (i, n) in shape.niches.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(format!("{}.", i + 1));
+                for (label, v) in [("at", &mut n.position), ("w", &mut n.width), ("h", &mut n.height), ("sill", &mut n.sill), ("deep", &mut n.depth)] {
+                    ui.label(label);
+                    if let Some(l) = ed.bufs.length(ui, doc, ed.key(&format!("niche{i}{label}")), *v) {
+                        *v = l;
+                    }
+                }
+                ui.checkbox(&mut n.interior, "inside");
+                if ui.small_button("✕").clicked() {
+                    remove = Some(i);
+                }
+            });
+        }
+        if let Some(i) = remove {
+            shape.niches.remove(i);
+        }
+        if ui.small_button("Add Niche").clicked() {
+            shape.niches.push(Niche {
+                position: Length::from_mm(len.mm() / 2.0),
+                width: Length::from_inches(24.0),
+                height: Length::from_inches(30.0),
+                sill: Length::from_inches(48.0),
+                depth: Length::from_inches(3.5),
+                interior: true,
+            });
+        }
+    });
+    ui.end_row();
+    if doc.get::<WallType>(w.wall_type).is_some_and(|t| t.railing.is_some()) {
+        Ed::label(ui, "Extra Newels At");
+        let text: String = shape.newels.iter().map(|l| fmt(doc, *l)).collect::<Vec<_>>().join(", ");
+        if let Some(t) = ed.bufs.text(ui, ed.key("newels"), &text, 200.0) {
+            shape.newels = t.split(',').filter_map(|s| crate::util::parse(doc, s.trim())).collect();
+        }
+        ui.end_row();
+    }
+    if shape != w.shape {
+        ed.out.push(patch(id, json!({ "shape": shape })));
+    }
+}
+
 /// A line's direction in the plan's angle format (bearing, azimuth…).
 fn direction_row(ui: &mut Ui, doc: &Document, a: Point2, b: Point2) {
     let (a, b) = (housecraft_api::geom::v2(a), housecraft_api::geom::v2(b));
@@ -466,6 +614,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 });
             }
             renovation_row(ui, ed, w.renovation);
+            wall_shape_rows(ui, ed, w);
             ed.pick::<Layer>(ui, "Layer", "layer", Some(w.layer), None);
             let d = doc.active_defaults();
             Ed::label(ui, "Roof");
@@ -2812,6 +2961,7 @@ fn platform_editor(ui: &mut Ui, ed: &mut Ed<'_>, f: &Floor) {
             name: "Layer".into(),
             thickness: Length::from_inches(0.5),
             material: String::new(),
+            main: false,
         });
         changed = true;
     }

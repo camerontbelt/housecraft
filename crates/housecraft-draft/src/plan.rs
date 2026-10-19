@@ -189,6 +189,11 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         let Some(wall) = doc.get::<Wall>(g.id) else {
             continue;
         };
+        // Openings of a wall built back to back cut this one too.
+        let shared: Vec<(f64, f64)> = housecraft_geom::walls::shared_openings(doc, &geoms, g)
+            .into_iter()
+            .map(|s| (s.0, s.1))
+            .collect();
         let look = ctx.look(wall.layer);
         if !look.visible || !opts.phase.shows(wall.renovation) {
             continue;
@@ -238,7 +243,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             }
         }
         if let (None, Some(fill)) = (railing, fill) {
-            for piece in g.pieces(&openings) {
+            for piece in g.pieces_with(&openings, &shared) {
                 match look.fill {
                     // The layer's fill replaces poché (not for new work in proposed plans).
                     Some(fs) if fill == Fill::Poche => crate::fills::fill_area(&mut out, Some(g.id), &piece, &fs, look.ink),
@@ -269,7 +274,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
                 },
             );
         }
-        for [a, b] in g.outline_segments(&openings) {
+        for [a, b] in g.outline_segments_with(&openings, &shared) {
             out.push(
                 Some(g.id),
                 Prim::Polyline {
@@ -278,6 +283,36 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
                     stroke: look.stroke,
                 },
             );
+        }
+        let edge = Stroke { width: look.stroke.width * 0.5, dash: &[2.0, 1.2], ..look.stroke };
+        // A pony wall's lower part shows as an edge line where it is wider.
+        if let Some(p) = &wall.shape.pony
+            && let Some(lower) = doc.get::<WallType>(p.lower_type)
+        {
+            let t = lower.thickness().mm();
+            if (t - 2.0 * g.half).abs() > 1.0 {
+                out.push(
+                    Some(g.id),
+                    Prim::Polyline { points: vec![g.left_at(0.0) - g.left * t, g.left_at(g.length) - g.left * t], closed: false, stroke: edge },
+                );
+            }
+        }
+        // Niches: the recess outlined in the face it is in.
+        for n in &wall.shape.niches {
+            let (a, b) = ((n.position.mm() - n.width.mm() / 2.0).max(0.0), (n.position.mm() + n.width.mm() / 2.0).min(g.length));
+            let d = n.depth.mm();
+            let (f0, f1, inward) = if n.interior { (g.right_at(a), g.right_at(b), g.left) } else { (g.left_at(a), g.left_at(b), -g.left) };
+            out.push(Some(g.id), Prim::Polyline { points: vec![f0, f0 + inward * d, f1 + inward * d, f1], closed: false, stroke: edge });
+        }
+        if let Some(r) = railing {
+            for u in housecraft_geom::mesh::newel_positions(g.length, r.newel_spacing.map(|s| s.mm()), &wall.shape.newels) {
+                let c = g.start + g.dir * u;
+                let s = 45.0;
+                out.push(
+                    Some(g.id),
+                    Prim::Polygon { points: vec![c + DVec2::new(-s, -s), c + DVec2::new(s, -s), c + DVec2::new(s, s), c + DVec2::new(-s, s)], fill: Fill::Ink(look.ink) },
+                );
+            }
         }
     }
 

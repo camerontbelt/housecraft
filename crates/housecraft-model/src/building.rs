@@ -83,6 +83,7 @@ pub fn default_platform() -> Vec<WallLayer> {
         name: name.into(),
         thickness: Length::from_inches(inches),
         material: material.into(),
+        main: false,
     };
     vec![
         layer("Finish floor", 0.75, "Hardwood"),
@@ -119,6 +120,9 @@ pub struct Railing {
     pub height: Length,
     /// Centre-to-centre baluster spacing.
     pub baluster_spacing: Length,
+    /// Newel posts at most this far apart (also at every end and corner).
+    #[serde(default)]
+    pub newel_spacing: Option<Length>,
 }
 
 impl Default for Railing {
@@ -126,6 +130,7 @@ impl Default for Railing {
         Railing {
             height: Length::from_inches(36.0),
             baluster_spacing: Length::from_inches(4.0),
+            newel_spacing: None,
         }
     }
 }
@@ -459,6 +464,19 @@ impl WallType {
             crate::WallReference::Center => 0.0,
             crate::WallReference::Exterior => -half,
             crate::WallReference::Interior => half,
+            crate::WallReference::Main if self.layers.iter().any(|l| l.main) => {
+                // The middle of the flagged main layers (several: ICF, SIP).
+                let mut at = 0.0;
+                let (mut lo, mut hi) = (f64::MAX, f64::MIN);
+                for l in &self.layers {
+                    if l.main {
+                        lo = lo.min(at);
+                        hi = hi.max(at + l.thickness.mm());
+                    }
+                    at += l.thickness.mm();
+                }
+                (lo + hi) / 2.0 - half
+            }
             crate::WallReference::Main => {
                 // The thickest layer; its middle measured from the exterior face.
                 let Some(main) = self
@@ -483,6 +501,9 @@ pub struct WallLayer {
     pub thickness: Length,
     #[serde(default)]
     pub material: String,
+    /// A main (structural) layer: framing, the concrete of ICF, a SIP core.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub main: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -505,6 +526,91 @@ pub struct Wall {
     pub roof: RoofEdge,
     #[serde(default)]
     pub renovation: Renovation,
+    /// Pony wall, sloped or stepped top, niches and newels.
+    #[serde(default, skip_serializing_if = "WallShape::is_plain")]
+    pub shape: WallShape,
+}
+
+/// A wall's shape beyond a straight, full-height run.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct WallShape {
+    /// A different wall type below `split` (e.g. concrete under framing).
+    pub pony: Option<PonyWall>,
+    /// The top of the wall along its length: heights at distances from the
+    /// start, joined by straight lines (two points: a raked wall; two points
+    /// at the same distance: a step). Empty: the wall's height throughout.
+    pub top: Vec<TopPoint>,
+    /// Recesses in one face.
+    pub niches: Vec<Niche>,
+    /// Extra newel posts on railings, at distances from the start.
+    pub newels: Vec<Length>,
+}
+
+impl WallShape {
+    pub fn is_plain(&self) -> bool {
+        *self == WallShape::default()
+    }
+
+    /// The wall's top height (above its floor) at `u` mm along it.
+    pub fn top_at(&self, u: f64, height: f64) -> f64 {
+        let pts = &self.top;
+        match pts.len() {
+            0 => height,
+            1 => pts[0].height.mm(),
+            _ => {
+                if u <= pts[0].along.mm() {
+                    return pts[0].height.mm();
+                }
+                for w in pts.windows(2) {
+                    let (a, b) = (w[0].along.mm(), w[1].along.mm());
+                    if u <= b {
+                        if b - a < 1e-6 {
+                            return w[1].height.mm();
+                        }
+                        let t = (u - a) / (b - a);
+                        return w[0].height.mm() + (w[1].height.mm() - w[0].height.mm()) * t;
+                    }
+                }
+                pts[pts.len() - 1].height.mm()
+            }
+        }
+    }
+
+    /// Distances along the wall where the top bends or steps.
+    pub fn breaks(&self) -> Vec<f64> {
+        self.top.iter().map(|p| p.along.mm()).collect()
+    }
+}
+
+/// The lower part of a pony wall.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct PonyWall {
+    pub lower_type: Id,
+    /// Height of the change from the lower to the upper wall type.
+    pub split: Length,
+}
+
+/// A point on a wall's top profile.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct TopPoint {
+    pub along: Length,
+    pub height: Length,
+}
+
+/// A recess in a wall face.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Niche {
+    /// Distance from the wall's start to the niche's centre.
+    pub position: Length,
+    pub width: Length,
+    pub height: Length,
+    /// Height of its bottom above the floor.
+    pub sill: Length,
+    pub depth: Length,
+    /// In the interior (right-hand) face; else the exterior face.
+    #[serde(default = "yes")]
+    pub interior: bool,
 }
 
 /// Per-wall roof settings; `None` values come from the default set.
@@ -951,4 +1057,21 @@ pub enum CeilingStyle {
     },
     /// A half-round vault along the room's long axis, rising `rise` at the middle.
     Barrel { rise: Length },
+}
+
+#[cfg(test)]
+mod wall_shape_tests {
+    use super::*;
+
+    #[test]
+    fn top_profile_rakes_and_steps() {
+        let pt = |a: f64, h: f64| TopPoint { along: Length::from_feet(a), height: Length::from_feet(h) };
+        let raked = WallShape { top: vec![pt(0.0, 8.0), pt(10.0, 12.0)], ..Default::default() };
+        assert!((raked.top_at(Length::from_feet(5.0).mm(), 0.0) - Length::from_feet(10.0).mm()).abs() < 1e-6);
+        let stepped = WallShape { top: vec![pt(0.0, 8.0), pt(5.0, 8.0), pt(5.0, 10.0), pt(10.0, 10.0)], ..Default::default() };
+        assert!((stepped.top_at(Length::from_feet(4.0).mm(), 0.0) - Length::from_feet(8.0).mm()).abs() < 1e-6);
+        assert!((stepped.top_at(Length::from_feet(6.0).mm(), 0.0) - Length::from_feet(10.0).mm()).abs() < 1e-6);
+        assert!(WallShape::default().is_plain());
+        assert_eq!(WallShape::default().top_at(1.0, 2438.4), 2438.4);
+    }
 }

@@ -49,7 +49,13 @@ impl WallGeom {
 
     /// Solid pieces of the wall, split around openings (counter-clockwise polygons).
     pub fn pieces(&self, openings: &[&Opening]) -> Vec<Vec<DVec2>> {
-        let spans = opening_spans(self, openings);
+        self.pieces_with(openings, &[])
+    }
+
+    /// [`WallGeom::pieces`], also leaving gaps at `extra` spans (niches,
+    /// openings of a wall built back to back with this one).
+    pub fn pieces_with(&self, openings: &[&Opening], extra: &[(f64, f64)]) -> Vec<Vec<DVec2>> {
+        let spans = merge_spans(opening_spans(self, openings), extra);
         let [sl, el, er, sr] = self.corners;
         let mut pieces = Vec::new();
         let mut left_start = sl;
@@ -78,8 +84,13 @@ impl WallGeom {
     /// Line segments that outline the wall in plan: both faces broken at
     /// openings, jambs at each opening, and caps on ends not joined to a wall.
     pub fn outline_segments(&self, openings: &[&Opening]) -> Vec<[DVec2; 2]> {
+        self.outline_segments_with(openings, &[])
+    }
+
+    /// [`WallGeom::outline_segments`] with gaps at `extra` spans too.
+    pub fn outline_segments_with(&self, openings: &[&Opening], extra: &[(f64, f64)]) -> Vec<[DVec2; 2]> {
         let [sl, el, er, sr] = self.corners;
-        let spans = opening_spans(self, openings);
+        let spans = merge_spans(opening_spans(self, openings), extra);
         let mut segs = Vec::new();
         let mut l0 = sl;
         let mut r0 = sr;
@@ -126,6 +137,50 @@ pub fn opening_spans(wall: &WallGeom, openings: &[&Opening]) -> Vec<(f64, f64)> 
         }
     }
     merged
+}
+
+/// `spans` plus `extra`, sorted and merged.
+fn merge_spans(mut spans: Vec<(f64, f64)>, extra: &[(f64, f64)]) -> Vec<(f64, f64)> {
+    spans.extend(extra.iter().copied().filter(|(a, b)| b > a));
+    spans.sort_by(|x, y| x.0.total_cmp(&y.0));
+    let mut merged: Vec<(f64, f64)> = Vec::new();
+    for s in spans {
+        match merged.last_mut() {
+            Some(last) if s.0 <= last.1 => last.1 = last.1.max(s.1),
+            _ => merged.push(s),
+        }
+    }
+    merged
+}
+
+/// A door or window of a wall built back to back with `g` (parallel, at
+/// most a foot apart), as a hole through `g` too: (start, end, sill, height).
+pub fn shared_openings(doc: &Document, geoms: &[WallGeom], g: &WallGeom) -> Vec<(f64, f64, f64, f64)> {
+    let mut out = Vec::new();
+    for h in geoms {
+        if h.id == g.id || h.dir.dot(g.dir).abs() < 0.999 {
+            continue;
+        }
+        let gap = (h.start - g.start).dot(g.left).abs() - g.half - h.half;
+        if !(-1.0..=305.0).contains(&gap) {
+            continue;
+        }
+        for o in doc.openings_in(h.id) {
+            let c = h.start + h.dir * o.position.mm();
+            let u = (c - g.start).dot(g.dir);
+            let half = o.width.mm() / 2.0;
+            let (a, b) = ((u - half).max(0.0), (u + half).min(g.length));
+            if b - a > 1.0 {
+                out.push((a, b, o.sill.mm(), o.height.mm()));
+            }
+        }
+    }
+    out
+}
+
+/// A polygon wound counter-clockwise.
+pub fn ccw_pub(poly: Vec<DVec2>) -> Vec<DVec2> {
+    ccw(poly)
 }
 
 fn ccw(mut poly: Vec<DVec2>) -> Vec<DVec2> {
@@ -292,6 +347,7 @@ mod tests {
             footing: None,
             roof: Default::default(),
             renovation: Default::default(),
+            shape: Default::default(),
         })
     }
 

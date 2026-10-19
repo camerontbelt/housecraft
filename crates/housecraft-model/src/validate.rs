@@ -143,6 +143,9 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
             Object::Wall(w) => {
                 c.reference(id, "floor", w.floor, K::Floor);
                 c.reference(id, "wall_type", w.wall_type, K::WallType);
+                if let Some(p) = &w.shape.pony {
+                    c.reference(id, "shape.pony.lower_type", p.lower_type, K::WallType);
+                }
                 c.reference(id, "layer", w.layer, K::Layer);
                 c.finite(id, "endpoints", &[w.start.mm(), w.end.mm()].concat());
                 if w.length().mm() < 1.0 {

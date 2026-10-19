@@ -166,21 +166,21 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | WL-01 | Draw/edit walls in 2D and 3D: interior, exterior, railing, pony, half, curved, angled, raked, stepped | P0 | M1 ✓ straight walls / M3 (rest) |
 | WL-02 | Layered wall types: wood, stucco, ICF, SIPS, glass, railings, partitions | P0 | M0 ✓ (layers) |
-| WL-03 | Pony walls (upper/lower types, caps, framing, edge line) | P2 | M3 |
+| WL-03 | Pony walls (upper/lower types, caps, framing, edge line) | P2 | M3 ◐ Wall specification > Pony Wall: a lower wall type below a split height, flush outside, with an edge line in plan; no cap or framing split yet |
 | WL-04 | Railings: newels, balusters, panels, handrails, shoe, offsets | P1 | M3 ◐ railing walls with rail, balusters, height, spacing; newels, panels, shoe later |
-| WL-05 | Newel positioning rules and manual newel editing | P2 | M3 |
-| WL-06 | Raked & stepped walls; stepped foundations | P2 | M3 |
+| WL-05 | Newel positioning rules and manual newel editing | P2 | M3 ◐ railing types place newels at the ends and at most every N; extra newels at typed positions; no dragging newels |
+| WL-06 | Raked & stepped walls; stepped foundations | P2 | M3 ◐ Wall specification > Top: raked (start/end heights) or stepped walls in 3D and views; stepped foundations not yet |
 | WL-07 | Wall type editor; layers feed materials list | P0 | M1 ✓ |
 | WL-08 | Match properties (wall to wall) | P1 | M1 ✓ Match Properties button on the edit toolbar: click other walls to copy type, height, layer and settings |
-| WL-09 | Multiple main (structural) layers for ICF/SIP connections | P2 | M3 |
-| WL-10 | Wall niches | P2 | M3 |
-| WL-11 | Partition walls (don't cut structural layers) | P2 | M3 |
+| WL-09 | Multiple main (structural) layers for ICF/SIP connections | P2 | M3 ◐ wall-type layers can be flagged Main (several for ICF/SIP); drawing along and dimension snapping use them; framing doesn't yet |
+| WL-10 | Wall niches | P2 | M3 ✓ Wall specification > Niches: recesses in either face with width, height, sill and depth (3D, plan outline) |
+| WL-11 | Partition walls (don't cut structural layers) | P2 | M3 ✓ walls meeting another wall stop at its surface, so they never cut its structural layers |
 | WL-12 | Remodel layers: new / existing / demolition | P1 | M3 ✓ |
 | WL-13 | Wall hatching (labels, copy/paste, shear wall marking) | P2 | M4 |
 | WL-14 | Wall definitions in library | P1 | M5 ✓ |
 | WL-15 | Corner boards & quoins (auto/manual) | P2 | M5 ✓ |
 | WL-16 | Wall material regions | P2 | M5 ✓ Wall Material Region tool (wainscot from two clicks, editable extents) |
-| WL-17 | Double walls (marriage/multi-family) incl. openings | P3 | M3 |
+| WL-17 | Double walls (marriage/multi-family) incl. openings | P3 | M3 ◐ walls built back to back (up to 1' apart) act as a double wall: openings cut through both; no single double-wall type |
 | WL-18 | Control which layer intersecting walls snap to | P1 | M1 ◐ Default Settings > Walls > Draw walls along: centre, exterior or interior surface, or main (framing) layer, with mitred corners; walls still join at centrelines |
 | WL-19 | Continuous wall draw mode | P0 | M1 ✓ |
 
@@ -229,7 +229,7 @@ These come from reading the whole list and change the architecture, not just the
 | DW-09 | Explode bay/box/bow into components | P3 | M3 |
 | DW-10 | Corner windows (with/without post) | P2 | M3 |
 | DW-11 | Mulled units; mulled doors recognized in schedules | P2 | M3 |
-| DW-12 | Openings in double walls | P3 | M3 |
+| DW-12 | Openings in double walls | P3 | M3 ✓ a door or window in either wall of a back-to-back pair cuts through both, in plan and 3D |
 | DW-13 | Custom plan symbols for symbol windows | P3 | M5 ✓ any CAD block as a window's plan symbol, stretched over the opening |
 | DW-14 | Custom muntins from CAD | P3 | M5 ✓ CAD > Make Window Grille from Selection; plus across × up grids |
 | DW-15 | Window treatments (curtains, blinds) | P3 | M5 ✓ curtains, blinds and roller shades with an open amount, in plan and 3D |

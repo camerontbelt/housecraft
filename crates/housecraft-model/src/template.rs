@@ -158,6 +158,7 @@ pub(crate) fn new_document(name: String) -> Document {
         name: name.into(),
         thickness: inch(inches),
         material: material.into(),
+        main: false,
     };
     let exterior = doc.insert(WallType {
         id: PLACEHOLDER,
