@@ -80,6 +80,73 @@ fn fill_style_row(ui: &mut Ui, ed: &mut Ed<'_>, label: &str, field: &str, curren
     ui.end_row();
 }
 
+/// A line's direction in the plan's angle format (bearing, azimuth…).
+fn direction_row(ui: &mut Ui, doc: &Document, a: Point2, b: Point2) {
+    let (a, b) = (housecraft_api::geom::v2(a), housecraft_api::geom::v2(b));
+    if a.distance(b) < 1e-6 {
+        return;
+    }
+    Ed::label(ui, "Direction");
+    let deg = (b - a).to_angle().to_degrees();
+    ui.label(housecraft_api::units::format_direction(deg, doc.settings.north, doc.settings.angle_format));
+    ui.end_row();
+}
+
+/// Object Information: code, description, manufacturer, comment and your
+/// own fields, for any object.
+pub fn info_editor(ui: &mut Ui, doc: &Document, bufs: &mut EditBuffers, id: Id, out: &mut Vec<Command>) {
+    let current = doc.settings.object_info.get(&id).cloned().unwrap_or_default();
+    let mut info = current.clone();
+    egui::CollapsingHeader::new("Object Information").id_salt(("info", id)).show(ui, |ui| {
+        egui::Grid::new(("info_grid", id)).num_columns(2).show(ui, |ui| {
+            for (label, field) in [
+                ("Code", &mut info.code),
+                ("Description", &mut info.description),
+                ("Manufacturer", &mut info.manufacturer),
+                ("Comment", &mut info.comment),
+            ] {
+                ui.label(label);
+                let key = egui::Id::unique(("info", id, label));
+                if let Some(t) = bufs.text(ui, key, field, 200.0) {
+                    *field = t;
+                }
+                ui.end_row();
+            }
+            let mut remove = None;
+            for (k, v) in info.custom.clone() {
+                ui.label(&k);
+                ui.horizontal(|ui| {
+                    let key = egui::Id::unique(("info_custom", id, k.clone()));
+                    if let Some(t) = bufs.text(ui, key, &v, 160.0) {
+                        info.custom.insert(k.clone(), t);
+                    }
+                    if ui.small_button("✕").on_hover_text("Remove this field").clicked() {
+                        remove = Some(k.clone());
+                    }
+                });
+                ui.end_row();
+            }
+            if let Some(k) = remove {
+                info.custom.remove(&k);
+            }
+        });
+        ui.horizontal(|ui| {
+            let key = egui::Id::unique(("info_new", id));
+            let mut name = ui.data_mut(|d| d.get_temp::<String>(key).unwrap_or_default());
+            ui.add(egui::TextEdit::singleline(&mut name).hint_text("New field name").desired_width(120.0));
+            if ui.add_enabled(!name.trim().is_empty(), egui::Button::new("Add Field")).clicked() {
+                info.custom.insert(name.trim().to_string(), String::new());
+                name.clear();
+            }
+            ui.data_mut(|d| d.insert_temp(key, name));
+        });
+        ui.weak("Use these in labels: {code} {description} {manufacturer} {comment} or {field name}.");
+    });
+    if info != current {
+        out.push(Command::SetObjectInfo { id, info: Some(info) });
+    }
+}
+
 fn patch(id: Id, v: Value) -> Command {
     Command::Update {
         id,
@@ -321,6 +388,10 @@ pub fn spec_windows(app: &mut App, ctx: &egui::Context) {
                     .num_columns(2)
                     .spacing([12.0, 6.0])
                     .show(ui, |ui| editor(ui, &mut ed, &object));
+                if object.kind().is_placed() || object.kind() == ObjectKind::Room {
+                    ui.separator();
+                    info_editor(ui, ed.doc, ed.bufs, id, &mut ed.out);
+                }
             });
         commands.extend(ed.out);
         if !open {
@@ -376,6 +447,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     anchor: LengthAnchor::Start,
                 });
             }
+            direction_row(ui, doc, w.start, w.end);
             ed.opt_length(ui, "Height", "height", w.height, doc.wall_height(w));
             if let Some(p) = ed.point(ui, "Start", "start", w.start) {
                 ed.out.push(Command::MoveWall {
@@ -2180,6 +2252,9 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ed.color(ui, "Line Color", "color", c.color, "By layer");
             ed.color(ui, "Fill", "fill", c.fill, "None");
             fill_style_row(ui, ed, "Pattern Fill", "fill_style", c.fill_style);
+            if let Shape::Line { a, b, .. } = &c.shape {
+                direction_row(ui, doc, *a, *b);
+            }
             ed.pick::<Layer>(ui, "Layer", "layer", Some(c.layer), None);
         }
         Object::Dimension(d) => {
@@ -2220,6 +2295,20 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 "text_override",
                 d.text_override.as_deref().unwrap_or(""),
             );
+            Ed::label(ui, "Dimension Style");
+            let mut st = d.style.clone();
+            egui::ComboBox::from_id_salt(ed.key("dim_style"))
+                .selected_text(st.clone().unwrap_or_else(|| "Default set's".into()))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut st, None, "Default set's");
+                    for s in &doc.settings.dimension_styles {
+                        ui.selectable_value(&mut st, Some(s.name.clone()), &s.name);
+                    }
+                });
+            if st != d.style {
+                ed.out.push(patch(id, json!({ "style": st })));
+            }
+            ui.end_row();
             ed.pick::<Layer>(ui, "Layer", "layer", Some(d.layer), None);
         }
         Object::Text(t) => {

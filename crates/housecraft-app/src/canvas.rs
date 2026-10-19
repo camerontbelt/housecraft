@@ -26,6 +26,8 @@ struct Cache {
     fills: Vec<(Vec<DVec2>, Vec<[usize; 3]>, Fill)>,
     regions: FloorRegions,
     targets: SnapTargets,
+    /// What the dimension tool snaps to (Default Settings > dimension locate).
+    dim_targets: SnapTargets,
 }
 
 #[derive(Debug, Clone)]
@@ -207,11 +209,19 @@ impl PlanState {
             floors.extend(opts.reference_floor_ids(doc));
             targets = SnapTargets::build(doc, &floors);
         }
+        let dim_targets = if self.sheet.is_some() {
+            let mut t = SnapTargets::build(doc, &floors);
+            t.add_drawing(&drawing);
+            t
+        } else {
+            SnapTargets::build_dims(doc, &floors)
+        };
         self.cache = Some(Cache {
             key,
             fills,
             regions: housecraft_api::geom::rooms::detect(doc, self.target()),
             targets,
+            dim_targets,
             drawing,
         });
     }
@@ -335,8 +345,11 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             }
             _ => None,
         });
-        let targets = &app.plan.cache.as_ref().expect("cache built").targets;
-        if app.plan.tool == Tool::Select && app.plan.drag.is_none() {
+        let cache = app.plan.cache.as_ref().expect("cache built");
+        let targets = if matches!(app.plan.tool, Tool::Dimension | Tool::AngularDimension) { &cache.dim_targets } else { &cache.targets };
+        // Holding Alt places freely, ignoring every snap.
+        let free = ui.input(|i| i.modifiers.alt);
+        if (app.plan.tool == Tool::Select && app.plan.drag.is_none()) || free {
             Snap {
                 point: c,
                 kind: SnapKind::Free,

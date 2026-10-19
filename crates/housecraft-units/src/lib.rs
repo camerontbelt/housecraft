@@ -554,3 +554,85 @@ mod tests {
         assert!(close(pt.y().feet(), 10.0));
     }
 }
+
+/// How angles and directions are shown.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AngleFormat {
+    /// 45.0°
+    #[default]
+    Decimal,
+    /// 45°00'00"
+    Dms,
+    /// Directions as surveyor's bearings: N 45°00'00" E.
+    Bearing,
+    /// Directions clockwise from north: 135°00'00".
+    Azimuth,
+}
+
+impl AngleFormat {
+    pub const ALL: [AngleFormat; 4] = [AngleFormat::Decimal, AngleFormat::Dms, AngleFormat::Bearing, AngleFormat::Azimuth];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            AngleFormat::Decimal => "Decimal degrees (45.0°)",
+            AngleFormat::Dms => "Degrees, minutes, seconds (45°00'00\")",
+            AngleFormat::Bearing => "Bearings (N 45°00'00\" E)",
+            AngleFormat::Azimuth => "Azimuth from north (135°00'00\")",
+        }
+    }
+}
+
+/// `deg` as degrees, minutes and seconds.
+pub fn format_dms(deg: f64) -> String {
+    let total = (deg.abs() * 3600.0).round() as i64;
+    let sign = if deg < 0.0 && total > 0 { "-" } else { "" };
+    format!("{sign}{}°{:02}'{:02}\"", total / 3600, total % 3600 / 60, total % 60)
+}
+
+/// An angle between two things (a sweep): decimal or DMS.
+pub fn format_sweep(deg: f64, f: AngleFormat) -> String {
+    match f {
+        AngleFormat::Decimal => format!("{deg:.1}°"),
+        _ => format_dms(deg),
+    }
+}
+
+/// A direction (`deg` counter-clockwise from east) with true north at
+/// `north` (degrees counter-clockwise from east).
+pub fn format_direction(deg: f64, north: f64, f: AngleFormat) -> String {
+    // Clockwise from north.
+    let az = (north - deg).rem_euclid(360.0);
+    match f {
+        AngleFormat::Decimal => format!("{:.1}°", deg.rem_euclid(360.0)),
+        AngleFormat::Dms => format_dms(deg.rem_euclid(360.0)),
+        AngleFormat::Azimuth => format_dms(az),
+        AngleFormat::Bearing => {
+            let (a, b, x) = if az <= 90.0 {
+                ("N", "E", az)
+            } else if az <= 180.0 {
+                ("S", "E", 180.0 - az)
+            } else if az <= 270.0 {
+                ("S", "W", az - 180.0)
+            } else {
+                ("N", "W", 360.0 - az)
+            };
+            format!("{a} {} {b}", format_dms(x))
+        }
+    }
+}
+
+#[cfg(test)]
+mod angle_tests {
+    use super::*;
+
+    #[test]
+    fn directions_format() {
+        // North up (90°): east is N 90° E, i.e. azimuth 90.
+        assert_eq!(format_direction(0.0, 90.0, AngleFormat::Bearing), "N 90°00'00\" E");
+        assert_eq!(format_direction(45.0, 90.0, AngleFormat::Bearing), "N 45°00'00\" E");
+        assert_eq!(format_direction(225.0, 90.0, AngleFormat::Bearing), "S 45°00'00\" W");
+        assert_eq!(format_direction(-90.0, 90.0, AngleFormat::Azimuth), "180°00'00\"");
+        assert_eq!(format_sweep(30.5, AngleFormat::Dms), "30°30'00\"");
+    }
+}

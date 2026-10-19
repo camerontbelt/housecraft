@@ -301,6 +301,8 @@ pub(crate) fn auto_dimensions(doc: &mut Document, d: &DefaultSet, floor: Id, out
                 offset: Length::from_inches(-12.0),
             },
             text_override: None,
+            auto: false,
+            style: None,
         }));
     }
 }

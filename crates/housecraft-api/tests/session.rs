@@ -2298,3 +2298,39 @@ fn standard_plan_views_have_their_own_sets() {
     let c = doc.iter::<PlanView>().find(|v| v.name == "Construction Plan").unwrap();
     assert_eq!(doc.get::<DefaultSet>(c.default_set).unwrap().labels.windows, "{size}");
 }
+
+#[test]
+fn auto_exterior_dimensions_follow_the_walls() {
+    let mut s = boxed();
+    s.apply(&[Command::AddExteriorDimensions { floor: None }]).unwrap();
+    let longest = |s: &Session| {
+        s.document()
+            .iter::<Dimension>()
+            .filter(|d| d.auto)
+            .filter_map(|d| match &d.geometry {
+                DimensionGeometry::Linear { points, .. } => {
+                    Some(points.iter().map(|p| p.1.mm()).fold(f64::MIN, f64::max))
+                }
+                _ => None,
+            })
+            .fold(f64::MIN, f64::max)
+    };
+    let before = longest(&s);
+    let w = walls(&s)[0].id; // the 30' west wall
+    s.apply(&[Command::SetWallLength { id: w, length: Length::from_feet(40.0), anchor: housecraft_api::LengthAnchor::Start }]).unwrap();
+    assert!(longest(&s) > before + 3000.0, "dimensions grew with the building");
+}
+
+#[test]
+fn object_info_and_dimension_styles() {
+    let mut s = boxed();
+    let w = walls(&s)[0].id;
+    let info = InfoFields { code: "W-1".into(), ..Default::default() };
+    s.apply(&[Command::SetObjectInfo { id: w, info: Some(info) }]).unwrap();
+    assert_eq!(s.document().settings.object_info[&w].code, "W-1");
+    let dims = s.document().active_defaults().dimensions.clone();
+    s.apply(&[Command::SetDimensionStyle { name: "Framing".into(), defaults: Some(dims) }]).unwrap();
+    assert_eq!(s.document().settings.dimension_styles.len(), 1);
+    s.apply(&[Command::SetDimensionStyle { name: "Framing".into(), defaults: None }]).unwrap();
+    assert!(s.document().settings.dimension_styles.is_empty());
+}

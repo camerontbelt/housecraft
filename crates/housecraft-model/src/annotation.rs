@@ -131,6 +131,13 @@ pub struct Dimension {
     /// Replaces the measured value; `{}` inside is replaced with the value.
     #[serde(default)]
     pub text_override: Option<String>,
+    /// Made by Auto Exterior Dimensions: rebuilt when the walls change.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub auto: bool,
+    /// Named dimension style (`settings.dimension_styles`); `None` uses the
+    /// default set's dimension defaults.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

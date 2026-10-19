@@ -256,6 +256,9 @@ pub struct DimensionDefaults {
     pub exterior_offset: Length,
     /// Values shorter than this are shown in inches only (e.g. 18" instead of 1'-6").
     pub inches_below: Length,
+    /// What the dimension tool snaps to.
+    #[serde(default)]
+    pub locate: DimLocate,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -338,6 +341,54 @@ pub struct DefaultSet {
     /// What room labels show under the room's name.
     #[serde(default)]
     pub room_labels: RoomLabelDefaults,
+    /// Named dimension style new dimensions use (`None`: `dimensions` above).
+    #[serde(default)]
+    pub dimension_style: Option<String>,
+}
+
+/// Which points of walls and openings the dimension tool snaps to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct DimLocate {
+    /// Wall surfaces (both faces).
+    pub surfaces: bool,
+    /// The faces of the main (framing) layer.
+    pub framing: bool,
+    /// Wall centrelines.
+    pub centers: bool,
+    /// Door and window sides and centres.
+    pub openings: bool,
+}
+
+impl Default for DimLocate {
+    fn default() -> Self {
+        DimLocate { surfaces: true, framing: true, centers: true, openings: true }
+    }
+}
+
+/// Named dimension defaults (a dimension style) kept in the plan.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct DimensionStyle {
+    pub name: String,
+    pub defaults: DimensionDefaults,
+}
+
+/// Object information: code, description, manufacturer, comment and any
+/// fields of your own (for labels, schedules and the materials list).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct InfoFields {
+    pub code: String,
+    pub description: String,
+    pub manufacturer: String,
+    pub comment: String,
+    pub custom: std::collections::BTreeMap<String, String>,
+}
+
+impl InfoFields {
+    pub fn is_empty(&self) -> bool {
+        self.code.is_empty() && self.description.is_empty() && self.manufacturer.is_empty() && self.comment.is_empty() && self.custom.is_empty()
+    }
 }
 
 /// The line of a wall the wall tools draw along.

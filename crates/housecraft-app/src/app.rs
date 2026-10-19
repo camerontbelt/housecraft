@@ -182,6 +182,11 @@ pub struct App {
     chord: Option<(String, f64)>,
     /// Size of the drawing area in points.
     pub view_px: egui::Vec2,
+    /// Active Layer Display Options shown in its own floating window.
+    layer_window: bool,
+    /// The Project Browser's filter text, and the item whose details show.
+    browser_filter: String,
+    browser_detail: Option<Id>,
     /// When the plan was last archived (app time, s) and its revision then.
     last_archive: (f64, u64),
     /// The name being typed in Save as Template.
@@ -235,6 +240,9 @@ impl App {
             chord: None,
             view_px: egui::Vec2::ZERO,
             last_archive: (0.0, 0),
+            layer_window: false,
+            browser_filter: String::new(),
+            browser_detail: None,
             template_name: None,
         };
         app.apply_theme(&cc.egui_ctx);
@@ -3265,20 +3273,137 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
 
     fn side_windows(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
+            ui.selectable_value(&mut self.side_tab, SideTab::Library, "Library");
             ui.selectable_value(
                 &mut self.side_tab,
                 SideTab::ProjectBrowser,
                 "Project Browser",
             );
             ui.selectable_value(&mut self.side_tab, SideTab::LayerDisplay, "Layer Display");
-            ui.selectable_value(&mut self.side_tab, SideTab::Library, "Library");
         });
         ui.separator();
         egui::ScrollArea::vertical().show(ui, |ui| match self.side_tab {
-            SideTab::ProjectBrowser => self.project_browser(ui),
-            SideTab::LayerDisplay => self.layer_display(ui),
+            SideTab::ProjectBrowser => {
+                ui.add(egui::TextEdit::singleline(&mut self.browser_filter).hint_text("Filter by name").desired_width(f32::INFINITY));
+                if self.browser_filter.trim().is_empty() {
+                    self.project_browser(ui);
+                } else {
+                    self.browser_matches(ui);
+                }
+                self.browser_details(ui);
+            }
+            SideTab::LayerDisplay if self.layer_window => {
+                ui.weak("Layer Display is in its own window.");
+                if ui.button("Dock It Here").clicked() {
+                    self.layer_window = false;
+                }
+            }
+            SideTab::LayerDisplay => {
+                if ui.button("Pop Out").on_hover_text("Show the layer options in a window you can move").clicked() {
+                    self.layer_window = true;
+                }
+                self.layer_display(ui);
+            }
             SideTab::Library => crate::library_view::show(self, ui),
         });
+    }
+
+    /// Everything in the plan whose name or description matches the filter.
+    fn browser_matches(&mut self, ui: &mut Ui) {
+        let q = self.browser_filter.trim().to_lowercase();
+        let found: Vec<housecraft_api::query::ObjectInfo> = housecraft_api::query::list_objects(self.doc(), None)
+            .into_iter()
+            .filter(|o| o.label.to_lowercase().contains(&q) || o.kind.name().contains(&q))
+            .take(200)
+            .collect();
+        if found.is_empty() {
+            ui.weak("Nothing matches.");
+        }
+        for o in found {
+            let resp = ui.selectable_label(self.browser_detail == Some(o.id), format!("{}  {}", o.kind.name(), o.label));
+            if resp.clicked() {
+                self.browser_detail = Some(o.id);
+                if o.kind.is_placed() {
+                    if let Some(f) = self.doc().floor_of(o.id) {
+                        self.plan.floor = f;
+                    }
+                    self.selection = vec![o.id];
+                    self.mode = Mode::Plan;
+                    self.plan.zoom_to_selection = true;
+                }
+            }
+            if resp.double_clicked() {
+                self.spec.push(o.id);
+            }
+        }
+    }
+
+    /// The Project Browser's Details pane for the item last clicked there.
+    fn browser_details(&mut self, ui: &mut Ui) {
+        let Some(id) = self.browser_detail.or_else(|| self.selection.first().copied()) else {
+            return;
+        };
+        let doc = self.doc();
+        let Some(object) = doc.object(id) else {
+            return;
+        };
+        ui.separator();
+        let mut open_it = false;
+        egui::CollapsingHeader::new("Details").default_open(true).show(ui, |ui| {
+            let info = housecraft_api::query::describe(doc, object);
+            egui::Grid::new("browser_details").num_columns(2).show(ui, |ui| {
+                ui.weak("Kind");
+                ui.label(info.kind.name());
+                ui.end_row();
+                ui.weak("Name");
+                ui.label(&info.label);
+                ui.end_row();
+                ui.weak("Id");
+                ui.label(format!("#{}", id.0));
+                ui.end_row();
+                if let Some(f) = doc.floor_of(id).and_then(|f| doc.get::<Floor>(f)) {
+                    ui.weak("Floor");
+                    ui.label(&f.name);
+                    ui.end_row();
+                }
+                if let Some(l) = doc.layer_of(id).and_then(|l| doc.get::<Layer>(l)) {
+                    ui.weak("Layer");
+                    ui.label(&l.name);
+                    ui.end_row();
+                }
+                if let Some(i) = doc.settings.object_info.get(&id) {
+                    for (k, v) in [("Code", &i.code), ("Description", &i.description), ("Manufacturer", &i.manufacturer)] {
+                        if !v.is_empty() {
+                            ui.weak(k);
+                            ui.label(v);
+                            ui.end_row();
+                        }
+                    }
+                }
+            });
+            open_it = ui.button("Open Object").clicked();
+        });
+        if open_it {
+            self.spec.push(id);
+        }
+    }
+
+    /// Active Layer Display Options as a floating window (after Pop Out).
+    fn layer_window(&mut self, ctx: &egui::Context) {
+        if !self.layer_window {
+            return;
+        }
+        let mut open = true;
+        egui::Window::new("Active Layer Display Options")
+            .open(&mut open)
+            .resizable(true)
+            .default_width(300.0)
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| self.layer_display(ui));
+            });
+        if !open {
+            self.layer_window = false;
+        }
     }
 
     fn project_browser(&mut self, ui: &mut Ui) {
@@ -3961,6 +4086,7 @@ impl eframe::App for App {
             ctx.request_repaint_after(std::time::Duration::from_secs(60));
         }
         self.template_dialog(&ctx);
+        self.layer_window(&ctx);
         // Open plans dropped onto the window.
         let dropped: Option<PathBuf> = ctx.input(|i| {
             i.raw.dropped_files.iter().find_map(|f| {

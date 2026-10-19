@@ -210,10 +210,10 @@ pub(crate) fn draw_dimension(
                 Some(id),
                 Prim::Text {
                     at: c + DVec2::from_angle(mid) * (r + s.text_height * 0.9),
-                    text: dim.text_override.clone().map_or_else(
-                        || format!("{sweep:.1}°"),
-                        |t| t.replace("{}", &format!("{sweep:.1}°")),
-                    ),
+                    text: {
+                        let a = housecraft_units::format_sweep(sweep, doc.settings.angle_format);
+                        dim.text_override.clone().map_or_else(|| a.clone(), |t| t.replace("{}", &a))
+                    },
                     height: s.text_height,
                     rotation: 0.0,
                     justify: Justify::Center,

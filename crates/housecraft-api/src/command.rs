@@ -789,6 +789,13 @@ pub enum Command {
     /// Type an object's own label (replacing its kind's template from the
     /// default set; "-" hides it), or `None` to go back to the template.
     SetObjectLabel { id: Id, text: Option<String> },
+    /// Show angles as decimal degrees, DMS, bearings or azimuths.
+    SetAngleFormat { format: housecraft_units::AngleFormat },
+    /// Set an object's information fields (`None` clears them).
+    SetObjectInfo { id: Id, info: Option<InfoFields> },
+    /// Add or replace the named dimension style `name` (`defaults` None
+    /// deletes it; dimensions using it fall back to their default set's).
+    SetDimensionStyle { name: String, defaults: Option<DimensionDefaults> },
     /// Add the standard plan views — Electrical, Framing, Kitchen & Bath,
     /// Construction and Site — each with its own default set and layer set
     /// copied from the current ones (views that exist are left alone).
@@ -1104,6 +1111,9 @@ impl Command {
             Command::ImportDrawing { .. } => "import_drawing",
             Command::SetLineType { .. } => "set_line_type",
             Command::AddStandardPlanViews => "add_standard_plan_views",
+            Command::SetAngleFormat { .. } => "set_angle_format",
+            Command::SetObjectInfo { .. } => "set_object_info",
+            Command::SetDimensionStyle { .. } => "set_dimension_style",
             Command::DeleteLineType { .. } => "delete_line_type",
             Command::AddPlanView { .. } => "add_plan_view",
             Command::AddCamera { .. } => "add_camera",
@@ -2777,6 +2787,8 @@ impl Command {
                     layer: layer.unwrap_or(dim_layer),
                     geometry: geometry.clone(),
                     text_override: text_override.clone(),
+                    auto: false,
+                    style: doc.defaults_for(floor).dimension_style.clone(),
                 }));
             }
             Command::AddExteriorDimensions { floor } => {
@@ -2814,6 +2826,33 @@ impl Command {
                 }));
             }
             Command::AddStandardPlanViews => ops::standard_plan_views(doc, &mut out)?,
+            Command::SetAngleFormat { format } => doc.settings.angle_format = *format,
+            Command::SetObjectInfo { id, info } => {
+                if doc.object(*id).is_none() {
+                    return Err(ApiError::NotFound(*id));
+                }
+                match info {
+                    Some(i) if !i.is_empty() => doc.settings.object_info.insert(*id, i.clone()),
+                    _ => doc.settings.object_info.remove(id),
+                };
+                out.modified.push(*id);
+            }
+            Command::SetDimensionStyle { name, defaults } => {
+                let name = name.trim();
+                if name.is_empty() {
+                    return invalid("a dimension style needs a name");
+                }
+                let styles = &mut doc.settings.dimension_styles;
+                let at = styles.iter().position(|s| s.name == name);
+                match (defaults, at) {
+                    (Some(d), Some(i)) => styles[i].defaults = d.clone(),
+                    (Some(d), None) => styles.push(DimensionStyle { name: name.to_string(), defaults: d.clone() }),
+                    (None, Some(i)) => {
+                        styles.remove(i);
+                    }
+                    (None, None) => return invalid(format!("no dimension style {name:?}")),
+                }
+            }
             Command::SetLineType { index, line_type } => {
                 if line_type.pattern.iter().any(|v| !(v.is_finite() && *v >= 0.0)) || !line_type.pattern.len().is_multiple_of(2) {
                     return invalid("a dash pattern is pairs of non-negative lengths (on, off, …)");

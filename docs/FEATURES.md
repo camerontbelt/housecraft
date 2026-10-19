@@ -157,7 +157,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-09 | Raised floor platforms (auto-framed) | P2 | M6 ✓ Raised Platform tool: a solid floor framed on joists |
 | RM-10 | Conditioned/unconditioned spaces → insulation in materials list | P2 | M4 |
 | RM-11 | Multi-select edit rooms (type, vaulted, heights, platform) | P1 | M3 ✓ |
-| RM-12 | Object Information Panel (custom fields) for rooms | P1 | M1 |
+| RM-12 | Object Information Panel (custom fields) for rooms | P1 | M1 ✓ Object Information in every placed object's and room's specification: code, description, manufacturer, comment and your own fields |
 | RM-13 | Room label dimension formats | P1 | M1 ✓ Default Settings > Rooms: labels show area, size (rounded or exact) and ceiling height |
 
 ## 6. Walls
@@ -336,7 +336,7 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-05 | Point-to-point move/copy/resize | P0 | M1 ✓ |
 | CAD-06 | Detailing primitives: cross box, blocking box, insulation | P1 | M4 ✓ |
 | CAD-07 | Convert 2D CAD into smart objects (solids, moldings, counters, slabs, roads, terrain, …) | P2 | M4 |
-| CAD-08 | Multiple copy at preset increments | P1 | M1 |
+| CAD-08 | Multiple copy at preset increments | P1 | M1 ✓ Multiple Copy repeats a move N times; Rotate with copies makes a circular array |
 | CAD-09 | 3D solids and faces; extrude/revolve; polyline boolean ops | P2 | M5 ✓ CAD > Shapes and Solids: join, intersect and subtract closed shapes; extrude or revolve them into 3D solids |
 | CAD-10 | 3D solid tool with defaults | P2 | M5 ✓ 3D Solid tool draws a box, cylinder, cone or sphere; shape, height and colour in Default Settings |
 | CAD-11 | Solid booleans across plan/elevation; fillet/chamfer solid edges | P3 | M5 ◐ cut shapes before extruding (plan booleans); no 3D solid booleans or edge fillets yet |
@@ -362,7 +362,7 @@ These come from reading the whole list and change the architecture, not just the
 | LY-06 | Reference displays: multiple reference floors/layer sets, draw order | P1 | M3 ◐ several reference floors; reference layer sets and draw order later |
 | LY-07 | Reference display from other plan files (2D and 3D ghosting) | P2 | M8 |
 | LY-08 | 3D reference display styles | P3 | M7 ✓ 3D view Display menu: show, ghost (faint, see-through, not clickable) or hide each kind of object; Framing Overview ghosts walls and roofs |
-| LY-09 | Dockable layer display options panel | P1 | GUI |
+| LY-09 | Dockable layer display options panel | P1 | GUI ✓ Layer Display tab in the right dock, or Pop Out into a floating window and Dock It Here again |
 
 ## 15. Dimensions
 
@@ -371,9 +371,9 @@ These come from reading the whole list and change the architecture, not just the
 | DIM-01 | Baseline, running, centerline, angular, end-to-end, interior, point-to-point, temporary dimensions; one-click exterior | P0 | M1 ◐ point-to-point/running chains, angular, temporary, auto exterior; baseline, centerline, auto interior later |
 | DIM-02 | Dimensions in 3D views | P2 | M7 ✓ 3D > Notes and Dimensions: click two points on the model; kept per camera |
 | DIM-03 | Move objects by editing dimensions; arithmetic in inputs | P0 | M1 ◐ arithmetic everywhere, wall/line length via temporary dimension; moving by any placed dimension later |
-| DIM-04 | Auto exterior dimensions with auto-refresh | P1 | M1 |
+| DIM-04 | Auto exterior dimensions with auto-refresh | P1 | M1 ✓ Auto Exterior Dimensions are marked automatic and rebuilt whenever that floor's walls or openings change |
 | DIM-05 | Wall length editing via dimensions; type exact length while drawing | P0 | M1 ✓ |
-| DIM-06 | Dimension snapping rules; hotkey override | P1 | M1 |
+| DIM-06 | Dimension snapping rules; hotkey override | P1 | M1 ✓ Default Settings > Text and Dimensions: dimension tool snaps to wall surfaces, framing, centres and opening edges as chosen; hold Alt to snap to nothing |
 | DIM-07 | Column/bubble grid lines with auto labeling | P2 | M4 |
 | DIM-08 | Units/accuracy (to 1/128" or 0.0078125), text and arrow styles | P0 | M0 ✓ / M1 ✓ |
 | DIM-09 | Dimension defaults table editor | P2 | GUI |
@@ -384,7 +384,7 @@ These come from reading the whole list and change the architecture, not just the
 | DIM-14 | Rotatable dimension text | P2 | M1 |
 | DIM-15 | Laser distance meter (Bluetooth) input | P3 | M8 |
 | DIM-16 | Auto elevation dimensions in elevation/section views | P2 | M4 |
-| DIM-17 | Multiple named dimension defaults | P1 | M1 |
+| DIM-17 | Multiple named dimension defaults | P1 | M1 ✓ named dimension styles saved in the plan; each dimension and each default set can pick one |
 | DIM-18 | Per-tool locate defaults | P2 | M1 |
 | DIM-19 | Multiple auto-dimension defaults | P2 | M4 |
 | DIM-20 | Inner/outer auto-dimension controls | P2 | M4 |
@@ -411,7 +411,7 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | SITE-01 | North pointer, sun angles from lat/long/date/time; 2D and 3D shadows | P1 | M3 ✓ |
 | SITE-02 | Copy sun angles for studies | P3 | M7 ✓ a camera can keep its own sun angle (sun studies) |
-| SITE-03 | Bearing/angle display formats (azimuth, quadrant, DMS) | P1 | M1 |
+| SITE-03 | Bearing/angle display formats (azimuth, quadrant, DMS) | P1 | M1 ◐ Preferences > Angles: decimal, DMS, bearings or azimuth for angular dimensions and line/wall directions; plot-plan labels keep the bearing as typed |
 | SITE-04 | Terrain model from elevation data: smoothing, triangulation, skirt, contours | P2 | M6 ✓ terrain from elevation data: trend plane plus distance blending, smoothing passes, building cut-out, skirt, contours |
 | SITE-05 | Plot plans, site plans, subdivisions from bearings, distances and setbacks | P2 | M6 ◐ Terrain > Plot Plan from Bearings: lot lines from bearings and distances, labelled, with a setback line; no multi-lot subdivisions |
 | SITE-06 | Terrain import: text/GPS/GPX, DWG/DXF | P2 | M6 ◐ text/CSV x,y,z and GPX survey points; no DWG/DXF terrain import |
@@ -498,7 +498,7 @@ These come from reading the whole list and change the architecture, not just the
 | EST-01 | Auto materials list (equipment, unit cost, markup, labor); plan / room / area scope; live update | P1 | M4 ◐ take-off with unit prices and markup, whole plan or floor; labor and room/area scope later |
 | EST-02 | Master materials list (pricing master data) | P2 | M4 |
 | EST-03 | Find in plan from materials list | P1 | M4 ✓ |
-| EST-04 | Per-object code/comment/description/manufacturer fields | P1 | M1 |
+| EST-04 | Per-object code/comment/description/manufacturer fields | P1 | M1 ◐ Object Information fields on any object, usable in labels ({code}, {description}…); not yet columns in schedules or the materials list |
 | EST-05 | Object components panel (calculation methods) | P2 | M4 |
 | EST-06 | Layer-based inclusion | P1 | M4 ✓ |
 | EST-07 | Scripted formulas (Rhai/Lua; CA uses Ruby) | P2 | M8 |
@@ -536,7 +536,7 @@ These come from reading the whole list and change the architecture, not just the
 | TXT-11 | Per-view label hide (X18+) | P2 | M1 |
 | TXT-12 | Auto labels for layout boxes | P2 | M4 |
 | TXT-13 | Text styles per layer/default/object | P0 | M1 ✓ |
-| TXT-14 | Default sets for annotation | P1 | M1 |
+| TXT-14 | Default sets for annotation | P1 | M1 ✓ default sets carry the text style, dimension defaults or style, label templates and layers for annotation; plan views and camera default sets pick them |
 | TXT-15 | Annotations on 3D views | P2 | M7 ✓ 3D > Notes and Dimensions: notes pinned to the model, shown for one camera or all |
 | TXT-16 | Numbered notes with schedule; note markers in 3D | P2 | M4 |
 | TXT-17 | Spell check | P3 | GUI |
@@ -604,6 +604,6 @@ These come from reading the whole list and change the architecture, not just the
 | UI-24 | Document tabs for open views (Dashboard, plan, 3D, layouts) under the toolbars | P1 | GUI ◐ tab strip under the toolbars for the plan, 3D views and layout pages, with close buttons; no Dashboard tab |
 | UI-25 | Plan canvas stays white with a light lavender grid in every theme; red X / blue Y origin marker | P1 | GUI ✓ plans stay on white paper in every theme (Preferences toggle), with lavender grid and red X / blue Y origin |
 | UI-26 | Typed Tool Search box in the top toolbar; floor stepper (down, floor number, up) beside the plan-view list | P1 | GUI ✓ Tool Search box and floor stepper (down, number, up) in the top toolbar |
-| UI-27 | Right dock order Library, Project Browser, Active Layer Display; Project Browser with filter box, Project Folders / Projects tree, Details and Preview panes | P1 | GUI |
+| UI-27 | Right dock order Library, Project Browser, Active Layer Display; Project Browser with filter box, Project Folders / Projects tree, Details and Preview panes | P1 | GUI ◐ right dock order Library, Project Browser, Layer Display; browser filter box and Details pane; no Project Folders tree or preview |
 | UI-28 | Status bar: hint, current tool [hotkey], floor, layer, drawing group, live X/Y/Z, view size in pixels | P1 | GUI ◐ status bar shows hint, tool [hotkey], floor, layer, X/Y/Z and view size in pixels; no drawing groups yet |
 | UI-29 | Account menu before Help; left dock titled "Tool Palette" | P2 | GUI |

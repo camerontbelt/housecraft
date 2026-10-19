@@ -894,20 +894,31 @@ fn notes(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
         if !look.visible {
             continue;
         }
+        // A named dimension style overrides the default set's dimension defaults.
+        let styled;
+        let defaults = match dim.style.as_ref().and_then(|n| doc.settings.dimension_styles.iter().find(|s| &s.name == n)) {
+            Some(st) => {
+                let mut d = ctx.defaults.clone();
+                d.dimensions = st.defaults.clone();
+                styled = d;
+                &styled
+            }
+            None => ctx.defaults,
+        };
         let ts = ctx
             .doc
-            .get::<TextStyle>(ctx.defaults.dimensions.text_style)
+            .get::<TextStyle>(defaults.dimensions.text_style)
             .cloned()
             .unwrap_or_else(|| ctx.text_style(None, &look));
         let style = DimStyle {
             stroke: look.stroke,
             ink: ts.color.map_or(look.ink, Ink::Color),
             text_height: ts.height.mm(),
-            arrow: ctx.defaults.dimensions.arrow,
-            gap: ctx.defaults.dimensions.extension_gap.mm(),
-            overshoot: ctx.defaults.dimensions.extension_overshoot.mm(),
+            arrow: defaults.dimensions.arrow,
+            gap: defaults.dimensions.extension_gap.mm(),
+            overshoot: defaults.dimensions.extension_overshoot.mm(),
         };
-        draw_dimension(doc, ctx.defaults, dim, &style, out);
+        draw_dimension(doc, defaults, dim, &style, out);
     }
 
     for text in doc.iter::<Text>().filter(|t| t.floor == sheet) {

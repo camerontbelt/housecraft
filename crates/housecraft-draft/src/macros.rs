@@ -22,7 +22,10 @@ pub const OBJECT_MACROS: &[(&str, &str)] = &[
     ("size", "Width and height as feet-inch digits, e.g. 3040"),
     ("kind", "What it is (door, cabinet…)"),
     ("type", "Its type or style"),
-    ("code", "Cabinet code"),
+    ("code", "Code (Object Information, else the cabinet code)"),
+    ("description", "Description (Object Information)"),
+    ("manufacturer", "Manufacturer (Object Information)"),
+    ("comment", "Comment (Object Information)"),
     ("layer", "Layer name"),
 ];
 
@@ -56,6 +59,17 @@ fn object_value(doc: &Document, id: housecraft_model::Id, name: &str) -> Option<
             .as_f64()
             .map(|mm| housecraft_units::Length::from_mm(mm).format(doc.settings.display_unit))
     };
+    let info = doc.settings.object_info.get(&id);
+    let own = |s: Option<&String>| s.filter(|v| !v.is_empty()).cloned();
+    if let Some(v) = info.and_then(|i| match name {
+        "code" => own(Some(&i.code)),
+        "description" => own(Some(&i.description)),
+        "manufacturer" => own(Some(&i.manufacturer)),
+        "comment" => own(Some(&i.comment)),
+        other => own(i.custom.get(other)),
+    }) {
+        return Some(v);
+    }
     Some(match name {
         "width" | "height" | "depth" | "sill" => length(name)?,
         "size" => format!("{}{}", size_digits(field("width")?.as_f64()?), size_digits(field("height")?.as_f64()?)),

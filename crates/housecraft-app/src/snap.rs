@@ -124,6 +124,62 @@ impl SnapTargets {
 }
 
 impl SnapTargets {
+    /// Points the dimension tool snaps to, by the default set's locate rules:
+    /// wall surfaces, framing-layer faces, centrelines and opening edges.
+    pub fn build_dims(doc: &Document, floors: &[Id]) -> Self {
+        let locate = doc.active_defaults().dimensions.locate;
+        let mut t = SnapTargets::default();
+        for &floor in floors {
+            for g in wall_geoms(doc, floor) {
+                let wall = doc.get::<housecraft_api::model::Wall>(g.id);
+                let wt = wall.and_then(|w| doc.get::<housecraft_api::model::WallType>(w.wall_type));
+                if locate.centers {
+                    t.points.push((g.start, SnapKind::Endpoint));
+                    t.points.push((g.end, SnapKind::Endpoint));
+                    t.segments.push((g.start, g.end));
+                }
+                if locate.surfaces {
+                    for c in g.corners {
+                        t.points.push((c, SnapKind::Endpoint));
+                    }
+                    t.segments.push((g.corners[0], g.corners[1]));
+                    t.segments.push((g.corners[3], g.corners[2]));
+                }
+                if locate.framing
+                    && let Some(wt) = wt
+                    && let Some(main) = wt.layers.iter().map(|l| l.thickness.mm()).reduce(f64::max)
+                {
+                    // The main layer's middle, then its two faces.
+                    let mid = -wt.centerline_offset(housecraft_api::model::WallReference::Main);
+                    for side in [-1.0, 1.0] {
+                        let o = g.left * (mid + side * main / 2.0);
+                        t.points.push((g.start + o, SnapKind::Endpoint));
+                        t.points.push((g.end + o, SnapKind::Endpoint));
+                        t.segments.push((g.start + o, g.end + o));
+                    }
+                }
+                if locate.openings {
+                    for o in doc.openings_in(g.id) {
+                        let c = g.start + g.dir * o.position.mm();
+                        let half_w = o.width.mm() / 2.0;
+                        for along in [-half_w, 0.0, half_w] {
+                            for across in [-g.half, 0.0, g.half] {
+                                let kind = if along == 0.0 { SnapKind::Midpoint } else { SnapKind::Endpoint };
+                                t.points.push((c + g.dir * along + g.left * across, kind));
+                            }
+                        }
+                    }
+                }
+            }
+            for cad in doc.iter::<Cad>().filter(|c| c.floor == floor) {
+                for (p, center) in shape_snap_points(&cad.shape) {
+                    t.points.push((p, if center { SnapKind::Center } else { SnapKind::Endpoint }));
+                }
+            }
+        }
+        t
+    }
+
     /// Snap to a drawing's linework too (an elevation's edges and corners).
     pub fn add_drawing(&mut self, drawing: &housecraft_draft::Drawing) {
         for item in &drawing.items {

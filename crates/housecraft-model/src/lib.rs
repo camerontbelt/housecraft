@@ -271,6 +271,15 @@ pub struct Settings {
     /// The plan's own line styles (`LineStyle::Custom(index)`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub line_types: Vec<LineType>,
+    /// How angles and directions are shown.
+    #[serde(default)]
+    pub angle_format: housecraft_units::AngleFormat,
+    /// Code, description, manufacturer, comment and custom fields by object.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub object_info: BTreeMap<Id, InfoFields>,
+    /// Named dimension defaults.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dimension_styles: Vec<DimensionStyle>,
 }
 
 /// Camera default sets: the default set (dimension, text and layer
@@ -359,6 +368,9 @@ impl Document {
                 view_defaults: ViewDefaults::default(),
                 labels: BTreeMap::new(),
                 line_types: Vec::new(),
+                angle_format: Default::default(),
+                object_info: BTreeMap::new(),
+                dimension_styles: Vec::new(),
             },
             next_id: 1,
             objects: BTreeMap::new(),

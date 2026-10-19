@@ -259,6 +259,7 @@ pub(crate) fn new_document(name: String) -> Document {
             extension_overshoot: inch(4.0),
             exterior_offset: ft(4.0),
             inches_below: inch(24.0),
+            locate: Default::default(),
         },
         door: DoorDefaults {
             style: DoorStyle::Hinged,
@@ -283,6 +284,7 @@ pub(crate) fn new_document(name: String) -> Document {
         labels: Default::default(),
         wall_reference: Default::default(),
         room_labels: Default::default(),
+        dimension_style: None,
     });
     doc.settings.active_default_set = defaults;
 

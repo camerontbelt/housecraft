@@ -63,6 +63,7 @@ impl Session {
         crate::foundation::sync(&mut scratch, &mut outcome)?;
         crate::roofs::sync(&mut scratch, &mut outcome);
         crate::rooms::sync(&mut scratch, &mut outcome);
+        crate::ops::refresh_auto_dimensions(&mut scratch, &self.doc, &mut outcome);
         let issues = scratch.validate();
         if !issues.is_empty() {
             let list: Vec<String> = issues.iter().map(ToString::to_string).collect();

@@ -203,6 +203,12 @@ pub(crate) fn exterior_dimensions(
     d: &DefaultSet,
     out: &mut Outcome,
 ) -> Result<(), ApiError> {
+    // Replace the floor's earlier automatic dimensions.
+    let old: Vec<Id> = doc.iter::<Dimension>().filter(|x| x.floor == floor && x.auto).map(|x| x.id).collect();
+    for id in old {
+        doc.remove(id);
+        out.deleted.push(id);
+    }
     let regions = housecraft_geom::rooms::detect(doc, floor);
     if regions.footprints.is_empty() {
         return invalid("no enclosed building outline on this floor");
@@ -227,6 +233,8 @@ pub(crate) fn exterior_dimensions(
                     offset: Length::from_mm(offset),
                 },
                 text_override: None,
+                auto: true,
+                style: d.dimension_style.clone(),
             }));
         };
         let row = |xs: &[f64], y: f64| {
@@ -1539,4 +1547,38 @@ pub(crate) fn standard_plan_views(doc: &mut Document, out: &mut Outcome) -> Resu
         out.created.push(doc.insert(view));
     }
     Ok(())
+}
+
+/// Rebuild the automatic exterior dimensions of floors whose walls or
+/// openings changed (compared with `before`).
+pub(crate) fn refresh_auto_dimensions(doc: &mut Document, before: &Document, out: &mut Outcome) {
+    let mut floors: Vec<Id> = Vec::new();
+    let changed = out.created.iter().chain(&out.modified).filter_map(|id| match doc.kind_of(*id) {
+        Some(ObjectKind::Wall | ObjectKind::Opening) => doc.floor_of(*id),
+        _ => None,
+    });
+    let gone = out.deleted.iter().filter_map(|id| match before.kind_of(*id) {
+        Some(ObjectKind::Wall | ObjectKind::Opening) => before.floor_of(*id),
+        _ => None,
+    });
+    for f in changed.chain(gone) {
+        if !floors.contains(&f) {
+            floors.push(f);
+        }
+    }
+    for floor in floors {
+        if !doc.iter::<Dimension>().any(|d| d.floor == floor && d.auto) {
+            continue;
+        }
+        let d = doc.defaults_for(floor).clone();
+        let mut o = Outcome::default();
+        if exterior_dimensions(doc, floor, &d, &mut o).is_err() {
+            // No closed outline any more: just drop the old ones.
+            for id in doc.iter::<Dimension>().filter(|x| x.floor == floor && x.auto).map(|x| x.id).collect::<Vec<_>>() {
+                doc.remove(id);
+                o.deleted.push(id);
+            }
+        }
+        out.merge(o);
+    }
 }

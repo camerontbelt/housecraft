@@ -58,6 +58,8 @@ pub struct TransformDialog {
     axis_vertical: bool,
     copies: u32,
     copy: bool,
+    /// Copies made by repeating the rotation (0: rotate only).
+    rotate_copies: u32,
 }
 
 impl Default for TransformDialog {
@@ -71,6 +73,7 @@ impl Default for TransformDialog {
             axis_vertical: true,
             copies: 3,
             copy: false,
+            rotate_copies: 0,
         }
     }
 }
@@ -365,7 +368,11 @@ fn transform_dialog(app: &mut App, ctx: &Context) {
                         ui.label("Angle (° counter-clockwise)");
                         ui.text_edit_singleline(&mut t.angle);
                     });
-                    ui.weak("Rotates about the centre of the selection.");
+                    ui.horizontal(|ui| {
+                        ui.label("Copies");
+                        ui.add(egui::DragValue::new(&mut t.rotate_copies).range(0..=360));
+                    });
+                    ui.weak("Rotates about the centre of the selection; with copies, each is turned once more (a circular array).");
                     t.angle
                         .trim()
                         .parse::<f64>()
@@ -398,6 +405,7 @@ fn transform_dialog(app: &mut App, ctx: &Context) {
             {
                 let copies = match t.tab {
                     TransformTab::MultipleCopy => t.copies,
+                    TransformTab::Rotate if t.rotate_copies > 0 => t.rotate_copies,
                     _ if t.copy => 1,
                     _ => 0,
                 };
@@ -602,6 +610,14 @@ fn prefs_dialog(app: &mut App, ctx: &Context) {
             for (u, name) in options {
                 if ui.radio(current == u, name).clicked() && current != u {
                     unit_cmd = Some(Command::SetDisplayUnit { unit: u });
+                }
+            }
+            ui.separator();
+            ui.heading("Angles (this plan)");
+            let af = app.session.document().settings.angle_format;
+            for f in housecraft_api::units::AngleFormat::ALL {
+                if ui.radio(af == f, f.name()).clicked() && af != f {
+                    unit_cmd = Some(Command::SetAngleFormat { format: f });
                 }
             }
         });
@@ -1084,6 +1100,55 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                     },
                                 );
                             });
+                        ui.label("The dimension tool snaps to (hold Alt to snap to nothing):");
+                        ui.horizontal(|ui| {
+                            let mut l = d.dimensions.locate;
+                            ui.checkbox(&mut l.surfaces, "Wall surfaces");
+                            ui.checkbox(&mut l.framing, "Framing");
+                            ui.checkbox(&mut l.centers, "Centres");
+                            ui.checkbox(&mut l.openings, "Door and window edges");
+                            if l != d.dimensions.locate {
+                                commands.push(p(json!({"dimensions": {"locate": l}})));
+                            }
+                        });
+                        ui.separator();
+                        ui.label("Named dimension styles");
+                        ui.horizontal(|ui| {
+                            ui.label("New dimensions use");
+                            let mut st = d.dimension_style.clone();
+                            egui::ComboBox::from_id_salt("default_dim_style")
+                                .selected_text(st.clone().unwrap_or_else(|| "These settings".into()))
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(&mut st, None, "These settings");
+                                    for s in &doc.settings.dimension_styles {
+                                        ui.selectable_value(&mut st, Some(s.name.clone()), &s.name);
+                                    }
+                                });
+                            if st != d.dimension_style {
+                                commands.push(p(json!({"dimension_style": st})));
+                            }
+                        });
+                        for s in &doc.settings.dimension_styles {
+                            ui.horizontal(|ui| {
+                                ui.label(&s.name);
+                                if ui.small_button("Update from these settings").clicked() {
+                                    commands.push(Command::SetDimensionStyle { name: s.name.clone(), defaults: Some(d.dimensions.clone()) });
+                                }
+                                if ui.small_button("Delete").clicked() {
+                                    commands.push(Command::SetDimensionStyle { name: s.name.clone(), defaults: None });
+                                }
+                            });
+                        }
+                        ui.horizontal(|ui| {
+                            let key = egui::Id::unique("new_dim_style");
+                            let mut name = ui.data_mut(|m| m.get_temp::<String>(key).unwrap_or_default());
+                            ui.add(egui::TextEdit::singleline(&mut name).hint_text("Style name").desired_width(120.0));
+                            if ui.add_enabled(!name.trim().is_empty(), egui::Button::new("Save these settings as a style")).clicked() {
+                                commands.push(Command::SetDimensionStyle { name: name.trim().to_string(), defaults: Some(d.dimensions.clone()) });
+                                name.clear();
+                            }
+                            ui.data_mut(|m| m.insert_temp(key, name));
+                        });
                     });
                 egui::CollapsingHeader::new("Object Labels").show(ui, |ui| {
                     let l = &d.labels;
