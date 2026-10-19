@@ -237,6 +237,19 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         Object::Callout(c) => format!("callout {:?}", c.text),
         Object::CadDetail(c) => format!("CAD detail {:?}", c.name),
         Object::Material(m) => format!("material {:?} ({})", m.name, m.class.name()),
+        Object::Cabinet(c) => format!(
+            "{} {} wide{}",
+            c.cabinet_kind.name(),
+            fmt(c.width),
+            if c.sink { ", sink" } else { "" }
+        ),
+        Object::Countertop(c) => format!(
+            "countertop, {} thick, {} hole{}",
+            fmt(c.thickness),
+            c.holes.len(),
+            if c.holes.len() == 1 { "" } else { "s" }
+        ),
+        Object::Appliance(a) => format!("{} {} wide", a.appliance_kind.name(), fmt(a.width)),
         Object::MaterialAssignment(a) => format!(
             "{} painted on {}{}",
             doc.get::<Material>(a.material).map_or("?", |m| m.name.as_str()),

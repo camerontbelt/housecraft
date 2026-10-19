@@ -231,6 +231,49 @@ pub enum Command {
         target: Option<Point2>,
         marker: Option<MarkerShape>,
     },
+    /// Add a cabinet. Unset sizes come from the default set's cabinet
+    /// defaults. Without `facing`, a cabinet clicked near a wall backs onto
+    /// it and faces into the room (`at` then snaps to the wall face).
+    AddCabinet {
+        floor: Option<Id>,
+        cabinet_kind: CabinetKind,
+        at: Point2,
+        facing: Option<f64>,
+        width: Option<Length>,
+        depth: Option<Length>,
+        height: Option<Length>,
+        #[serde(default)]
+        shape: CabinetShape,
+        /// A sink base: false front and a sink cut into its countertop.
+        #[serde(default)]
+        sink: bool,
+    },
+    /// Add a countertop of any outline, with optional holes; its top sits at
+    /// `height` (default: base cabinet height plus thickness).
+    AddCountertop {
+        floor: Option<Id>,
+        points: Vec<Point2>,
+        height: Option<Length>,
+        thickness: Option<Length>,
+        edge: Option<EdgeProfile>,
+        #[serde(default)]
+        holes: Vec<CounterHole>,
+    },
+    /// Add an appliance or plumbing fixture at its typical size; it backs
+    /// onto a nearby wall like a cabinet.
+    AddAppliance {
+        floor: Option<Id>,
+        appliance_kind: ApplianceKind,
+        at: Point2,
+        facing: Option<f64>,
+        width: Option<Length>,
+        depth: Option<Length>,
+        height: Option<Length>,
+    },
+    /// Close gaps up to the default set's largest filler between side-by-side
+    /// cabinets and between cabinets and walls on a floor (cabinets marked
+    /// `no_auto_filler` are skipped).
+    AutoFillers { floor: Option<Id> },
     /// Add a material. Unset properties come from `copy_from`, or suit the class.
     AddMaterial {
         name: String,
@@ -635,6 +678,10 @@ impl Command {
             Command::AddRevisionCloud { .. } => "add_revision_cloud",
             Command::AddCadDetail { .. } => "add_cad_detail",
             Command::AddMaterial { .. } => "add_material",
+            Command::AddCabinet { .. } => "add_cabinet",
+            Command::AddCountertop { .. } => "add_countertop",
+            Command::AddAppliance { .. } => "add_appliance",
+            Command::AutoFillers { .. } => "auto_fillers",
             Command::PaintMaterial { .. } => "paint_material",
             Command::ReplaceMaterial { .. } => "replace_material",
             Command::AddBlock { .. } => "add_block",
@@ -1200,6 +1247,85 @@ impl Command {
                     arc: arc.unwrap_or(Length::from_inches(18.0)),
                     label: Some(label.clone().unwrap_or_else(|| next.to_string())),
                 }));
+            }
+            Command::AddCabinet {
+                floor,
+                cabinet_kind,
+                at,
+                facing,
+                width,
+                depth,
+                height,
+                shape,
+                sink,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                out.created.push(crate::cabinets::add_cabinet(
+                    doc,
+                    &d,
+                    floor,
+                    *cabinet_kind,
+                    *at,
+                    *facing,
+                    [*width, *depth, *height],
+                    *shape,
+                    *sink,
+                )?);
+            }
+            Command::AddCountertop {
+                floor,
+                points,
+                height,
+                thickness,
+                edge,
+                holes,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                if points.len() < 3 {
+                    return invalid("a countertop needs at least three points");
+                }
+                let c = &d.cabinets;
+                let thickness = thickness.unwrap_or(c.countertop_thickness);
+                out.created.push(doc.insert(Countertop {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.cabinets.unwrap_or(d.layers.cad),
+                    points: points.clone(),
+                    height: height.unwrap_or(c.base_height + thickness),
+                    thickness,
+                    edge: edge.unwrap_or(c.edge),
+                    holes: holes.clone(),
+                }));
+            }
+            Command::AddAppliance {
+                floor,
+                appliance_kind,
+                at,
+                facing,
+                width,
+                depth,
+                height,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                out.created.push(crate::cabinets::add_appliance(
+                    doc,
+                    &d,
+                    floor,
+                    *appliance_kind,
+                    *at,
+                    *facing,
+                    [*width, *depth, *height],
+                )?);
+            }
+            Command::AutoFillers { floor } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                let max = d.cabinets.max_filler.mm();
+                for (id, l, r) in housecraft_geom::cabinets::auto_fillers(doc, floor, max) {
+                    let c = doc.get_mut::<Cabinet>(id).expect("listed");
+                    c.filler_left = Length::from_mm(l);
+                    c.filler_right = Length::from_mm(r);
+                    out.modified.push(id);
+                }
             }
             Command::AddMaterial {
                 name,

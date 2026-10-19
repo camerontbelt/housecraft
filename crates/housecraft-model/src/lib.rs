@@ -7,6 +7,7 @@
 
 mod annotation;
 mod building;
+mod cabinet;
 mod display;
 mod material;
 mod template;
@@ -22,6 +23,7 @@ use serde::{Deserialize, Serialize};
 
 pub use annotation::*;
 pub use building::*;
+pub use cabinet::*;
 pub use display::*;
 pub use material::*;
 pub use validate::Issue;
@@ -152,6 +154,9 @@ objects! {
     BlockRef => "block_ref",
     Material => "material",
     MaterialAssignment => "material_assignment",
+    Cabinet => "cabinet",
+    Countertop => "countertop",
+    Appliance => "appliance",
 }
 
 impl fmt::Display for ObjectKind {
@@ -177,6 +182,9 @@ impl ObjectKind {
                 | ObjectKind::Callout
                 | ObjectKind::RevisionCloud
                 | ObjectKind::BlockRef
+                | ObjectKind::Cabinet
+                | ObjectKind::Countertop
+                | ObjectKind::Appliance
         )
     }
 }
@@ -416,6 +424,9 @@ impl Document {
             Object::Callout(c) => Some(c.floor),
             Object::RevisionCloud(c) => Some(c.floor),
             Object::BlockRef(b) => Some(b.floor),
+            Object::Cabinet(c) => Some(c.floor),
+            Object::Countertop(c) => Some(c.floor),
+            Object::Appliance(a) => Some(a.floor),
             _ => None,
         }
     }
@@ -437,6 +448,9 @@ impl Document {
             Object::Callout(c) => Some(c.layer),
             Object::RevisionCloud(c) => Some(c.layer),
             Object::BlockRef(b) => Some(b.layer),
+            Object::Cabinet(c) => Some(c.layer),
+            Object::Countertop(c) => Some(c.layer),
+            Object::Appliance(a) => Some(a.layer),
             _ => None,
         }
     }

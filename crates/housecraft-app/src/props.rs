@@ -86,6 +86,43 @@ impl Ed<'_> {
         ui.end_row();
     }
 
+    /// Choose one of `options` for an enum field.
+    fn choice<T: PartialEq + Copy + serde::Serialize>(
+        &mut self,
+        ui: &mut Ui,
+        label: &str,
+        field: &str,
+        current: T,
+        options: &[(T, &str)],
+    ) {
+        Self::label(ui, label);
+        let name = options
+            .iter()
+            .find(|(v, _)| *v == current)
+            .map_or("?", |(_, n)| *n);
+        let mut chosen = current;
+        egui::ComboBox::from_id_salt(self.key(field))
+            .selected_text(name)
+            .show_ui(ui, |ui| {
+                for (v, n) in options {
+                    ui.selectable_value(&mut chosen, *v, *n);
+                }
+            });
+        if chosen != current {
+            self.out.push(patch(self.id, json!({ field: chosen })));
+        }
+        ui.end_row();
+    }
+
+    fn check(&mut self, ui: &mut Ui, label: &str, field: &str, text: &str, value: bool) {
+        Self::label(ui, label);
+        let mut v = value;
+        if ui.checkbox(&mut v, text).changed() {
+            self.out.push(patch(self.id, json!({ field: v })));
+        }
+        ui.end_row();
+    }
+
     /// Edit a text field of another object (e.g. a placed block's block).
     fn text_of(&mut self, ui: &mut Ui, other: Id, label: &str, field: &str, value: &str) {
         Self::label(ui, label);
@@ -527,6 +564,99 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             }
             ui.end_row();
             ed.pick::<Layer>(ui, "Layer", "layer", Some(c.layer), None);
+        }
+        Object::Cabinet(c) => cabinet_editor(ui, ed, c),
+        Object::Countertop(t) => {
+            if let Some(h) = ed.length(ui, "Top Height", "height", t.height) {
+                ed.out.push(patch(id, json!({ "height": h })));
+            }
+            if let Some(v) = ed.length(ui, "Thickness", "thickness", t.thickness)
+                && v.mm() > 0.0
+            {
+                ed.out.push(patch(id, json!({ "thickness": v })));
+            }
+            let edges: Vec<(EdgeProfile, &str)> = EdgeProfile::ALL.iter().map(|e| (*e, e.name())).collect();
+            ed.choice(ui, "Edge Profile", "edge", t.edge, &edges);
+            Ed::label(ui, "Holes");
+            ui.vertical(|ui| {
+                let mut holes = t.holes.clone();
+                let mut changed = false;
+                let mut remove = None;
+                for (i, h) in holes.iter().enumerate() {
+                    ui.horizontal(|ui| {
+                        ui.label(format!(
+                            "{} {}",
+                            match h.hole_kind {
+                                HoleKind::Sink => "Sink",
+                                HoleKind::Cooktop => "Cooktop",
+                                HoleKind::Round => "Round",
+                            },
+                            fmt(doc, h.width)
+                        ));
+                        if ui.small_button("Remove").clicked() {
+                            remove = Some(i);
+                        }
+                    });
+                }
+                if let Some(i) = remove {
+                    holes.remove(i);
+                    changed = true;
+                }
+                // New holes go at the outline's centre.
+                let pts: Vec<_> = t.points.iter().map(|p| housecraft_api::geom::v2(*p)).collect();
+                let c = housecraft_api::geom::pt(housecraft_api::geom::math::centroid(&pts));
+                let along = {
+                    let (a, b) = (pts[0], pts[1 % pts.len()]);
+                    (b - a).y.atan2((b - a).x).to_degrees()
+                };
+                ui.horizontal(|ui| {
+                    let i = Length::from_inches;
+                    for (label, kind, w, d) in [
+                        ("+ Sink", HoleKind::Sink, 30.0, 18.0),
+                        ("+ Cooktop", HoleKind::Cooktop, 29.0, 19.0),
+                        ("+ Round", HoleKind::Round, 1.5, 1.5),
+                    ] {
+                        if ui.small_button(label).clicked() {
+                            holes.push(CounterHole {
+                                hole_kind: kind,
+                                center: c,
+                                width: i(w),
+                                depth: i(d),
+                                rotation: along,
+                            });
+                            changed = true;
+                        }
+                    }
+                });
+                if changed {
+                    ed.out.push(patch(id, json!({ "holes": holes })));
+                }
+            });
+            ui.end_row();
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(t.layer), None);
+        }
+        Object::Appliance(a) => {
+            let kinds: Vec<(ApplianceKind, &str)> =
+                ApplianceKind::ALL.iter().map(|k| (*k, k.name())).collect();
+            ed.choice(ui, "Type", "appliance_kind", a.appliance_kind, &kinds);
+            for (label, field, v) in [
+                ("Width", "width", a.width),
+                ("Depth", "depth", a.depth),
+                ("Height", "height", a.height),
+            ] {
+                if let Some(l) = ed.length(ui, label, field, v)
+                    && l.mm() > 0.0
+                {
+                    ed.out.push(patch(id, json!({ field: l })));
+                }
+            }
+            if let Some(l) = ed.length(ui, "Off the Floor", "elevation", a.elevation) {
+                ed.out.push(patch(id, json!({ "elevation": l })));
+            }
+            if let Some(n) = ed.number(ui, "Facing (°)", "facing", a.facing) {
+                ed.out.push(patch(id, json!({ "facing": n })));
+            }
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(a.layer), None);
         }
         Object::Material(m) => {
             ed.text(ui, "Name", "name", &m.name);
@@ -1745,4 +1875,277 @@ pub fn room_multi_window(app: &mut App, ctx: &egui::Context) {
         let commands = ids.iter().map(|id| patch(*id, v.clone())).collect();
         app.run(commands);
     }
+}
+
+fn face_item_name(i: FaceItem) -> &'static str {
+    match i {
+        FaceItem::DoorLeft => "Door (hinge left)",
+        FaceItem::DoorRight => "Door (hinge right)",
+        FaceItem::DoubleDoor => "Pair of doors",
+        FaceItem::Drawer => "Drawer",
+        FaceItem::Open => "Open shelves",
+        FaceItem::Panel => "Fixed panel",
+        FaceItem::GlassDoor => "Glass door",
+    }
+}
+
+fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
+    let id = ed.id;
+    let doc = ed.doc;
+    ed.choice(
+        ui,
+        "Type",
+        "cabinet_kind",
+        c.cabinet_kind,
+        &[
+            (CabinetKind::Base, "Base"),
+            (CabinetKind::Wall, "Wall"),
+            (CabinetKind::Full, "Full height"),
+        ],
+    );
+    for (label, field, v) in [
+        ("Width", "width", c.width),
+        ("Depth", "depth", c.depth),
+        ("Height", "height", c.height),
+    ] {
+        if let Some(l) = ed.length(ui, label, field, v)
+            && l.mm() > 0.0
+        {
+            ed.out.push(patch(id, json!({ field: l })));
+        }
+    }
+    if let Some(l) = ed.length(ui, "Off the Floor", "elevation", c.elevation) {
+        ed.out.push(patch(id, json!({ "elevation": l })));
+    }
+    if let Some(n) = ed.number(ui, "Facing (°)", "facing", c.facing) {
+        ed.out.push(patch(id, json!({ "facing": n })));
+    }
+    ed.choice(
+        ui,
+        "Construction",
+        "construction",
+        c.construction,
+        &[
+            (CabinetConstruction::Framed, "Face frame"),
+            (CabinetConstruction::Frameless, "Frameless"),
+        ],
+    );
+    // Shape, with its size when it has one.
+    Ed::label(ui, "Shape");
+    let names = ["Standard", "Angled ends", "Bow front", "Curved"];
+    let current = match c.shape {
+        CabinetShape::Standard => 0,
+        CabinetShape::Angled { .. } => 1,
+        CabinetShape::Bow { .. } => 2,
+        CabinetShape::Curved { .. } => 3,
+    };
+    let mut chosen = current;
+    egui::ComboBox::from_id_salt(ed.key("shape"))
+        .selected_text(names[current])
+        .show_ui(ui, |ui| {
+            for (i, n) in names.iter().enumerate() {
+                ui.selectable_value(&mut chosen, i, *n);
+            }
+        });
+    if chosen != current {
+        let i = Length::from_inches;
+        let shape = match chosen {
+            1 => CabinetShape::Angled { left: i(0.0), right: i(12.0) },
+            2 => CabinetShape::Bow { depth: i(3.0) },
+            3 => CabinetShape::Curved { radius: i(48.0) },
+            _ => CabinetShape::Standard,
+        };
+        ed.out.push(patch(id, json!({ "shape": shape })));
+    }
+    ui.end_row();
+    match c.shape {
+        CabinetShape::Angled { left, right } => {
+            let l = ed.length(ui, "Angled Left", "shape.left", left);
+            let r = ed.length(ui, "Angled Right", "shape.right", right);
+            if l.is_some() || r.is_some() {
+                let shape = CabinetShape::Angled { left: l.unwrap_or(left), right: r.unwrap_or(right) };
+                ed.out.push(patch(id, json!({ "shape": shape })));
+            }
+        }
+        CabinetShape::Bow { depth } => {
+            if let Some(d) = ed.length(ui, "Bow Depth", "shape.depth", depth) {
+                ed.out.push(patch(id, json!({ "shape": CabinetShape::Bow { depth: d } })));
+            }
+        }
+        CabinetShape::Curved { radius } => {
+            if let Some(r) = ed.length(ui, "Radius (− = concave)", "shape.radius", radius) {
+                ed.out.push(patch(id, json!({ "shape": CabinetShape::Curved { radius: r } })));
+            }
+        }
+        CabinetShape::Standard => {}
+    }
+    ed.choice(
+        ui,
+        "Door Style",
+        "door_style",
+        c.door_style,
+        &[
+            (DoorStyleCab::Slab, "Slab"),
+            (DoorStyleCab::Shaker, "Shaker"),
+            (DoorStyleCab::Raised, "Raised panel"),
+        ],
+    );
+    ed.choice(
+        ui,
+        "Hardware",
+        "hardware",
+        c.hardware,
+        &[
+            (HardwareStyle::Pull, "Pulls"),
+            (HardwareStyle::Knob, "Knobs"),
+            (HardwareStyle::None, "None"),
+        ],
+    );
+    // Front layout: rows top to bottom.
+    Ed::label(ui, "Front (top to bottom)");
+    ui.vertical(|ui| {
+        let mut face = c.face.clone();
+        let mut changed = false;
+        let mut remove_row = None;
+        let items = [
+            FaceItem::DoorLeft,
+            FaceItem::DoorRight,
+            FaceItem::DoubleDoor,
+            FaceItem::Drawer,
+            FaceItem::Open,
+            FaceItem::Panel,
+            FaceItem::GlassDoor,
+        ];
+        for (r, row) in face.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                for (k, item) in row.items.iter_mut().enumerate() {
+                    egui::ComboBox::from_id_salt(("face", id, r, k))
+                        .selected_text(face_item_name(*item))
+                        .width(120.0)
+                        .show_ui(ui, |ui| {
+                            for i in items {
+                                if ui.selectable_value(item, i, face_item_name(i)).changed() {
+                                    changed = true;
+                                }
+                            }
+                        });
+                }
+                if ui.small_button("+").on_hover_text("Split into another cell").clicked() {
+                    row.items.push(FaceItem::Drawer);
+                    changed = true;
+                }
+                if row.items.len() > 1 && ui.small_button("−").on_hover_text("Remove a cell").clicked() {
+                    row.items.pop();
+                    changed = true;
+                }
+                let mut fixed = row.height.is_some();
+                if ui.checkbox(&mut fixed, "fixed").changed() {
+                    row.height = fixed.then(|| Length::from_inches(6.0));
+                    changed = true;
+                }
+                if let Some(h) = row.height {
+                    let mut inches = h.inches();
+                    if ui
+                        .add(egui::DragValue::new(&mut inches).range(2.0..=96.0).suffix("\""))
+                        .changed()
+                    {
+                        row.height = Some(Length::from_inches(inches));
+                        changed = true;
+                    }
+                }
+                if ui.small_button("✕").on_hover_text("Remove this row").clicked() {
+                    remove_row = Some(r);
+                }
+            });
+        }
+        if let Some(r) = remove_row
+            && face.len() > 1
+        {
+            face.remove(r);
+            changed = true;
+        }
+        if ui.small_button("Add row").clicked() {
+            face.push(FaceRow { height: None, items: vec![FaceItem::DoorRight] });
+            changed = true;
+        }
+        if changed {
+            ed.out.push(patch(id, json!({ "face": face })));
+        }
+    });
+    ui.end_row();
+    if let Some(n) = ed.number(ui, "Shelves", "shelves", c.shelves as f64) {
+        ed.out.push(patch(id, json!({ "shelves": n.round().max(0.0) as u32 })));
+    }
+    // Toe kick.
+    if c.cabinet_kind != CabinetKind::Wall {
+        Ed::label(ui, "Toe Kick");
+        let mut on = c.toe_kick.is_some();
+        if ui.checkbox(&mut on, "").changed() {
+            let d = &doc.active_defaults().cabinets;
+            let v = if on { json!([d.toe_kick_height, d.toe_kick_depth]) } else { Value::Null };
+            ed.out.push(patch(id, json!({ "toe_kick": v })));
+        }
+        ui.end_row();
+    }
+    // Countertop.
+    Ed::label(ui, "Countertop");
+    let mut on = c.countertop.is_some();
+    if ui.checkbox(&mut on, "").changed() {
+        let d = &doc.active_defaults().cabinets;
+        let v = if on {
+            json!(CabinetTop {
+                thickness: d.countertop_thickness,
+                overhang: d.countertop_overhang,
+                edge: d.edge,
+                backsplash: d.backsplash,
+            })
+        } else {
+            Value::Null
+        };
+        ed.out.push(patch(id, json!({ "countertop": v })));
+    }
+    ui.end_row();
+    if let Some(top) = &c.countertop {
+        let mut t = top.clone();
+        let mut changed = false;
+        for (label, field, value) in [
+            ("  Thickness", "thickness", top.thickness),
+            ("  Overhang", "overhang", top.overhang),
+            ("  Backsplash", "backsplash", top.backsplash),
+        ] {
+            if let Some(l) = ed.length(ui, label, &format!("countertop.{field}"), value) {
+                match field {
+                    "thickness" => t.thickness = l,
+                    "overhang" => t.overhang = l,
+                    _ => t.backsplash = l,
+                }
+                changed = true;
+            }
+        }
+        Ed::label(ui, "  Edge Profile");
+        egui::ComboBox::from_id_salt(ed.key("countertop.edge"))
+            .selected_text(top.edge.name())
+            .show_ui(ui, |ui| {
+                for e in EdgeProfile::ALL {
+                    if ui.selectable_value(&mut t.edge, e, e.name()).changed() {
+                        changed = true;
+                    }
+                }
+            });
+        ui.end_row();
+        if changed {
+            ed.out.push(patch(id, json!({ "countertop": t })));
+        }
+        if c.cabinet_kind == CabinetKind::Base {
+            ed.check(ui, "Sink", "sink", "Sink in this cabinet", c.sink);
+        }
+    }
+    if let Some(l) = ed.length(ui, "Filler Left", "filler_left", c.filler_left) {
+        ed.out.push(patch(id, json!({ "filler_left": l })));
+    }
+    if let Some(l) = ed.length(ui, "Filler Right", "filler_right", c.filler_right) {
+        ed.out.push(patch(id, json!({ "filler_right": l })));
+    }
+    ed.check(ui, "Auto Fillers", "no_auto_filler", "Exclude from auto fillers", c.no_auto_filler);
+    ed.pick::<Layer>(ui, "Layer", "layer", Some(c.layer), None);
 }

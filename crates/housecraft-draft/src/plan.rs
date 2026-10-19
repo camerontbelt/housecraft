@@ -481,6 +481,25 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             );
         }
     }
+    for t in doc.iter::<Countertop>().filter(|t| t.floor == opts.floor) {
+        let look = ctx.look(t.layer);
+        if look.visible {
+            crate::cabinets::countertop(t, look.stroke, &mut out);
+        }
+    }
+    for c in doc.iter::<Cabinet>().filter(|c| c.floor == opts.floor) {
+        let look = ctx.look(c.layer);
+        if look.visible && opts.phase.shows(c.renovation) {
+            crate::cabinets::cabinet(c, look.stroke, &mut out);
+        }
+    }
+    for a in doc.iter::<Appliance>().filter(|a| a.floor == opts.floor) {
+        let look = ctx.look(a.layer);
+        if look.visible && opts.phase.shows(a.renovation) {
+            let style = ctx.text_style(None, &look);
+            crate::cabinets::appliance(a, look.stroke, style.height.mm() * 0.7, look.ink, &mut out);
+        }
+    }
     if let Some(at) = doc.settings.north_pointer {
         north_pointer(v2(at), doc.settings.north, &mut out);
     }

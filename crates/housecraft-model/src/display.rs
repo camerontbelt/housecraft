@@ -229,6 +229,9 @@ pub struct KindLayers {
     /// Electrical; falls back to the CAD layer when unset (older files).
     #[serde(default)]
     pub electrical: Option<Id>,
+    /// Cabinets, countertops and appliances; CAD layer when `None`.
+    #[serde(default)]
+    pub cabinets: Option<Id>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -307,6 +310,8 @@ pub struct DefaultSet {
     /// Used for stairs that start outside the building.
     #[serde(default = "StairDefaults::exterior")]
     pub exterior_stair: StairDefaults,
+    #[serde(default)]
+    pub cabinets: crate::CabinetDefaults,
     /// Default material for each surface role (empty: built-in colours).
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub materials: crate::SurfaceMaterials,

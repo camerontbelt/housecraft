@@ -408,6 +408,54 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             }
             Object::RoofPlane(r)
         }
+        Object::Cabinet(c) => {
+            let mut c = c.clone();
+            c.position = t.apply_point(c.position);
+            c.facing = t.apply_angle(c.facing);
+            if t.is_reflection() {
+                // Left and right swap in a mirror image.
+                std::mem::swap(&mut c.filler_left, &mut c.filler_right);
+                if let CabinetShape::Angled { left, right } = c.shape {
+                    c.shape = CabinetShape::Angled { left: right, right: left };
+                }
+                for row in &mut c.face {
+                    row.items.reverse();
+                    for item in &mut row.items {
+                        *item = match *item {
+                            FaceItem::DoorLeft => FaceItem::DoorRight,
+                            FaceItem::DoorRight => FaceItem::DoorLeft,
+                            other => other,
+                        };
+                    }
+                }
+            }
+            let k = t.scale_factor();
+            if (k - 1.0).abs() > 1e-9 {
+                c.width = c.width * k;
+                c.depth = c.depth * k;
+            }
+            Object::Cabinet(c)
+        }
+        Object::Appliance(a) => {
+            let mut a = a.clone();
+            a.position = t.apply_point(a.position);
+            a.facing = t.apply_angle(a.facing);
+            Object::Appliance(a)
+        }
+        Object::Countertop(c) => {
+            let mut c = c.clone();
+            c.points = c.points.iter().map(|p| t.apply_point(*p)).collect();
+            if t.is_reflection() {
+                c.points.reverse();
+            }
+            for h in &mut c.holes {
+                h.center = t.apply_point(h.center);
+                h.rotation = t.apply_angle(h.rotation);
+                h.width = t.apply_length(h.width);
+                h.depth = t.apply_length(h.depth);
+            }
+            Object::Countertop(c)
+        }
         Object::BlockRef(b) => {
             let mut b = b.clone();
             let flip = |m: bool| if m { 180.0 } else { 0.0 };
@@ -977,6 +1025,9 @@ pub(crate) fn insert_objects(
                 Object::RevisionCloud(c) => c.floor = f,
                 Object::Schedule(s) => s.floor = f,
                 Object::BlockRef(b) => b.floor = f,
+                Object::Cabinet(c) => c.floor = f,
+                Object::Countertop(c) => c.floor = f,
+                Object::Appliance(a) => a.floor = f,
                 _ => {}
             }
         }
@@ -1023,6 +1074,9 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::RevisionCloud(c) => &mut c.floor,
             Object::Schedule(s) => &mut s.floor,
             Object::BlockRef(b) => &mut b.floor,
+            Object::Cabinet(c) => &mut c.floor,
+            Object::Countertop(c) => &mut c.floor,
+            Object::Appliance(a) => &mut a.floor,
             _ => continue,
         };
         let before = *floor;

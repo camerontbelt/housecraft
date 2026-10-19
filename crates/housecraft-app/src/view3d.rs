@@ -564,7 +564,7 @@ fn light_view_proj(light: Vec3, lo: Vec3, hi: Vec3) -> Mat4 {
 }
 
 /// Distinct values mixed into the upload key for each hidden category.
-const CATEGORY_KEYS: [Id; 8] = [
+const CATEGORY_KEYS: [Id; 9] = [
     Id(u64::MAX - 1),
     Id(u64::MAX - 2),
     Id(u64::MAX - 3),
@@ -573,6 +573,7 @@ const CATEGORY_KEYS: [Id; 8] = [
     Id(u64::MAX - 6),
     Id(u64::MAX - 7),
     Id(u64::MAX - 8),
+    Id(u64::MAX - 9),
 ];
 
 /// Uploaded geometry: (selection/document key, vertices, indices).

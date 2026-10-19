@@ -186,6 +186,8 @@ pub enum Category {
     Foundation,
     Stair,
     Fixture,
+    /// Cabinets, countertops and appliances.
+    Cabinet,
 }
 
 
@@ -347,6 +349,30 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         }
         mesh.begin(e.id, Category::Fixture);
         electrical_mesh(doc, e, &mut mesh);
+        mesh.end();
+    }
+    for c in doc.iter::<housecraft_model::Cabinet>() {
+        if only_floor.is_some_and(|f| f != c.floor) || c.renovation == Renovation::Demolish {
+            continue;
+        }
+        mesh.begin(c.id, Category::Cabinet);
+        crate::cabinets::cabinet_mesh(doc, c, &mut mesh);
+        mesh.end();
+    }
+    for t in doc.iter::<housecraft_model::Countertop>() {
+        if only_floor.is_some_and(|f| f != t.floor) {
+            continue;
+        }
+        mesh.begin(t.id, Category::Cabinet);
+        crate::cabinets::countertop_mesh(doc, t, &mut mesh);
+        mesh.end();
+    }
+    for a in doc.iter::<housecraft_model::Appliance>() {
+        if only_floor.is_some_and(|f| f != a.floor) || a.renovation == Renovation::Demolish {
+            continue;
+        }
+        mesh.begin(a.id, Category::Cabinet);
+        crate::cabinets::appliance_mesh(doc, a, &mut mesh);
         mesh.end();
     }
     mesh

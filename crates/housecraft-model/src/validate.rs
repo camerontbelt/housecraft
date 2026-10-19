@@ -270,6 +270,9 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 if let Some(l) = d.layers.electrical {
                     c.reference(id, "layers.electrical", l, K::Layer);
                 }
+                if let Some(l) = d.layers.cabinets {
+                    c.reference(id, "layers.cabinets", l, K::Layer);
+                }
                 for (surface, m) in &d.materials {
                     c.reference(id, &format!("materials.{}", surface.name()), *m, K::Material);
                 }
@@ -575,6 +578,71 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     c.issue(id, format!("object references missing object {}", a.object));
                 }
                 c.reference(id, "material", a.material, K::Material);
+            }
+            Object::Cabinet(cab) => {
+                c.reference(id, "floor", cab.floor, K::Floor);
+                c.reference(id, "layer", cab.layer, K::Layer);
+                c.positive(id, "width", cab.width);
+                c.positive(id, "depth", cab.depth);
+                c.positive(id, "height", cab.height);
+                c.non_negative(id, "elevation", cab.elevation);
+                c.non_negative(id, "filler_left", cab.filler_left);
+                c.non_negative(id, "filler_right", cab.filler_right);
+                c.finite(id, "position", &cab.position.mm());
+                if cab.face.iter().any(|r| r.items.is_empty()) {
+                    c.issue(id, "every face row needs at least one door, drawer or opening");
+                }
+                if let Some((h, d)) = cab.toe_kick {
+                    c.non_negative(id, "toe_kick height", h);
+                    c.non_negative(id, "toe_kick depth", d);
+                }
+                if let Some(t) = &cab.countertop {
+                    c.positive(id, "countertop.thickness", t.thickness);
+                    c.non_negative(id, "countertop.overhang", t.overhang);
+                    c.non_negative(id, "countertop.backsplash", t.backsplash);
+                }
+                match cab.shape {
+                    CabinetShape::Angled { left, right } => {
+                        c.non_negative(id, "shape.left", left);
+                        c.non_negative(id, "shape.right", right);
+                        if (left + right).mm() >= cab.width.mm() || left.mm().max(right.mm()) >= cab.depth.mm() {
+                            c.issue(id, "angled corners must fit within the cabinet");
+                        }
+                    }
+                    CabinetShape::Bow { depth } => c.positive(id, "shape.depth", depth),
+                    CabinetShape::Curved { radius } => {
+                        if radius.mm().abs() <= cab.depth.mm() {
+                            c.issue(id, "a curved cabinet's radius must exceed its depth");
+                        }
+                    }
+                    CabinetShape::Standard => {}
+                }
+            }
+            Object::Countertop(t) => {
+                c.reference(id, "floor", t.floor, K::Floor);
+                c.reference(id, "layer", t.layer, K::Layer);
+                c.positive(id, "thickness", t.thickness);
+                c.non_negative(id, "height", t.height);
+                if t.points.len() < 3 {
+                    c.issue(id, "a countertop needs at least three points");
+                }
+                let flat: Vec<f64> = t.points.iter().flat_map(|p| p.mm()).collect();
+                c.finite(id, "points", &flat);
+                for h in &t.holes {
+                    c.positive(id, "hole width", h.width);
+                    if h.hole_kind != HoleKind::Round {
+                        c.positive(id, "hole depth", h.depth);
+                    }
+                }
+            }
+            Object::Appliance(a) => {
+                c.reference(id, "floor", a.floor, K::Floor);
+                c.reference(id, "layer", a.layer, K::Layer);
+                c.positive(id, "width", a.width);
+                c.positive(id, "depth", a.depth);
+                c.positive(id, "height", a.height);
+                c.non_negative(id, "elevation", a.elevation);
+                c.finite(id, "position", &a.position.mm());
             }
             Object::BlockRef(b) => {
                 c.sheet(id, b.floor, false);

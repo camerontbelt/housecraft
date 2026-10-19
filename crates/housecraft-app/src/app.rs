@@ -1031,7 +1031,25 @@ impl App {
                     }
                 });
                 ui.separator();
-                item(ui, Family::Cabinets.name(), "coming soon", false);
+                ui.menu_button("Cabinets", |ui| {
+                    for tool in Family::Cabinets.tools().iter().take(5) {
+                        if tool_item(ui, *tool) {
+                            self.set_tool(*tool);
+                        }
+                    }
+                    ui.separator();
+                    if item(ui, "Auto Fillers", "", true) {
+                        let floor = Some(self.plan.floor);
+                        self.run1(Command::AutoFillers { floor });
+                    }
+                });
+                ui.menu_button("Appliances & Fixtures", |ui| {
+                    for tool in Family::Cabinets.tools().iter().skip(5) {
+                        if tool_item(ui, *tool) {
+                            self.set_tool(*tool);
+                        }
+                    }
+                });
             });
             ui.menu_button("Terrain", |ui| {
                 ui.weak("Terrain tools are planned for a later release (backlog M6).");

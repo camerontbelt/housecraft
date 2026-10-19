@@ -2,7 +2,9 @@
 //! Tool Palette. Names and hotkeys follow the conventions residential CAD users
 //! already know, so muscle memory carries over.
 
-use housecraft_api::model::{DoorStyle, ElectricalKind, Id, SectionKind, WindowStyle};
+use housecraft_api::model::{
+    ApplianceKind, CabinetKind, DoorStyle, ElectricalKind, Id, SectionKind, WindowStyle,
+};
 
 use crate::icons::Icon;
 
@@ -40,6 +42,12 @@ pub enum Tool {
     ConnectSwitch,
     /// Place copies of a CAD block.
     PlaceBlock(Id),
+    Cabinet(CabinetKind),
+    /// A base cabinet with a sink.
+    SinkCabinet,
+    /// Draw a custom countertop outline.
+    Countertop,
+    Appliance(ApplianceKind),
 }
 
 /// The shapes offered by the stair tools.
@@ -155,7 +163,7 @@ impl Family {
 
     /// Families whose tools are not built yet are shown disabled.
     pub fn available(self) -> bool {
-        !matches!(self, Family::Cabinets)
+        true
     }
 
     pub fn tools(self) -> &'static [Tool] {
@@ -229,7 +237,29 @@ impl Family {
                 Tool::Electrical(ElectricalKind::ExhaustFan),
                 Tool::ConnectSwitch,
             ],
-            Family::Cabinets | Family::Cameras => &[],
+            Family::Cabinets => &[
+                Tool::Cabinet(CabinetKind::Base),
+                Tool::Cabinet(CabinetKind::Wall),
+                Tool::Cabinet(CabinetKind::Full),
+                Tool::SinkCabinet,
+                Tool::Countertop,
+                Tool::Appliance(ApplianceKind::Refrigerator),
+                Tool::Appliance(ApplianceKind::Range),
+                Tool::Appliance(ApplianceKind::Cooktop),
+                Tool::Appliance(ApplianceKind::WallOven),
+                Tool::Appliance(ApplianceKind::Dishwasher),
+                Tool::Appliance(ApplianceKind::Microwave),
+                Tool::Appliance(ApplianceKind::RangeHood),
+                Tool::Appliance(ApplianceKind::Washer),
+                Tool::Appliance(ApplianceKind::Dryer),
+                Tool::Appliance(ApplianceKind::Toilet),
+                Tool::Appliance(ApplianceKind::Bathtub),
+                Tool::Appliance(ApplianceKind::Shower),
+                Tool::Appliance(ApplianceKind::VanitySink),
+                Tool::Appliance(ApplianceKind::Pedestal),
+                Tool::Appliance(ApplianceKind::WaterHeater),
+            ],
+            Family::Cameras => &[],
         }
     }
 
@@ -261,6 +291,9 @@ impl Tool {
             Tool::SectionLine(_) => Family::Cameras,
             Tool::Stair(_) => Family::Stairs,
             Tool::Electrical(_) | Tool::ConnectSwitch => Family::Electrical,
+            Tool::Cabinet(_) | Tool::SinkCabinet | Tool::Countertop | Tool::Appliance(_) => {
+                Family::Cabinets
+            }
             _ => Family::Cad,
         }
     }
@@ -299,6 +332,10 @@ impl Tool {
             Tool::Electrical(k) => k.name(),
             Tool::ConnectSwitch => "Connect Electrical",
             Tool::PlaceBlock(_) => "Place Block",
+            Tool::Cabinet(k) => k.name(),
+            Tool::SinkCabinet => "Sink Base Cabinet",
+            Tool::Countertop => "Custom Countertop",
+            Tool::Appliance(k) => k.name(),
         }
     }
 
@@ -337,6 +374,9 @@ impl Tool {
             Tool::Stair(_) => Icon::Stairs,
             Tool::Electrical(_) | Tool::ConnectSwitch => Icon::Electrical,
             Tool::PlaceBlock(_) => Icon::Box,
+            Tool::Cabinet(_) | Tool::SinkCabinet | Tool::Countertop | Tool::Appliance(_) => {
+                Icon::Cabinet
+            }
         }
     }
 
@@ -410,6 +450,13 @@ impl Tool {
                 "Click the two ends of the eave, then the other corners; double-click or Enter to finish."
             }
             Tool::PlaceBlock(_) => "Click to place a copy of the block; Esc when done.",
+            Tool::Cabinet(_) | Tool::SinkCabinet => {
+                "Click near a wall to back the cabinet onto it, or anywhere for an island."
+            }
+            Tool::Countertop => {
+                "Click the corners of the countertop; double-click or Enter to finish."
+            }
+            Tool::Appliance(_) => "Click near a wall to back it onto the wall.",
         }
     }
 }

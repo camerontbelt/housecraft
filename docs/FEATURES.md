@@ -188,15 +188,15 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| CB-01 | Parametric cabinets: framed, frameless, curved, angled, bow; doors, drawers, shelves, moldings, backsplashes | P1 | M5 |
-| CB-02 | Cabinet defaults | P1 | M5 |
+| CB-01 | Parametric cabinets: framed, frameless, curved, angled, bow; doors, drawers, shelves, moldings, backsplashes | P1 | M5 ◐ framed and frameless; standard, angled, bow and curved shapes; door/drawer/open/panel/glass rows; backsplashes; shelves counted (not drawn); moldings later |
+| CB-02 | Cabinet defaults | P1 | M5 ✓ |
 | CB-03 | Architectural blocks (save cabinet groups/kitchens; unblock) | P2 | M5 |
 | CB-04 | Items inside cabinets (shelves, storage, hardware, appliances on face) | P2 | M5 |
 | CB-05 | Shelf spacing per opening | P2 | M5 |
 | CB-06 | Waterfall countertop edges | P2 | M5 |
-| CB-07 | Custom countertops: holes, edge profiles, thickness, height | P1 | M5 |
+| CB-07 | Custom countertops: holes, edge profiles, thickness, height | P1 | M5 ✓ |
 | CB-08 | Custom backsplash that wraps cabinets/openings/appliances | P2 | M5 |
-| CB-09 | Auto/manual fillers with exclusions | P1 | M5 |
+| CB-09 | Auto/manual fillers with exclusions | P1 | M5 ✓ |
 | CB-10 | Blind-corner behaviour | P2 | M5 |
 | CB-11 | Independent side/back/front configuration; side & back thickness | P2 | M5 |
 | CB-12 | Report door/drawer sizes | P2 | M5 |
@@ -205,10 +205,10 @@ These come from reading the whole list and change the architecture, not just the
 | CB-15 | Extended stiles with auto-clipping | P2 | M5 |
 | CB-16 | Per-edge door overlay | P2 | M5 |
 | CB-17 | Frameless reveal controls | P2 | M5 |
-| CB-18 | Separate materials per component | P1 | M5 |
+| CB-18 | Separate materials per component | P1 | M5 ✓ |
 | CB-19 | Rounded/chamfered box and countertop corners | P2 | M5 |
 | CB-20 | Millwork & end panels (pilasters, feet, legs, moldings; auto end panels) | P2 | M5 |
-| CB-21 | Hardware per door/drawer with auto-orientation and placement | P1 | M5 |
+| CB-21 | Hardware per door/drawer with auto-orientation and placement | P1 | M5 ✓ |
 | CB-22 | Stacked moldings with auto-stack | P2 | M5 |
 | CB-23 | Flush cabinet moldings | P3 | M5 |
 | CB-24 | NKBA-standard display options | P2 | M5 |

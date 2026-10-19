@@ -124,6 +124,13 @@ pub(crate) fn new_document(name: String) -> Document {
         Some(Color::rgb(0x8a, 0x2b, 0x8f)),
     );
 
+    let cabinets = layer(
+        &mut doc,
+        "Cabinets",
+        0.25,
+        Some(Color::rgb(0x6b, 0x4f, 0x2a)),
+    );
+
     let style = |doc: &mut Document, name: &str, height: Length, bold: bool| {
         doc.insert(TextStyle {
             id: PLACEHOLDER,
@@ -233,6 +240,7 @@ pub(crate) fn new_document(name: String) -> Document {
             roofs: Some(roofs),
             stairs: Some(stairs),
             electrical: Some(electrical),
+            cabinets: Some(cabinets),
         },
         dimensions: DimensionDefaults {
             text_style: dim_text,
@@ -258,6 +266,7 @@ pub(crate) fn new_document(name: String) -> Document {
         roof: RoofDefaults::default(),
         stair: StairDefaults::default(),
         exterior_stair: StairDefaults::exterior(),
+        cabinets: CabinetDefaults::default(),
         materials,
     });
     doc.settings.active_default_set = defaults;

@@ -369,6 +369,9 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_revision_cloud", "points": [[0,0],[1000,0],[0,1000]]}},
                 {{"op": "add_cad_detail", "name": "Eave", "shapes": [{{"shape": {{"shape": "line", "a": [0,0], "b": [100,0]}}, "fill": "#808080"}}], "texts": [{{"position": [0,0], "text": "x"}}]}},
                 {{"op": "add_block", "name": "B", "shapes": [{{"shape": {{"shape": "point", "at": [0,0]}}}}]}},
+                {{"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'","5'"], "sink": true}},
+                {{"op": "add_countertop", "points": [["8'","8'"], ["12'","8'"], ["12'","11'"]], "holes": [{{"hole_kind": "round", "center": ["10'","9'"], "width": "2\"", "depth": "2\""}}]}},
+                {{"op": "add_appliance", "appliance_kind": "toilet", "at": ["15'","1'"]}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
             w = wall.0
         ),
@@ -1539,4 +1542,68 @@ fn materials_paint_replace_and_merge() {
     let mesh = housecraft_api::geom::mesh::build(s.document(), None);
     let walnut_rgb = housecraft_api::geom::mesh::look_of(s.document().get::<Material>(walnut).unwrap()).color;
     assert!(mesh.colors.contains(&walnut_rgb));
+}
+
+#[test]
+fn cabinets_snap_fill_mirror_and_mesh() {
+    let mut s = boxed();
+    // The box's west wall runs along x = 0; its inside face is at the wall thickness.
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'", "5'"]},
+            {"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'", "7'8\""], "sink": true},
+            {"op": "add_cabinet", "cabinet_kind": "wall", "at": ["1'", "5'"]},
+            {"op": "add_appliance", "appliance_kind": "refrigerator", "at": ["1'", "11'"]},
+            {"op": "add_countertop", "points": [["8'","8'"], ["12'","8'"], ["12'","11'"], ["8'","11'"]],
+             "holes": [{"hole_kind": "sink", "center": ["10'","9'6\""], "width": "30\"", "depth": "18\""}]}]"#,
+    );
+    let doc = s.document();
+    let base = doc.get::<Cabinet>(out.created[0]).unwrap().clone();
+    let t = 7.1875;
+    // Backed onto the wall's inside face, facing east into the room.
+    assert!((base.position.x().inches() - t / 2.0 - 0.0).abs() < 4.0, "{:?}", base.position);
+    assert!(base.facing.abs() < 1e-6, "faces east: {}", base.facing);
+    assert!(base.countertop.is_some() && base.toe_kick.is_some());
+    let sink = doc.get::<Cabinet>(out.created[1]).unwrap().clone();
+    assert!(sink.sink && (sink.width.inches() - 36.0).abs() < 1e-9);
+    assert_eq!(sink.face[0].items, vec![FaceItem::Panel]);
+    let wall_cab = doc.get::<Cabinet>(out.created[2]).unwrap();
+    assert!((wall_cab.elevation.inches() - 54.0).abs() < 1e-9 && wall_cab.countertop.is_none());
+    let fridge = doc.get::<Appliance>(out.created[3]).unwrap();
+    assert!((fridge.width.inches() - 36.0).abs() < 1e-9);
+    assert!(doc.validate().is_empty(), "{:?}", doc.validate());
+
+    // The 24" base (centre 5') and the 36" sink base (centre 7'8") leave a 2"
+    // gap; auto fillers split it.
+    let out = apply(&mut s, r#"[{"op": "auto_fillers"}]"#);
+    assert!(!out.modified.is_empty());
+    let doc = s.document();
+    let a = doc.get::<Cabinet>(base.id).unwrap();
+    let b = doc.get::<Cabinet>(sink.id).unwrap();
+    let total = a.filler_left.inches() + a.filler_right.inches() + b.filler_left.inches() + b.filler_right.inches();
+    assert!((total - 2.0).abs() < 0.05, "fillers total {total}");
+
+    // Mirror the sink base: its facing flips and left/right items swap.
+    let mut copy = b.clone();
+    copy.face[1].items = vec![FaceItem::DoorLeft];
+    let id = b.id;
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "update", "id": {}, "set": {{"face": {}}}}},
+                {{"op": "transform", "ids": [{}], "transform": {{"type": "mirror", "a": ["10'",0], "b": ["10'","10'"]}}}}]"#,
+            id.0,
+            serde_json::to_string(&copy.face).unwrap(),
+            id.0
+        ),
+    );
+    let m = s.document().get::<Cabinet>(id).unwrap();
+    assert!((m.facing.rem_euclid(360.0) - 180.0).abs() < 1e-6, "{}", m.facing);
+    assert_eq!(m.face[1].items, vec![FaceItem::DoorRight]);
+
+    // The 3D model has cabinet boxes, doors, countertops and hardware.
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    for surface in [Surface::CabinetBox, Surface::CabinetDoor, Surface::Countertop, Surface::Hardware] {
+        assert!(mesh.surfaces.contains(&Some(surface)), "{surface:?}");
+    }
 }

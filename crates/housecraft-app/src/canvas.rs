@@ -1110,6 +1110,38 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 }
             }
             Tool::Point => commands.push(cad(floor, Shape::Point { at: pt(p) })),
+            Tool::Cabinet(kind) => commands.push(Command::AddCabinet {
+                floor,
+                cabinet_kind: kind,
+                at: pt(p),
+                facing: None,
+                width: None,
+                depth: None,
+                height: None,
+                shape: CabinetShape::Standard,
+                sink: false,
+            }),
+            Tool::SinkCabinet => commands.push(Command::AddCabinet {
+                floor,
+                cabinet_kind: CabinetKind::Base,
+                at: pt(p),
+                facing: None,
+                width: None,
+                depth: None,
+                height: None,
+                shape: CabinetShape::Standard,
+                sink: true,
+            }),
+            Tool::Appliance(kind) => commands.push(Command::AddAppliance {
+                floor,
+                appliance_kind: kind,
+                at: pt(p),
+                facing: None,
+                width: None,
+                depth: None,
+                height: None,
+            }),
+            Tool::Countertop => pending.push(p),
             Tool::PlaceBlock(block) => commands.push(Command::AddBlockRef {
                 floor,
                 block,
@@ -1215,6 +1247,20 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 points: pending.iter().map(|p| pt(*p)).collect(),
                 arc: None,
                 label: None,
+            });
+        }
+        return;
+    }
+    if finish && tool == Tool::Countertop {
+        let pending = std::mem::take(&mut app.plan.pending);
+        if pending.len() >= 3 {
+            commands.push(Command::AddCountertop {
+                floor,
+                points: pending.iter().map(|p| pt(*p)).collect(),
+                height: None,
+                thickness: None,
+                edge: None,
+                holes: Vec::new(),
             });
         }
         return;
