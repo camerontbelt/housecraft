@@ -125,10 +125,12 @@ pub enum MaterialClass {
     Translucent,
     /// Gives off its own light (lamp lenses, screens).
     Emissive,
+    /// Moving water (pools, ponds, streams): ripples in 3D.
+    Water,
 }
 
 impl MaterialClass {
-    pub const ALL: [MaterialClass; 7] = [
+    pub const ALL: [MaterialClass; 8] = [
         MaterialClass::Generic,
         MaterialClass::Plastic,
         MaterialClass::Metal,
@@ -136,6 +138,7 @@ impl MaterialClass {
         MaterialClass::Glass,
         MaterialClass::Translucent,
         MaterialClass::Emissive,
+        MaterialClass::Water,
     ];
 
     pub fn name(self) -> &'static str {
@@ -147,6 +150,7 @@ impl MaterialClass {
             MaterialClass::Glass => "Glass",
             MaterialClass::Translucent => "Translucent",
             MaterialClass::Emissive => "Emissive",
+            MaterialClass::Water => "Water",
         }
     }
 }
@@ -294,6 +298,7 @@ impl Material {
             MaterialClass::Glass => (0.05, 0.0, 0.25, 0.0),
             MaterialClass::Translucent => (0.6, 0.0, 0.6, 0.0),
             MaterialClass::Emissive => (0.5, 0.0, 1.0, 1.0),
+            MaterialClass::Water => (0.05, 0.0, 0.85, 0.0),
         };
         Material {
             id: Id(0),

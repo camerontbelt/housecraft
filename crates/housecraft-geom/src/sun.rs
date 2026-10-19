@@ -18,9 +18,15 @@ pub fn position(latitude: f64, day_of_year: u32, hour: f64) -> (f64, f64) {
 /// Unit vector toward the sun (z up, plan axes) from the document's north
 /// angle and sun bearing/altitude.
 pub fn direction(doc: &housecraft_model::Document) -> glam::DVec3 {
-    let sun = doc.settings.sun;
+    direction_of(&doc.settings.sun, doc.settings.north)
+}
+
+/// Unit vector toward `sun` with plan north at `north` degrees.
+pub fn direction_of(sun: &housecraft_model::Sun, north: f64) -> glam::DVec3 {
+    let sun = *sun;
+    let doc_north = north;
     // Azimuth is clockwise from north; plan angles are counter-clockwise.
-    let bearing = (doc.settings.north - sun.azimuth).to_radians();
+    let bearing = (doc_north - sun.azimuth).to_radians();
     let alt = sun.altitude.to_radians();
     glam::DVec3::new(
         alt.cos() * bearing.cos(),

@@ -4,7 +4,7 @@ use housecraft_units::{Length, Point2, Point3};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::Id;
+use crate::{Color, Id, Sun};
 
 /// The visible region of a plan view.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -104,6 +104,171 @@ pub struct Camera {
     /// Image shown behind the model when this camera is viewed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backdrop: Option<String>,
+    /// How the view is drawn (style, lines, fog, sky, lights).
+    #[serde(default)]
+    pub render: RenderSettings,
+}
+
+/// A 3D drawing style.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RenderStyle {
+    /// Materials, sun and lights.
+    #[default]
+    Standard,
+    /// Everything one clay colour, lit and shadowed.
+    Clay,
+    /// Flat colours with outlines, no shadows (a technical illustration).
+    Technical,
+    /// Soft bands of colour on paper.
+    Watercolor,
+    /// Shades between two colours.
+    Duotone,
+    /// Walls and roofs see-through, the rest solid.
+    GlassHouse,
+}
+
+impl RenderStyle {
+    pub const ALL: [RenderStyle; 6] = [
+        RenderStyle::Standard,
+        RenderStyle::Clay,
+        RenderStyle::Technical,
+        RenderStyle::Watercolor,
+        RenderStyle::Duotone,
+        RenderStyle::GlassHouse,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            RenderStyle::Standard => "Standard",
+            RenderStyle::Clay => "Clay",
+            RenderStyle::Technical => "Technical Illustration",
+            RenderStyle::Watercolor => "Watercolor",
+            RenderStyle::Duotone => "Duotone",
+            RenderStyle::GlassHouse => "Glass House",
+        }
+    }
+
+    /// Its number in the shader.
+    pub fn index(self) -> u32 {
+        RenderStyle::ALL.iter().position(|s| *s == self).unwrap_or(0) as u32
+    }
+}
+
+/// The sky behind a 3D view.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Sky {
+    pub zenith: Color,
+    pub horizon: Color,
+    /// Sunlight strength, 0–2 (1 is a clear day).
+    pub sun_brightness: f64,
+    /// Night: moonlight instead of sunlight, dark sky.
+    #[serde(default)]
+    pub night: bool,
+}
+
+impl Default for Sky {
+    fn default() -> Self {
+        Sky {
+            zenith: Color::rgb(120, 160, 210),
+            horizon: Color::rgb(205, 220, 235),
+            sun_brightness: 1.0,
+            night: false,
+        }
+    }
+}
+
+/// Depth of field: things away from the focus distance blur (in high
+/// quality renders).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct DepthOfField {
+    pub focus: Length,
+    /// Lens f-number: smaller blurs more (f/2 is shallow, f/16 deep).
+    pub f_stop: f64,
+}
+
+/// How a 3D view is drawn.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct RenderSettings {
+    pub style: RenderStyle,
+    /// Draw dark lines along edges over the shading.
+    #[serde(default)]
+    pub outlines: bool,
+    /// How dark shadows are, 0 (none) to 1 (full).
+    #[serde(default = "one")]
+    pub shadow_intensity: f64,
+    /// Distance fog (depth cueing), 0 (none) to 1 (thick).
+    #[serde(default)]
+    pub fog: f64,
+    /// Brightness multiplier.
+    #[serde(default = "one")]
+    pub exposure: f64,
+    #[serde(default = "duo_dark")]
+    pub duotone_dark: Color,
+    #[serde(default = "duo_light")]
+    pub duotone_light: Color,
+    #[serde(default)]
+    pub sky: Sky,
+    /// Hide walls between the camera and what it looks at (for looking
+    /// into small rooms).
+    #[serde(default)]
+    pub hide_near_walls: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub depth_of_field: Option<DepthOfField>,
+    /// The sun for this view (a sun study); the plan's sun when unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sun: Option<Sun>,
+    /// Light fixtures turned off in this view (a lighting set).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub lights_off: Vec<Id>,
+    /// A 360° (equirectangular) image around the model.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub panorama: Option<Panorama>,
+}
+
+/// A 360° backdrop.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Panorama {
+    pub path: String,
+    /// Turn, degrees.
+    #[serde(default)]
+    pub rotation: f64,
+    /// Raise or lower the horizon, -1 to 1.
+    #[serde(default)]
+    pub horizon: f64,
+    /// Light the model with the image's colours.
+    #[serde(default)]
+    pub lights_scene: bool,
+}
+
+fn one() -> f64 {
+    1.0
+}
+fn duo_dark() -> Color {
+    Color::rgb(30, 45, 80)
+}
+fn duo_light() -> Color {
+    Color::rgb(245, 225, 190)
+}
+
+impl Default for RenderSettings {
+    fn default() -> Self {
+        RenderSettings {
+            style: RenderStyle::Standard,
+            outlines: false,
+            shadow_intensity: 1.0,
+            fog: 0.0,
+            exposure: 1.0,
+            duotone_dark: duo_dark(),
+            duotone_light: duo_light(),
+            sky: Sky::default(),
+            hide_near_walls: false,
+            depth_of_field: None,
+            sun: None,
+            lights_off: Vec::new(),
+            panorama: None,
+        }
+    }
 }
 
 /// Elevation (everything in view) or cross section (cut at the line).

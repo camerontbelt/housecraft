@@ -37,6 +37,10 @@ wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlCanvasElement"] }
 
+[dev-dependencies]
+# Checks the 3D shader parses and validates without a GPU.
+naga = { version = "30.0.1", features = ["wgsl-in"] }
+
 # Installers and app bundles (cargo-packager). File associations here are what
 # macOS uses (Info.plist); on Windows and Linux the app can also register itself.
 [package.metadata.packager]

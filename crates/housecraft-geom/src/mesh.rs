@@ -39,6 +39,9 @@ pub struct Mesh {
     /// Every planar polygon as added (millimetres), for 2D views such as
     /// elevations and sections that need faces rather than triangles.
     pub faces: Vec<Face>,
+    /// Glowing surfaces (emissive materials): part, centre (mm), area
+    /// (mm²), colour × strength. They become lights.
+    pub emitters: Vec<(usize, DVec3, f64, [f32; 3])>,
 }
 
 #[derive(Debug, Clone)]
@@ -206,7 +209,8 @@ pub fn look_of(m: &Material) -> Look {
         pbr: [
             m.roughness as f32,
             m.metallic as f32,
-            m.emissive as f32,
+            // Water is marked by emissive -1 (the 3D view ripples it).
+            if m.class == housecraft_model::MaterialClass::Water { -1.0 } else { m.emissive as f32 },
             m.opacity as f32,
         ],
         surface: None,
@@ -336,6 +340,16 @@ impl Mesh {
         let normal = newell_normal(pts);
         if normal.length_squared() < 1e-18 {
             return;
+        }
+        if look.pbr[2] > 0.3 && look.surface != Some(Surface::Lamp) && !self.parts.is_empty() {
+            let c = pts.iter().copied().sum::<DVec3>() / pts.len() as f64;
+            let k = look.pbr[2];
+            self.emitters.push((
+                self.parts.len() - 1,
+                c,
+                normal.length() / 2.0,
+                [look.color[0] * k, look.color[1] * k, look.color[2] * k],
+            ));
         }
         // Project onto the dominant plane to triangulate.
         let n = normal.normalize();
@@ -576,6 +590,32 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
     crate::site::build(doc, only_floor, &mut mesh);
     crate::framing::build(doc, only_floor, &mut mesh);
     crate::deck::build(doc, only_floor, &mut mesh);
+    // Emissive surfaces light their surroundings: one light per glowing
+    // object, at the middle of its glow, brighter the more glows.
+    let mut glow: std::collections::BTreeMap<usize, (DVec3, f64, [f32; 3])> = std::collections::BTreeMap::new();
+    for (part, c, area, color) in &mesh.emitters {
+        let e = glow.entry(*part).or_insert((DVec3::ZERO, 0.0, [0.0; 3]));
+        e.0 += *c * *area;
+        e.1 += area;
+        for (m, c) in e.2.iter_mut().zip(color) {
+            *m = m.max(*c);
+        }
+    }
+    for (part, (sum, area, color)) in glow {
+        if area < 1.0 {
+            continue;
+        }
+        let object = mesh.parts[part].object;
+        let m2 = area / 1e6;
+        mesh.lights.push(MeshLight {
+            object,
+            position: to_m(sum / area),
+            color,
+            intensity: (m2 * 4.0).clamp(0.2, 6.0) as f32,
+            shadows: false,
+            spread: 0,
+        });
+    }
     for x in doc.iter::<housecraft_model::Solid>() {
         if only_floor.is_some_and(|f| f != x.floor) {
             continue;

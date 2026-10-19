@@ -60,7 +60,7 @@ These come from reading the whole list and change the architecture, not just the
 | VIS-01 | Perspective and orthographic cameras; named, saved, editable, copyable | P0 | M1 ✓ |
 | VIS-02 | XYZ axes indicator and project-origin marker in 2D/3D | P1 | M1 |
 | VIS-03 | Navigation: orbit, pan, dolly, tilt, walk; standard view-direction presets | P0 | M1 ✓ (orbit, pan, dolly, walk, presets) |
-| VIS-04 | Auto-hide camera-facing exterior walls while navigating small rooms | P2 | M7 |
+| VIS-04 | Auto-hide camera-facing exterior walls while navigating small rooms | P2 | M7 ✓ option to hide walls between the camera and what it looks at |
 | VIS-05 | Cross-section slider: interactive cutaway from any side, live | P1 | M4 ✓ |
 | VIS-06 | Poché (solid fill) for walls/roofs/platforms in plan and camera views | P1 | M1 |
 | VIS-07 | Walkthrough recording along spline paths; per-keyframe direction/speed; multi-floor; per-path lighting | P2 | M7 |
@@ -69,22 +69,22 @@ These come from reading the whole list and change the architecture, not just the
 | VIS-10 | Cloud share walkthroughs | ✗ | — |
 | VIS-11 | Sun/shadow time-lapse (date/time sequences, timestamp overlay) | P2 | M7 |
 | VIS-12 | 360° spherical render export (up to 8192×4096) | P2 | M7 |
-| VIS-13 | Sky model: sun, moon, horizon lighting controls per camera | P2 | M7 |
+| VIS-13 | Sky model: sun, moon, horizon lighting controls per camera | P2 | M7 ◐ sky colours, sun brightness and moonlight per camera; no horizon light controls |
 | VIS-14 | Custom image backdrops per saved camera | P1 | M5 ✓ |
 | VIS-15 | Spherical (360°) backdrops with offset/orientation/eye level | P2 | M7 |
 | VIS-16 | HDR backdrops providing environment lighting | P2 | M7 |
 | VIS-17 | HDR image export | P2 | M7 |
 | VIS-18 | Extend terrain to horizon in 3D | P2 | M6 ✓ terrain option: extend flat ground to the horizon in 3D |
 | VIS-19 | Procedural grass regions (length, density, color) | P3 | M7 |
-| VIS-20 | Render techniques: standard, PBR, watercolor, squiggle line, technical illustration, clay, vector, glass house, duotone | P1→P2 | M5/M7 |
-| VIS-21 | Line-drawing overlay on standard/duotone/watercolor/PBR/clay | P2 | M7 |
+| VIS-20 | Render techniques: standard, PBR, watercolor, squiggle line, technical illustration, clay, vector, glass house, duotone | P1→P2 | M5/M7 ◐ standard, clay, technical illustration, watercolor, duotone and glass house; no squiggle line or vector styles |
+| VIS-21 | Line-drawing overlay on standard/duotone/watercolor/PBR/clay | P2 | M7 ✓ Render Settings > Lines draws edges over any style |
 | VIS-22 | GPU path-traced PBR with soft shadows | P2 | M7 |
 | VIS-23 | Denoising for ray-traced views | P2 | M7 |
 | VIS-24 | Depth of field (focus point, f-stop) | P3 | M7 |
 | VIS-25 | Camera default sets (e.g. dimension defaults for elevations vs sections) | P1 | M4 ✓ |
 | VIS-26 | Eight standard isometric angles | P1 | M1 |
-| VIS-27 | Shadow intensity control for vector/technical views | P2 | M7 |
-| VIS-28 | Depth cueing (distance fog) | P3 | M7 |
+| VIS-27 | Shadow intensity control for vector/technical views | P2 | M7 ✓ shadow strength slider per view |
+| VIS-28 | Depth cueing (distance fog) | P3 | M7 ✓ distance fog per view |
 
 ## 3. Cross sections & elevations
 
@@ -403,14 +403,14 @@ These come from reading the whole list and change the architecture, not just the
 | EL-05 | Per-fixture light controls (shadows, intensity, dimming, on/off) | P1 | M5 ◐ on/off, brightness, dimmer, colour temperature and a shadows switch; light from fixtures doesn't cast shadows yet |
 | EL-06 | Lighting manager table | P2 | M7 |
 | EL-07 | Kelvin color temperature (X18+) | P2 | M5 ✓ |
-| EL-08 | Lighting sets per view/camera | P2 | M7 |
+| EL-08 | Lighting sets per view/camera | P2 | M7 ✓ each camera can turn individual lights off (a lighting set) |
 
 ## 17. Terrain, site & landscape
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | SITE-01 | North pointer, sun angles from lat/long/date/time; 2D and 3D shadows | P1 | M3 ✓ |
-| SITE-02 | Copy sun angles for studies | P3 | M7 |
+| SITE-02 | Copy sun angles for studies | P3 | M7 ✓ a camera can keep its own sun angle (sun studies) |
 | SITE-03 | Bearing/angle display formats (azimuth, quadrant, DMS) | P1 | M1 |
 | SITE-04 | Terrain model from elevation data: smoothing, triangulation, skirt, contours | P2 | M6 ✓ terrain from elevation data: trend plane plus distance blending, smoothing passes, building cut-out, skirt, contours |
 | SITE-05 | Plot plans, site plans, subdivisions from bearings, distances and setbacks | P2 | M6 ◐ Terrain > Plot Plan from Bearings: lot lines from bearings and distances, labelled, with a setback line; no multi-lot subdivisions |
@@ -432,7 +432,7 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-21 | Plant encyclopedia data | P3 | M8 (own data) |
 | SITE-22 | Landscaping plans and plant schedules | P3 | M6 ✓ plant schedule; plants and site work in the materials list |
 | SITE-23 | Plant growth over time | P3 | M8 |
-| SITE-24 | 3D plants with shadows | P2 | M7 |
+| SITE-24 | 3D plants with shadows | P2 | M7 ✓ plants cast sun shadows in 3D |
 
 ## 18. 3D design & materials
 
@@ -446,8 +446,8 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-06 | Fill styles: pattern scale/angle/offset/transparency; gradients; fill painter | P1 | M1 |
 | MAT-07 | Parametric herringbone/grid patterns | P2 | M5 ✓ grid, running bond, herringbone and basketweave tile patterns |
 | MAT-08 | Custom patterns to library (X18+) | P2 | M5 ✓ Add to Library keeps the pattern |
-| MAT-09 | Animated water materials | P3 | M7 |
-| MAT-10 | Emissive materials as area lights | P2 | M7 |
+| MAT-09 | Animated water materials | P3 | M7 ✓ Water material class ripples in 3D |
+| MAT-10 | Emissive materials as area lights | P2 | M7 ✓ emissive materials light their surroundings |
 | MAT-11 | PBR maps: AO, roughness, metal, emissive, anisotropic, normal, bump | P1 | M5 ✓ colour maps textured in 3D with mipmaps; PBR values shaded live; other image maps stored |
 | MAT-12 | Interactive material editing (scale/rotation/origin in 3D) | P2 | M5 ✓ painter bar adjusts tile size and turn live; angle and offset in the material |
 | MAT-13 | Material builder: custom tiles, grout; Substance (.sbsar) import | P2/P3 | M5/M8 |

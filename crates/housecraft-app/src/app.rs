@@ -2356,6 +2356,7 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                                 eye: cam.eye,
                                 target: cam.target,
                                 layer_set: Some(cam.layer_set),
+                                render: Some(cam.render.clone()),
                             });
                             ui.close();
                         }
@@ -3008,6 +3009,7 @@ impl eframe::App for App {
         self.symbol_import_dialog(&ctx);
         self.image_export_dialog(&ctx);
         self.plot_dialog(&ctx);
+        crate::view3d::render_window(self, &ctx);
         crate::object_painter::window(self, &ctx);
         self.confirm_discard(&ctx);
     }

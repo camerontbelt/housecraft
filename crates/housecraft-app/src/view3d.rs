@@ -27,6 +27,9 @@ struct Vertex {
     /// Texture coordinates (tiles) and texture layer (−1 for none).
     uv: [f32; 2],
     tex: f32,
+    /// 1 for walls, 2 for roofs (for see-through styles and hiding walls
+    /// near the camera), 0 otherwise.
+    flags: f32,
 }
 
 /// Each texture layer's size in pixels.
@@ -49,6 +52,17 @@ struct Uniforms {
     /// Fixture lights: position (m) then colour and strength, per light;
     /// `params.w` is how many.
     lights: [[f32; 4]; 2 * MAX_LIGHTS],
+    /// x: style, y: fog density, z: shadow intensity, w: exposure.
+    style: [f32; 4],
+    duo_dark: [f32; 4],
+    duo_light: [f32; 4],
+    /// Fog and sky colour at the horizon.
+    horizon: [f32; 4],
+    /// x: time (s), y: hide walls near the camera (1/0), z: distance to
+    /// the target, w: sunlight colour warmth (night 1).
+    misc: [f32; 4],
+    /// What the camera looks at (m).
+    target: [f32; 4],
 }
 
 /// Most fixture lights drawn at once (the nearest to the view).
@@ -130,13 +144,13 @@ const SHADOW_SIZE: u32 = 2048;
 const SHADOW_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
 const SHADER: &str = r#"
-struct U { view_proj: mat4x4<f32>, light_vp: mat4x4<f32>, light: vec4<f32>, params: vec4<f32>, clip: vec4<f32>, eye: vec4<f32>, lights: array<vec4<f32>, 32> };
+struct U { view_proj: mat4x4<f32>, light_vp: mat4x4<f32>, light: vec4<f32>, params: vec4<f32>, clip: vec4<f32>, eye: vec4<f32>, lights: array<vec4<f32>, 32>, style: vec4<f32>, duo_dark: vec4<f32>, duo_light: vec4<f32>, horizon: vec4<f32>, misc: vec4<f32>, aim: vec4<f32> };
 @group(0) @binding(0) var<uniform> u: U;
 @group(1) @binding(0) var shadow_map: texture_depth_2d;
 @group(1) @binding(1) var shadow_sampler: sampler_comparison;
 @group(2) @binding(0) var tex_array: texture_2d_array<f32>;
 @group(2) @binding(1) var tex_sampler: sampler;
-struct VIn { @location(0) pos: vec3<f32>, @location(1) normal: vec3<f32>, @location(2) color: vec4<f32>, @location(3) pbr: vec4<f32>, @location(4) uv: vec2<f32>, @location(5) tex: f32 };
+struct VIn { @location(0) pos: vec3<f32>, @location(1) normal: vec3<f32>, @location(2) color: vec4<f32>, @location(3) pbr: vec4<f32>, @location(4) uv: vec2<f32>, @location(5) tex: f32, @location(6) flags: f32 };
 struct VOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) normal: vec3<f32>,
@@ -145,8 +159,12 @@ struct VOut {
     @location(3) pbr: vec4<f32>,
     @location(4) uv: vec2<f32>,
     @location(5) tex: f32,
+    @location(6) flags: f32,
 };
 @vertex fn vs(v: VIn) -> VOut {
+    return vert(v);
+}
+fn vert(v: VIn) -> VOut {
     var o: VOut;
     o.clip = u.view_proj * vec4<f32>(v.pos, 1.0);
     o.normal = v.normal;
@@ -155,7 +173,35 @@ struct VOut {
     o.pbr = v.pbr;
     o.uv = v.uv;
     o.tex = v.tex;
+    o.flags = v.flags;
     return o;
+}
+// Edge lines: drawn just in front of the faces they outline.
+@vertex fn vs_line(v: VIn) -> VOut {
+    var o = vert(v);
+    o.clip.z = o.clip.z - 0.0004 * o.clip.w;
+    return o;
+}
+@fragment fn fs_line(i: VOut) -> @location(0) vec4<f32> {
+    if (u.params.z > 0.5 && dot(u.clip.xyz, i.world) > u.clip.w) {
+        discard;
+    }
+    if (hidden_wall(i)) {
+        discard;
+    }
+    return vec4<f32>(0.07, 0.07, 0.09, 1.0);
+}
+// Walls nearer than the target and facing the camera hide when asked.
+fn hidden_wall(i: VOut) -> bool {
+    if (u.misc.y < 0.5 || i.flags < 0.5 || i.flags > 1.5) {
+        return false;
+    }
+    let to_eye = u.eye.xyz - i.world;
+    let fwd = normalize(u.aim.xyz - u.eye.xyz);
+    return dot(i.normal, to_eye) > 0.0 && dot(-to_eye, fwd) < u.misc.z * 0.85;
+}
+fn hash(p: vec2<f32>) -> f32 {
+    return fract(sin(dot(p, vec2<f32>(12.9898, 78.233))) * 43758.5453);
 }
 @vertex fn vs_shadow(v: VIn) -> @builtin(position) vec4<f32> {
     return u.light_vp * vec4<f32>(v.pos, 1.0);
@@ -189,8 +235,21 @@ fn shade(i: VOut) -> vec4<f32> {
     if (u.params.z > 0.5 && i.color.a > 0.5 && dot(u.clip.xyz, i.world) > u.clip.w) {
         discard;
     }
+    if (hidden_wall(i)) {
+        discard;
+    }
+    let style = i32(u.style.x + 0.5);
     let v = normalize(u.eye.xyz - i.world);
     var n = normalize(i.normal);
+    // Water (emissive -1): moving ripples tilt the normal.
+    let water = i.pbr.z < -0.5;
+    if (water) {
+        let t = u.misc.x;
+        let w = i.world.xy;
+        let dx = 0.04 * cos(w.x * 3.1 + t * 1.3) + 0.03 * cos((w.x + w.y) * 5.7 + t * 2.1);
+        let dy = 0.04 * cos(w.y * 2.7 + t * 1.1) + 0.03 * cos((w.x - w.y) * 6.3 + t * 1.7);
+        n = normalize(n + vec3<f32>(dx, dy, 0.0));
+    }
     if (dot(n, v) < 0.0) {
         n = -n;
     }
@@ -200,8 +259,11 @@ fn shade(i: VOut) -> vec4<f32> {
     // Textured surfaces take their colour from the texture (sampled
     // unconditionally to keep control flow uniform).
     let texel = textureSample(tex_array, tex_sampler, i.uv, max(i32(i.tex + 0.5), 0));
-    let base = select(i.color.rgb, texel.rgb, i.tex > -0.5);
-    let sun = sunlit(i.world) * u.params.y;
+    var base = select(i.color.rgb, texel.rgb, i.tex > -0.5);
+    if (style == 1) {
+        base = vec3<f32>(0.84, 0.82, 0.79);
+    }
+    let sun = mix(1.0, sunlit(i.world), u.style.z) * u.params.y;
     let diffuse = abs(dot(n, l)) * sun;
     let sky = 0.5 + 0.5 * n.z;
     let lit = 0.35 + 0.5 * diffuse + 0.15 * sky;
@@ -239,8 +301,31 @@ fn shade(i: VOut) -> vec4<f32> {
         let lspec = pow(max(dot(n, lh), 0.0), power) * (power + 8.0) / 25.13 * ndl;
         lamps += lc.rgb * falloff * (base * (1.0 - metal) * ndl + f0 * lspec * 0.5);
     }
-    let color = base * (1.0 - metal) * lit + fresnel * spec * 0.6 + env + lamps + base * i.pbr.z;
-    return vec4<f32>(color, clamp(i.pbr.w, 0.0, 1.0));
+    // Moonlight is cool and dim.
+    let sun_tint = mix(vec3<f32>(1.0), vec3<f32>(0.55, 0.65, 1.0), u.misc.w);
+    var color = (base * (1.0 - metal) * lit + fresnel * spec * 0.6) * sun_tint + env + lamps + base * max(i.pbr.z, 0.0);
+    let lum = dot(color, vec3<f32>(0.299, 0.587, 0.114));
+    if (style == 2) {
+        // Technical illustration: flat colour, a little shading by angle.
+        color = base * (0.7 + 0.3 * abs(dot(n, v)));
+    } else if (style == 3) {
+        // Watercolor: soft bands, paler, with paper grain.
+        let band = floor(lum * 4.0 + 0.5) / 4.0;
+        color = mix(color * (band / max(lum, 0.02)), vec3<f32>(1.0), 0.3);
+        color = color * (0.93 + 0.07 * hash(floor(i.clip.xy / 3.0)));
+    } else if (style == 4) {
+        color = mix(u.duo_dark.rgb, u.duo_light.rgb, clamp(lum * 1.1, 0.0, 1.0));
+    }
+    color = color * u.style.w;
+    // Depth cueing: fade toward the horizon colour with distance.
+    let dist = length(u.eye.xyz - i.world);
+    let fog = 1.0 - exp(-u.style.y * dist * 0.02);
+    color = mix(color, u.horizon.rgb, clamp(fog, 0.0, 1.0));
+    var alpha = clamp(i.pbr.w, 0.0, 1.0);
+    if (style == 5 && i.flags > 0.5) {
+        alpha = min(alpha, 0.28);
+    }
+    return vec4<f32>(color, alpha);
 }
 @fragment fn fs(i: VOut) -> @location(0) vec4<f32> {
     let c = shade(i);
@@ -265,6 +350,9 @@ struct Renderer3d {
     tex_keys: Vec<TextureKey>,
     pipeline: wgpu::RenderPipeline,
     clear_pipeline: wgpu::RenderPipeline,
+    line_pipeline: wgpu::RenderPipeline,
+    /// Indices after `count` are edge lines.
+    lines: u32,
     shadow_pipeline: wgpu::RenderPipeline,
     uniforms: wgpu::Buffer,
     bind: wgpu::BindGroup,
@@ -348,7 +436,7 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
         immediate_size: 0,
     });
     let attributes = wgpu::vertex_attr_array![
-        0 => Float32x3, 1 => Float32x3, 2 => Float32x4, 3 => Float32x4, 4 => Float32x2, 5 => Float32
+        0 => Float32x3, 1 => Float32x3, 2 => Float32x4, 3 => Float32x4, 4 => Float32x2, 5 => Float32, 6 => Float32
     ];
     let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("housecraft 3d"),
@@ -422,6 +510,48 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
             targets: &[Some(wgpu::ColorTargetState {
                 format: rs.target_format,
                 blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview_mask: None,
+        cache: None,
+    });
+    let line_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("housecraft 3d lines"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: Some("vs_line"),
+            compilation_options: Default::default(),
+            buffers: &[Some(wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<Vertex>() as u64,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &attributes,
+            })],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::LineList,
+            ..Default::default()
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: crate::DEPTH_FORMAT,
+            depth_write_enabled: Some(false),
+            depth_compare: Some(wgpu::CompareFunction::LessEqual),
+            stencil: Default::default(),
+            bias: Default::default(),
+        }),
+        multisample: wgpu::MultisampleState {
+            count: crate::MSAA,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: Some("fs_line"),
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: rs.target_format,
+                blend: Some(wgpu::BlendState::REPLACE),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -516,6 +646,8 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
         tex_keys: Vec::new(),
         pipeline,
         clear_pipeline,
+        line_pipeline,
+        lines: 0,
         shadow_pipeline,
         uniforms,
         bind,
@@ -532,6 +664,8 @@ struct Paint3d {
     textures: Arc<Vec<TextureKey>>,
     vertices: Arc<Vec<Vertex>>,
     indices: Arc<Vec<u32>>,
+    /// How many of `indices` are triangles; the rest are edge lines.
+    triangles: u32,
     key: u64,
     uniforms: Uniforms,
 }
@@ -568,7 +702,8 @@ impl egui_wgpu::CallbackTrait for Paint3d {
                     usage: wgpu::BufferUsages::INDEX,
                 })
             });
-            r.count = self.indices.len() as u32;
+            r.count = self.triangles;
+            r.lines = self.indices.len() as u32 - self.triangles;
             r.key = self.key;
         }
         // Render the scene's depth from the sun into the shadow map.
@@ -618,6 +753,10 @@ impl egui_wgpu::CallbackTrait for Paint3d {
         pass.set_vertex_buffer(0, v.slice(..));
         pass.set_index_buffer(i.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..r.count, 0, 0..1);
+        if r.lines > 0 {
+            pass.set_pipeline(&r.line_pipeline);
+            pass.draw_indexed(r.count..r.count + r.lines, 0, 0..1);
+        }
         pass.set_pipeline(&r.clear_pipeline);
         pass.draw_indexed(0..r.count, 0, 0..1);
     }
@@ -659,7 +798,7 @@ const CATEGORY_KEYS: [Id; 11] = [
 ];
 
 /// Uploaded geometry: (selection/document key, vertices, indices).
-type GpuMesh = (u64, Arc<Vec<Vertex>>, Arc<Vec<u32>>);
+type GpuMesh = (u64, Arc<Vec<Vertex>>, Arc<Vec<u32>>, u32);
 
 /// Camera state in metres, z up.
 pub struct View3d {
@@ -680,6 +819,12 @@ pub struct View3d {
     pub painter: Option<Painter>,
     /// Image behind the model (the applied camera's backdrop).
     pub backdrop: Option<String>,
+    /// Style, lines, fog, sky and lights for this view.
+    pub render: housecraft_api::model::RenderSettings,
+    /// The Render Settings window is open.
+    pub render_window: bool,
+    /// Seconds since start, for moving water.
+    pub time: f32,
     mesh: Option<(u64, Mesh)>,
     gpu: Option<GpuMesh>,
     gpu_key: u64,
@@ -704,6 +849,9 @@ impl Default for View3d {
             gpu_key: 0,
             painter: None,
             backdrop: None,
+            render: Default::default(),
+            render_window: false,
+            time: 0.0,
         }
     }
 }
@@ -750,6 +898,7 @@ impl View3d {
         self.walk = false;
         self.fit_requested = false;
         self.backdrop = cam.backdrop.clone();
+        self.render = cam.render.clone();
     }
 
     pub fn save_command(&self, name: String, layer_set: Id) -> Command {
@@ -774,6 +923,7 @@ impl View3d {
             eye: mm(self.eye()),
             target: mm(self.target),
             layer_set: Some(layer_set),
+            render: Some(self.render.clone()),
         }
     }
 
@@ -861,7 +1011,8 @@ fn to_gpu(
     hidden: &[Category],
     grade_z: Option<f32>,
     ground: (bool, Option<f32>),
-) -> (Vec<Vertex>, Vec<u32>) {
+    outlines: bool,
+) -> (Vec<Vertex>, Vec<u32>, u32) {
     let mut vertices: Vec<Vertex> = mesh
         .positions
         .iter()
@@ -876,10 +1027,22 @@ fn to_gpu(
             pbr: *m,
             uv: *uv,
             tex: *t,
+            flags: 0.0,
         })
         .collect();
     let accent = [1.0, 0.55, 0.1, 1.0];
     for part in &mesh.parts {
+        let flag = match part.category {
+            Category::Wall => 1.0,
+            Category::Roof => 2.0,
+            _ => 0.0,
+        };
+        if flag > 0.0 {
+            let range = part.first_index as usize..(part.first_index + part.index_count) as usize;
+            for &i in &mesh.indices[range] {
+                vertices[i as usize].flags = flag;
+            }
+        }
         if selection.contains(&part.object) {
             let range = part.first_index as usize..(part.first_index + part.index_count) as usize;
             for &i in &mesh.indices[range] {
@@ -892,12 +1055,14 @@ fn to_gpu(
     }
     // Ground plane under everything (with a terrain, only out to the
     // horizon when asked).
+    let mut ground_base = None;
     if let Some((lo, hi)) = mesh_bounds(mesh)
         && ground.0
     {
         let pad = if ground.1.is_some() { 3000.0 } else { ((hi - lo).length() * 0.6).max(10.0) };
         let z = ground.1.or(grade_z).unwrap_or(lo.z - 0.02);
         let base = vertices.len() as u32;
+        ground_base = Some(base);
         // Alpha 0 marks the ground for the shader (it is drawn opaque).
         let g = [0.62, 0.68, 0.55, 0.0];
         for (x, y) in [
@@ -913,13 +1078,60 @@ fn to_gpu(
                 pbr: [0.95, 0.0, 0.0, 1.0],
                 uv: [0.0, 0.0],
                 tex: -1.0,
+                flags: 0.0,
             });
         }
-        let mut indices = visible_indices(mesh, hidden);
-        indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
-        return (vertices, indices);
     }
-    (vertices, visible_indices(mesh, hidden))
+    let mut indices = visible_indices(mesh, hidden);
+    // Edge lines outline the model only, not the ground.
+    let lines = if outlines { edge_lines(mesh, &indices, &mut vertices) } else { Vec::new() };
+    if let Some(base) = ground_base {
+        indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+    let triangles = indices.len() as u32;
+    indices.extend(lines);
+    (vertices, indices, triangles)
+}
+
+/// Index pairs (into `vertices`, appended) for the crease and boundary
+/// edges of the visible triangles: where faces meet at more than 25°.
+fn edge_lines(mesh: &Mesh, tris: &[u32], vertices: &mut Vec<Vertex>) -> Vec<u32> {
+    use std::collections::HashMap;
+    let key = |i: u32| {
+        let p = mesh.positions[i as usize];
+        [(p[0] * 1000.0).round() as i64, (p[1] * 1000.0).round() as i64, (p[2] * 1000.0).round() as i64]
+    };
+    // Edge (its ends, rounded to mm) → (its vertices, the faces' normals).
+    type Edges = HashMap<([i64; 3], [i64; 3]), (u32, u32, Vec<Vec3>)>;
+    let mut edges: Edges = HashMap::new();
+    for t in tris.as_chunks::<3>().0 {
+        let [a, b, c] = t.map(|i| Vec3::from_array(mesh.positions[i as usize]));
+        let n = (b - a).cross(c - a).normalize_or_zero();
+        if n == Vec3::ZERO {
+            continue;
+        }
+        for (i, j) in [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
+            let (ki, kj) = (key(i), key(j));
+            let k = if ki < kj { (ki, kj) } else { (kj, ki) };
+            edges.entry(k).or_insert((i, j, Vec::new())).2.push(n);
+        }
+    }
+    let cos = 35f32.to_radians().cos();
+    let mut out = Vec::new();
+    for (_, (i, j, normals)) in edges {
+        let crease = normals.len() == 1
+            || normals.iter().any(|a| normals.iter().any(|b| a.dot(*b).abs() < cos && a.dot(*b) < cos));
+        if crease {
+            let base = vertices.len() as u32;
+            for k in [i, j] {
+                let mut v = vertices[k as usize];
+                v.color = [0.0, 0.0, 0.0, 1.0];
+                vertices.push(v);
+            }
+            out.extend([base, base + 1]);
+        }
+    }
+    out
 }
 
 fn visible_indices(mesh: &Mesh, hidden: &[Category]) -> Vec<u32> {
@@ -1132,34 +1344,50 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         .selection
         .iter()
         .chain(v.hidden.iter().map(|c| &CATEGORY_KEYS[*c as usize]))
-        .fold(mesh_rev.wrapping_mul(1_000_003), |h, id| {
+        .fold(mesh_rev.wrapping_mul(1_000_003) ^ v.render.outlines as u64, |h, id| {
             h.wrapping_mul(31).wrapping_add(id.0)
         });
     if v.gpu.as_ref().is_none_or(|g| g.0 != sel_hash) {
-        let (verts, idx) = to_gpu(
+        let (verts, idx, tris) = to_gpu(
             &mesh,
             &app.selection,
             &v.hidden,
             grade(app.session.document()),
             ground(app.session.document()),
+            v.render.outlines,
         );
         v.gpu_key = v.gpu_key.wrapping_add(1);
-        v.gpu = Some((sel_hash, Arc::new(verts), Arc::new(idx)));
+        v.gpu = Some((sel_hash, Arc::new(verts), Arc::new(idx), tris));
     }
-    let (_, verts, idx) = v.gpu.clone().expect("uploaded");
+    let (_, verts, idx, triangles) = v.gpu.clone().expect("uploaded");
+    // Water moves: keep drawing while any is in view.
+    v.time = ui.input(|i| i.time) as f32;
+    if mesh.pbr.iter().any(|p| p[2] < -0.5) {
+        ui.ctx().request_repaint();
+    }
     v.mesh = Some((mesh_rev, mesh));
 
     let painter = ui.painter_at(rect);
     let dark = ui.visuals().dark_mode;
-    painter.rect_filled(
-        rect,
-        0.0,
-        if dark {
-            egui::Color32::from_rgb(38, 44, 54)
-        } else {
-            egui::Color32::from_rgb(196, 214, 232)
-        },
-    );
+    // The sky: a gradient from the zenith down to the horizon (the theme's
+    // plain background in the dark theme's default).
+    let (zenith, horizon) = sky_colors(&v.render);
+    let c32 = |c: housecraft_api::model::Color| {
+        let [r, g, b, _] = c.0;
+        egui::Color32::from_rgb(r, g, b)
+    };
+    if dark && v.render.sky == housecraft_api::model::Sky::default() {
+        painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(38, 44, 54));
+    } else {
+        let mut sky = egui::Mesh::default();
+        sky.colored_vertex(rect.left_top(), c32(zenith));
+        sky.colored_vertex(rect.right_top(), c32(zenith));
+        sky.colored_vertex(rect.right_bottom(), c32(horizon));
+        sky.colored_vertex(rect.left_bottom(), c32(horizon));
+        sky.add_triangle(0, 1, 2);
+        sky.add_triangle(0, 2, 3);
+        painter.add(sky);
+    }
     if let Some(path) = &v.backdrop {
         let r = rect;
         crate::images::paint(
@@ -1179,6 +1407,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             textures,
             vertices: verts,
             indices: idx,
+            triangles,
             key: v.gpu_key,
             uniforms,
         },
@@ -1189,9 +1418,15 @@ pub fn show(app: &mut App, ui: &mut Ui) {
 
 /// The shader inputs for a frame: camera, sun, shadows, cutaway, lights.
 fn frame_uniforms(v: &View3d, doc: &housecraft_api::model::Document, vp: Mat4) -> Uniforms {
-    let light = sun_direction(doc);
-    // Below the horizon the sun stops lighting and casting.
-    let strength = (light.z / 0.1).clamp(0.0, 1.0);
+    let r = &v.render;
+    let light = match &r.sun {
+        Some(sun) => housecraft_api::geom::sun::direction_of(sun, doc.settings.north).as_vec3(),
+        None => sun_direction(doc),
+    };
+    // Below the horizon the sun stops lighting and casting; at night the
+    // moon gives a little.
+    let night = r.sky.night;
+    let strength = (light.z / 0.1).clamp(0.0, 1.0) * r.sky.sun_brightness as f32 * if night { 0.12 } else { 1.0 };
     let bounds = v.mesh.as_ref().and_then(|(_, m)| mesh_bounds(m));
     let shadows = doc.settings.sun.shadows && strength > 0.0 && bounds.is_some();
     let light_vp = bounds.map_or(Mat4::IDENTITY, |(lo, hi)| light_view_proj(light, lo, hi));
@@ -1210,7 +1445,7 @@ fn frame_uniforms(v: &View3d, doc: &housecraft_api::model::Document, vp: Mat4) -
     let mut near: Vec<&housecraft_api::geom::mesh::MeshLight> = v
         .mesh
         .as_ref()
-        .map(|(_, m)| m.lights.iter().collect())
+        .map(|(_, m)| m.lights.iter().filter(|l| !r.lights_off.contains(&l.object)).collect())
         .unwrap_or_default();
     near.sort_by(|a, b| {
         let d = |l: &housecraft_api::geom::mesh::MeshLight| Vec3::from_array(l.position).distance(v.target);
@@ -1243,7 +1478,44 @@ fn frame_uniforms(v: &View3d, doc: &housecraft_api::model::Document, vp: Mat4) -
                     a[..lamps.len()].copy_from_slice(&lamps);
                     a
                 },
+                style: [
+                    r.style.index() as f32,
+                    r.fog as f32,
+                    if r.style == housecraft_api::model::RenderStyle::Technical { 0.0 } else { r.shadow_intensity as f32 },
+                    r.exposure as f32,
+                ],
+                duo_dark: color4(r.duotone_dark),
+                duo_light: color4(r.duotone_light),
+                horizon: color4(sky_colors(r).1),
+                misc: [
+                    v.time,
+                    if r.hide_near_walls { 1.0 } else { 0.0 },
+                    eye.distance(v.target),
+                    if night { 1.0 } else { 0.0 },
+                ],
+                target: v.target.extend(1.0).to_array(),
             }
+}
+
+/// A colour as linear RGBA for the shader.
+fn color4(c: housecraft_api::model::Color) -> [f32; 4] {
+    let [r, g, b, _] = c.0;
+    let f = |v: u8| (v as f32 / 255.0).powf(2.2);
+    [f(r), f(g), f(b), 1.0]
+}
+
+/// The sky's zenith and horizon colours (darkened at night).
+pub fn sky_colors(r: &housecraft_api::model::RenderSettings) -> (housecraft_api::model::Color, housecraft_api::model::Color) {
+    let dim = |c: housecraft_api::model::Color, k: f32| {
+        let [r, g, b, _] = c.0;
+        let f = |v: u8| (v as f32 * k) as u8;
+        housecraft_api::model::Color::rgb(f(r), f(g), f(b))
+    };
+    if r.sky.night {
+        (dim(r.sky.zenith, 0.12), dim(r.sky.horizon, 0.25))
+    } else {
+        (r.sky.zenith, r.sky.horizon)
+    }
 }
 
 /// Render the current 3D view at `width` × `height` pixels and save it as
@@ -1272,7 +1544,7 @@ pub fn export_image(
             r.tex_keys = mesh.textures.clone();
         }
     }
-    let (verts, idx) = to_gpu(&mesh, &[], &v.hidden, grade(doc), ground(doc));
+    let (verts, idx, triangles) = to_gpu(&mesh, &[], &v.hidden, grade(doc), ground(doc), v.render.outlines);
     v.mesh = Some((app.rev, mesh));
     let uniforms = frame_uniforms(v, doc, v.view_proj(w as f32 / h as f32));
     let vbuf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -1351,18 +1623,19 @@ pub fn export_image(
             pass.set_bind_group(0, &r.bind, &[]);
             pass.set_vertex_buffer(0, vbuf.slice(..));
             pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..idx.len() as u32, 0, 0..1);
+            pass.draw_indexed(0..triangles, 0, 0..1);
         }
         {
-            // The light theme's sky, in linear terms for an sRGB target.
-            let sky = |c: f64| (c / 255.0).powf(2.2);
+            // The sky's horizon colour, in linear terms for an sRGB target.
+            let sky = |c: u8| (c as f64 / 255.0).powf(2.2);
+            let [hr, hg, hb, _] = sky_colors(&v.render).1 .0;
             let clear = if transparent {
                 wgpu::Color::TRANSPARENT
             } else {
                 wgpu::Color {
-                    r: sky(196.0),
-                    g: sky(214.0),
-                    b: sky(232.0),
+                    r: sky(hr),
+                    g: sky(hg),
+                    b: sky(hb),
                     a: 1.0,
                 }
             };
@@ -1395,9 +1668,13 @@ pub fn export_image(
             pass.set_vertex_buffer(0, vbuf.slice(..));
             pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
             pass.set_pipeline(&r.pipeline);
-            pass.draw_indexed(0..idx.len() as u32, 0, 0..1);
+            pass.draw_indexed(0..triangles, 0, 0..1);
+            if (idx.len() as u32) > triangles {
+                pass.set_pipeline(&r.line_pipeline);
+                pass.draw_indexed(triangles..idx.len() as u32, 0, 0..1);
+            }
             pass.set_pipeline(&r.clear_pipeline);
-            pass.draw_indexed(0..idx.len() as u32, 0, 0..1);
+            pass.draw_indexed(0..triangles, 0, 0..1);
         }
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
@@ -1512,6 +1789,18 @@ fn overlay(app: &mut App, ui: &mut Ui, rect: Rect) {
                 ui.separator();
                 if ui.button("Fit").clicked() {
                     v.fit_requested = true;
+                }
+                ui.separator();
+                egui::ComboBox::from_id_salt("render_style")
+                    .selected_text(v.render.style.name())
+                    .width(130.0)
+                    .show_ui(ui, |ui| {
+                        for s in housecraft_api::model::RenderStyle::ALL {
+                            ui.selectable_value(&mut v.render.style, s, s.name());
+                        }
+                    });
+                if ui.button("Render…").on_hover_text("Lines, shadows, fog, sky and lights for this view").clicked() {
+                    v.render_window = !v.render_window;
                 }
             });
         });
@@ -1695,4 +1984,116 @@ fn texture_bind(
             },
         ],
     })
+}
+
+/// The Render Settings window: how this 3D view is drawn. Saved with a
+/// camera made from the view.
+pub fn render_window(app: &mut App, ctx: &egui::Context) {
+    let mut open = app.view3d.render_window;
+    if !open {
+        return;
+    }
+    let lights: Vec<(Id, String)> = app
+        .view3d
+        .mesh
+        .as_ref()
+        .map(|(_, m)| {
+            m.lights
+                .iter()
+                .map(|l| (l.object, housecraft_api::query::describe(app.session.document(), app.session.document().object(l.object).expect("light")).label))
+                .collect()
+        })
+        .unwrap_or_default();
+    let doc_sun = app.session.document().settings.sun;
+    let r = &mut app.view3d.render;
+    let color = |ui: &mut Ui, c: &mut housecraft_api::model::Color| {
+        let [cr, cg, cb, _] = c.0;
+        let mut c32 = egui::Color32::from_rgb(cr, cg, cb);
+        if ui.color_edit_button_srgba(&mut c32).changed() {
+            *c = housecraft_api::model::Color::rgb(c32.r(), c32.g(), c32.b());
+        }
+    };
+    egui::Window::new("Render Settings").open(&mut open).default_width(320.0).show(ctx, |ui| {
+        egui::Grid::new("render_settings").num_columns(2).show(ui, |ui| {
+            ui.label("Style");
+            egui::ComboBox::from_id_salt("render_style_w").selected_text(r.style.name()).show_ui(ui, |ui| {
+                for s in housecraft_api::model::RenderStyle::ALL {
+                    ui.selectable_value(&mut r.style, s, s.name());
+                }
+            });
+            ui.end_row();
+            ui.label("Lines");
+            ui.checkbox(&mut r.outlines, "Draw edges over the shading");
+            ui.end_row();
+            ui.label("Shadows");
+            ui.add(egui::Slider::new(&mut r.shadow_intensity, 0.0..=1.0));
+            ui.end_row();
+            ui.label("Fog (depth cueing)");
+            ui.add(egui::Slider::new(&mut r.fog, 0.0..=1.0));
+            ui.end_row();
+            ui.label("Brightness");
+            ui.add(egui::Slider::new(&mut r.exposure, 0.2..=3.0).logarithmic(true));
+            ui.end_row();
+            if r.style == housecraft_api::model::RenderStyle::Duotone {
+                ui.label("Duotone");
+                ui.horizontal(|ui| {
+                    color(ui, &mut r.duotone_dark);
+                    color(ui, &mut r.duotone_light);
+                });
+                ui.end_row();
+            }
+            ui.label("Sky");
+            ui.horizontal(|ui| {
+                color(ui, &mut r.sky.zenith);
+                color(ui, &mut r.sky.horizon);
+                ui.checkbox(&mut r.sky.night, "Night (moonlight)");
+            });
+            ui.end_row();
+            ui.label("Sun brightness");
+            ui.add(egui::Slider::new(&mut r.sky.sun_brightness, 0.0..=2.0));
+            ui.end_row();
+            ui.label("Sun for this view");
+            ui.horizontal(|ui| {
+                let mut own = r.sun.is_some();
+                if ui.checkbox(&mut own, "Own sun angle").on_hover_text("A sun study: this view keeps its own sun").changed() {
+                    r.sun = own.then_some(doc_sun);
+                }
+                if let Some(sun) = &mut r.sun {
+                    ui.add(egui::DragValue::new(&mut sun.azimuth).range(0.0..=360.0).suffix("° bearing"));
+                    ui.add(egui::DragValue::new(&mut sun.altitude).range(-10.0..=90.0).suffix("° high"));
+                }
+            });
+            ui.end_row();
+            ui.label("Walls");
+            ui.checkbox(&mut r.hide_near_walls, "Hide walls between me and the view");
+            ui.end_row();
+        });
+        if !lights.is_empty() {
+            egui::CollapsingHeader::new(format!("Lights in this view ({})", lights.len())).show(ui, |ui| {
+                for (id, label) in &lights {
+                    let mut on = !r.lights_off.contains(id);
+                    if ui.checkbox(&mut on, label).changed() {
+                        if on {
+                            r.lights_off.retain(|x| x != id);
+                        } else {
+                            r.lights_off.push(*id);
+                        }
+                    }
+                }
+            });
+        }
+        ui.weak("Save the view as a camera (3D > Save Current 3D View as Camera) to keep these settings.");
+    });
+    app.view3d.render_window = open;
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn the_shader_parses_and_validates() {
+        let module = naga::front::wgsl::parse_str(super::SHADER).unwrap_or_else(|e| panic!("{}", e.emit_to_string(super::SHADER)));
+        naga::valid::Validator::new(naga::valid::ValidationFlags::all(), naga::valid::Capabilities::all())
+            .validate(&module)
+            .unwrap_or_else(|e| panic!("{e:?}"));
+    }
 }

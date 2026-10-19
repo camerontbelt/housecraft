@@ -784,6 +784,9 @@ pub enum Command {
         eye: Point3,
         target: Point3,
         layer_set: Option<Id>,
+        /// How the view is drawn (style, lines, sky, lights).
+        #[serde(default)]
+        render: Option<RenderSettings>,
     },
     /// Change any properties of any object with a JSON merge patch over its
     /// JSON form (see `get_object`); `null` clears an optional field.
@@ -2677,6 +2680,7 @@ impl Command {
                 eye,
                 target,
                 layer_set,
+                render,
             } => {
                 let layer_set = first_layer_set(doc, *layer_set)?;
                 out.created.push(doc.insert(Camera {
@@ -2687,6 +2691,7 @@ impl Command {
                     target: *target,
                     layer_set,
                     backdrop: None,
+                    render: render.clone().unwrap_or_default(),
                 }));
             }
             Command::Update { id, set } => ops::update(doc, *id, set, &mut out)?,

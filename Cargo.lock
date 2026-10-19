@@ -1346,6 +1346,7 @@ dependencies = [
  "housecraft-io-native",
  "image",
  "log",
+ "naga",
  "rfd",
  "serde",
  "serde_json",

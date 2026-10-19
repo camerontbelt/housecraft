@@ -327,6 +327,7 @@ pub(crate) fn new_document(name: String) -> Document {
         target: Point3::from_mm(4000.0, 3000.0, 1200.0),
         layer_set: working,
         backdrop: None,
+        render: Default::default(),
     });
     doc
 }
