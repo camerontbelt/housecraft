@@ -646,6 +646,53 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.end_row();
             ed.pick::<Layer>(ui, "Layer", "layer", Some(m.layer), None);
         }
+        Object::Walkthrough(w) => {
+            ed.text(ui, "Name", "name", &w.name);
+            if let Some(f) = ed.number(ui, "Frames per Second", "fps", w.fps)
+                && f > 0.0
+                && f <= 120.0
+            {
+                ed.out.push(patch(id, json!({ "fps": f })));
+            }
+            Ed::label(ui, "Length");
+            ui.label(format!("{:.1} s, {} keyframes", w.duration(), w.keyframes.len()));
+            ui.end_row();
+            Ed::label(ui, "Keyframes");
+            let mut keys = w.keyframes.clone();
+            ui.vertical(|ui| {
+                let mut remove = None;
+                let mut merge = None;
+                for (i, k) in keys.iter_mut().enumerate() {
+                    ui.horizontal(|ui| {
+                        ui.label(format!("{}", i + 1));
+                        if i > 0 {
+                            ui.add(egui::DragValue::new(&mut k.seconds).range(0.0..=60.0).speed(0.1).prefix("travel ").suffix(" s"));
+                        }
+                        ui.add(egui::DragValue::new(&mut k.pause).range(0.0..=60.0).speed(0.1).prefix("pause ").suffix(" s"));
+                        if ui.small_button("✕").on_hover_text("Delete this keyframe").clicked() {
+                            remove = Some(i);
+                        }
+                        if i > 0 && ui.small_button("⇤").on_hover_text("Join with the one before (removes this stop)").clicked() {
+                            merge = Some(i);
+                        }
+                    });
+                }
+                if let Some(i) = merge {
+                    let k = keys.remove(i);
+                    if let Some(next) = keys.get_mut(i) {
+                        next.seconds += k.seconds + k.pause;
+                    }
+                } else if let Some(i) = remove
+                    && keys.len() > 1
+                {
+                    keys.remove(i);
+                }
+            });
+            ui.end_row();
+            if keys != w.keyframes {
+                ed.out.push(patch(id, json!({ "keyframes": keys })));
+            }
+        }
         Object::Deck(dk) => {
             for (label, field, v) in [
                 ("Top Height", "height", dk.height),

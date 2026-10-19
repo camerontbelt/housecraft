@@ -94,6 +94,8 @@ pub struct App {
     pub image_export: Option<(u32, u32, bool)>,
     /// Terrain > Plot Plan from Bearings: (sides, setback) being typed.
     plot: Option<(String, String)>,
+    /// A special render being set up (3D > Export).
+    render_export: Option<RenderExport>,
     /// A 3D model file waiting for its import options.
     pub symbol_import: Option<(std::path::PathBuf, housecraft_io_native::symbols::ImportOptions)>,
     pub bufs: EditBuffers,
@@ -140,6 +142,7 @@ impl App {
             render_state,
             image_export: None,
             plot: None,
+            render_export: None,
             object_painter: None,
             bufs: EditBuffers::default(),
             spec: Vec::new(),
@@ -575,6 +578,119 @@ impl App {
             line_weight: None,
             line_style: None,
         });
+    }
+
+    /// The settings window for a special render, then the render itself.
+    fn render_export_dialog(&mut self, ctx: &egui::Context) {
+        let Some(mut e) = self.render_export.take() else {
+            return;
+        };
+        let mut open = true;
+        let mut go = false;
+        egui::Window::new(e.kind.title()).open(&mut open).resizable(false).show(ctx, |ui| {
+            egui::Grid::new("render_export").num_columns(2).show(ui, |ui| {
+                if e.kind == RenderKind::Panorama {
+                    ui.label("Width");
+                    ui.add(egui::DragValue::new(&mut e.w).range(512..=8192).suffix(" px"));
+                    ui.end_row();
+                    ui.label("");
+                    ui.weak("The height is half the width (up to 8192 × 4096).");
+                    ui.end_row();
+                } else {
+                    ui.label("Size");
+                    ui.horizontal(|ui| {
+                        ui.add(egui::DragValue::new(&mut e.w).range(16..=8192).suffix(" px"));
+                        ui.label("×");
+                        ui.add(egui::DragValue::new(&mut e.h).range(16..=8192).suffix(" px"));
+                    });
+                    ui.end_row();
+                }
+                if e.kind == RenderKind::Quality {
+                    ui.label("Passes");
+                    ui.add(egui::Slider::new(&mut e.samples, 1..=128)).on_hover_text("More passes: smoother edges and softer shadows, but slower");
+                    ui.end_row();
+                    ui.label("Depth of field");
+                    ui.horizontal(|ui| {
+                        let r = &mut self.view3d.render;
+                        let mut on = r.depth_of_field.is_some();
+                        if ui.checkbox(&mut on, "").changed() {
+                            r.depth_of_field = on.then(|| housecraft_api::model::DepthOfField {
+                                focus: housecraft_api::units::Length::from_m(self.view3d.distance as f64),
+                                f_stop: 4.0,
+                            });
+                        }
+                        if let Some(d) = &mut r.depth_of_field {
+                            let mut m = d.focus.mm() / 1000.0;
+                            if ui.add(egui::DragValue::new(&mut m).range(0.2..=500.0).speed(0.1).prefix("focus ").suffix(" m")).changed() {
+                                d.focus = housecraft_api::units::Length::from_m(m);
+                            }
+                            ui.add(egui::DragValue::new(&mut d.f_stop).range(1.0..=32.0).speed(0.1).prefix("f/"));
+                        }
+                    });
+                    ui.end_row();
+                }
+                if e.kind == RenderKind::TimeLapse {
+                    ui.label("Latitude");
+                    ui.add(egui::DragValue::new(&mut e.latitude).range(-90.0..=90.0).speed(0.1).suffix("°"));
+                    ui.end_row();
+                    ui.label("Day of year");
+                    ui.add(egui::DragValue::new(&mut e.day).range(1..=365));
+                    ui.end_row();
+                    ui.label("From / to (hour)");
+                    ui.horizontal(|ui| {
+                        ui.add(egui::DragValue::new(&mut e.start).range(0.0..=24.0).speed(0.25));
+                        ui.add(egui::DragValue::new(&mut e.end).range(0.0..=24.0).speed(0.25));
+                    });
+                    ui.end_row();
+                    ui.label("Every");
+                    ui.add(egui::DragValue::new(&mut e.step).range(1.0..=240.0).suffix(" min"));
+                    ui.end_row();
+                }
+            });
+            ui.weak(e.kind.note());
+            go = ui.button("Render…").clicked();
+        });
+        if !go {
+            if open {
+                self.render_export = Some(e);
+            }
+            return;
+        }
+        self.mode = Mode::ThreeD;
+        let name = self.doc().name.clone();
+        let result = match e.kind {
+            RenderKind::Quality | RenderKind::Panorama | RenderKind::Hdr => {
+                let ext = if e.kind == RenderKind::Hdr { "hdr" } else { "png" };
+                let Some(path) = pick_save_path(&name, ext) else {
+                    self.render_export = Some(e);
+                    return;
+                };
+                match e.kind {
+                    RenderKind::Quality => crate::view3d::export_quality(self, e.w, e.h, e.samples, &path),
+                    RenderKind::Panorama => crate::view3d::export_panorama(self, e.w, &path),
+                    _ => crate::view3d::export_hdr(self, e.w, e.h, &path),
+                }
+                .map(|()| format!("Saved {}", path.display()))
+            }
+            RenderKind::TimeLapse | RenderKind::Walkthrough(_) => {
+                let Some(folder) = rfd::FileDialog::new().set_title("Folder for the frames").pick_folder() else {
+                    self.render_export = Some(e);
+                    return;
+                };
+                let n = match e.kind {
+                    RenderKind::Walkthrough(id) => match self.doc().get::<Walkthrough>(id).cloned() {
+                        Some(w) => crate::view3d::export_walkthrough(self, &w, e.w, e.h, &folder),
+                        None => Err("the walkthrough is gone".into()),
+                    },
+                    _ => crate::view3d::export_time_lapse(self, e.w, e.h, e.latitude, e.day, (e.start, e.end), e.step, &folder),
+                };
+                n.map(|n| format!("Saved {n} frames in {}", folder.display()))
+            }
+        };
+        match result {
+            Ok(msg) => self.info(msg),
+            Err(err) => self.error(format!("Render failed: {err}")),
+        }
     }
 
     /// Terrain > Terrain Around Building: a lot 30' bigger than the plan
@@ -1562,6 +1678,58 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                 if item(ui, "Sun Angle and North...", "", true) {
                     self.dialogs.sun.open = true;
                 }
+                ui.menu_button("Walkthroughs", |ui| {
+                    let recording = self.view3d.recording.is_some();
+                    if item(ui, if recording { "Stop Recording and Save" } else { "Record Walkthrough" }, "", true) {
+                        if let Some((keys, _)) = self.view3d.recording.take() {
+                            if keys.len() >= 2 {
+                                let n = self.doc().count::<Walkthrough>() + 1;
+                                self.run1(Command::AddWalkthrough { name: format!("Walkthrough {n}"), keyframes: keys, fps: None });
+                            } else {
+                                self.error("Move the camera while recording (a keyframe is kept every second)");
+                            }
+                        } else {
+                            self.mode = Mode::ThreeD;
+                            self.view3d.recording = Some((Vec::new(), 0.0));
+                            self.info("Recording: walk or orbit; choose Stop Recording and Save when done");
+                        }
+                    }
+                    if item(ui, "Create Orbit Walkthrough", "", true) {
+                        let n = self.doc().count::<Walkthrough>() + 1;
+                        self.run1(Command::OrbitWalkthrough { name: format!("Orbit {n}"), seconds: 20.0 });
+                    }
+                    let walks: Vec<(Id, String)> = self.doc().iter::<Walkthrough>().map(|w| (w.id, w.name.clone())).collect();
+                    if !walks.is_empty() {
+                        ui.separator();
+                    }
+                    for (id, name) in walks {
+                        ui.menu_button(name, |ui| {
+                            if item(ui, "Play", "", true) {
+                                self.mode = Mode::ThreeD;
+                                self.view3d.playing = Some((id, ui.input(|i| i.time)));
+                            }
+                            if item(ui, "Edit", "", true) {
+                                self.selection = vec![id];
+                                self.spec.push(id);
+                            }
+                            if item(ui, "Export Frames…", "", true) {
+                                self.render_export = Some(RenderExport::new(RenderKind::Walkthrough(id)));
+                            }
+                        });
+                    }
+                });
+                ui.menu_button("Special Renders", |ui| {
+                    for (label, kind) in [
+                        ("High-Quality Image…", RenderKind::Quality),
+                        ("360° Panorama…", RenderKind::Panorama),
+                        ("HDR Image…", RenderKind::Hdr),
+                        ("Sun Time-Lapse…", RenderKind::TimeLapse),
+                    ] {
+                        if item(ui, label, "", true) {
+                            self.render_export = Some(RenderExport::new(kind));
+                        }
+                    }
+                });
                 if item(ui, "Save Current 3D View as Camera", "", true) {
                     let n = self.doc().count::<Camera>() + 1;
                     let cmd = self
@@ -3009,6 +3177,7 @@ impl eframe::App for App {
         self.symbol_import_dialog(&ctx);
         self.image_export_dialog(&ctx);
         self.plot_dialog(&ctx);
+        self.render_export_dialog(&ctx);
         crate::view3d::render_window(self, &ctx);
         crate::object_painter::window(self, &ctx);
         self.confirm_discard(&ctx);
@@ -3083,4 +3252,60 @@ fn settings_commands(doc: &Document, objects: &[Object]) -> Vec<Command> {
         });
     }
     commands
+}
+
+/// The kinds of special render.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RenderKind {
+    Quality,
+    Panorama,
+    Hdr,
+    TimeLapse,
+    Walkthrough(Id),
+}
+
+impl RenderKind {
+    fn title(self) -> &'static str {
+        match self {
+            RenderKind::Quality => "High-Quality Image",
+            RenderKind::Panorama => "360° Panorama",
+            RenderKind::Hdr => "HDR Image",
+            RenderKind::TimeLapse => "Sun Time-Lapse",
+            RenderKind::Walkthrough(_) => "Walkthrough Frames",
+        }
+    }
+
+    fn note(self) -> &'static str {
+        match self {
+            RenderKind::Quality => "Renders the current view many times with tiny changes and averages them.",
+            RenderKind::Panorama => "A 360° image from where the camera stands, for panorama viewers.",
+            RenderKind::Hdr => "A Radiance .hdr image merged from three exposures.",
+            RenderKind::TimeLapse => "One stamped image for each step of the sun across the day, from this view.",
+            RenderKind::Walkthrough(_) => "One image per frame; join them into a video with any video editor.",
+        }
+    }
+}
+
+/// A special render's settings.
+struct RenderExport {
+    kind: RenderKind,
+    w: u32,
+    h: u32,
+    samples: u32,
+    latitude: f64,
+    day: u32,
+    start: f64,
+    end: f64,
+    step: f64,
+}
+
+impl RenderExport {
+    fn new(kind: RenderKind) -> Self {
+        let (w, h) = match kind {
+            RenderKind::Panorama => (4096, 2048),
+            RenderKind::TimeLapse | RenderKind::Walkthrough(_) => (1280, 720),
+            _ => (1920, 1080),
+        };
+        RenderExport { kind, w, h, samples: 24, latitude: 40.0, day: 172, start: 6.0, end: 20.0, step: 30.0 }
+    }
 }

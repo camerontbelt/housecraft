@@ -16,6 +16,10 @@ use wgpu::util::DeviceExt as _;
 use crate::app::App;
 use crate::tools::CameraAction;
 
+
+mod render;
+pub use render::*;
+
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
@@ -825,6 +829,10 @@ pub struct View3d {
     pub render_window: bool,
     /// Seconds since start, for moving water.
     pub time: f32,
+    /// A walkthrough playing: its id and when it started (s).
+    pub playing: Option<(Id, f64)>,
+    /// Keyframes being recorded and when the last was taken (s).
+    pub recording: Option<(Vec<housecraft_api::model::Keyframe>, f64)>,
     mesh: Option<(u64, Mesh)>,
     gpu: Option<GpuMesh>,
     gpu_key: u64,
@@ -852,6 +860,8 @@ impl Default for View3d {
             render: Default::default(),
             render_window: false,
             time: 0.0,
+            playing: None,
+            recording: None,
         }
     }
 }
@@ -873,7 +883,7 @@ impl View3d {
         self.distance = (self.distance * factor).clamp(0.3, 2000.0);
     }
 
-    fn look_from(&mut self, eye: Vec3, target: Vec3) {
+    pub fn look_from(&mut self, eye: Vec3, target: Vec3) {
         let d = target - eye;
         let len = d.length().max(0.01);
         self.target = target;
@@ -1059,7 +1069,8 @@ fn to_gpu(
     if let Some((lo, hi)) = mesh_bounds(mesh)
         && ground.0
     {
-        let pad = if ground.1.is_some() { 3000.0 } else { ((hi - lo).length() * 0.6).max(10.0) };
+        // Out toward the horizon (seen in walkthroughs and panoramas).
+        let pad = if ground.1.is_some() { 3000.0 } else { ((hi - lo).length() * 0.6).max(400.0) };
         let z = ground.1.or(grade_z).unwrap_or(lo.z - 0.02);
         let base = vertices.len() as u32;
         ground_base = Some(base);
@@ -1199,6 +1210,39 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     };
     if std::mem::take(&mut v.fit_requested) {
         v.fit(&mesh);
+    }
+    // Walkthroughs: play one, or record keyframes as the camera moves.
+    let now = ui.input(|i| i.time);
+    if let Some((id, start)) = v.playing {
+        match app.session.document().get::<housecraft_api::model::Walkthrough>(id) {
+            Some(w) if now - start <= w.duration() => {
+                if let Some((e, t)) = w.sample(now - start) {
+                    let m = |p: [f64; 3]| Vec3::new(p[0] as f32, p[1] as f32, p[2] as f32) / 1000.0;
+                    v.look_from(m(e), m(t));
+                    v.ortho = false;
+                }
+                ui.ctx().request_repaint();
+            }
+            _ => v.playing = None,
+        }
+    }
+    let (eye, target) = (v.eye(), v.target);
+    if let Some((keys, last)) = &mut v.recording {
+        let mm = |p: Vec3| Point3::from_mm(p.x as f64 * 1000.0, p.y as f64 * 1000.0, p.z as f64 * 1000.0);
+        let moved = keys.last().is_none_or(|k: &housecraft_api::model::Keyframe| {
+            let [x, y, z] = k.eye.mm();
+            Vec3::new(x as f32, y as f32, z as f32).distance(eye * 1000.0) > 300.0
+                || {
+                    let [x, y, z] = k.target.mm();
+                    Vec3::new(x as f32, y as f32, z as f32).distance(target * 1000.0) > 300.0
+                }
+        });
+        if now - *last >= 1.0 && moved {
+            let seconds = if keys.is_empty() { 0.0 } else { (now - *last).min(4.0) };
+            keys.push(housecraft_api::model::Keyframe { eye: mm(eye), target: mm(target), seconds, pause: 0.0 });
+            *last = now;
+        }
+        ui.ctx().request_repaint_after(std::time::Duration::from_millis(250));
     }
 
     // Navigation.
@@ -1516,212 +1560,6 @@ pub fn sky_colors(r: &housecraft_api::model::RenderSettings) -> (housecraft_api:
     } else {
         (r.sky.zenith, r.sky.horizon)
     }
-}
-
-/// Render the current 3D view at `width` × `height` pixels and save it as
-/// a PNG; with `transparent`, the sky is left see-through.
-pub fn export_image(
-    app: &mut App,
-    width: u32,
-    height: u32,
-    transparent: bool,
-    path: &std::path::Path,
-) -> Result<(), String> {
-    let rs = app.render_state.clone().ok_or("3D rendering is not available")?;
-    let device = &rs.device;
-    let max = device.limits().max_texture_dimension_2d;
-    let (w, h) = (width.clamp(16, max), height.clamp(16, max));
-    let doc = app.session.document();
-    let v = &mut app.view3d;
-    // A fresh model without selection highlights.
-    let mesh = build(doc, None);
-    {
-        let mut renderer = rs.renderer.write();
-        if let Some(r) = renderer.callback_resources.get_mut::<Renderer3d>()
-            && r.tex_keys != mesh.textures
-        {
-            r.tex_bind = texture_bind(device, &rs.queue, &r.tex_bgl, &mesh.textures);
-            r.tex_keys = mesh.textures.clone();
-        }
-    }
-    let (verts, idx, triangles) = to_gpu(&mesh, &[], &v.hidden, grade(doc), ground(doc), v.render.outlines);
-    v.mesh = Some((app.rev, mesh));
-    let uniforms = frame_uniforms(v, doc, v.view_proj(w as f32 / h as f32));
-    let vbuf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("export vertices"),
-        contents: bytemuck::cast_slice(&verts),
-        usage: wgpu::BufferUsages::VERTEX,
-    });
-    let ibuf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("export indices"),
-        contents: bytemuck::cast_slice(&idx),
-        usage: wgpu::BufferUsages::INDEX,
-    });
-    let size = wgpu::Extent3d {
-        width: w,
-        height: h,
-        depth_or_array_layers: 1,
-    };
-    let texture = |label, format, samples, usage| {
-        device.create_texture(&wgpu::TextureDescriptor {
-            label: Some(label),
-            size,
-            mip_level_count: 1,
-            sample_count: samples,
-            dimension: wgpu::TextureDimension::D2,
-            format,
-            usage,
-            view_formats: &[],
-        })
-    };
-    let msaa = texture("export colour", rs.target_format, crate::MSAA, wgpu::TextureUsages::RENDER_ATTACHMENT);
-    let resolved = texture(
-        "export resolve",
-        rs.target_format,
-        1,
-        wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-    );
-    let depth = texture("export depth", crate::DEPTH_FORMAT, crate::MSAA, wgpu::TextureUsages::RENDER_ATTACHMENT);
-    let (msaa_view, resolved_view, depth_view) = (
-        msaa.create_view(&Default::default()),
-        resolved.create_view(&Default::default()),
-        depth.create_view(&Default::default()),
-    );
-    // Rows are padded to 256 bytes for the copy.
-    let row = (w * 4).div_ceil(256) * 256;
-    let readback = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("export readback"),
-        size: row as u64 * h as u64,
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    {
-        let renderer = rs.renderer.read();
-        let r = renderer
-            .callback_resources
-            .get::<Renderer3d>()
-            .ok_or("the 3D renderer is not ready")?;
-        rs.queue.write_buffer(&r.uniforms, 0, bytemuck::bytes_of(&uniforms));
-        let mut encoder = device.create_command_encoder(&Default::default());
-        if uniforms.params[0] > 0.5 {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("export shadow"),
-                color_attachments: &[],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &r.shadow_view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            pass.set_pipeline(&r.shadow_pipeline);
-            pass.set_bind_group(0, &r.bind, &[]);
-            pass.set_vertex_buffer(0, vbuf.slice(..));
-            pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..triangles, 0, 0..1);
-        }
-        {
-            // The sky's horizon colour, in linear terms for an sRGB target.
-            let sky = |c: u8| (c as f64 / 255.0).powf(2.2);
-            let [hr, hg, hb, _] = sky_colors(&v.render).1 .0;
-            let clear = if transparent {
-                wgpu::Color::TRANSPARENT
-            } else {
-                wgpu::Color {
-                    r: sky(hr),
-                    g: sky(hg),
-                    b: sky(hb),
-                    a: 1.0,
-                }
-            };
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("export"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &msaa_view,
-                    depth_slice: None,
-                    resolve_target: Some(&resolved_view),
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(clear),
-                        store: wgpu::StoreOp::Discard,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &depth_view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Discard,
-                    }),
-                    stencil_ops: None,
-                }),
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            pass.set_bind_group(0, &r.bind, &[]);
-            pass.set_bind_group(1, &r.shadow_bind, &[]);
-            pass.set_bind_group(2, &r.tex_bind, &[]);
-            pass.set_vertex_buffer(0, vbuf.slice(..));
-            pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
-            pass.set_pipeline(&r.pipeline);
-            pass.draw_indexed(0..triangles, 0, 0..1);
-            if (idx.len() as u32) > triangles {
-                pass.set_pipeline(&r.line_pipeline);
-                pass.draw_indexed(triangles..idx.len() as u32, 0, 0..1);
-            }
-            pass.set_pipeline(&r.clear_pipeline);
-            pass.draw_indexed(0..triangles, 0, 0..1);
-        }
-        encoder.copy_texture_to_buffer(
-            wgpu::TexelCopyTextureInfo {
-                texture: &resolved,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            wgpu::TexelCopyBufferInfo {
-                buffer: &readback,
-                layout: wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(row),
-                    rows_per_image: Some(h),
-                },
-            },
-            size,
-        );
-        rs.queue.submit([encoder.finish()]);
-    }
-    let slice = readback.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    device
-        .poll(wgpu::PollType::wait_indefinitely())
-        .map_err(|e| e.to_string())?;
-    rx.recv()
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
-    let data = slice.get_mapped_range().map_err(|e| e.to_string())?;
-    let bgra = matches!(
-        rs.target_format,
-        wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb
-    );
-    let mut pixels = Vec::with_capacity((w * h * 4) as usize);
-    for y in 0..h as usize {
-        let line = &data[y * row as usize..y * row as usize + w as usize * 4];
-        for px in line.as_chunks::<4>().0 {
-            let [a, b, c, d] = *px;
-            pixels.extend(if bgra { [c, b, a, d] } else { [a, b, c, d] });
-        }
-    }
-    drop(data);
-    readback.unmap();
-    image::save_buffer(path, &pixels, w, h, image::ColorType::Rgba8).map_err(|e| e.to_string())
 }
 
 fn overlay(app: &mut App, ui: &mut Ui, rect: Rect) {

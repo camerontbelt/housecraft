@@ -375,3 +375,122 @@ pub struct LayoutBox {
     #[serde(default)]
     pub label: Option<String>,
 }
+
+/// A stop on a walkthrough path.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Keyframe {
+    pub eye: Point3,
+    pub target: Point3,
+    /// Seconds to travel here from the previous keyframe.
+    #[serde(default = "two")]
+    pub seconds: f64,
+    /// Seconds to hold here.
+    #[serde(default)]
+    pub pause: f64,
+}
+
+fn two() -> f64 {
+    2.0
+}
+
+fn fps() -> f64 {
+    24.0
+}
+
+/// A recorded camera path through or around the model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Walkthrough {
+    pub id: Id,
+    pub name: String,
+    pub keyframes: Vec<Keyframe>,
+    /// Frames per second when exported.
+    #[serde(default = "fps")]
+    pub fps: f64,
+    /// How it is drawn (lighting for this path); the view's when unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub render: Option<RenderSettings>,
+}
+
+impl Walkthrough {
+    /// How long it plays, seconds.
+    pub fn duration(&self) -> f64 {
+        self.keyframes
+            .iter()
+            .enumerate()
+            .map(|(i, k)| if i == 0 { k.pause } else { k.seconds.max(0.0) + k.pause })
+            .sum()
+    }
+
+    /// Eye and target (mm) `t` seconds in, along a smooth curve through the
+    /// keyframes.
+    pub fn sample(&self, t: f64) -> Option<([f64; 3], [f64; 3])> {
+        let k = &self.keyframes;
+        let first = k.first()?;
+        if k.len() == 1 {
+            return Some((first.eye.mm(), first.target.mm()));
+        }
+        // Find the segment (i-1 → i) and how far along it.
+        let mut clock = first.pause;
+        if t <= clock {
+            return Some((first.eye.mm(), first.target.mm()));
+        }
+        for i in 1..k.len() {
+            let travel = k[i].seconds.max(1e-6);
+            if t <= clock + travel {
+                let f = (t - clock) / travel;
+                let at = |j: usize| k[j.min(k.len() - 1)].clone();
+                let (p0, p1, p2, p3) = (at(i.saturating_sub(2)), at(i - 1), at(i), at(i + 1));
+                let spline = |a: [f64; 3], b: [f64; 3], c: [f64; 3], d: [f64; 3]| {
+                    let f2 = f * f;
+                    let f3 = f2 * f;
+                    [0, 1, 2].map(|n| {
+                        0.5 * (2.0 * b[n]
+                            + (-a[n] + c[n]) * f
+                            + (2.0 * a[n] - 5.0 * b[n] + 4.0 * c[n] - d[n]) * f2
+                            + (-a[n] + 3.0 * b[n] - 3.0 * c[n] + d[n]) * f3)
+                    })
+                };
+                return Some((
+                    spline(p0.eye.mm(), p1.eye.mm(), p2.eye.mm(), p3.eye.mm()),
+                    spline(p0.target.mm(), p1.target.mm(), p2.target.mm(), p3.target.mm()),
+                ));
+            }
+            clock += travel;
+            if t <= clock + k[i].pause {
+                return Some((k[i].eye.mm(), k[i].target.mm()));
+            }
+            clock += k[i].pause;
+        }
+        let last = k.last()?;
+        Some((last.eye.mm(), last.target.mm()))
+    }
+}
+
+#[cfg(test)]
+mod walk_tests {
+    use super::*;
+
+    #[test]
+    fn walkthroughs_pass_through_their_keyframes() {
+        let kf = |x: f64, s: f64, pause: f64| Keyframe {
+            eye: Point3::from_mm(x, 0.0, 1600.0),
+            target: Point3::from_mm(x + 1000.0, 0.0, 1600.0),
+            seconds: s,
+            pause,
+        };
+        let w = Walkthrough {
+            id: Id(1),
+            name: "w".into(),
+            keyframes: vec![kf(0.0, 0.0, 0.0), kf(1000.0, 2.0, 1.0), kf(3000.0, 2.0, 0.0)],
+            fps: 24.0,
+            render: None,
+        };
+        assert_eq!(w.duration(), 5.0);
+        assert_eq!(w.sample(0.0).unwrap().0[0], 0.0);
+        assert!((w.sample(2.0).unwrap().0[0] - 1000.0).abs() < 1e-6);
+        assert!((w.sample(2.5).unwrap().0[0] - 1000.0).abs() < 1e-6, "paused");
+        let mid = w.sample(4.0).unwrap().0[0];
+        assert!(mid > 1500.0 && mid < 2500.0, "{mid}");
+        assert!((w.sample(99.0).unwrap().0[0] - 3000.0).abs() < 1e-6);
+    }
+}

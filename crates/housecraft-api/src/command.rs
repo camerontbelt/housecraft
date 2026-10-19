@@ -485,6 +485,18 @@ pub enum Command {
         #[serde(default)]
         curved: bool,
     },
+    /// Save a camera path.
+    AddWalkthrough {
+        name: String,
+        keyframes: Vec<Keyframe>,
+        fps: Option<f64>,
+    },
+    /// A walkthrough circling the whole model once in `seconds`.
+    OrbitWalkthrough {
+        name: String,
+        #[serde(default = "orbit_seconds")]
+        seconds: f64,
+    },
     /// Draw a wall's framing (seen from outside) as a new CAD detail.
     WallFramingDetail { wall: Id },
     /// Draw a lot from a survey's bearings and distances, starting at
@@ -953,6 +965,8 @@ impl Command {
             Command::TrussDetail { .. } => "truss_detail",
             Command::WallFramingDetail { .. } => "wall_framing_detail",
             Command::AddDeck { .. } => "add_deck",
+            Command::AddWalkthrough { .. } => "add_walkthrough",
+            Command::OrbitWalkthrough { .. } => "orbit_walkthrough",
             Command::AddPlotLines { .. } => "add_plot_lines",
             Command::SitePlanDetail { .. } => "site_plan_detail",
             Command::AddSiteFeature { .. } => "add_site_feature",
@@ -2082,6 +2096,57 @@ impl Command {
                 let more = Command::AddCadDetail { name, shapes, texts }.apply(doc)?;
                 out.created.extend(more.created);
             }
+            Command::AddWalkthrough { name, keyframes, fps } => {
+                if keyframes.is_empty() {
+                    return invalid("a walkthrough needs at least one keyframe");
+                }
+                out.created.push(doc.insert(Walkthrough {
+                    id: Id(0),
+                    name: name.clone(),
+                    keyframes: keyframes.clone(),
+                    fps: fps.unwrap_or(24.0),
+                    render: None,
+                }));
+            }
+            Command::OrbitWalkthrough { name, seconds } => {
+                // Round the walls of every floor, from above and to one side.
+                let pts: Vec<housecraft_geom::DVec2> = doc
+                    .floors_by_elevation()
+                    .iter()
+                    .flat_map(|f| housecraft_geom::walls::wall_geoms(doc, f.id))
+                    .flat_map(|g| [g.start, g.end])
+                    .collect();
+                let Some((lo, hi)) = housecraft_geom::math::bounds(pts) else {
+                    return invalid("draw some walls first");
+                };
+                let top = doc
+                    .floors_by_elevation()
+                    .last()
+                    .map_or(2438.4, |f| (f.elevation + f.ceiling_height).mm());
+                let c = (lo + hi) / 2.0;
+                let r = ((hi - lo).length() * 0.9).max(6000.0);
+                let n = 12;
+                let step = seconds.max(1.0) / n as f64;
+                let keyframes = (0..=n)
+                    .map(|i| {
+                        let a = std::f64::consts::TAU * i as f64 / n as f64 - std::f64::consts::FRAC_PI_2;
+                        let e = c + housecraft_geom::DVec2::from_angle(a) * r;
+                        Keyframe {
+                            eye: Point3::from_mm(e.x, e.y, top + r * 0.35),
+                            target: Point3::from_mm(c.x, c.y, top * 0.5),
+                            seconds: if i == 0 { 0.0 } else { step },
+                            pause: 0.0,
+                        }
+                    })
+                    .collect();
+                out.created.push(doc.insert(Walkthrough {
+                    id: Id(0),
+                    name: name.clone(),
+                    keyframes,
+                    fps: 24.0,
+                    render: None,
+                }));
+            }
             Command::AddDeck { floor, points, height, platform, curved } => {
                 let floor = ops::resolve_floor(doc, *floor)?;
                 if points.len() < 3 {
@@ -2717,4 +2782,8 @@ impl Command {
         }
         Ok(out)
     }
+}
+
+fn orbit_seconds() -> f64 {
+    20.0
 }

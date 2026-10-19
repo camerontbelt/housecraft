@@ -63,24 +63,24 @@ These come from reading the whole list and change the architecture, not just the
 | VIS-04 | Auto-hide camera-facing exterior walls while navigating small rooms | P2 | M7 ✓ option to hide walls between the camera and what it looks at |
 | VIS-05 | Cross-section slider: interactive cutaway from any side, live | P1 | M4 ✓ |
 | VIS-06 | Poché (solid fill) for walls/roofs/platforms in plan and camera views | P1 | M1 |
-| VIS-07 | Walkthrough recording along spline paths; per-keyframe direction/speed; multi-floor; per-path lighting | P2 | M7 |
-| VIS-08 | Walkthrough editing: keyframe editing, join/break segments, pauses, multi-select | P2 | M7 |
-| VIS-09 | Automatic 360° exterior orbit walkthrough | P2 | M7 |
+| VIS-07 | Walkthrough recording along spline paths; per-keyframe direction/speed; multi-floor; per-path lighting | P2 | M7 ◐ record a walkthrough as you move; smooth path, travel time and pause per keyframe, any floors, its own lighting; exported as numbered frames (no video file) |
+| VIS-08 | Walkthrough editing: keyframe editing, join/break segments, pauses, multi-select | P2 | M7 ◐ edit keyframe times and pauses, delete keyframes, join stops; no multi-select or splitting |
+| VIS-09 | Automatic 360° exterior orbit walkthrough | P2 | M7 ✓ 3D > Walkthroughs > Create Orbit Walkthrough |
 | VIS-10 | Cloud share walkthroughs | ✗ | — |
-| VIS-11 | Sun/shadow time-lapse (date/time sequences, timestamp overlay) | P2 | M7 |
-| VIS-12 | 360° spherical render export (up to 8192×4096) | P2 | M7 |
+| VIS-11 | Sun/shadow time-lapse (date/time sequences, timestamp overlay) | P2 | M7 ✓ 3D > Special Renders > Sun Time-Lapse: one time-stamped frame per step across a day |
+| VIS-12 | 360° spherical render export (up to 8192×4096) | P2 | M7 ✓ 360° panorama export up to 8192 × 4096 |
 | VIS-13 | Sky model: sun, moon, horizon lighting controls per camera | P2 | M7 ◐ sky colours, sun brightness and moonlight per camera; no horizon light controls |
 | VIS-14 | Custom image backdrops per saved camera | P1 | M5 ✓ |
 | VIS-15 | Spherical (360°) backdrops with offset/orientation/eye level | P2 | M7 |
 | VIS-16 | HDR backdrops providing environment lighting | P2 | M7 |
-| VIS-17 | HDR image export | P2 | M7 |
+| VIS-17 | HDR image export | P2 | M7 ✓ HDR (.hdr) image merged from three exposures |
 | VIS-18 | Extend terrain to horizon in 3D | P2 | M6 ✓ terrain option: extend flat ground to the horizon in 3D |
 | VIS-19 | Procedural grass regions (length, density, color) | P3 | M7 |
 | VIS-20 | Render techniques: standard, PBR, watercolor, squiggle line, technical illustration, clay, vector, glass house, duotone | P1→P2 | M5/M7 ◐ standard, clay, technical illustration, watercolor, duotone and glass house; no squiggle line or vector styles |
 | VIS-21 | Line-drawing overlay on standard/duotone/watercolor/PBR/clay | P2 | M7 ✓ Render Settings > Lines draws edges over any style |
-| VIS-22 | GPU path-traced PBR with soft shadows | P2 | M7 |
-| VIS-23 | Denoising for ray-traced views | P2 | M7 |
-| VIS-24 | Depth of field (focus point, f-stop) | P3 | M7 |
+| VIS-22 | GPU path-traced PBR with soft shadows | P2 | M7 ◐ High-Quality Image averages many passes (smooth edges, soft sun shadows, depth of field); not path traced |
+| VIS-23 | Denoising for ray-traced views | P2 | M7 ◐ high-quality renders average passes, so there is no ray-tracing noise to remove |
+| VIS-24 | Depth of field (focus point, f-stop) | P3 | M7 ✓ depth of field (focus distance and f-stop) in high-quality renders |
 | VIS-25 | Camera default sets (e.g. dimension defaults for elevations vs sections) | P1 | M4 ✓ |
 | VIS-26 | Eight standard isometric angles | P1 | M1 |
 | VIS-27 | Shadow intensity control for vector/technical views | P2 | M7 ✓ shadow strength slider per view |

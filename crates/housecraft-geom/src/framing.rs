@@ -632,15 +632,26 @@ pub fn roof_trusses(doc: &Document, d: &FramingDefaults, floor: &Floor) -> Vec<M
             let o = r * s;
             for (t0, t1) in clip_line(&fp, o, n) {
                 let (e0, e1) = (o + n * t0, o + n * t1);
+                let drop = 19.0 + chord * 0.6;
+                // Trim the truss to where it fits under the roof (low eaves
+                // and hip ends leave no room for the chords).
+                let fits = |f: f64| roof(e0.lerp(e1, f)).is_some_and(|z| z - drop >= z_bottom + chord * 0.6);
+                let n_steps = 64;
+                let Some(first) = (0..=n_steps).find(|i| fits(*i as f64 / n_steps as f64)) else {
+                    continue;
+                };
+                let last = (0..=n_steps).rev().find(|i| fits(*i as f64 / n_steps as f64)).unwrap_or(first);
+                let (e0, e1) = (e0.lerp(e1, first as f64 / n_steps as f64), e0.lerp(e1, last as f64 / n_steps as f64));
                 let span = e0.distance(e1);
                 if span < 600.0 {
                     continue;
                 }
                 // The top chord's line: under the roof along the truss.
-                let drop = 19.0 + chord * 0.6;
                 let at = |f: f64| {
                     let p = e0.lerp(e1, f);
-                    roof(p).map(|z| p.extend((z - drop).max(z_bottom + chord)))
+                    // Where the roof comes down to the ceiling the top chord
+                    // meets the bottom chord rather than poking up through it.
+                    roof(p).map(|z| p.extend((z - drop).max(z_bottom)))
                 };
                 let samples: Vec<DVec3> = (0..=32).filter_map(|i| at(i as f64 / 32.0)).collect();
                 if samples.len() < 33 {

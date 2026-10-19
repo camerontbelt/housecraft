@@ -726,6 +726,23 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     c.issue(id, "a framing member needs some length");
                 }
             }
+            Object::Walkthrough(w) => {
+                if w.keyframes.is_empty() {
+                    c.issue(id, "a walkthrough needs at least one keyframe");
+                }
+                if !(w.fps > 0.0 && w.fps <= 120.0) {
+                    c.issue(id, "frames per second must be between 0 and 120");
+                }
+                let flat: Vec<f64> = w
+                    .keyframes
+                    .iter()
+                    .flat_map(|k| k.eye.mm().into_iter().chain(k.target.mm()).chain([k.seconds, k.pause]))
+                    .collect();
+                c.finite(id, "keyframes", &flat);
+                if w.keyframes.iter().any(|k| k.seconds < 0.0 || k.pause < 0.0) {
+                    c.issue(id, "keyframe times can't be negative");
+                }
+            }
             Object::Deck(dk) => {
                 c.reference(id, "floor", dk.floor, K::Floor);
                 c.reference(id, "layer", dk.layer, K::Layer);

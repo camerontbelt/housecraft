@@ -185,6 +185,7 @@ objects! {
     FramingMember => "framing_member",
     JoistDirection => "joist_direction",
     Deck => "deck",
+    Walkthrough => "walkthrough",
 }
 
 impl fmt::Display for ObjectKind {
@@ -676,7 +677,7 @@ macro_rules! named {
 }
 named!(
     Floor, WallType, RoomType, Layer, LayerSet, TextStyle, DefaultSet, PlanView, Camera, SectionView,
-    CadDetail, Block, Layout, Material, SymbolDef, MoldingProfile, StylePalette
+    CadDetail, Block, Layout, Material, SymbolDef, MoldingProfile, StylePalette, Walkthrough
 );
 
 #[cfg(test)]

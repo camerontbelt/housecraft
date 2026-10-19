@@ -254,6 +254,7 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         Object::Terrain(t) => format!("terrain, {} points", t.perimeter.len()),
         Object::SiteFeature(f) => f.feature.name().to_lowercase(),
         Object::FramingMember(m) => format!("{} {} x {}", m.size_name(), m.role.name().to_lowercase(), fmt(m.length())),
+        Object::Walkthrough(w) => format!("walkthrough {:?}, {} keyframes, {:.0} s", w.name, w.keyframes.len(), w.duration()),
         Object::Deck(dk) => format!("{}, top at {}", if dk.platform { "platform" } else { "deck" }, fmt(dk.height)),
         Object::JoistDirection(j) => format!("{} joist direction {:.0}°", if j.ceiling { "ceiling" } else { "floor" }, j.angle),
         Object::Plant(p) => format!("{} ({}), {} high", p.name, p.form.name().to_lowercase(), fmt(p.height)),
