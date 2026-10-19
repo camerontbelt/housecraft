@@ -167,6 +167,8 @@ objects! {
     Backsplash => "backsplash",
     MoldingProfile => "molding_profile",
     MoldingPolyline => "molding_polyline",
+    MaterialRegion => "material_region",
+    StylePalette => "style_palette",
 }
 
 impl fmt::Display for ObjectKind {
@@ -199,6 +201,7 @@ impl ObjectKind {
                 | ObjectKind::Symbol
                 | ObjectKind::Backsplash
                 | ObjectKind::MoldingPolyline
+                | ObjectKind::MaterialRegion
         )
     }
 }
@@ -445,6 +448,7 @@ impl Document {
             Object::Symbol(s) => Some(s.floor),
             Object::Backsplash(b) => Some(b.floor),
             Object::MoldingPolyline(m) => Some(m.floor),
+            Object::MaterialRegion(r) => Some(r.floor),
             _ => None,
         }
     }
@@ -473,6 +477,7 @@ impl Document {
             Object::Symbol(s) => Some(s.layer),
             Object::Backsplash(b) => Some(b.layer),
             Object::MoldingPolyline(m) => Some(m.layer),
+            Object::MaterialRegion(r) => Some(r.layer),
             _ => None,
         }
     }
@@ -631,7 +636,7 @@ macro_rules! named {
 }
 named!(
     Floor, WallType, RoomType, Layer, LayerSet, TextStyle, DefaultSet, PlanView, Camera, SectionView,
-    CadDetail, Block, Layout, Material, SymbolDef, MoldingProfile
+    CadDetail, Block, Layout, Material, SymbolDef, MoldingProfile, StylePalette
 );
 
 #[cfg(test)]

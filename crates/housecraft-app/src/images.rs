@@ -87,3 +87,17 @@ pub fn paint(
     mesh.indices.extend([0, 1, 2, 0, 2, 3]);
     painter.add(egui::Shape::mesh(mesh));
 }
+
+/// The average colour of an image file.
+pub fn average_color(path: &str) -> Option<Color> {
+    let img = image::open(path).ok()?.to_rgb8();
+    let n = (img.width() as u64 * img.height() as u64).max(1);
+    let mut sum = [0u64; 3];
+    for p in img.pixels() {
+        for (s, v) in sum.iter_mut().zip(p.0) {
+            *s += v as u64;
+        }
+    }
+    let c = |k: usize| (sum[k] / n) as u8;
+    Some(Color::rgb(c(0), c(1), c(2)))
+}

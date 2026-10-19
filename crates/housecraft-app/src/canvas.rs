@@ -775,6 +775,12 @@ fn move_command(doc: &Document, ids: &[Id], d: DVec2) -> Command {
 fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &mut Vec<Command>) {
     let tool = app.plan.tool;
     let placing = app.library.placing.clone();
+    // Material for new regions: the painter's, else the first in the plan.
+    let region_material = app
+        .view3d
+        .painter
+        .and_then(|p| p.material)
+        .or_else(|| app.doc().iter::<Material>().next().map(|m| m.id));
     let group = app.library.group.clone();
     let floor = Some(app.plan.target());
     let doc = app.session.document();
@@ -1145,7 +1151,35 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 depth: None,
                 height: None,
             }),
-            Tool::Countertop | Tool::Backsplash | Tool::MoldingPolyline => pending.push(p),
+            Tool::Countertop | Tool::Backsplash | Tool::MoldingPolyline | Tool::FloorRegion => pending.push(p),
+            Tool::WallRegion => {
+                if let Some(a) = pending.pop() {
+                    if let Some(cmd) = wall_region(doc, app.plan.floor, a, p, region_material) {
+                        commands.push(cmd);
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
+            Tool::ObjectPainter => {
+                let tol = PICK_PX * view.mpp;
+                let hit = app
+                    .plan
+                    .cache
+                    .as_ref()
+                    .and_then(|c| hit_test(doc, c, p, tol).into_iter().next());
+                let alt = ui.input(|i| i.modifiers.alt);
+                if let Some(id) = hit {
+                    match &app.object_painter {
+                        Some(op) if !alt => {
+                            if let Some(cmd) = op.apply_to(doc, id) {
+                                commands.push(cmd);
+                            }
+                        }
+                        _ => app.object_painter = Some(crate::object_painter::ObjectPainter::new(id)),
+                    }
+                }
+            }
             Tool::PlaceGroup => {
                 if let Some(objects) = &group {
                     commands.push(Command::InsertObjects {
@@ -1283,6 +1317,21 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
         }
         return;
     }
+    if finish && tool == Tool::FloorRegion {
+        let pending = std::mem::take(&mut app.plan.pending);
+        if pending.len() >= 3
+            && let Some(material) = region_material
+        {
+            commands.push(Command::AddMaterialRegion {
+                floor,
+                material,
+                target: RegionTarget::Floor {
+                    points: pending.iter().map(|p| pt(*p)).collect(),
+                },
+            });
+        }
+        return;
+    }
     if finish && tool == Tool::MoldingPolyline {
         let pending = std::mem::take(&mut app.plan.pending);
         if pending.len() >= 2 {
@@ -1364,6 +1413,36 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
         }
         app.plan.length_input = None;
     }
+}
+
+/// A wall region between two clicks on one side of the nearest wall
+/// (48" high, a wainscot, to start with).
+fn wall_region(doc: &Document, floor: Id, a: DVec2, b: DVec2, material: Option<Id>) -> Option<Command> {
+    let material = material?;
+    let g = wall_geoms(doc, floor).into_iter().min_by(|g, h| {
+        let d = |g: &housecraft_api::geom::walls::WallGeom| {
+            housecraft_api::geom::math::distance_to_segment(a, g.start, g.end)
+        };
+        d(g).total_cmp(&d(h))
+    })?;
+    let along = |p: DVec2| (p - g.start).dot(g.dir).clamp(0.0, g.length);
+    let (u0, u1) = (along(a).min(along(b)), along(a).max(along(b)));
+    if u1 - u0 < 10.0 {
+        return None;
+    }
+    let exterior = (a - g.start).dot(g.left) > 0.0;
+    Some(Command::AddMaterialRegion {
+        floor: Some(floor),
+        material,
+        target: RegionTarget::Wall {
+            wall: g.id,
+            exterior,
+            u0: Length::from_mm(u0),
+            u1: Length::from_mm(u1),
+            z0: Length::ZERO,
+            z1: Length::from_inches(48.0),
+        },
+    })
 }
 
 fn cad(floor: Option<Id>, shape: Shape) -> Command {

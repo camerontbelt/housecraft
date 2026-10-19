@@ -243,3 +243,60 @@ pub(crate) fn molding_polyline(m: &MoldingPolyline, stroke: Stroke, out: &mut Dr
     line(out, m.id, path, m.closed, stroke);
     line(out, m.id, offset, m.closed, dashed(stroke));
 }
+
+pub(crate) fn material_region(doc: &Document, r: &MaterialRegion, stroke: Stroke, out: &mut Drawing) {
+    match &r.target {
+        RegionTarget::Floor { points } => {
+            let pts: Vec<DVec2> = points.iter().map(|p| v2(*p)).collect();
+            line(out, r.id, pts.clone(), true, stroke);
+            // A patterned floor shows its tile joints (a vector hatch).
+            let Some(p) = doc.get::<Material>(r.material).and_then(|m| m.pattern) else {
+                return;
+            };
+            let Some((lo, hi)) = housecraft_geom::math::bounds(pts.iter().copied()) else {
+                return;
+            };
+            let thin = Stroke { width: stroke.width * 0.5, ..stroke };
+            let (sx, sy) = (p.tile_width.mm() + p.grout.mm(), p.tile_height.mm() + p.grout.mm());
+            let clip = |a: DVec2, b: DVec2| -> Vec<[DVec2; 2]> {
+                // Keep the parts of a joint line inside the outline.
+                let mut ts = vec![0.0, 1.0];
+                for i in 0..pts.len() {
+                    let (c, d) = (pts[i], pts[(i + 1) % pts.len()]);
+                    if let Some((_, t, _)) = housecraft_geom::math::segment_intersection(a, b, c, d) {
+                        ts.push(t);
+                    }
+                }
+                ts.sort_by(f64::total_cmp);
+                ts.windows(2)
+                    .filter_map(|w| {
+                        let mid = a.lerp(b, (w[0] + w[1]) / 2.0);
+                        housecraft_geom::math::point_in_polygon(mid, &pts)
+                            .then(|| [a.lerp(b, w[0]), a.lerp(b, w[1])])
+                    })
+                    .collect()
+            };
+            let mut y = lo.y + sy;
+            while y < hi.y && sy > 1.0 {
+                for [a, b] in clip(DVec2::new(lo.x, y), DVec2::new(hi.x, y)) {
+                    line(out, r.id, vec![a, b], false, thin);
+                }
+                y += sy;
+            }
+            let mut x = lo.x + sx;
+            while x < hi.x && sx > 1.0 {
+                for [a, b] in clip(DVec2::new(x, lo.y), DVec2::new(x, hi.y)) {
+                    line(out, r.id, vec![a, b], false, thin);
+                }
+                x += sx;
+            }
+        }
+        RegionTarget::Wall { wall, exterior, u0, u1, .. } => {
+            if let Some(g) = housecraft_geom::walls::wall_geoms(doc, r.floor).into_iter().find(|g| g.id == *wall) {
+                let side = if *exterior { g.left } else { -g.left };
+                let p = |u: f64| g.start + g.dir * u + side * (g.half + 30.0);
+                line(out, r.id, vec![p(u0.mm()), p(u1.mm())], false, dashed(stroke));
+            }
+        }
+    }
+}

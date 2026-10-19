@@ -87,6 +87,7 @@ pub struct App {
     pub dialogs: Dialogs,
     pub materials: crate::materials::MaterialsDialog,
     pub library: crate::library_view::LibraryState,
+    pub object_painter: Option<crate::object_painter::ObjectPainter>,
     /// The GPU, for rendering images offscreen.
     pub render_state: Option<egui_wgpu::RenderState>,
     /// The 3D image export dialog: width, height, transparent background.
@@ -136,6 +137,7 @@ impl App {
             symbol_import: None,
             render_state,
             image_export: None,
+            object_painter: None,
             bufs: EditBuffers::default(),
             spec: Vec::new(),
             room_multi: None,
@@ -2638,6 +2640,7 @@ impl eframe::App for App {
         crate::materials::materials_dialog(self, &ctx);
         self.symbol_import_dialog(&ctx);
         self.image_export_dialog(&ctx);
+        crate::object_painter::window(self, &ctx);
         self.confirm_discard(&ctx);
     }
 

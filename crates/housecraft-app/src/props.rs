@@ -566,6 +566,36 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ed.pick::<Layer>(ui, "Layer", "layer", Some(c.layer), None);
         }
         Object::Cabinet(c) => cabinet_editor(ui, ed, c),
+        Object::MaterialRegion(r) => {
+            ed.pick::<Material>(ui, "Material", "material", Some(r.material), None);
+            if let RegionTarget::Wall { wall, exterior, u0, u1, z0, z1 } = &r.target {
+                let mut t = (*exterior, *u0, *u1, *z0, *z1);
+                Ed::label(ui, "Side");
+                ui.checkbox(&mut t.0, "Exterior face");
+                ui.end_row();
+                for (label, key, v) in [
+                    ("From", "u0", &mut t.1),
+                    ("To", "u1", &mut t.2),
+                    ("Bottom", "z0", &mut t.3),
+                    ("Top", "z1", &mut t.4),
+                ] {
+                    if let Some(l) = ed.length(ui, label, key, *v) {
+                        *v = l;
+                    }
+                }
+                if t != (*exterior, *u0, *u1, *z0, *z1) {
+                    let target = RegionTarget::Wall { wall: *wall, exterior: t.0, u0: t.1, u1: t.2, z0: t.3, z1: t.4 };
+                    ed.out.push(patch(id, json!({ "target": target })));
+                }
+            }
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(r.layer), None);
+        }
+        Object::StylePalette(st) => {
+            ed.text(ui, "Name", "name", &st.name);
+            Ed::label(ui, "Materials");
+            ui.label(format!("{} surfaces", st.materials.len()));
+            ui.end_row();
+        }
         Object::Backsplash(bs) => {
             for (label, field, v) in [
                 ("Height", "height", bs.height),
@@ -858,6 +888,64 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 }
                 ui.end_row();
             }
+            // A generated tile pattern (used when there's no texture image).
+            Ed::label(ui, "Tile Pattern");
+            ui.vertical(|ui| {
+                let mut pat = m.pattern;
+                let mut on = pat.is_some();
+                if ui.checkbox(&mut on, "Pattern").changed() {
+                    pat = on.then(|| TilePattern {
+                        kind: PatternKind::Grid,
+                        tile_width: Length::from_inches(12.0),
+                        tile_height: Length::from_inches(12.0),
+                        grout: Length::from_inches(0.125),
+                        grout_color: Color::rgb(90, 90, 90),
+                    });
+                }
+                if let Some(p) = &mut pat {
+                    ui.horizontal(|ui| {
+                        for k in PatternKind::ALL {
+                            ui.selectable_value(&mut p.kind, k, k.name());
+                        }
+                    });
+                    ui.horizontal(|ui| {
+                        for (label, v) in [("tile ", &mut p.tile_width), ("× ", &mut p.tile_height), ("grout ", &mut p.grout)] {
+                            let mut x = v.inches();
+                            if ui.add(egui::DragValue::new(&mut x).range(0.0..=96.0).speed(0.125).prefix(label).suffix("\"")).changed() {
+                                *v = Length::from_inches(x);
+                            }
+                        }
+                        let mut c32 = to_color32(p.grout_color);
+                        if ui.color_edit_button_srgba(&mut c32).changed() {
+                            p.grout_color = from_color32(c32);
+                        }
+                    });
+                }
+                if pat != m.pattern {
+                    ed.out.push(patch(id, json!({ "pattern": pat })));
+                }
+            });
+            ui.end_row();
+            if let Some(a) = ed.number(ui, "Texture Angle (°)", "texture_angle", m.texture_angle) {
+                ed.out.push(patch(id, json!({ "texture_angle": a })));
+            }
+            let ox = ed.length(ui, "Texture Offset X", "texture_offset.0", m.texture_offset[0]);
+            let oy = ed.length(ui, "Texture Offset Y", "texture_offset.1", m.texture_offset[1]);
+            if ox.is_some() || oy.is_some() {
+                let o = [ox.unwrap_or(m.texture_offset[0]), oy.unwrap_or(m.texture_offset[1])];
+                ed.out.push(patch(id, json!({ "texture_offset": o })));
+            }
+            Ed::label(ui, "");
+            if ui
+                .button("Colour from image…")
+                .on_hover_text("Set the colour to an image's average colour")
+                .clicked()
+                && let Some(f) = pick_image()
+                && let Some(c) = crate::images::average_color(&f)
+            {
+                ed.out.push(patch(id, json!({ "color": c })));
+            }
+            ui.end_row();
             ed.opt_length(ui, "Texture Width", "texture_width", m.texture_width, Some(Length::from_feet(4.0)));
             ed.opt_length(ui, "Texture Height", "texture_height", m.texture_height, Some(Length::from_feet(4.0)));
         }

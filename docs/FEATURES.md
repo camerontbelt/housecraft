@@ -153,7 +153,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-05 | Room molding polylines; 3D molding polylines (stacked profiles) | P2 | M5 ✓ |
 | RM-06 | Room polyline (perimeter for area, materials, slabs, moldings) | P1 | M1 |
 | RM-07 | Layered floor & ceiling platforms (finish, structure, sub-layers) | P1 | M3 ✓ |
-| RM-08 | Floor material regions (inlays without room boundaries) | P2 | M5 |
+| RM-08 | Floor material regions (inlays without room boundaries) | P2 | M5 ✓ Floor Material Region tool; tile joints drawn in plan |
 | RM-09 | Raised floor platforms (auto-framed) | P2 | M6 |
 | RM-10 | Conditioned/unconditioned spaces → insulation in materials list | P2 | M4 |
 | RM-11 | Multi-select edit rooms (type, vaulted, heights, platform) | P1 | M3 ✓ |
@@ -179,7 +179,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-13 | Wall hatching (labels, copy/paste, shear wall marking) | P2 | M4 |
 | WL-14 | Wall definitions in library | P1 | M5 ✓ |
 | WL-15 | Corner boards & quoins (auto/manual) | P2 | M5 ✓ |
-| WL-16 | Wall material regions | P2 | M5 |
+| WL-16 | Wall material regions | P2 | M5 ✓ Wall Material Region tool (wainscot from two clicks, editable extents) |
 | WL-17 | Double walls (marriage/multi-family) incl. openings | P3 | M3 |
 | WL-18 | Control which layer intersecting walls snap to | P1 | M1 |
 | WL-19 | Continuous wall draw mode | P0 | M1 ✓ |
@@ -402,7 +402,7 @@ These come from reading the whole list and change the architecture, not just the
 | EL-04 | Rope lighting along paths | P3 | M7 |
 | EL-05 | Per-fixture light controls (shadows, intensity, dimming, on/off) | P1 | M5 ◐ on/off, brightness, dimmer, colour temperature and a shadows switch; light from fixtures doesn't cast shadows yet |
 | EL-06 | Lighting manager table | P2 | M7 |
-| EL-07 | Kelvin color temperature (X18+) | P2 | M5 |
+| EL-07 | Kelvin color temperature (X18+) | P2 | M5 ✓ |
 | EL-08 | Lighting sets per view/camera | P2 | M7 |
 
 ## 17. Terrain, site & landscape
@@ -439,26 +439,26 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | MAT-01 | Edit any architectural object in 2D or 3D | P0 | M1 ✓ (select and edit from 3D; direct 3D dragging later) |
-| MAT-02 | Object painter / eyedropper with attribute choice and scope | P2 | M5 |
+| MAT-02 | Object painter / eyedropper with attribute choice and scope | P2 | M5 ✓ Object Painter tool: Alt+click source, tick properties, click or paint the whole floor |
 | MAT-03 | Material painter with scope; default painter (reset) | P1 | M5 ✓ |
-| MAT-04 | Material eyedropper; color chooser from image | P2 | M5 |
-| MAT-05 | Adjust-material scoping (whole plan vs copy for subset) | P2 | M5 |
+| MAT-04 | Material eyedropper; color chooser from image | P2 | M5 ◐ colour from an image's average; no on-screen eyedropper |
+| MAT-05 | Adjust-material scoping (whole plan vs copy for subset) | P2 | M5 ✓ Copy for Selection gives chosen objects their own copy |
 | MAT-06 | Fill styles: pattern scale/angle/offset/transparency; gradients; fill painter | P1 | M1 |
-| MAT-07 | Parametric herringbone/grid patterns | P2 | M5 |
-| MAT-08 | Custom patterns to library (X18+) | P2 | M5 |
+| MAT-07 | Parametric herringbone/grid patterns | P2 | M5 ✓ grid, running bond, herringbone and basketweave tile patterns |
+| MAT-08 | Custom patterns to library (X18+) | P2 | M5 ✓ Add to Library keeps the pattern |
 | MAT-09 | Animated water materials | P3 | M7 |
 | MAT-10 | Emissive materials as area lights | P2 | M7 |
-| MAT-11 | PBR maps: AO, roughness, metal, emissive, anisotropic, normal, bump | P1 | M5 ◐ colour, roughness, metallic, emissive, opacity and anisotropy values shaded live; all eight image maps stored with the material, drawn from textures later |
-| MAT-12 | Interactive material editing (scale/rotation/origin in 3D) | P2 | M5 |
+| MAT-11 | PBR maps: AO, roughness, metal, emissive, anisotropic, normal, bump | P1 | M5 ✓ colour maps textured in 3D with mipmaps; PBR values shaded live; other image maps stored |
+| MAT-12 | Interactive material editing (scale/rotation/origin in 3D) | P2 | M5 ✓ painter bar adjusts tile size and turn live; angle and offset in the material |
 | MAT-13 | Material builder: custom tiles, grout; Substance (.sbsar) import | P2/P3 | M5/M8 |
 | MAT-14 | Material classes (plastic, metal, mirror, glass, translucent…) | P1 | M5 ✓ |
-| MAT-15 | Material maps incl. opacity; roughness/gloss inversion | P1 | M5 ◐ opacity map and gloss inversion stored; texture rendering later |
+| MAT-15 | Material maps incl. opacity; roughness/gloss inversion | P1 | M5 ✓ maps stored; colour textures rendered |
 | MAT-16 | Plan materials manager (replace, merge, search) | P1 | M5 ✓ |
 | MAT-17 | Hatch pattern editor | P2 | M4 |
-| MAT-18 | Generate vector hatch pattern from texture | P3 | M5 |
+| MAT-18 | Generate vector hatch pattern from texture | P3 | M5 ◐ patterned floor regions get a tile-joint hatch in plan |
 | MAT-19 | Screen-capture image as material | P3 | M5 |
 | MAT-20 | 3D cladding from moldings (board & batten, lap, standing seam) (X18+) | P2 | M5 ✓ |
-| MAT-21 | Style palettes (save and apply finish sets) | P2 | M5 |
+| MAT-21 | Style palettes (save and apply finish sets) | P2 | M5 ✓ save and apply styles (materials, door style, hardware) |
 | MAT-22 | Center object between two objects | P1 | M1 |
 | MAT-23 | Match / apply properties across same-type items | P1 | M1 |
 | MAT-24 | Import custom 3D symbols | P1 | M5 ◐ OBJ (with MTL colours) and STL models stored in the plan, placed and stretched like cabinets, paintable; glTF, DAE and SKP later |
@@ -484,7 +484,7 @@ These come from reading the whole list and change the architecture, not just the
 | LIB-10 | Text in library | P3 | M5 |
 | LIB-11 | Library shortcuts | P3 | M5 |
 | LIB-12 | Replace from library (one or all identical) | P1 | M5 ◐ cabinets and appliances, one or all identical; blocks later |
-| LIB-13 | Library painter with scope | P2 | M5 |
+| LIB-13 | Library painter with scope | P2 | M5 ✓ |
 | LIB-14 | Edit parametric items stored in library | P2 | M5 |
 | LIB-15 | Edit symbol properties in library | P2 | M5 |
 | LIB-16 | Find a selected object in the library | P3 | M5 |
@@ -567,7 +567,7 @@ These come from reading the whole list and change the architecture, not just the
 | IO-06 | High-resolution image export, transparent background | P1 | M7 ✓ |
 | IO-07 | Import/export settings objects (views, default sets, layer sets, hotkeys, wall types, line styles, macros, scripts) | P2 | M5 |
 | IO-08 | 3D mass import → library objects | P2 | M5 |
-| IO-09 | Textures → materials in bulk | P2 | M5 |
+| IO-09 | Textures → materials in bulk | P2 | M5 ✓ Import Textures… makes a material per image in a folder |
 | IO-10 | Terrain survey import | P2 | M6 |
 | IO-11 | Settings migration between versions | P3 | M8 |
 | IO-12 | **Open Chief Architect `.plan` / `.layout`** (ours) | P1/P2 | M2/M8 |

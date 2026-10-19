@@ -498,6 +498,12 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             crate::cabinets::cabinet(c, look.stroke, label, &mut out);
         }
     }
+    for r in doc.iter::<MaterialRegion>().filter(|r| r.floor == opts.floor) {
+        let look = ctx.look(r.layer);
+        if look.visible {
+            crate::cabinets::material_region(doc, r, look.stroke, &mut out);
+        }
+    }
     for m in doc.iter::<MoldingPolyline>().filter(|m| m.floor == opts.floor) {
         let look = ctx.look(m.layer);
         if look.visible {

@@ -374,6 +374,7 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_appliance", "appliance_kind": "toilet", "at": ["15'","1'"]}},
                 {{"op": "add_backsplash", "points": [["1'","1'"], ["3'","1'"]]}},
                 {{"op": "add_molding_profile", "name": "P", "points": [[0,0],[10,0],[0,10]]}},
+                {{"op": "save_style", "name": "S"}},
                 {{"op": "add_molding_polyline", "points": [["1'","2'"], ["3'","2'"]], "stack": [{{"height": 50, "depth": 10}}]}},
                 {{"op": "add_picture", "path": "x.png", "position": [0,0], "width": "1'"}},
                 {{"op": "add_symbol_def", "name": "S", "positions": [[0,0,0],[1,0,0],[0,-1,0],[0,0,1]], "triangles": [[0,1,2],[0,1,3]]}},
@@ -391,8 +392,9 @@ fn every_object_kind_round_trips_through_json() {
             r#"[{{"op": "send_to_layout", "layout": {}, "source": {{"type": "text", "text": "notes"}}}},
                 {{"op": "add_block_ref", "block": {}, "at": [0,0], "rotation": 30}},
                 {{"op": "paint_material", "material": {}, "ids": [{}], "surface": "wall"}},
-                {{"op": "add_symbol", "def": {}, "at": ["5'","5'"]}}]"#,
-            layout.0, block.0, material.0, wall.0, symbol_def.0
+                {{"op": "add_symbol", "def": {}, "at": ["5'","5'"]}},
+                {{"op": "add_material_region", "material": {}, "target": {{"type": "floor", "points": [[0,0],[1000,0],[0,1000]]}}}}]"#,
+            layout.0, block.0, material.0, wall.0, symbol_def.0, material.0
         ),
     );
     let doc = s.document();
@@ -1846,4 +1848,55 @@ fn trim_moldings_cladding_and_profiles() {
     );
     let mesh = housecraft_api::geom::mesh::build(s.document(), None);
     assert!(!mesh.positions.is_empty());
+}
+
+#[test]
+fn textures_patterns_regions_and_styles() {
+    let mut s = boxed();
+    let doc = s.document();
+    let tile = doc.iter::<Material>().find(|m| m.name == "Porcelain Tile").unwrap().id;
+    let wall = walls(&s)[0].id;
+    // A herringbone pattern on the tile material, a floor inlay and a wall wainscot.
+    let out = apply(
+        &mut s,
+        &format!(
+            r##"[{{"op": "update", "id": {t}, "set": {{"pattern": {{"kind": "herringbone", "tile_width": "12\"", "tile_height": "3\"", "grout": "0.125\"", "grout_color": "#404040"}}, "texture_angle": 45}}}},
+                {{"op": "add_material_region", "material": {t}, "target": {{"type": "floor", "points": [["4'","4'"], ["10'","4'"], ["10'","10'"], ["4'","10'"]]}}}},
+                {{"op": "add_material_region", "material": {t}, "target": {{"type": "wall", "wall": {w}, "exterior": false, "u0": "2'", "u1": "8'", "z0": 0, "z1": "4'"}}}}]"##,
+            t = tile.0,
+            w = wall.0
+        ),
+    );
+    assert_eq!(out.created.len(), 2);
+    let doc = s.document();
+    assert!(doc.validate().is_empty(), "{:?}", doc.validate());
+    // The 3D mesh uses the pattern as a texture.
+    let mesh = housecraft_api::geom::mesh::build(doc, None);
+    assert!(mesh.textures.iter().any(|t| matches!(t, housecraft_api::geom::mesh::TextureKey::Pattern(..))));
+    assert!(mesh.tex.iter().any(|t| *t >= 0.0));
+    // The plan hatches the patterned inlay.
+    // Styles: save, change a default, apply back.
+    let out = apply(&mut s, r#"[{"op": "save_style", "name": "Farmhouse"}]"#);
+    let style = out.created[0];
+    let doc = s.document();
+    let walnut = doc.iter::<Material>().find(|m| m.name == "Walnut Flooring").unwrap().id;
+    apply(
+        &mut s,
+        &format!(r#"[{{"op": "paint_material", "material": {}, "scope": "plan", "surface": "floor"}}]"#, walnut.0),
+    );
+    apply(&mut s, &format!(r#"[{{"op": "apply_style", "style": {}}}]"#, style.0));
+    let d = s.document().active_defaults();
+    assert_ne!(d.materials[&Surface::Floor], walnut, "the style's floor came back");
+    // Copy a material for one wall: it gets its own copy.
+    let paint = s.document().active_defaults().materials[&Surface::Wall];
+    let out = apply(
+        &mut s,
+        &format!(r#"[{{"op": "copy_material_for", "material": {}, "ids": [{}]}}]"#, paint.0, wall.0),
+    );
+    let copy = out.created[0];
+    assert!(s.document().get::<Material>(copy).unwrap().name.ends_with("(copy)"));
+    // Deleting the wall drops its region.
+    apply(&mut s, &format!(r#"[{{"op": "delete", "ids": [{}]}}]"#, wall.0));
+    assert_eq!(s.document().count::<MaterialRegion>(), 1);
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
 }

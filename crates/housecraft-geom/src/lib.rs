@@ -8,6 +8,7 @@ pub mod cabinets;
 pub mod electrical;
 pub mod math;
 pub mod mesh;
+pub mod pattern;
 pub mod piers;
 pub mod roof;
 pub mod rooms;

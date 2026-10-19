@@ -374,6 +374,25 @@ pub enum Command {
         ids: Vec<Id>,
         surface: Option<Surface>,
     },
+    /// Add a patch of `material` on a floor (any outline) or on a wall face.
+    AddMaterialRegion {
+        floor: Option<Id>,
+        material: Id,
+        target: RegionTarget,
+    },
+    /// Save the active default set's surface materials and cabinet door
+    /// style and hardware as a style palette.
+    SaveStyle { name: String },
+    /// Apply a style palette: its materials become the defaults; with
+    /// `cabinets`, every cabinet takes its door style and hardware.
+    ApplyStyle {
+        style: Id,
+        #[serde(default)]
+        cabinets: bool,
+    },
+    /// Copy a material and paint the copy on `ids` (to change it for just
+    /// those objects).
+    CopyMaterialFor { material: Id, ids: Vec<Id> },
     /// Make everything that uses material `from` use `to` instead; with
     /// `delete`, `from` is removed (merging the two).
     ReplaceMaterial {
@@ -757,6 +776,10 @@ impl Command {
             Command::AddRevisionCloud { .. } => "add_revision_cloud",
             Command::AddCadDetail { .. } => "add_cad_detail",
             Command::AddMaterial { .. } => "add_material",
+            Command::AddMaterialRegion { .. } => "add_material_region",
+            Command::SaveStyle { .. } => "save_style",
+            Command::ApplyStyle { .. } => "apply_style",
+            Command::CopyMaterialFor { .. } => "copy_material_for",
             Command::AddCabinet { .. } => "add_cabinet",
             Command::AddCountertop { .. } => "add_countertop",
             Command::AddAppliance { .. } => "add_appliance",
@@ -1622,6 +1645,70 @@ impl Command {
                     m.color = *c;
                 }
                 out.created.push(doc.insert(m));
+            }
+            Command::AddMaterialRegion {
+                floor,
+                material,
+                target,
+            } => {
+                expect::<Material>(doc, *material)?;
+                let floor = match target {
+                    RegionTarget::Wall { wall, .. } => expect::<Wall>(doc, *wall)?.floor,
+                    RegionTarget::Floor { .. } => ops::resolve_floor(doc, *floor)?,
+                };
+                out.created.push(doc.insert(MaterialRegion {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.rooms,
+                    material: *material,
+                    target: target.clone(),
+                }));
+            }
+            Command::SaveStyle { name } => {
+                if name.trim().is_empty() {
+                    return invalid("a style needs a name");
+                }
+                out.created.push(doc.insert(StylePalette {
+                    id: Id(0),
+                    name: name.clone(),
+                    materials: d.materials.clone(),
+                    door_style: Some(d.cabinets.door_style),
+                    hardware: Some(d.cabinets.hardware),
+                }));
+            }
+            Command::ApplyStyle { style, cabinets } => {
+                let st = expect::<StylePalette>(doc, *style)?.clone();
+                let set = doc.settings.active_default_set;
+                if let Some(ds) = doc.get_mut::<DefaultSet>(set) {
+                    ds.materials.extend(st.materials.iter().map(|(k, v)| (*k, *v)));
+                    if let Some(s) = st.door_style {
+                        ds.cabinets.door_style = s;
+                    }
+                    if let Some(h) = st.hardware {
+                        ds.cabinets.hardware = h;
+                    }
+                    out.modified.push(set);
+                }
+                if *cabinets {
+                    for o in doc.objects.values_mut() {
+                        if let Object::Cabinet(c) = o {
+                            if let Some(s) = st.door_style {
+                                c.door_style = s;
+                            }
+                            if let Some(h) = st.hardware {
+                                c.hardware = h;
+                            }
+                            out.modified.push(c.id);
+                        }
+                    }
+                }
+            }
+            Command::CopyMaterialFor { material, ids } => {
+                let mut m = expect::<Material>(doc, *material)?.clone();
+                m.name = format!("{} (copy)", m.name);
+                let copy = doc.insert(m);
+                out.created.push(copy);
+                crate::paint::paint(doc, Some(copy), PaintScope::Object, ids, None, &mut out)?;
             }
             Command::PaintMaterial {
                 material,

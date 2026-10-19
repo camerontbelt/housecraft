@@ -8,7 +8,7 @@ use egui_wgpu::wgpu;
 use glam::{Mat4, Vec3, Vec4};
 
 use housecraft_api::{Command, PaintScope};
-use housecraft_api::geom::mesh::{Category, Mesh, build, mesh_bounds};
+use housecraft_api::geom::mesh::{Category, Mesh, TextureKey, build, mesh_bounds};
 use housecraft_api::model::{Camera, Id, MaterialIndex, Projection};
 use housecraft_api::units::{Length, Point3};
 use wgpu::util::DeviceExt as _;
@@ -24,7 +24,13 @@ struct Vertex {
     color: [f32; 4],
     /// Roughness, metallic, emissive, opacity.
     pbr: [f32; 4],
+    /// Texture coordinates (tiles) and texture layer (−1 for none).
+    uv: [f32; 2],
+    tex: f32,
 }
+
+/// Each texture layer's size in pixels.
+const TEX_SIZE: u32 = 512;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -128,13 +134,17 @@ struct U { view_proj: mat4x4<f32>, light_vp: mat4x4<f32>, light: vec4<f32>, para
 @group(0) @binding(0) var<uniform> u: U;
 @group(1) @binding(0) var shadow_map: texture_depth_2d;
 @group(1) @binding(1) var shadow_sampler: sampler_comparison;
-struct VIn { @location(0) pos: vec3<f32>, @location(1) normal: vec3<f32>, @location(2) color: vec4<f32>, @location(3) pbr: vec4<f32> };
+@group(2) @binding(0) var tex_array: texture_2d_array<f32>;
+@group(2) @binding(1) var tex_sampler: sampler;
+struct VIn { @location(0) pos: vec3<f32>, @location(1) normal: vec3<f32>, @location(2) color: vec4<f32>, @location(3) pbr: vec4<f32>, @location(4) uv: vec2<f32>, @location(5) tex: f32 };
 struct VOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) normal: vec3<f32>,
     @location(1) color: vec4<f32>,
     @location(2) world: vec3<f32>,
     @location(3) pbr: vec4<f32>,
+    @location(4) uv: vec2<f32>,
+    @location(5) tex: f32,
 };
 @vertex fn vs(v: VIn) -> VOut {
     var o: VOut;
@@ -143,6 +153,8 @@ struct VOut {
     o.color = v.color;
     o.world = v.pos;
     o.pbr = v.pbr;
+    o.uv = v.uv;
+    o.tex = v.tex;
     return o;
 }
 @vertex fn vs_shadow(v: VIn) -> @builtin(position) vec4<f32> {
@@ -185,7 +197,10 @@ fn shade(i: VOut) -> vec4<f32> {
     let l = normalize(u.light.xyz);
     let rough = clamp(i.pbr.x, 0.04, 1.0);
     let metal = clamp(i.pbr.y, 0.0, 1.0);
-    let base = i.color.rgb;
+    // Textured surfaces take their colour from the texture (sampled
+    // unconditionally to keep control flow uniform).
+    let texel = textureSample(tex_array, tex_sampler, i.uv, max(i32(i.tex + 0.5), 0));
+    let base = select(i.color.rgb, texel.rgb, i.tex > -0.5);
     let sun = sunlit(i.world) * u.params.y;
     let diffuse = abs(dot(n, l)) * sun;
     let sky = 0.5 + 0.5 * n.z;
@@ -245,6 +260,9 @@ fn shade(i: VOut) -> vec4<f32> {
 "#;
 
 struct Renderer3d {
+    tex_bgl: wgpu::BindGroupLayout,
+    tex_bind: wgpu::BindGroup,
+    tex_keys: Vec<TextureKey>,
     pipeline: wgpu::RenderPipeline,
     clear_pipeline: wgpu::RenderPipeline,
     shadow_pipeline: wgpu::RenderPipeline,
@@ -298,9 +316,30 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
             },
         ],
     });
+    let tex_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("housecraft textures"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2Array,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ],
+    });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("housecraft 3d"),
-        bind_group_layouts: &[Some(&bgl), Some(&shadow_bgl)],
+        bind_group_layouts: &[Some(&bgl), Some(&shadow_bgl), Some(&tex_bgl)],
         immediate_size: 0,
     });
     let shadow_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -308,8 +347,9 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
         bind_group_layouts: &[Some(&bgl)],
         immediate_size: 0,
     });
-    let attributes =
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x4, 3 => Float32x4];
+    let attributes = wgpu::vertex_attr_array![
+        0 => Float32x3, 1 => Float32x3, 2 => Float32x4, 3 => Float32x4, 4 => Float32x2, 5 => Float32
+    ];
     let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("housecraft 3d"),
         layout: Some(&layout),
@@ -469,7 +509,11 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
             resource: uniforms.as_entire_binding(),
         }],
     });
+    let tex_bind = texture_bind(device, &rs.queue, &tex_bgl, &[]);
     rs.renderer.write().callback_resources.insert(Renderer3d {
+        tex_bgl,
+        tex_bind,
+        tex_keys: Vec::new(),
         pipeline,
         clear_pipeline,
         shadow_pipeline,
@@ -485,6 +529,7 @@ pub fn init_renderer(rs: &egui_wgpu::RenderState) {
 }
 
 struct Paint3d {
+    textures: Arc<Vec<TextureKey>>,
     vertices: Arc<Vec<Vertex>>,
     indices: Arc<Vec<u32>>,
     key: u64,
@@ -504,6 +549,10 @@ impl egui_wgpu::CallbackTrait for Paint3d {
             return Vec::new();
         };
         queue.write_buffer(&r.uniforms, 0, bytemuck::bytes_of(&self.uniforms));
+        if r.tex_keys != *self.textures {
+            r.tex_bind = texture_bind(device, queue, &r.tex_bgl, &self.textures);
+            r.tex_keys = (*self.textures).clone();
+        }
         if r.key != self.key {
             r.vbuf = (!self.vertices.is_empty()).then(|| {
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -565,6 +614,7 @@ impl egui_wgpu::CallbackTrait for Paint3d {
         pass.set_pipeline(&r.pipeline);
         pass.set_bind_group(0, &r.bind, &[]);
         pass.set_bind_group(1, &r.shadow_bind, &[]);
+        pass.set_bind_group(2, &r.tex_bind, &[]);
         pass.set_vertex_buffer(0, v.slice(..));
         pass.set_index_buffer(i.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..r.count, 0, 0..1);
@@ -805,11 +855,14 @@ fn to_gpu(
         .zip(&mesh.normals)
         .zip(&mesh.colors)
         .zip(&mesh.pbr)
-        .map(|(((p, n), c), m)| Vertex {
+        .zip(mesh.uvs.iter().zip(&mesh.tex))
+        .map(|((((p, n), c), m), (uv, t))| Vertex {
             pos: *p,
             normal: *n,
             color: *c,
             pbr: *m,
+            uv: *uv,
+            tex: *t,
         })
         .collect();
     let accent = [1.0, 0.55, 0.1, 1.0];
@@ -842,6 +895,8 @@ fn to_gpu(
                 normal: [0.0, 0.0, 1.0],
                 color: g,
                 pbr: [0.95, 0.0, 0.0, 1.0],
+                uv: [0.0, 0.0],
+                tex: -1.0,
             });
         }
         let mut indices = visible_indices(mesh, hidden);
@@ -1100,9 +1155,11 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         );
     }
     let uniforms = frame_uniforms(v, app.session.document(), vp);
+    let textures = Arc::new(v.mesh.as_ref().map(|(_, m)| m.textures.clone()).unwrap_or_default());
     painter.add(egui_wgpu::Callback::new_paint_callback(
         rect,
         Paint3d {
+            textures,
             vertices: verts,
             indices: idx,
             key: v.gpu_key,
@@ -1189,6 +1246,15 @@ pub fn export_image(
     let v = &mut app.view3d;
     // A fresh model without selection highlights.
     let mesh = build(doc, None);
+    {
+        let mut renderer = rs.renderer.write();
+        if let Some(r) = renderer.callback_resources.get_mut::<Renderer3d>()
+            && r.tex_keys != mesh.textures
+        {
+            r.tex_bind = texture_bind(device, &rs.queue, &r.tex_bgl, &mesh.textures);
+            r.tex_keys = mesh.textures.clone();
+        }
+    }
     let (verts, idx) = to_gpu(&mesh, &[], &v.hidden, grade(doc));
     v.mesh = Some((app.rev, mesh));
     let uniforms = frame_uniforms(v, doc, v.view_proj(w as f32 / h as f32));
@@ -1308,6 +1374,7 @@ pub fn export_image(
             });
             pass.set_bind_group(0, &r.bind, &[]);
             pass.set_bind_group(1, &r.shadow_bind, &[]);
+            pass.set_bind_group(2, &r.tex_bind, &[]);
             pass.set_vertex_buffer(0, vbuf.slice(..));
             pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
             pass.set_pipeline(&r.pipeline);
@@ -1465,7 +1532,38 @@ fn painter_bar(app: &mut App, ui: &mut Ui, rect: Rect) {
                             ui.selectable_value(&mut p.reach, r, r.name());
                         }
                     });
+                // Adjust the material's texture live (scale and turn).
+                let mut edits = None;
+                if let Some(m) = p.material.and_then(|m| doc.get::<housecraft_api::model::Material>(m))
+                    && (m.maps.color.is_some() || m.pattern.is_some())
+                {
+                    ui.separator();
+                    let mut scale = m.texture_width.map_or(48.0, |l| l.inches());
+                    let mut angle = m.texture_angle;
+                    let r1 = ui.add(egui::DragValue::new(&mut scale).range(1.0..=480.0).speed(0.5).prefix("tile ").suffix("\""));
+                    let r2 = ui.add(egui::DragValue::new(&mut angle).range(-180.0..=180.0).speed(1.0).prefix("turn ").suffix("°"));
+                    if r1.changed() || r2.changed() {
+                        let ratio = m
+                            .texture_height
+                            .zip(m.texture_width)
+                            .map_or(1.0, |(h, w)| h.mm() / w.mm().max(1.0));
+                        edits = Some((m.id, scale, scale * ratio, angle));
+                    }
+                }
                 ui.weak("Click to paint · Alt+click picks up a material");
+                if let Some((id, w, h, a)) = edits {
+                    app.run1(Command::Update {
+                        id,
+                        set: serde_json::json!({
+                            "texture_width": Length::from_inches(w),
+                            "texture_height": Length::from_inches(h),
+                            "texture_angle": a,
+                        })
+                        .as_object()
+                        .expect("object")
+                        .clone(),
+                    });
+                }
                 if ui.button("Done").clicked() {
                     close = true;
                 }
@@ -1473,4 +1571,111 @@ fn painter_bar(app: &mut App, ui: &mut Ui, rect: Rect) {
         });
     });
     app.view3d.painter = (!close).then_some(p);
+}
+
+/// The pixels of one texture layer: an image file (resized) or a
+/// generated pattern; mid-grey when a file can't be read.
+fn texture_pixels(key: &TextureKey) -> Vec<u8> {
+    let rgba = match key {
+        TextureKey::File(path) => image::open(path).ok().map(|i| i.to_rgba8()),
+        TextureKey::Pattern(p, color) => {
+            let (w, h, px) = housecraft_api::geom::pattern::image(p, *color, TEX_SIZE);
+            image::RgbaImage::from_raw(w, h, px)
+        }
+    };
+    match rgba {
+        Some(img) => image::imageops::resize(&img, TEX_SIZE, TEX_SIZE, image::imageops::FilterType::Triangle)
+            .into_raw(),
+        None => vec![128; (TEX_SIZE * TEX_SIZE * 4) as usize],
+    }
+}
+
+/// A texture array holding `keys` (at least one layer) and its bind group.
+fn texture_bind(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    layout: &wgpu::BindGroupLayout,
+    keys: &[TextureKey],
+) -> wgpu::BindGroup {
+    let max = device.limits().max_texture_array_layers.max(1);
+    let layers = (keys.len() as u32).clamp(1, max);
+    let size = wgpu::Extent3d {
+        width: TEX_SIZE,
+        height: TEX_SIZE,
+        depth_or_array_layers: layers,
+    };
+    let mips = TEX_SIZE.ilog2() + 1;
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("housecraft textures"),
+        size,
+        mip_level_count: mips,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    for (layer, key) in keys.iter().take(layers as usize).enumerate() {
+        // Each smaller level averages the one above, so distant patterns
+        // blend instead of shimmering.
+        let mut level = image::RgbaImage::from_raw(TEX_SIZE, TEX_SIZE, texture_pixels(key))
+            .expect("full-size layer");
+        for mip in 0..mips {
+            let side = (TEX_SIZE >> mip).max(1);
+            if mip > 0 {
+                level = image::imageops::resize(&level, side, side, image::imageops::FilterType::Triangle);
+            }
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &texture,
+                    mip_level: mip,
+                    origin: wgpu::Origin3d {
+                        x: 0,
+                        y: 0,
+                        z: layer as u32,
+                    },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                level.as_raw(),
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(side * 4),
+                    rows_per_image: Some(side),
+                },
+                wgpu::Extent3d {
+                    width: side,
+                    height: side,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
+    }
+    let view = texture.create_view(&wgpu::TextureViewDescriptor {
+        dimension: Some(wgpu::TextureViewDimension::D2Array),
+        ..Default::default()
+    });
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("housecraft textures"),
+        address_mode_u: wgpu::AddressMode::Repeat,
+        address_mode_v: wgpu::AddressMode::Repeat,
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        mipmap_filter: wgpu::MipmapFilterMode::Linear,
+        anisotropy_clamp: 8,
+        ..Default::default()
+    });
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("housecraft textures"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    })
 }

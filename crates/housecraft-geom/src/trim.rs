@@ -406,6 +406,12 @@ pub fn build(doc: &Document, only_floor: Option<Id>, mesh: &mut Mesh) {
             }
         }
     }
+    for r in doc.iter::<housecraft_model::MaterialRegion>() {
+        if only_floor.is_some_and(|f| f != r.floor) {
+            continue;
+        }
+        region_mesh(doc, r, mesh);
+    }
     for m in doc.iter::<MoldingPolyline>() {
         if only_floor.is_some_and(|f| f != m.floor) {
             continue;
@@ -414,6 +420,45 @@ pub fn build(doc: &Document, only_floor: Option<Id>, mesh: &mut Mesh) {
         molding_polyline_mesh(doc, m, mesh);
         mesh.end();
     }
+}
+
+/// A material region: a thin patch above a floor or on a wall face,
+/// painted with its material.
+pub fn region_mesh(doc: &Document, r: &housecraft_model::MaterialRegion, mesh: &mut Mesh) {
+    use housecraft_model::{Material, RegionTarget};
+    let (Some(floor), Some(m)) = (doc.get::<Floor>(r.floor), doc.get::<Material>(r.material)) else {
+        return;
+    };
+    let mut textures = std::mem::take(&mut mesh.textures);
+    let look = crate::mesh::look_with_texture(m, &mut textures);
+    mesh.textures = textures;
+    mesh.begin(r.id, crate::mesh::Category::Floor);
+    match &r.target {
+        RegionTarget::Floor { points } => {
+            let mut pts: Vec<DVec2> = points.iter().map(|p| v2(*p)).collect();
+            if signed_area(&pts) < 0.0 {
+                pts.reverse();
+            }
+            let z = floor.elevation.mm() + 2.0;
+            let top: Vec<DVec3> = pts.iter().map(|p| p.extend(z)).collect();
+            mesh.polygon_look(&top, look);
+        }
+        RegionTarget::Wall { wall, exterior, u0, u1, z0, z1 } => {
+            if let Some(g) = crate::walls::wall_geoms(doc, r.floor).into_iter().find(|g| g.id == *wall) {
+                let (side, off) = if *exterior { (g.left, g.half + 3.0) } else { (-g.left, g.half + 3.0) };
+                let base = floor.elevation.mm();
+                let p = |u: f64, z: f64| (g.start + g.dir * u + side * off).extend(base + z);
+                let quad = [p(u0.mm(), z0.mm()), p(u1.mm(), z0.mm()), p(u1.mm(), z1.mm()), p(u0.mm(), z1.mm())];
+                let pts: Vec<DVec3> = if crate::roof::newell(&quad).dot(side.extend(0.0)) < 0.0 {
+                    quad.iter().rev().copied().collect()
+                } else {
+                    quad.to_vec()
+                };
+                mesh.polygon_look(&pts, look);
+            }
+        }
+    }
+    mesh.end();
 }
 
 #[cfg(test)]

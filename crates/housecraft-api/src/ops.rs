@@ -442,6 +442,20 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             a.facing = t.apply_angle(a.facing);
             Object::Appliance(a)
         }
+        Object::MaterialRegion(r) => {
+            let mut r = r.clone();
+            match &mut r.target {
+                RegionTarget::Floor { points } => {
+                    *points = points.iter().map(|p| t.apply_point(*p)).collect();
+                    if t.is_reflection() {
+                        points.reverse();
+                    }
+                }
+                // Wall regions ride on their wall.
+                RegionTarget::Wall { .. } => {}
+            }
+            Object::MaterialRegion(r)
+        }
         Object::MoldingPolyline(m) => {
             let mut m = m.clone();
             m.points = m.points.iter().map(|p| t.apply_point(*p)).collect();
@@ -948,6 +962,8 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
                 doc.floor_of(o.id()).is_some_and(|f| doomed.contains(&f))
                     || matches!(o, Object::BlockRef(b) if doomed.contains(&b.block))
                     || matches!(o, Object::Symbol(s) if doomed.contains(&s.def))
+                    || matches!(o, Object::MaterialRegion(r) if doomed.contains(&r.material)
+                        || matches!(r.target, RegionTarget::Wall { wall, .. } if doomed.contains(&wall)))
                     || matches!(o, Object::MaterialAssignment(a)
                         if doomed.contains(&a.object) || doomed.contains(&a.material))
             })
@@ -1005,6 +1021,7 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
             }
             Object::Electrical(e) => e.controls.retain(|c| !doomed.contains(c)),
             Object::DefaultSet(d) => d.materials.retain(|_, m| !doomed.contains(m)),
+            Object::StylePalette(st) => st.materials.retain(|_, m| !doomed.contains(m)),
             // Moldings using a deleted profile fall back to a flat board.
             Object::MoldingPolyline(m) => m.stack.iter_mut().for_each(|s| unprofile(s, &doomed)),
             Object::RoomType(t) => t.moldings.iter_mut().for_each(|m| unprofile(&mut m.spec, &doomed)),
@@ -1086,6 +1103,7 @@ pub(crate) fn insert_objects(
                 Object::Symbol(s) => s.floor = f,
                 Object::Backsplash(b) => b.floor = f,
                 Object::MoldingPolyline(m) => m.floor = f,
+                Object::MaterialRegion(r) => r.floor = f,
                 _ => {}
             }
         }
@@ -1139,6 +1157,7 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::Symbol(s) => &mut s.floor,
             Object::Backsplash(b) => &mut b.floor,
             Object::MoldingPolyline(m) => &mut m.floor,
+            Object::MaterialRegion(r) => &mut r.floor,
             _ => continue,
         };
         let before = *floor;

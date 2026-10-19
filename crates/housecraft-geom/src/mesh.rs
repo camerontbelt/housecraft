@@ -24,6 +24,11 @@ pub struct Mesh {
     pub pbr: Vec<[f32; 4]>,
     /// Per vertex: the surface role (for the material painter).
     pub surfaces: Vec<Option<Surface>>,
+    /// Per vertex: texture coordinates (in tiles) and texture slot (−1 for none).
+    pub uvs: Vec<[f32; 2]>,
+    pub tex: Vec<f32>,
+    /// The textures the slots refer to.
+    pub textures: Vec<TextureKey>,
     /// Lights given off by emissive fixtures: position (m), colour, strength.
     pub lights: Vec<MeshLight>,
     palette: Palette,
@@ -52,6 +57,29 @@ pub struct Look {
     pub pbr: [f32; 4],
     /// The surface role it was resolved for (none for one-off colours).
     pub surface: Option<Surface>,
+    /// The material's texture, if it has one.
+    pub tex: Option<TexRef>,
+}
+
+/// Where a texture comes from.
+#[derive(Debug, Clone, PartialEq)]
+pub enum TextureKey {
+    /// An image file.
+    File(String),
+    /// A generated tile pattern in a colour.
+    Pattern(housecraft_model::TilePattern, housecraft_model::Color),
+}
+
+/// A texture on a surface: its slot in [`Mesh::textures`] and how it lies.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TexRef {
+    pub slot: u32,
+    /// Size of one tile, mm.
+    pub size: [f64; 2],
+    /// Degrees.
+    pub angle: f64,
+    /// mm along the texture's own axes.
+    pub offset: [f64; 2],
 }
 
 /// A point light in the model (a light fixture).
@@ -82,11 +110,16 @@ struct Palette {
 }
 
 impl Palette {
-    fn new(doc: &Document) -> Self {
+    fn new(doc: &Document, textures: &mut Vec<TextureKey>) -> Self {
         let mut p = Palette::default();
+        let mut look = |m: &Material| {
+            let mut l = look_of(m);
+            l.tex = texture_of(m, textures);
+            l
+        };
         for a in doc.iter::<MaterialAssignment>() {
             if let Some(m) = doc.get::<Material>(a.material) {
-                p.painted.insert((a.object, a.surface), look_of(m));
+                p.painted.insert((a.object, a.surface), look(m));
             }
         }
         p.floors = doc
@@ -96,7 +129,7 @@ impl Palette {
             .collect();
         for (s, m) in &doc.active_defaults().materials {
             if let Some(m) = doc.get::<Material>(*m) {
-                p.defaults.insert(*s, look_of(m));
+                p.defaults.insert(*s, look(m));
             }
         }
         p
@@ -124,6 +157,45 @@ impl Look {
     }
 }
 
+/// A material's texture, registering it in `textures`: its colour image,
+/// or else its tile pattern.
+fn texture_of(m: &Material, textures: &mut Vec<TextureKey>) -> Option<TexRef> {
+    let (key, size) = match (&m.maps.color, &m.pattern) {
+        (Some(map), _) => (
+            TextureKey::File(map.path.clone()),
+            [
+                m.texture_width.map_or(1219.2, |l| l.mm()),
+                m.texture_height.map_or(1219.2, |l| l.mm()),
+            ],
+        ),
+        (None, Some(p)) => {
+            let (w, h) = crate::pattern::repeat(p);
+            (TextureKey::Pattern(*p, m.color), [w, h])
+        }
+        (None, None) => return None,
+    };
+    let slot = match textures.iter().position(|k| *k == key) {
+        Some(i) => i,
+        None => {
+            textures.push(key);
+            textures.len() - 1
+        }
+    };
+    Some(TexRef {
+        slot: slot as u32,
+        size,
+        angle: m.texture_angle,
+        offset: [m.texture_offset[0].mm(), m.texture_offset[1].mm()],
+    })
+}
+
+/// A material's look with its texture registered in `textures`.
+pub fn look_with_texture(m: &Material, textures: &mut Vec<TextureKey>) -> Look {
+    let mut l = look_of(m);
+    l.tex = texture_of(m, textures);
+    l
+}
+
 /// The 3D look of a material.
 pub fn look_of(m: &Material) -> Look {
     let [r, g, b, _] = m.color.0;
@@ -137,6 +209,7 @@ pub fn look_of(m: &Material) -> Look {
             m.opacity as f32,
         ],
         surface: None,
+        tex: None,
     }
 }
 
@@ -168,6 +241,7 @@ pub fn builtin_look(surface: Surface) -> Look {
         color,
         pbr,
         surface: None,
+        tex: None,
     }
 }
 
@@ -198,8 +272,11 @@ pub enum Category {
 impl Mesh {
     /// A mesh whose surfaces take their materials from `doc`.
     pub fn for_document(doc: &Document) -> Self {
+        let mut textures = Vec::new();
+        let palette = Palette::new(doc, &mut textures);
         Mesh {
-            palette: Palette::new(doc),
+            palette,
+            textures,
             ..Mesh::default()
         }
     }
@@ -270,12 +347,35 @@ impl Mesh {
             });
         }
         let base = self.positions.len() as u32;
+        // Planar texture coordinates: plan x/y on floors and roofs, along
+        // the face and up on walls.
+        let (tu, tv) = if n.z.abs() > 0.7 {
+            (DVec3::X, DVec3::Y)
+        } else {
+            (DVec3::Z.cross(n).normalize_or(DVec3::X), DVec3::Z)
+        };
         for p in pts {
             self.positions.push(to_m(*p));
             self.normals.push(n.as_vec3().to_array());
             self.colors.push(color);
             self.pbr.push(look.pbr);
             self.surfaces.push(look.surface);
+            match look.tex {
+                Some(t) => {
+                    let q = DVec2::new(p.dot(tu), p.dot(tv));
+                    let r = DVec2::from_angle(-t.angle.to_radians()).rotate(q)
+                        - DVec2::new(t.offset[0], t.offset[1]);
+                    self.uvs.push([
+                        (r.x / t.size[0].max(1.0)) as f32,
+                        (r.y / t.size[1].max(1.0)) as f32,
+                    ]);
+                    self.tex.push(t.slot as f32);
+                }
+                None => {
+                    self.uvs.push([0.0, 0.0]);
+                    self.tex.push(-1.0);
+                }
+            }
         }
         for t in triangulate(&flat) {
             self.indices
@@ -545,6 +645,7 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
                 },
                 pbr: [0.4, 1.0, 0.0, 1.0],
                 surface: None,
+                tex: None,
             };
             mesh.prism_look(
                 &rect(p + out * 40.0, along, 40.0, 80.0),
@@ -558,6 +659,7 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
                 color: [0.35, 0.35, 0.37, 1.0],
                 pbr: [0.4, 1.0, 0.0, 1.0],
                 surface: None,
+                tex: None,
             };
             mesh.prism_look(&disc(p, 75.0, 16), z0, z0 + 3.0, grate);
         }
@@ -1322,6 +1424,7 @@ fn door_mesh(
                 mesh.colors[start..].fill(glass.color);
                 mesh.pbr[start..].fill(glass.pbr);
                 mesh.surfaces[start..].fill(glass.surface);
+                mesh.tex[start..].fill(-1.0);
             }
         }
         D::Atrium => {

@@ -1141,6 +1141,7 @@ pub fn symbol_mesh(doc: &Document, s: &Symbol, mesh: &mut Mesh) {
             color: [f(r), f(g), f(b), 1.0],
             pbr: [0.6, 0.0, 0.0, 1.0],
             surface: None,
+            tex: None,
         }
     };
     let grey = look_of(housecraft_model::Color::rgb(190, 190, 190));

@@ -252,6 +252,15 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         Object::Appliance(a) => format!("{} {} wide", a.appliance_kind.name(), fmt(a.width)),
         Object::Backsplash(b) => format!("backsplash {} high", fmt(b.height)),
         Object::MoldingProfile(p) => format!("molding profile {:?}", p.name),
+        Object::MaterialRegion(r) => format!(
+            "{} region of {}",
+            match r.target {
+                RegionTarget::Floor { .. } => "floor",
+                RegionTarget::Wall { .. } => "wall",
+            },
+            doc.get::<Material>(r.material).map_or("?", |m| m.name.as_str())
+        ),
+        Object::StylePalette(st) => format!("style {:?}", st.name),
         Object::MoldingPolyline(m) => format!("molding, {} profile{}", m.stack.len(), if m.stack.len() == 1 { "" } else { "s" }),
         Object::Picture(p) => format!(
             "picture {}",

@@ -58,6 +58,12 @@ pub enum Tool {
     PlaceGroup,
     /// Draw a molding along a path.
     MoldingPolyline,
+    /// Draw a floor material region (inlay).
+    FloorRegion,
+    /// Mark a material region on a wall face.
+    WallRegion,
+    /// Copy chosen properties from one object to others.
+    ObjectPainter,
 }
 
 /// The shapes offered by the stair tools.
@@ -217,6 +223,9 @@ impl Family {
                 Tool::Spline,
                 Tool::Point,
                 Tool::MoldingPolyline,
+                Tool::FloorRegion,
+                Tool::WallRegion,
+                Tool::ObjectPainter,
                 Tool::CrossBox,
                 Tool::BlockingBox,
                 Tool::Insulation,
@@ -357,6 +366,9 @@ impl Tool {
             Tool::PlaceSymbol(_) => "Place 3D Symbol",
             Tool::Backsplash => "Custom Backsplash",
             Tool::MoldingPolyline => "Molding Polyline",
+            Tool::FloorRegion => "Floor Material Region",
+            Tool::WallRegion => "Wall Material Region",
+            Tool::ObjectPainter => "Object Painter",
             Tool::PlaceGroup => "Place Group",
         }
     }
@@ -389,7 +401,9 @@ impl Tool {
             Tool::Ellipse => Icon::Ellipse,
             Tool::Spline => Icon::Spline,
             Tool::Point => Icon::Point,
-            Tool::MoldingPolyline => Icon::Polyline,
+            Tool::MoldingPolyline | Tool::FloorRegion => Icon::Polyline,
+            Tool::WallRegion => Icon::Box,
+            Tool::ObjectPainter => Icon::Select,
             Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => Icon::Box,
             Tool::Callout | Tool::Marker | Tool::RevisionCloud => Icon::Text,
             Tool::RoofPlane => Icon::Roof,
@@ -493,6 +507,11 @@ impl Tool {
             Tool::PlaceGroup => "Click to place the group's bottom-left corner.",
             Tool::MoldingPolyline => {
                 "Click along the path with the molding on your right; double-click or Enter to finish."
+            }
+            Tool::FloorRegion => "Click the corners of the region; double-click or Enter to finish.",
+            Tool::WallRegion => "Click the two ends of the region on one side of a wall.",
+            Tool::ObjectPainter => {
+                "Alt+click an object to copy from, tick what to copy, then click objects to paint them."
             }
         }
     }

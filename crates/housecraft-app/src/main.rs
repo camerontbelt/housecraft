@@ -11,6 +11,7 @@ mod icons;
 mod images;
 mod library_view;
 mod materials;
+mod object_painter;
 mod props;
 mod schedules;
 mod snap;

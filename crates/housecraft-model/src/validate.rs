@@ -641,6 +641,31 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     CabinetShape::Standard => {}
                 }
             }
+            Object::MaterialRegion(r) => {
+                c.reference(id, "floor", r.floor, K::Floor);
+                c.reference(id, "layer", r.layer, K::Layer);
+                c.reference(id, "material", r.material, K::Material);
+                match &r.target {
+                    RegionTarget::Floor { points } => {
+                        if points.len() < 3 {
+                            c.issue(id, "a floor region needs at least three points");
+                        }
+                        let flat: Vec<f64> = points.iter().flat_map(|p| p.mm()).collect();
+                        c.finite(id, "points", &flat);
+                    }
+                    RegionTarget::Wall { wall, u0, u1, z0, z1, .. } => {
+                        c.reference(id, "wall", *wall, K::Wall);
+                        if u1.mm() <= u0.mm() || z1.mm() <= z0.mm() {
+                            c.issue(id, "a wall region needs a positive width and height");
+                        }
+                    }
+                }
+            }
+            Object::StylePalette(st) => {
+                for m in st.materials.values() {
+                    c.reference(id, "materials", *m, K::Material);
+                }
+            }
             Object::MoldingProfile(p) => {
                 if p.points.len() < 3 {
                     c.issue(id, "a molding profile needs at least three points");

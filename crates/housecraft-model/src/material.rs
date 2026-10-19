@@ -223,6 +223,59 @@ pub struct Material {
     pub texture_width: Option<Length>,
     #[serde(default)]
     pub texture_height: Option<Length>,
+    /// Texture turned this many degrees on surfaces.
+    #[serde(default)]
+    pub texture_angle: f64,
+    /// Texture shifted along its own axes.
+    #[serde(default)]
+    pub texture_offset: [Length; 2],
+    /// A generated tile pattern in the material's colour (used when there is
+    /// no colour image).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pattern: Option<TilePattern>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PatternKind {
+    /// Stacked tiles in a grid.
+    #[default]
+    Grid,
+    /// Each row shifted half a tile (brick, subway tile).
+    RunningBond,
+    /// Tiles at 90° to each other in a zig-zag.
+    Herringbone,
+    /// Pairs of tiles turning 90° each square.
+    Basketweave,
+}
+
+impl PatternKind {
+    pub const ALL: [PatternKind; 4] = [
+        PatternKind::Grid,
+        PatternKind::RunningBond,
+        PatternKind::Herringbone,
+        PatternKind::Basketweave,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            PatternKind::Grid => "Grid",
+            PatternKind::RunningBond => "Running bond",
+            PatternKind::Herringbone => "Herringbone",
+            PatternKind::Basketweave => "Basketweave",
+        }
+    }
+}
+
+/// A parametric tile or plank pattern.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct TilePattern {
+    pub kind: PatternKind,
+    pub tile_width: Length,
+    pub tile_height: Length,
+    /// Joint width between tiles.
+    pub grout: Length,
+    pub grout_color: Color,
 }
 
 fn matte() -> f64 {
@@ -257,6 +310,9 @@ impl Material {
             maps: MaterialMaps::default(),
             texture_width: None,
             texture_height: None,
+            texture_angle: 0.0,
+            texture_offset: [Length::ZERO; 2],
+            pattern: None,
         }
     }
 }
@@ -306,4 +362,47 @@ impl<'a> MaterialIndex<'a> {
             .or_else(|| self.defaults.get(&surface))
             .and_then(|m| self.doc.get::<Material>(*m))
     }
+}
+
+/// Where a material region lies.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum RegionTarget {
+    /// An inlay on the floor (a rug, a tile border), any outline.
+    Floor { points: Vec<housecraft_units::Point2> },
+    /// A rectangle on one face of a wall (an accent panel, a tiled shower
+    /// surround): from `u0` to `u1` along the wall from its start, `z0` to
+    /// `z1` above the floor; `exterior` picks the wall's left face.
+    Wall {
+        wall: Id,
+        exterior: bool,
+        u0: Length,
+        u1: Length,
+        z0: Length,
+        z1: Length,
+    },
+}
+
+/// A patch of a different material on a floor or wall, without a room or
+/// wall boundary.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct MaterialRegion {
+    pub id: Id,
+    pub floor: Id,
+    pub layer: Id,
+    pub material: Id,
+    pub target: RegionTarget,
+}
+
+/// A saved set of finishes: a material for each surface, and cabinet
+/// door style and hardware.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct StylePalette {
+    pub id: Id,
+    pub name: String,
+    pub materials: SurfaceMaterials,
+    #[serde(default)]
+    pub door_style: Option<crate::DoorStyleCab>,
+    #[serde(default)]
+    pub hardware: Option<crate::HardwareStyle>,
 }
