@@ -143,6 +143,13 @@ pub struct FramingMember {
     /// Placed or edited by hand: kept when framing is rebuilt.
     #[serde(default)]
     pub manual: bool,
+    /// Pieces nailed side by side (a 2-ply beam); `width` is each piece's.
+    #[serde(default = "one_ply")]
+    pub plies: u32,
+}
+
+fn one_ply() -> u32 {
+    1
 }
 
 impl FramingMember {
@@ -170,6 +177,7 @@ impl FramingMember {
             }
         };
         let s = format!("{}x{}", nominal(self.width), nominal(self.depth));
+        let s = if self.plies > 1 { format!("{}-ply {s}", self.plies) } else { s };
         match self.material {
             FramingMaterial::Lumber => s,
             m => format!("{s} {}", m.name()),
@@ -218,6 +226,16 @@ pub struct FramingDefaults {
     /// Rows of blocking (bridging) at mid-height in walls.
     #[serde(default)]
     pub wall_blocking: bool,
+    /// Frame roofs with trusses (chords and webs) instead of rafters and
+    /// ceiling joists.
+    #[serde(default)]
+    pub trusses: bool,
+    #[serde(default = "truss_spacing")]
+    pub truss_spacing: Length,
+}
+
+fn truss_spacing() -> Length {
+    Length::from_inches(24.0)
 }
 
 impl Default for FramingDefaults {
@@ -235,6 +253,8 @@ impl Default for FramingDefaults {
             top_plates: 2,
             corners: CornerFraming::Standard,
             wall_blocking: false,
+            trusses: false,
+            truss_spacing: truss_spacing(),
         }
     }
 }

@@ -1192,6 +1192,41 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     elevation: Length::from_mm(ground_at(doc, p)),
                 },
             }),
+            Tool::Post | Tool::Beam => {
+                let fl = doc.get::<Floor>(app.plan.floor);
+                let (z0, zc) = fl.map_or((0.0, 2438.4), |f| (f.elevation.mm(), (f.elevation + f.ceiling_height).mm()));
+                let p3 = |q: DVec2, z: f64| housecraft_api::units::Point3::from_mm(q.x, q.y, z);
+                if tool == Tool::Post {
+                    commands.push(Command::AddFramingMember {
+                        floor,
+                        role: FramingRole::Post,
+                        a: p3(p, z0),
+                        b: p3(p, zc),
+                        width: None,
+                        depth: None,
+                        rotation: 0.0,
+                        material: FramingMaterial::Lumber,
+                        plies: None,
+                    });
+                } else if let Some(a) = pending.pop() {
+                    if a.distance(p) > 100.0 {
+                        let depth = doc.active_defaults().framing.floor_joist_depth.mm();
+                        commands.push(Command::AddFramingMember {
+                            floor,
+                            role: FramingRole::Beam,
+                            a: p3(a, zc - depth / 2.0),
+                            b: p3(p, zc - depth / 2.0),
+                            width: None,
+                            depth: None,
+                            rotation: 0.0,
+                            material: FramingMaterial::Lumber,
+                            plies: Some(2),
+                        });
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
             Tool::JoistDirection => {
                 if let Some(c) = pending.pop() {
                     if c.distance(p) > 10.0 {

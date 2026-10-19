@@ -2163,3 +2163,32 @@ fn framing_builds_rebuilds_and_lists() {
     assert_eq!(s.document().count::<FramingMember>(), 1);
     assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
 }
+
+#[test]
+fn trusses_posts_and_beams() {
+    let mut s = boxed();
+    apply(&mut s, r#"[{"op": "build_roof"}]"#);
+    let set = s.document().active_defaults().id;
+    apply(&mut s, &format!(r#"[{{"op": "update", "id": {}, "set": {{"framing": {{"trusses": true}}}}}}]"#, set.0));
+    apply(&mut s, r#"[{"op": "build_framing"}]"#);
+    let doc = s.document();
+    let count = |r: FramingRole| doc.iter::<FramingMember>().filter(|m| m.role == r).count();
+    assert_eq!(count(FramingRole::Rafter), 0, "trusses replace rafters");
+    assert_eq!(count(FramingRole::CeilingJoist), 0, "and ceiling joists");
+    assert!(count(FramingRole::Chord) > 30, "{}", count(FramingRole::Chord));
+    assert!(count(FramingRole::Web) > 30);
+    let chord = doc.iter::<FramingMember>().find(|m| m.role == FramingRole::Chord).unwrap().id;
+    let out = apply(&mut s, &format!(r#"[{{"op": "truss_detail", "member": {}}}]"#, chord.0));
+    let detail = out.created[0];
+    let pieces = s.document().iter::<Cad>().filter(|c| c.floor == detail).count();
+    assert!((5..=20).contains(&pieces), "one truss, {pieces} pieces");
+    // A two-ply beam on a post.
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_framing_member", "role": "post", "a": ["10'","10'",0], "b": ["10'","10'","8'"]},
+            {"op": "add_framing_member", "role": "beam", "a": [0,"10'","7'"], "b": ["20'","10'","7'"], "plies": 2}]"#,
+    );
+    let beam = s.document().get::<FramingMember>(out.created[1]).unwrap();
+    assert_eq!(beam.size_name(), "2-ply 2x10");
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
+}

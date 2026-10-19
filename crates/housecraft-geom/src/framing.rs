@@ -482,7 +482,7 @@ pub fn corners(m: &FramingMember) -> [DVec3; 8] {
         let d = up * r.cos() + side * r.sin();
         (d, axis.cross(d).normalize())
     };
-    let (dh, wh) = (dd * m.depth.mm() / 2.0, wd * m.width.mm() / 2.0);
+    let (dh, wh) = (dd * m.depth.mm() / 2.0, wd * m.width.mm() * m.plies.max(1) as f64 / 2.0);
     let ring = |e: DVec3| [e - dh - wh, e + dh - wh, e + dh + wh, e - dh + wh];
     let (ra, rb) = (ring(a), ring(b));
     [ra[0], ra[1], ra[2], ra[3], rb[0], rb[1], rb[2], rb[3]]
@@ -526,7 +526,11 @@ pub fn build(doc: &Document, only_floor: Option<Id>, mesh: &mut Mesh) {
 
 /// A member's outline in plan (its footprint's convex hull).
 pub fn plan_outline(m: &FramingMember) -> Vec<DVec2> {
-    let mut pts: Vec<DVec2> = corners(m).iter().map(|p| p.truncate()).collect();
+    hull(corners(m).iter().map(|p| p.truncate()).collect())
+}
+
+/// The convex hull of points (counter-clockwise).
+pub fn hull(mut pts: Vec<DVec2>) -> Vec<DVec2> {
     pts.sort_by(|a, b| a.x.total_cmp(&b.x).then(a.y.total_cmp(&b.y)));
     pts.dedup_by(|a, b| a.distance(*b) < 0.01);
     if pts.len() < 3 {
@@ -551,6 +555,134 @@ pub fn plan_outline(m: &FramingMember) -> Vec<DVec2> {
     upper.pop();
     lower.extend(upper);
     lower
+}
+
+/// A roof plane's height at a plan point, when the point is under it.
+fn plane_height(plane: &RoofPlane) -> Option<impl Fn(DVec2) -> Option<f64> + '_> {
+    let pts: Vec<DVec3> = plane.outline.iter().map(|p| DVec3::from_array(p.mm())).collect();
+    if plane.gable || pts.len() < 3 {
+        return None;
+    }
+    let (p0, p1) = (pts[0], pts[1]);
+    let p2 = *pts.iter().max_by(|a, b| {
+        let area = |p: &DVec3| (p1 - p0).cross(*p - p0).length();
+        area(a).total_cmp(&area(b))
+    })?;
+    let n = (p1 - p0).cross(p2 - p0);
+    if n.z.abs() < 1e-9 {
+        return None;
+    }
+    let flat: Vec<DVec2> = pts.iter().map(|p| p.truncate()).collect();
+    Some(move |q: DVec2| {
+        point_in_polygon(q, &flat).then(|| p0.z - (n.x * (q.x - p0.x) + n.y * (q.y - p0.y)) / n.z)
+    })
+}
+
+/// Trusses under the roof planes on `floor`: across the building at the
+/// truss spacing, each a bottom chord at the ceiling, top chords under the
+/// roof (flat-topped where hips step them down) and Fink webs.
+pub fn roof_trusses(doc: &Document, d: &FramingDefaults, floor: &Floor) -> Vec<Member> {
+    let planes: Vec<&RoofPlane> = doc.iter::<RoofPlane>().filter(|p| p.floor == floor.id && !p.gable).collect();
+    let heights: Vec<_> = planes.iter().filter_map(|p| plane_height(p)).collect();
+    if heights.is_empty() {
+        return Vec::new();
+    }
+    let roof = |q: DVec2| heights.iter().filter_map(|h| h(q)).reduce(f64::min);
+    let t = d.lumber_width.mm();
+    let chord = 3.5 * IN;
+    let z_bottom = floor.elevation.mm() + floor.ceiling_height.mm() + chord / 2.0;
+    // The trusses run across the longest ridge (or the building's long way).
+    let ridge = planes
+        .iter()
+        .flat_map(|p| {
+            let pts: Vec<DVec3> = p.outline.iter().map(|q| DVec3::from_array(q.mm())).collect();
+            let top = pts.iter().map(|q| q.z).fold(f64::MIN, f64::max);
+            (0..pts.len())
+                .map(move |i| (pts[i], pts[(i + 1) % pts.len()]))
+                .filter(move |(a, b)| (a.z - top).abs() < 1.0 && (b.z - top).abs() < 1.0)
+                .map(|(a, b)| b.truncate() - a.truncate())
+                .collect::<Vec<_>>()
+        })
+        .max_by(|a, b| a.length().total_cmp(&b.length()));
+    let mut out = Vec::new();
+    for fp in crate::rooms::detect(doc, floor.id).footprints {
+        let mut fp = fp;
+        if signed_area(&fp) < 0.0 {
+            fp.reverse();
+        }
+        let r = match ridge.filter(|r| r.length() > 300.0) {
+            Some(r) => r.normalize(),
+            None => {
+                let (lo, hi) = crate::math::bounds(fp.iter().copied()).expect("footprint");
+                if hi.x - lo.x >= hi.y - lo.y { DVec2::X } else { DVec2::Y }
+            }
+        };
+        let n = perp(r);
+        let proj: Vec<f64> = fp.iter().map(|p| p.dot(r)).collect();
+        let (lo, hi) = (proj.iter().copied().fold(f64::MAX, f64::min), proj.iter().copied().fold(f64::MIN, f64::max));
+        let spacing = d.truss_spacing.mm().max(300.0);
+        let mut stations = vec![lo + t];
+        let mut k = 1;
+        while lo + k as f64 * spacing < hi - t {
+            stations.push(lo + k as f64 * spacing);
+            k += 1;
+        }
+        stations.push(hi - t);
+        for s in stations {
+            let o = r * s;
+            for (t0, t1) in clip_line(&fp, o, n) {
+                let (e0, e1) = (o + n * t0, o + n * t1);
+                let span = e0.distance(e1);
+                if span < 600.0 {
+                    continue;
+                }
+                // The top chord's line: under the roof along the truss.
+                let drop = 19.0 + chord * 0.6;
+                let at = |f: f64| {
+                    let p = e0.lerp(e1, f);
+                    roof(p).map(|z| p.extend((z - drop).max(z_bottom + chord)))
+                };
+                let samples: Vec<DVec3> = (0..=32).filter_map(|i| at(i as f64 / 32.0)).collect();
+                if samples.len() < 33 {
+                    continue;
+                }
+                // Keep the corners of the profile.
+                let mut top = vec![samples[0]];
+                for w in samples.windows(3) {
+                    let (a, b, c) = (w[0], w[1], w[2]);
+                    let s1 = (b.z - a.z) / a.truncate().distance(b.truncate()).max(1e-6);
+                    let s2 = (c.z - b.z) / b.truncate().distance(c.truncate()).max(1e-6);
+                    if (s1 - s2).abs() > 0.01 {
+                        top.push(b);
+                    }
+                }
+                top.push(samples[32]);
+                let push = |out: &mut Vec<Member>, role, a: DVec3, b: DVec3, rotation: f64| {
+                    if a.distance(b) > 30.0 {
+                        out.push(Member { role, a, b, width: t, depth: chord, rotation, host: floor.id, floor: floor.id });
+                    }
+                };
+                push(&mut out, FramingRole::Chord, e0.extend(z_bottom), e1.extend(z_bottom), 0.0);
+                for w in top.windows(2) {
+                    push(&mut out, FramingRole::Chord, w[0], w[1], 0.0);
+                }
+                let across = n.to_angle().to_degrees();
+                // Heels where the top chord stands above the bottom chord.
+                for end in [top[0], *top.last().expect("top")] {
+                    if end.z - z_bottom > chord * 1.5 {
+                        push(&mut out, FramingRole::Web, end.truncate().extend(z_bottom + chord / 2.0), end, across);
+                    }
+                }
+                // Fink webs.
+                let top_at = |f: f64| at(f).unwrap_or(e0.lerp(e1, f).extend(z_bottom));
+                let bottom_at = |f: f64| e0.lerp(e1, f).extend(z_bottom + chord / 2.0);
+                for (b, tp) in [(1.0 / 3.0, 0.25), (1.0 / 3.0, 0.5), (2.0 / 3.0, 0.5), (2.0 / 3.0, 0.75)] {
+                    push(&mut out, FramingRole::Web, bottom_at(b), top_at(tp), 0.0);
+                }
+            }
+        }
+    }
+    out
 }
 
 #[cfg(test)]

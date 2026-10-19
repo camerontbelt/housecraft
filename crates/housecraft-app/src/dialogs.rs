@@ -1060,6 +1060,18 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                             }
                         });
                         ui.end_row();
+                        ui.label("Roof framing");
+                        ui.horizontal(|ui| {
+                            for (label, on) in [("Rafters", false), ("Trusses", true)] {
+                                if ui.selectable_label(f.trusses == on, label).clicked() {
+                                    commands.push(p(json!({"framing": {"trusses": on}})));
+                                }
+                            }
+                        });
+                        ui.end_row();
+                        len_row(ui, doc, &mut app.bufs, "Truss spacing", ("framing", "truss_spacing"), f.truss_spacing, |v| {
+                            commands.push(p(json!({"framing": {"truss_spacing": v}})))
+                        });
                         ui.label("Mid-height blocking");
                         let mut b = f.wall_blocking;
                         if ui.checkbox(&mut b, "").changed() {

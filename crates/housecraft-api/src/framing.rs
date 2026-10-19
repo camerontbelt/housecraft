@@ -1,6 +1,6 @@
 //! Building framing, and a wall's framing drawn as a CAD detail.
 
-use housecraft_geom::framing::{Member, ceiling_framing, floor_framing, roof_framing, wall_framing};
+use housecraft_geom::framing::{Member, ceiling_framing, floor_framing, roof_framing, roof_trusses, wall_framing};
 use housecraft_geom::walls::wall_geoms;
 use housecraft_geom::{DVec2, pt};
 use housecraft_model::*;
@@ -84,6 +84,7 @@ fn insert(doc: &mut Document, layer: Id, m: Member, out: &mut Outcome) {
         material: FramingMaterial::Lumber,
         host: Some(m.host),
         manual: false,
+        plies: 1,
     }));
 }
 
@@ -123,8 +124,13 @@ pub(crate) fn build(
                 let ms = floor_framing(doc, &d, fl);
                 members.extend(ms.into_iter().filter(|m| m.role != FramingRole::CeilingJoist));
             }
-            if parts.ceilings {
+            // Trusses carry the ceiling under a trussed roof.
+            let trussed = d.trusses && doc.iter::<RoofPlane>().any(|p| p.floor == fl.id);
+            if parts.ceilings && !trussed {
                 members.extend(ceiling_framing(doc, &d, fl));
+            }
+            if parts.roofs && d.trusses {
+                members.extend(roof_trusses(doc, &d, fl));
             }
         }
     }
@@ -132,7 +138,9 @@ pub(crate) fn build(
     if parts.roofs {
         let planes: Vec<RoofPlane> = doc.iter::<RoofPlane>().filter(|p| on(p.floor) && wanted(p.id)).cloned().collect();
         for p in &planes {
-            members.extend(roof_framing(&d, p, &mut ridges));
+            if !d.trusses {
+                members.extend(roof_framing(&d, p, &mut ridges));
+            }
             rebuilt_hosts.push(p.id);
         }
     }
@@ -146,7 +154,9 @@ pub(crate) fn build(
             let is_floor_host = doc.kind_of(host) == Some(ObjectKind::Floor);
             if is_floor_host {
                 wanted(host)
-                    && ((parts.floors && roles_floor(m.role)) || (parts.ceilings && m.role == FramingRole::CeilingJoist))
+                    && ((parts.floors && roles_floor(m.role))
+                        || (parts.ceilings && m.role == FramingRole::CeilingJoist)
+                        || (parts.roofs && matches!(m.role, FramingRole::Chord | FramingRole::Web)))
             } else {
                 rebuilt_hosts.contains(&host) || doc.object(host).is_none()
             }
@@ -217,4 +227,61 @@ pub(crate) fn wall_detail(doc: &Document, wall: Id) -> Result<(String, Vec<Detai
         justify: Justify::Left,
     });
     Ok((format!("Wall Framing {}", wall.0), shapes, texts))
+}
+
+/// The truss through a chord or web member, drawn in its own plane with
+/// each member's size.
+pub(crate) fn truss_detail(doc: &Document, member: Id) -> Result<(String, Vec<DetailShape>, Vec<crate::DetailText>), ApiError> {
+    let m = crate::ops::expect::<FramingMember>(doc, member)?;
+    if !matches!(m.role, FramingRole::Chord | FramingRole::Web) {
+        return invalid("choose a truss chord or web");
+    }
+    let (a, b) = (housecraft_geom::DVec3::from_array(m.a.mm()), housecraft_geom::DVec3::from_array(m.b.mm()));
+    let flat = (b - a).truncate();
+    let along = if flat.length() > 1.0 { flat.normalize() } else { DVec2::from_angle(m.rotation.to_radians()) };
+    let across = housecraft_geom::math::perp(along);
+    let in_plane = |p: housecraft_geom::DVec3| (p.truncate() - a.truncate()).dot(across).abs() < 30.0;
+    let members: Vec<&FramingMember> = doc
+        .iter::<FramingMember>()
+        .filter(|x| matches!(x.role, FramingRole::Chord | FramingRole::Web))
+        .filter(|x| in_plane(housecraft_geom::DVec3::from_array(x.a.mm())) && in_plane(housecraft_geom::DVec3::from_array(x.b.mm())))
+        .collect();
+    let to2 = |p: housecraft_geom::DVec3| DVec2::new((p.truncate() - a.truncate()).dot(along), p.z);
+    let all: Vec<DVec2> = members.iter().flat_map(|x| housecraft_geom::framing::corners(x)).map(to2).collect();
+    let (lo, hi) = housecraft_geom::math::bounds(all.iter().copied()).expect("members");
+    let shift = |p: DVec2| p - lo;
+    let mut shapes = Vec::new();
+    let mut texts = Vec::new();
+    for x in &members {
+        let outline = housecraft_geom::framing::hull(housecraft_geom::framing::corners(x).iter().map(|p| shift(to2(*p))).collect());
+        let mid = outline.iter().copied().sum::<DVec2>() / outline.len().max(1) as f64;
+        shapes.push(DetailShape {
+            shape: Shape::Polyline { points: outline.into_iter().map(pt).collect(), closed: true },
+            color: None,
+            fill: Some(Color::rgb(225, 200, 160)),
+        });
+        if x.role == FramingRole::Chord {
+            texts.push(crate::DetailText {
+                position: pt(mid + DVec2::new(0.0, 150.0)),
+                text: x.size_name(),
+                height: Some(Length::from_inches(3.0)),
+                rotation: 0.0,
+                justify: Justify::Center,
+            });
+        }
+    }
+    let unit = doc.settings.display_unit;
+    texts.push(crate::DetailText {
+        position: pt(DVec2::new(0.0, -500.0)),
+        text: format!(
+            "Truss: span {}, height {}, {} members",
+            Length::from_mm(hi.x - lo.x).format(unit),
+            Length::from_mm(hi.y - lo.y).format(unit),
+            members.len()
+        ),
+        height: None,
+        rotation: 0.0,
+        justify: Justify::Left,
+    });
+    Ok(("Truss Detail".into(), shapes, texts))
 }

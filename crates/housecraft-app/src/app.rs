@@ -1399,8 +1399,22 @@ impl App {
                         cmd = Some(Command::BuildFraming { floor: None, parts: parts(true, false, false, true), hosts: hosts.clone() });
                     }
                     ui.separator();
-                    if tool_item(ui, Tool::JoistDirection) {
-                        self.set_tool(Tool::JoistDirection);
+                    for tool in [Tool::JoistDirection, Tool::Post, Tool::Beam] {
+                        if tool_item(ui, tool) {
+                            self.set_tool(tool);
+                        }
+                    }
+                    let truss = self.selection.iter().copied().find(|id| {
+                        self.doc()
+                            .get::<FramingMember>(*id)
+                            .is_some_and(|m| matches!(m.role, FramingRole::Chord | FramingRole::Web))
+                    });
+                    if item(ui, "Truss Detail", "", truss.is_some())
+                        && let Some(member) = truss
+                        && let Some(out) = self.run1(Command::TrussDetail { member })
+                        && let Some(id) = out.created.first()
+                    {
+                        self.open_sheet(*id);
                     }
                     let wall = (hosts.len() == 1 && self.doc().kind_of(hosts[0]) == Some(ObjectKind::Wall)).then(|| hosts[0]);
                     if item(ui, "Wall Framing Detail", "", wall.is_some())

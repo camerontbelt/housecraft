@@ -635,6 +635,12 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 v["manual"] = json!(true);
                 ed.out.push(patch(id, v));
             }
+            Ed::label(ui, "Plies");
+            let mut plies = m.plies.max(1);
+            if ui.add(egui::DragValue::new(&mut plies).range(1..=4)).changed() {
+                ed.out.push(patch(id, json!({ "plies": plies, "manual": true })));
+            }
+            ui.end_row();
             Ed::label(ui, "Built");
             ui.label(if m.manual { "By hand (kept when framing is rebuilt)" } else { "Automatically" });
             ui.end_row();

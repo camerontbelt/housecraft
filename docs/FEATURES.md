@@ -301,13 +301,13 @@ These come from reading the whole list and change the architecture, not just the
 | FR-07 | Framing materials: lumber, steel, LVL, PSL, VSL; custom types and shapes | P2 | M6 ◐ lumber, LVL, PSL, VSL and steel members; no custom section shapes |
 | FR-08 | EasyFrame panelization export (.EZF) | P3 | M8 |
 | FR-09 | Roof framing: rafters, ridges, lookouts, blocking, valley fill, rafter tails | P2 | M6 ◐ rafters and ridges under each roof plane; no lookouts, blocking, valley fill or rafter tails |
-| FR-10 | Auto-build trusses; auto-fit floor/ceiling/roof trusses (scissor, attic, girder, hip, energy heel…) | P2 | M6 |
-| FR-11 | Truss rebuild tool; truss details with labels | P3 | M6 |
-| FR-12 | Truss chords/webbing in materials list (X18+) | P3 | M6 |
+| FR-10 | Auto-build trusses; auto-fit floor/ceiling/roof trusses (scissor, attic, girder, hip, energy heel…) | P2 | M6 ◐ trusses fitted under the roof (common, stepped-down at hips) with Fink webs and heels; no scissor, attic, girder or energy-heel types |
+| FR-11 | Truss rebuild tool; truss details with labels | P3 | M6 ✓ Build Roof Framing rebuilds trusses; Truss Detail draws one with its member sizes |
+| FR-12 | Truss chords/webbing in materials list (X18+) | P3 | M6 ✓ truss chords and webs in the cut list and buy list |
 | FR-13 | Horizontal roof framing (battens, purlins) | P3 | M6 |
 | FR-14 | Decorative end profiles | P3 | M6 |
-| FR-15 | Post & beam tools | P2 | M6 |
-| FR-16 | Multi-ply beams/posts/girders (X18+) | P3 | M6 |
+| FR-15 | Post & beam tools | P2 | M6 ◐ Post and Beam tools (6x6 posts, 2-ply beams); no automatic post-and-beam layout |
+| FR-16 | Multi-ply beams/posts/girders (X18+) | P3 | M6 ✓ members can be 1–4 plies |
 | FR-17 | Wall framing options: plates, studs, bridging, knee walls; steel C/U channels; rim joists | P2 | M6 ◐ stud spacing, 1–3 top plates, mid-height blocking, rim joists; no knee walls or steel channels |
 | FR-18 | Balloon framing | P3 | M6 |
 | FR-19 | Header controls (cripples, rotated, flush, combined) | P2 | M6 ◐ headers sized by span (2x6 to 2x12, built-up); no per-header options |

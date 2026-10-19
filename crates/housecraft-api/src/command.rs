@@ -459,7 +459,12 @@ pub enum Command {
         rotation: f64,
         #[serde(default)]
         material: FramingMaterial,
+        /// Pieces side by side (beams and posts).
+        #[serde(default)]
+        plies: Option<u32>,
     },
+    /// Draw the truss through a chord or web member as a labelled CAD detail.
+    TrussDetail { member: Id },
     /// Set which way joists run in the room around `at`.
     AddJoistDirection {
         floor: Option<Id>,
@@ -930,6 +935,7 @@ impl Command {
             Command::ClearFraming { .. } => "clear_framing",
             Command::AddFramingMember { .. } => "add_framing_member",
             Command::AddJoistDirection { .. } => "add_joist_direction",
+            Command::TrussDetail { .. } => "truss_detail",
             Command::WallFramingDetail { .. } => "wall_framing_detail",
             Command::AddPlotLines { .. } => "add_plot_lines",
             Command::SitePlanDetail { .. } => "site_plan_detail",
@@ -2016,7 +2022,7 @@ impl Command {
                     ops::delete(doc, &ids, &mut out)?;
                 }
             }
-            Command::AddFramingMember { floor, role, a, b, width, depth, rotation, material } => {
+            Command::AddFramingMember { floor, role, a, b, width, depth, rotation, material, plies } => {
                 let floor = ops::resolve_floor(doc, *floor)?;
                 let f = &d.framing;
                 let default_depth = match role {
@@ -2041,6 +2047,7 @@ impl Command {
                     material: *material,
                     host: None,
                     manual: true,
+                    plies: plies.unwrap_or(1).max(1),
                 }));
             }
             Command::AddJoistDirection { floor, at, angle, ceiling } => {
@@ -2053,6 +2060,11 @@ impl Command {
                     angle: *angle,
                     ceiling: *ceiling,
                 }));
+            }
+            Command::TrussDetail { member } => {
+                let (name, shapes, texts) = crate::framing::truss_detail(doc, *member)?;
+                let more = Command::AddCadDetail { name, shapes, texts }.apply(doc)?;
+                out.created.extend(more.created);
             }
             Command::WallFramingDetail { wall } => {
                 let (name, shapes, texts) = crate::framing::wall_detail(doc, *wall)?;

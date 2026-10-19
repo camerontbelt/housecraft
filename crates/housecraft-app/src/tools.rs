@@ -88,6 +88,10 @@ pub enum Tool {
     Plant(PlantForm),
     /// Click a room, then the direction its joists run.
     JoistDirection,
+    /// A post from the floor to the ceiling.
+    Post,
+    /// A beam at the ceiling between two clicks.
+    Beam,
 }
 
 impl Tool {
@@ -455,6 +459,8 @@ impl Tool {
             Tool::Plant(PlantForm::Shrub) => "Shrub",
             Tool::Plant(PlantForm::Grass) => "Grass / Perennial",
             Tool::JoistDirection => "Joist Direction",
+            Tool::Post => "Post",
+            Tool::Beam => "Beam",
             Tool::PlaceGroup => "Place Group",
         }
     }
@@ -493,6 +499,8 @@ impl Tool {
             Tool::ElevationPoint => Icon::Point,
             Tool::Hill | Tool::Valley | Tool::Plant(_) | Tool::SteppingStones => Icon::Circle,
             Tool::JoistDirection => Icon::Arrow,
+            Tool::Post => Icon::Box,
+            Tool::Beam => Icon::Line,
             Tool::RetainingWall | Tool::Road(_) | Tool::Fence | Tool::GardenBed | Tool::Stream => Icon::Polyline,
             Tool::ObjectPainter => Icon::Select,
             Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => Icon::Box,
@@ -616,6 +624,8 @@ impl Tool {
             Tool::GardenBed => "Click the corners of the bed; double-click or Enter to finish.",
             Tool::Plant(_) => "Click to plant it (set its name and size in its specification).",
             Tool::JoistDirection => "Click in a room, then click the direction its floor joists run.",
+            Tool::Post => "Click to place a 6x6 post from the floor to the ceiling.",
+            Tool::Beam => "Click the two ends of a 2-ply beam under the ceiling.",
             Tool::WallRegion => "Click the two ends of the region on one side of a wall.",
             Tool::ObjectPainter => {
                 "Alt+click an object to copy from, tick what to copy, then click objects to paint them."
