@@ -138,6 +138,16 @@ pub fn library_dir() -> Option<PathBuf> {
     if let Some(p) = std::env::var_os("HOUSECRAFT_LIBRARY") {
         return Some(PathBuf::from(p));
     }
+    Some(app_data_dir()?.join("Library"))
+}
+
+/// Plan templates: `HouseCraft/Templates` in the application-data folder.
+pub fn templates_dir() -> Option<PathBuf> {
+    Some(app_data_dir()?.join("Templates"))
+}
+
+/// HouseCraft's folder under the user's application-data folder.
+pub fn app_data_dir() -> Option<PathBuf> {
     let base = if cfg!(windows) {
         std::env::var_os("APPDATA").map(PathBuf::from)
     } else if cfg!(target_os = "macos") {
@@ -147,7 +157,7 @@ pub fn library_dir() -> Option<PathBuf> {
             .map(PathBuf::from)
             .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/share")))
     }?;
-    Some(base.join("HouseCraft").join("Library"))
+    Some(base.join("HouseCraft"))
 }
 
 /// A file name for `name` with characters that are unsafe in paths replaced.

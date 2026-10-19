@@ -23,7 +23,7 @@ mod solids;
 mod symbols;
 mod views;
 
-pub use command::{Command, DetailText, PaintScope, LengthAnchor, Outcome, PlotLeg, ShapeOp, TransformOp};
+pub use command::{Command, DetailText, LengthAnchor, NamedShape, NamedText, Outcome, PaintScope, PlotLeg, ShapeOp, TransformOp};
 pub use housecraft_geom as geom;
 pub use housecraft_model as model;
 pub use housecraft_units as units;

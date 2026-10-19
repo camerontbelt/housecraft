@@ -107,8 +107,8 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| PRJ-01 | Plan templates; save-as-template | P1 | M1 |
-| PRJ-02 | Recent files with pinning | P2 | M1 |
+| PRJ-01 | Plan templates; save-as-template | P1 | M1 ✓ File > Save as Template… and File > New from Template; mark one Default for New Plan |
+| PRJ-02 | Recent files with pinning | P2 | M1 ✓ File > Recent Files with Pin / Unpin; pinned files stay on top |
 | PRJ-03 | Space-planner room boxes: drag room bubbles, convert to walls | P2 | M3 |
 | PRJ-04 | Plan Check: egress, roof, wall layout review | P2 | M4 |
 | PRJ-05 | Rotate and mirror (flip) entire plan | P1 | M1 ✓ Edit > Entire Plan: Reverse Plan, rotate 90° either way (all floors) |
@@ -561,7 +561,7 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | IO-01 | Export materials list: Excel, CSV, TXT, HTML | P1 | M4 ◐ CSV, text, XML and HTML; native Excel (.xlsx) later |
 | IO-02 | Import PDF into plans/layouts/details (vector + raster) | P2 | M4 |
-| IO-03 | DXF/DWG import & export (2D) | P1 | M1 (DXF) / M8 (DWG) |
+| IO-03 | DXF/DWG import & export (2D) | P1 | M1 (DXF) / M8 (DWG) ◐ DXF (R12) export of plans, views and details from File > Export and the CLI; DXF import of lines, polylines, arcs, circles and text onto matching layers (blocks and hatches skipped); no DWG |
 | IO-04 | 3D import: DXF, DWG, OBJ, 3DS, SKP, STL, DAE; 3D export: DXF, DWG, 3DS, STL, DAE (+ glTF/OBJ/IFC for us) | P1→P3 | M5/M8 |
 | IO-05 | Image import: BMP, JPG, GIF, TIFF, PNG, metafiles, WEBP; transparency color | P1 | M5 ◐ PNG, JPEG, BMP and TIFF pictures with a transparency colour, in plans, views, details and layouts (SVG embeds them); GIF, WebP, metafiles and pictures in PDF/PNG exports later |
 | IO-06 | High-resolution image export, transparent background | P1 | M7 ✓ |
@@ -592,7 +592,7 @@ These come from reading the whole list and change the architecture, not just the
 | UI-12 | 3Dconnexion SpaceMouse | P3 | GUI |
 | UI-13 | Dark mode | P0 | GUI ✓ |
 | UI-14 | Virtual graph paper grid | P1 | M1 ✓ graph-paper reference grid: lavender minor lines with a stronger line every fourth |
-| UI-15 | Auto-archive backups on schedule | P1 | M1 |
+| UI-15 | Auto-archive backups on schedule | P1 | M1 ✓ changed plans are copied every N minutes (Preferences) into a "<plan> Archive" folder, keeping the newest few; File > Show Auto-Archive Folder |
 | UI-16 | Single-file project archive (`.CAPROJ` equivalent) | P2 | M8 |
 | UI-17 | Crosshair thickness | P3 | GUI |
 | UI-18 | UI themes | P3 | GUI |

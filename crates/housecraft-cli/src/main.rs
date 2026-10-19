@@ -61,7 +61,18 @@ enum Cmd {
         #[arg(long)]
         dry_run: bool,
     },
-    /// Draw a floor plan to SVG, PDF or PNG (chosen by the output extension).
+    /// Bring a DXF drawing's lines, arcs, circles and text into a plan as CAD.
+    ImportDxf {
+        path: PathBuf,
+        dxf: PathBuf,
+        /// Floor name or id (default: lowest floor).
+        #[arg(long)]
+        floor: Option<String>,
+        /// Millimetres per DXF unit, overriding the file's units (25.4 = inches).
+        #[arg(long)]
+        unit_mm: Option<f64>,
+    },
+    /// Draw a floor plan to SVG, PDF, PNG or DXF (chosen by the output extension).
     Export {
         path: PathBuf,
         #[arg(short, long)]
@@ -376,6 +387,34 @@ fn main() -> Result<()> {
             )?;
             println!("{}", saved.display());
         }
+        Cmd::ImportDxf { path, dxf, floor, unit_mm } => {
+            let mut doc = load(&path)?;
+            let text = std::fs::read_to_string(&dxf).with_context(|| format!("reading {}", dxf.display()))?;
+            let d = housecraft_io_native::dxf::read(&text, unit_mm).map_err(anyhow::Error::msg)?;
+            let floor = match floor {
+                Some(f) => Some(PlanOptions::resolve(&doc, Some(&f), None).map_err(anyhow::Error::msg)?.floor),
+                None => None,
+            };
+            let command = dxf_command(&d, floor);
+            let mut session = housecraft_api::Session::new(doc);
+            let out = session.apply(&[command])?;
+            doc = session.document().clone();
+            housecraft_io_native::save_path(&doc, &path)?;
+            println!(
+                "imported {} shapes and {} notes ({} objects created){}",
+                d.shapes.len(),
+                d.texts.len(),
+                out.created.len(),
+                if d.skipped.is_empty() {
+                    String::new()
+                } else {
+                    format!(
+                        "; skipped {}",
+                        d.skipped.iter().map(|(n, c)| format!("{c} {n}")).collect::<Vec<_>>().join(", ")
+                    )
+                }
+            );
+        }
         Cmd::Export {
             path,
             output,
@@ -488,7 +527,13 @@ fn main() -> Result<()> {
                     );
                     bytes
                 }
-                other => bail!("unsupported output type {other:?}; use .svg, .pdf or .png"),
+                "dxf" => housecraft_draft::dxf::to_dxf(
+                    &doc,
+                    &drawing,
+                    &housecraft_draft::dxf::DxfOptions { imperial },
+                )
+                .into_bytes(),
+                other => bail!("unsupported output type {other:?}; use .svg, .pdf, .png or .dxf"),
             };
             std::fs::write(&output, bytes)
                 .with_context(|| format!("writing {}", output.display()))?;
@@ -839,5 +884,29 @@ fn print_probe(r: &housecraft_io_ca::probe::ProbeReport) {
     println!("utf-16 strings (first 40 of {}):", r.utf16_strings.len());
     for s in r.utf16_strings.iter().take(40) {
         println!("  @{:#010x}  {}", s.offset, s.text);
+    }
+}
+
+/// The command that brings a read DXF drawing into a plan.
+fn dxf_command(d: &housecraft_io_native::dxf::DxfDrawing, floor: Option<Id>) -> housecraft_api::Command {
+    housecraft_api::Command::ImportDrawing {
+        floor,
+        shapes: d
+            .shapes
+            .iter()
+            .map(|(layer, shape)| housecraft_api::NamedShape { layer: layer.clone(), shape: shape.clone() })
+            .collect(),
+        texts: d
+            .texts
+            .iter()
+            .map(|t| housecraft_api::NamedText {
+                layer: t.layer.clone(),
+                position: t.at,
+                text: t.text.clone(),
+                height: t.height,
+                rotation: t.rotation,
+            })
+            .collect(),
+        offset: None,
     }
 }

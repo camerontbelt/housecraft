@@ -42,6 +42,14 @@ pub struct Prefs {
     pub show_axes: bool,
     /// Your own tool shortcuts: one key or a two-key sequence.
     pub hotkeys: Vec<UserHotkey>,
+    /// Recent files kept at the top of the list.
+    pub pinned: Vec<String>,
+    /// The template New Plan starts from (`None`: the built-in plan).
+    pub default_template: Option<String>,
+    /// Minutes between automatic archive copies of a changed plan (0: off).
+    pub archive_minutes: u32,
+    /// How many archive copies to keep per plan.
+    pub archive_keep: u32,
 }
 
 /// A user-assigned shortcut: `keys` is one stroke ("G", "Ctrl+Shift+L") or
@@ -92,6 +100,10 @@ impl Default for Prefs {
             paper_canvas: true,
             show_axes: true,
             hotkeys: Vec::new(),
+            pinned: Vec::new(),
+            default_template: None,
+            archive_minutes: 15,
+            archive_keep: 5,
         }
     }
 }
@@ -170,6 +182,10 @@ pub struct App {
     chord: Option<(String, f64)>,
     /// Size of the drawing area in points.
     pub view_px: egui::Vec2,
+    /// When the plan was last archived (app time, s) and its revision then.
+    last_archive: (f64, u64),
+    /// The name being typed in Save as Template.
+    template_name: Option<String>,
 }
 
 impl App {
@@ -218,6 +234,8 @@ impl App {
             tool_search: String::new(),
             chord: None,
             view_px: egui::Vec2::ZERO,
+            last_archive: (0.0, 0),
+            template_name: None,
         };
         app.apply_theme(&cc.egui_ctx);
         if let Some(p) = path {
@@ -1426,9 +1444,209 @@ impl App {
         }
     }
 
+    fn template_dialog(&mut self, ctx: &egui::Context) {
+        let Some(mut name) = self.template_name.take() else {
+            return;
+        };
+        let mut keep = true;
+        egui::Window::new("Save as Template")
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+            .show(ctx, |ui| {
+                ui.label("Template name");
+                ui.text_edit_singleline(&mut name);
+                ui.weak("New plans can start from it: File > New from Template.");
+                ui.horizontal(|ui| {
+                    if ui.add_enabled(!name.trim().is_empty(), egui::Button::new("Save")).clicked() {
+                        let n = name.trim().to_string();
+                        self.save_template(&n);
+                        keep = false;
+                    }
+                    if ui.button("Cancel").clicked() {
+                        keep = false;
+                    }
+                });
+            });
+        if keep {
+            self.template_name = Some(name);
+        }
+    }
+
     pub fn new_document(&mut self) {
+        if let Some(t) = self.prefs.default_template.clone()
+            && let Ok(mut doc) = housecraft_io_native::load_path(&t)
+        {
+            doc.name = "Untitled".into();
+            self.replace_document(doc, None);
+            self.plan.fit_requested = true;
+            self.info(format!("New plan from template {}", template_label(&t)));
+            return;
+        }
         self.replace_document(Document::new("Untitled"), None);
         self.info("New plan");
+    }
+
+    /// A new, unsaved plan copied from a template file.
+    fn new_from_template(&mut self, path: &str) {
+        match housecraft_io_native::load_path(path) {
+            Ok(mut doc) => {
+                doc.name = "Untitled".into();
+                self.replace_document(doc, None);
+                self.plan.fit_requested = true;
+                self.info(format!("New plan from template {}", template_label(path)));
+            }
+            Err(e) => self.error(format!("Could not open template: {e}")),
+        }
+    }
+
+    /// Save the plan into the templates folder as `name`.
+    fn save_template(&mut self, name: &str) {
+        let Some(dir) = housecraft_io_native::library::templates_dir() else {
+            self.error("No application-data folder for templates");
+            return;
+        };
+        let stem: String = name.chars().map(|c| if c.is_alphanumeric() || " -_()".contains(c) { c } else { '_' }).collect();
+        let path = dir.join(format!("{}.{}", stem.trim(), housecraft_io_native::EXTENSION));
+        let mut doc = self.doc().clone();
+        doc.name = name.to_string();
+        let saved = std::fs::create_dir_all(&dir)
+            .map_err(|e| e.to_string())
+            .and_then(|_| housecraft_io_native::save_path(&doc, &path).map_err(|e| e.to_string()));
+        match saved {
+            Ok(()) => self.info(format!("Saved template {name}")),
+            Err(e) => self.error(format!("Could not save template: {e}")),
+        }
+    }
+
+    /// Every template file, by name.
+    fn templates(&self) -> Vec<(String, String)> {
+        let Some(dir) = housecraft_io_native::library::templates_dir() else {
+            return Vec::new();
+        };
+        let mut out: Vec<(String, String)> = std::fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case(housecraft_io_native::EXTENSION)))
+            .map(|p| {
+                let s = p.display().to_string();
+                (template_label(&s), s)
+            })
+            .collect();
+        out.sort();
+        out
+    }
+
+    /// Where archive copies of this plan go: a folder beside the plan, or
+    /// HouseCraft/Archive for plans not saved yet.
+    fn archive_dir(&self) -> Option<PathBuf> {
+        match &self.path {
+            Some(p) => {
+                let stem = p.file_stem()?.to_string_lossy().into_owned();
+                Some(p.parent()?.join(format!("{stem} Archive")))
+            }
+            None => Some(housecraft_io_native::library::app_data_dir()?.join("Archive")),
+        }
+    }
+
+    /// Every few minutes, copy a changed plan into its archive folder and
+    /// keep only the newest few copies.
+    fn auto_archive(&mut self, now: f64) {
+        let minutes = self.prefs.archive_minutes;
+        if minutes == 0 || !self.session.is_dirty() {
+            return;
+        }
+        let (last, rev) = self.last_archive;
+        if last == 0.0 {
+            self.last_archive = (now, self.rev);
+            return;
+        }
+        if now - last < minutes as f64 * 60.0 || rev == self.rev {
+            return;
+        }
+        self.last_archive = (now, self.rev);
+        let Some(dir) = self.archive_dir() else {
+            return;
+        };
+        let stem = self
+            .path
+            .as_ref()
+            .and_then(|p| p.file_stem())
+            .map_or_else(|| self.doc().name.clone(), |s| s.to_string_lossy().into_owned());
+        let path = dir.join(format!("{stem} {}.{}", timestamp(), housecraft_io_native::EXTENSION));
+        let saved = std::fs::create_dir_all(&dir)
+            .map_err(|e| e.to_string())
+            .and_then(|_| housecraft_io_native::save_path(self.doc(), &path).map_err(|e| e.to_string()));
+        match saved {
+            Ok(()) => {
+                // Keep the newest few (names sort by time).
+                let mut old: Vec<PathBuf> = std::fs::read_dir(&dir)
+                    .into_iter()
+                    .flatten()
+                    .flatten()
+                    .map(|e| e.path())
+                    .filter(|p| p.file_name().is_some_and(|n| n.to_string_lossy().starts_with(&format!("{stem} "))))
+                    .collect();
+                old.sort();
+                let keep = self.prefs.archive_keep.max(1) as usize;
+                if old.len() > keep {
+                    for p in &old[..old.len() - keep] {
+                        let _ = std::fs::remove_file(p);
+                    }
+                }
+                self.info(format!("Archived a copy to {}", dir.display()));
+            }
+            Err(e) => self.error(format!("Auto-archive failed: {e}")),
+        }
+    }
+
+    /// Bring a DXF drawing's lines, arcs, circles and text in on this floor.
+    fn import_dxf(&mut self, path: &std::path::Path) {
+        let text = match std::fs::read(path) {
+            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+            Err(e) => {
+                self.error(format!("Could not read {}: {e}", path.display()));
+                return;
+            }
+        };
+        let d = match housecraft_io_native::dxf::read(&text, None) {
+            Ok(d) => d,
+            Err(e) => {
+                self.error(format!("Could not read the DXF: {e}"));
+                return;
+            }
+        };
+        let command = Command::ImportDrawing {
+            floor: Some(self.plan.target()),
+            shapes: d
+                .shapes
+                .iter()
+                .map(|(layer, shape)| housecraft_api::NamedShape { layer: layer.clone(), shape: shape.clone() })
+                .collect(),
+            texts: d
+                .texts
+                .iter()
+                .map(|t| housecraft_api::NamedText {
+                    layer: t.layer.clone(),
+                    position: t.at,
+                    text: t.text.clone(),
+                    height: t.height,
+                    rotation: t.rotation,
+                })
+                .collect(),
+            offset: None,
+        };
+        if self.run1(command).is_some() {
+            self.plan.fit_requested = true;
+            let skipped = if d.skipped.is_empty() {
+                String::new()
+            } else {
+                format!(" (skipped {})", d.skipped.iter().map(|(n, c)| format!("{c} {n}")).collect::<Vec<_>>().join(", "))
+            };
+            self.info(format!("Imported {} shapes and {} notes{skipped}", d.shapes.len(), d.texts.len()));
+        }
     }
 
     pub fn open_path(&mut self, path: PathBuf) {
@@ -1497,7 +1715,9 @@ impl App {
         };
         let drawing = self.current_drawing().0;
         let imperial = crate::util::input_unit(doc) == housecraft_api::units::LengthUnit::Inches;
-        let bytes = if ext == "pdf" {
+        let bytes = if ext == "dxf" {
+            housecraft_draft::dxf::to_dxf(doc, &drawing, &housecraft_draft::dxf::DxfOptions { imperial }).into_bytes()
+        } else if ext == "pdf" {
             let floor = doc
                 .get::<Floor>(self.plan.floor)
                 .map_or("", |f| f.name.as_str());
@@ -1539,14 +1759,54 @@ impl App {
                 if item(ui, "Open Plan…", "Ctrl+O", true) {
                     self.guarded(Pending::Open);
                 }
+                ui.menu_button("New from Template", |ui| {
+                    let templates = self.templates();
+                    if templates.is_empty() {
+                        ui.weak("No templates yet: File > Save as Template…");
+                    }
+                    for (name, path) in &templates {
+                        ui.horizontal(|ui| {
+                            if ui.button(name).clicked() {
+                                self.new_from_template(path);
+                                ui.close();
+                            }
+                            let is_default = self.prefs.default_template.as_deref() == Some(path.as_str());
+                            if ui.selectable_label(is_default, "Default").on_hover_text("New Plan starts from this template").clicked() {
+                                self.prefs.default_template = (!is_default).then(|| path.clone());
+                            }
+                        });
+                    }
+                    if self.prefs.default_template.is_some() {
+                        ui.separator();
+                        if ui.button("New Plan uses the built-in plan").clicked() {
+                            self.prefs.default_template = None;
+                        }
+                    }
+                });
                 ui.menu_button("Recent Files", |ui| {
-                    if self.prefs.recent.is_empty() {
+                    if self.prefs.recent.is_empty() && self.prefs.pinned.is_empty() {
                         ui.weak("(none)");
                     }
-                    for p in self.prefs.recent.clone() {
-                        if ui.button(&p).clicked() {
-                            self.guarded(Pending::OpenPath(PathBuf::from(&p)));
-                            ui.close();
+                    let pinned = self.prefs.pinned.clone();
+                    let rest: Vec<String> = self.prefs.recent.iter().filter(|p| !pinned.contains(p)).cloned().collect();
+                    for (p, is_pinned) in pinned.iter().map(|p| (p, true)).chain(rest.iter().map(|p| (p, false))) {
+                        ui.horizontal(|ui| {
+                            let pin = if is_pinned { "Unpin" } else { "Pin" };
+                            if ui.small_button(pin).on_hover_text("Keep this file at the top of the list").clicked() {
+                                if is_pinned {
+                                    self.prefs.pinned.retain(|x| x != p);
+                                } else {
+                                    self.prefs.pinned.push(p.clone());
+                                }
+                            }
+                            let label = if is_pinned { RichText::new(p).strong() } else { RichText::new(p) };
+                            if ui.button(label).clicked() {
+                                self.guarded(Pending::OpenPath(PathBuf::from(p)));
+                                ui.close();
+                            }
+                        });
+                        if is_pinned && Some(p) == pinned.last() && !rest.is_empty() {
+                            ui.separator();
                         }
                     }
                 });
@@ -1556,6 +1816,15 @@ impl App {
                 }
                 if item(ui, "Save As…", "", true) {
                     self.save(true);
+                }
+                if item(ui, "Save as Template…", "", true) {
+                    self.template_name = Some(self.doc().name.clone());
+                }
+                if item(ui, "Show Auto-Archive Folder", "", true)
+                    && let Some(dir) = self.archive_dir()
+                {
+                    let _ = std::fs::create_dir_all(&dir);
+                    reveal(&dir);
                 }
                 ui.separator();
                 ui.menu_button("Layout", |ui| {
@@ -1640,6 +1909,11 @@ impl App {
                     {
                         self.symbol_import = Some((path, Default::default()));
                     }
+                    if item(ui, "DXF Drawing (2D)…", "", true)
+                        && let Some(path) = rfd::FileDialog::new().add_filter("DXF drawing", &["dxf"]).pick_file()
+                    {
+                        self.import_dxf(&path);
+                    }
                 });
                 ui.menu_button("Export", |ui| {
                     if item(ui, "Export 3D View as Image…", "", true) {
@@ -1650,6 +1924,9 @@ impl App {
                     }
                     if item(ui, "Export Floor Plan as SVG…", "", true) {
                         self.export("svg");
+                    }
+                    if item(ui, "Export Floor Plan as DXF…", "", true) {
+                        self.export("dxf");
                     }
                     ui.separator();
                     if item(ui, "Export Settings…", "", true) {
@@ -3622,6 +3899,11 @@ impl eframe::App for App {
         ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
 
         self.shortcuts(&ctx);
+        self.auto_archive(ctx.input(|i| i.time));
+        if ctx.input(|i| i.time) > 0.0 {
+            ctx.request_repaint_after(std::time::Duration::from_secs(60));
+        }
+        self.template_dialog(&ctx);
         // Open plans dropped onto the window.
         let dropped: Option<PathBuf> = ctx.input(|i| {
             i.raw.dropped_files.iter().find_map(|f| {
@@ -3849,6 +4131,38 @@ impl Align {
     pub fn is_distribute(self) -> bool {
         matches!(self, Align::DistributeHorizontally | Align::DistributeVertically)
     }
+}
+
+/// A template's name: its file name without the extension.
+fn template_label(path: &str) -> String {
+    std::path::Path::new(path)
+        .file_stem()
+        .map_or_else(|| path.to_string(), |s| s.to_string_lossy().into_owned())
+}
+
+/// Local time as YYYY-MM-DD HHMMSS (UTC when the offset is unknown).
+fn timestamp() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    let day = secs % 86_400;
+    format!(
+        "{} {:02}{:02}{:02}",
+        housecraft_draft::macros::today(),
+        day / 3600,
+        day % 3600 / 60,
+        day % 60
+    )
+}
+
+/// Open a folder in the system file manager.
+fn reveal(dir: &std::path::Path) {
+    #[cfg(windows)]
+    let _ = std::process::Command::new("explorer").arg(dir).spawn();
+    #[cfg(target_os = "macos")]
+    let _ = std::process::Command::new("open").arg(dir).spawn();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let _ = std::process::Command::new("xdg-open").arg(dir).spawn();
 }
 
 #[cfg(test)]

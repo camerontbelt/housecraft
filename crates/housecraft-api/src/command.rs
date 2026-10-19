@@ -786,6 +786,18 @@ pub enum Command {
     /// Type an object's own label (replacing its kind's template from the
     /// default set; "-" hides it), or `None` to go back to the template.
     SetObjectLabel { id: Id, text: Option<String> },
+    /// Bring in 2D shapes and notes (e.g. read from a DXF file) on `floor`,
+    /// each on the layer of that name (made when missing; "0" or "" uses the
+    /// CAD and Text layers), moved by `offset`.
+    ImportDrawing {
+        floor: Option<Id>,
+        #[serde(default)]
+        shapes: Vec<NamedShape>,
+        #[serde(default)]
+        texts: Vec<NamedText>,
+        #[serde(default)]
+        offset: Option<Point2>,
+    },
     /// Trace a room's interior outline as a closed CAD polyline (on the CAD
     /// layer), e.g. for area takeoffs, slabs or custom moldings.
     RoomPolyline { room: Id },
@@ -869,6 +881,26 @@ pub enum Command {
 
 fn one() -> u32 {
     1
+}
+
+/// A shape on a named layer, for [`Command::ImportDrawing`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct NamedShape {
+    #[serde(default)]
+    pub layer: String,
+    pub shape: Shape,
+}
+
+/// A note on a named layer, for [`Command::ImportDrawing`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct NamedText {
+    #[serde(default)]
+    pub layer: String,
+    pub position: Point2,
+    pub text: String,
+    pub height: Length,
+    #[serde(default)]
+    pub rotation: f64,
 }
 
 fn yes() -> bool {
@@ -1053,6 +1085,7 @@ impl Command {
             Command::AddText { .. } => "add_text",
             Command::SetObjectLabel { .. } => "set_object_label",
             Command::RoomPolyline { .. } => "room_polyline",
+            Command::ImportDrawing { .. } => "import_drawing",
             Command::AddPlanView { .. } => "add_plan_view",
             Command::AddCamera { .. } => "add_camera",
             Command::Update { .. } => "update",
@@ -2754,6 +2787,63 @@ impl Command {
                     border: false,
                     wrap: None,
                 }));
+            }
+            Command::ImportDrawing { floor, shapes, texts, offset } => {
+                let floor = ops::resolve_sheet(doc, *floor, false)?;
+                let layers = doc.defaults_for(floor).layers.clone();
+                let layer_for = |doc: &mut Document, out: &mut Outcome, name: &str, fallback: Id| -> Id {
+                    let name = name.trim();
+                    if name.is_empty() || name == "0" {
+                        return fallback;
+                    }
+                    if let Some(l) = doc.iter::<Layer>().find(|l| l.name.eq_ignore_ascii_case(name)) {
+                        return l.id;
+                    }
+                    let id = doc.insert(Layer {
+                        id: Id(0),
+                        name: name.to_string(),
+                        color: None,
+                        line_weight: 0.25,
+                        line_style: LineStyle::default(),
+                        text_style: None,
+                        in_materials_list: false,
+                    });
+                    out.created.push(id);
+                    id
+                };
+                let shift = offset.map(housecraft_geom::v2);
+                let t = shift.map(housecraft_geom::transform::Transform2::translate);
+                for s in shapes {
+                    let layer = layer_for(doc, &mut out, &s.layer, layers.cad);
+                    let shape = match &t {
+                        Some(t) => t.apply_shape(&s.shape),
+                        None => s.shape.clone(),
+                    };
+                    out.created.push(doc.insert(Cad { id: Id(0), floor, layer, shape, color: None, fill: None }));
+                }
+                for x in texts {
+                    let layer = layer_for(doc, &mut out, &x.layer, layers.text);
+                    let position = match &t {
+                        Some(t) => t.apply_point(x.position),
+                        None => x.position,
+                    };
+                    out.created.push(doc.insert(Text {
+                        id: Id(0),
+                        floor,
+                        layer,
+                        position,
+                        text: x.text.clone(),
+                        style: None,
+                        rotation: x.rotation,
+                        justify: Justify::Left,
+                        height: Some(x.height),
+                        bold: None,
+                        color: None,
+                        leaders: Vec::new(),
+                        border: false,
+                        wrap: None,
+                    }));
+                }
             }
             Command::RoomPolyline { room } => {
                 let r = expect::<Room>(doc, *room)?.clone();

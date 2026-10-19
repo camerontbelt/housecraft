@@ -7,6 +7,7 @@
 //! Older format versions are upgraded in [`migrate`] before deserializing.
 //! Files from early builds used the `.hcraft` extension; they are identical inside.
 
+pub mod dxf;
 pub mod library;
 pub mod symbols;
 

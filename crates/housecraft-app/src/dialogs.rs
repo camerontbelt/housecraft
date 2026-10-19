@@ -501,6 +501,18 @@ fn prefs_dialog(app: &mut App, ctx: &Context) {
             ui.checkbox(&mut app.prefs.paper_canvas, "Plans on white paper in every theme");
             ui.checkbox(&mut app.prefs.show_axes, "Show origin marker and X/Y/Z axes");
             ui.separator();
+            ui.heading("Auto-archive");
+            ui.horizontal(|ui| {
+                ui.label("Save a copy of a changed plan every");
+                ui.add(egui::DragValue::new(&mut app.prefs.archive_minutes).range(0..=240).suffix(" min"));
+            });
+            ui.horizontal(|ui| {
+                ui.label("Keep the newest");
+                ui.add(egui::DragValue::new(&mut app.prefs.archive_keep).range(1..=100));
+                ui.label("copies (0 minutes turns archiving off)");
+            });
+            ui.weak("Copies go in a \"<plan> Archive\" folder beside the plan.");
+            ui.separator();
             ui.heading("Snapping");
             let s = &mut app.prefs.snap;
             ui.checkbox(&mut s.objects, "Object snaps (Shift+F11)");

@@ -5,6 +5,7 @@
 //! it on screen, [`svg`] and [`pdf`] write it out, so screen and paper match.
 
 pub mod detail;
+pub mod dxf;
 mod cabinets;
 mod dims;
 pub mod elevation;
