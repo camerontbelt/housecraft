@@ -91,6 +91,7 @@ pub fn available_columns(kind: ScheduleKind) -> &'static [&'static str] {
         ScheduleKind::Cabinets => &[
             "Code", "Type", "Qty", "Width", "Depth", "Height", "Doors", "Drawers", "Floor",
         ],
+        ScheduleKind::Plants => &["Plant", "Form", "Qty", "Mature Height", "Spread"],
     }
 }
 
@@ -104,6 +105,7 @@ pub fn title(kind: ScheduleKind) -> &'static str {
         ScheduleKind::Stairs => "Stair Schedule",
         ScheduleKind::RoofPlanes => "Roof Plane Schedule",
         ScheduleKind::Cabinets => "Cabinet Schedule",
+        ScheduleKind::Plants => "Plant Schedule",
     }
 }
 
@@ -338,6 +340,18 @@ pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> S
                 row.insert("Floor", floor_name(s.floor));
                 raw.push((vec![s.id], row));
             }
+        }
+        ScheduleKind::Plants => {
+            for p in doc.iter::<Plant>().filter(|p| on_floor(p.floor)) {
+                let mut row = BTreeMap::new();
+                row.insert("Plant", p.name.clone());
+                row.insert("Form", p.form.name().to_string());
+                row.insert("Mature Height", fmt(p.height));
+                row.insert("Spread", fmt(p.spread));
+                let key = ["Plant", "Form", "Mature Height", "Spread"].iter().map(|k| row[k].clone()).collect();
+                group(&mut raw, key, p.id, row);
+            }
+            raw.sort_by(|a, b| a.1["Plant"].cmp(&b.1["Plant"]));
         }
         ScheduleKind::RoofPlanes => {
             for r in doc

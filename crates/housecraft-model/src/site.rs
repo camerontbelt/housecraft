@@ -118,3 +118,214 @@ pub struct ElevationData {
     pub layer: Id,
     pub shape: ElevationShape,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RoadStyle {
+    #[default]
+    Road,
+    Driveway,
+    Sidewalk,
+}
+
+impl RoadStyle {
+    pub fn name(self) -> &'static str {
+        match self {
+            RoadStyle::Road => "Road",
+            RoadStyle::Driveway => "Driveway",
+            RoadStyle::Sidewalk => "Sidewalk",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum FenceStyle {
+    #[default]
+    Picket,
+    Privacy,
+    Rail,
+}
+
+impl FenceStyle {
+    pub const ALL: [FenceStyle; 3] = [FenceStyle::Picket, FenceStyle::Privacy, FenceStyle::Rail];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            FenceStyle::Picket => "Picket",
+            FenceStyle::Privacy => "Privacy",
+            FenceStyle::Rail => "Split rail",
+        }
+    }
+}
+
+/// A gate in a fence, `at` along the fence from its start.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Gate {
+    pub at: Length,
+    pub width: Length,
+}
+
+/// What a site feature is.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum SiteKind {
+    /// A retaining wall whose top is at `top`; it also breaks the terrain
+    /// (the ground is held at `top` along it).
+    RetainingWall { top: Length, thickness: Length },
+    /// A road, driveway or sidewalk lying on the ground.
+    Road {
+        style: RoadStyle,
+        width: Length,
+        thickness: Length,
+        #[serde(default)]
+        curbs: bool,
+    },
+    /// A fence whose posts follow the ground.
+    Fence {
+        style: FenceStyle,
+        height: Length,
+        post_spacing: Length,
+        #[serde(default)]
+        gates: Vec<Gate>,
+    },
+    /// A raised garden bed (closed outline).
+    GardenBed { height: Length },
+    /// Stones along a path.
+    SteppingStones { spacing: Length, size: Length },
+    /// A stream or creek bed.
+    Stream { width: Length },
+}
+
+impl SiteKind {
+    pub fn name(&self) -> &'static str {
+        match self {
+            SiteKind::RetainingWall { .. } => "Retaining Wall",
+            SiteKind::Road { style, .. } => style.name(),
+            SiteKind::Fence { .. } => "Fence",
+            SiteKind::GardenBed { .. } => "Garden Bed",
+            SiteKind::SteppingStones { .. } => "Stepping Stones",
+            SiteKind::Stream { .. } => "Stream",
+        }
+    }
+
+    /// Whether its points make a closed outline.
+    pub fn closed(&self) -> bool {
+        matches!(self, SiteKind::GardenBed { .. })
+    }
+
+    /// Typical settings.
+    pub fn retaining_wall() -> Self {
+        SiteKind::RetainingWall { top: Length::from_feet(2.0), thickness: Length::from_inches(8.0) }
+    }
+    pub fn road(style: RoadStyle) -> Self {
+        let (w, t, curbs) = match style {
+            RoadStyle::Road => (24.0, 6.0, true),
+            RoadStyle::Driveway => (12.0, 4.0, false),
+            RoadStyle::Sidewalk => (4.0, 4.0, false),
+        };
+        SiteKind::Road { style, width: Length::from_feet(w), thickness: Length::from_inches(t), curbs }
+    }
+    pub fn fence() -> Self {
+        SiteKind::Fence {
+            style: FenceStyle::Picket,
+            height: Length::from_feet(4.0),
+            post_spacing: Length::from_feet(8.0),
+            gates: Vec::new(),
+        }
+    }
+    pub fn garden_bed() -> Self {
+        SiteKind::GardenBed { height: Length::from_inches(12.0) }
+    }
+    pub fn stepping_stones() -> Self {
+        SiteKind::SteppingStones { spacing: Length::from_inches(24.0), size: Length::from_inches(16.0) }
+    }
+    pub fn stream() -> Self {
+        SiteKind::Stream { width: Length::from_feet(3.0) }
+    }
+}
+
+/// A retaining wall, road, fence, garden bed, path or stream drawn along
+/// points on a floor plan.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct SiteFeature {
+    pub id: Id,
+    pub floor: Id,
+    pub layer: Id,
+    pub points: Vec<Point2>,
+    /// What it is. (Not `kind`: that tags every object.)
+    pub feature: SiteKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PlantForm {
+    #[default]
+    Tree,
+    Conifer,
+    Shrub,
+    Grass,
+}
+
+impl PlantForm {
+    pub const ALL: [PlantForm; 4] = [PlantForm::Tree, PlantForm::Conifer, PlantForm::Shrub, PlantForm::Grass];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            PlantForm::Tree => "Tree",
+            PlantForm::Conifer => "Conifer",
+            PlantForm::Shrub => "Shrub",
+            PlantForm::Grass => "Grass / perennial",
+        }
+    }
+
+    /// Typical mature height and spread.
+    pub fn typical(self) -> (Length, Length) {
+        let f = Length::from_feet;
+        match self {
+            PlantForm::Tree => (f(25.0), f(20.0)),
+            PlantForm::Conifer => (f(30.0), f(12.0)),
+            PlantForm::Shrub => (f(4.0), f(4.0)),
+            PlantForm::Grass => (f(2.0), f(2.0)),
+        }
+    }
+}
+
+/// A tree, shrub or other plant.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Plant {
+    pub id: Id,
+    pub floor: Id,
+    pub layer: Id,
+    pub at: Point2,
+    /// Common or botanical name.
+    pub name: String,
+    pub form: PlantForm,
+    /// Mature size.
+    pub height: Length,
+    pub spread: Length,
+    /// Years to reach mature size (for growth views); 0 when unknown.
+    #[serde(default)]
+    pub years_to_mature: f64,
+    /// Show it at this age in years (0 = mature).
+    #[serde(default)]
+    pub age: f64,
+    #[serde(default = "leaf")]
+    pub color: Color,
+}
+
+fn leaf() -> Color {
+    Color::rgb(80, 130, 60)
+}
+
+impl Plant {
+    /// Height and spread at its shown age.
+    pub fn size_now(&self) -> (Length, Length) {
+        let k = if self.age > 0.0 && self.years_to_mature > 0.0 {
+            (self.age / self.years_to_mature).clamp(0.1, 1.0)
+        } else {
+            1.0
+        };
+        (self.height * k, self.spread * k)
+    }
+}

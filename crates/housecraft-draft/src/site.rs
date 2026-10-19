@@ -116,3 +116,107 @@ pub(crate) fn elevation_data(doc: &Document, e: &ElevationData, stroke: Stroke, 
         }
     }
 }
+
+/// A site feature's plan symbol.
+pub(crate) fn feature(f: &SiteFeature, stroke: Stroke, out: &mut Drawing) {
+    let pts: Vec<DVec2> = f.points.iter().map(|p| v2(*p)).collect();
+    if pts.len() < 2 {
+        return;
+    }
+    let thin = Stroke {
+        width: stroke.width * 0.5,
+        ..stroke
+    };
+    // The path's two edges `half` either side.
+    let sides = |pts: &[DVec2], half: f64| -> (Vec<DVec2>, Vec<DVec2>) {
+        let n = pts.len();
+        (0..n)
+            .map(|i| {
+                let a = pts[i.saturating_sub(1)];
+                let b = pts[(i + 1).min(n - 1)];
+                let d = housecraft_geom::math::perp((b - a).normalize_or_zero()) * half;
+                (pts[i] + d, pts[i] - d)
+            })
+            .unzip()
+    };
+    match &f.feature {
+        SiteKind::RetainingWall { thickness, .. } => {
+            let (l, r) = sides(&pts, thickness.mm() / 2.0);
+            let mut outline = l;
+            outline.extend(r.into_iter().rev());
+            line(out, f.id, outline, true, stroke);
+        }
+        SiteKind::Road { style, width, curbs, .. } => {
+            let (l, r) = sides(&pts, width.mm() / 2.0);
+            line(out, f.id, l, false, stroke);
+            line(out, f.id, r, false, stroke);
+            if *curbs {
+                let (l, r) = sides(&pts, width.mm() / 2.0 + 150.0);
+                line(out, f.id, l, false, thin);
+                line(out, f.id, r, false, thin);
+            }
+            if *style == RoadStyle::Road {
+                line(out, f.id, pts, false, Stroke { dash: &[4.0, 3.0], ..thin });
+            }
+        }
+        SiteKind::Fence { gates, .. } => {
+            line(out, f.id, pts.clone(), false, stroke);
+            // Posts as ticks every sample is too busy; mark gates with a swing arc.
+            for g in gates {
+                let samples = housecraft_geom::site::along(&pts, false, 50.0);
+                let at = |d: f64| samples.iter().find(|(_, x)| *x >= d).map(|(p, _)| *p);
+                if let (Some(a), Some(b)) = (at(g.at.mm()), at(g.at.mm() + g.width.mm())) {
+                    let start = (b - a).to_angle().to_degrees();
+                    line(out, f.id, arc_points(a, a.distance(b), start, 90.0), false, Stroke { dash: &[1.0, 0.8], ..thin });
+                }
+            }
+        }
+        SiteKind::GardenBed { .. } => {
+            line(out, f.id, pts.clone(), true, stroke);
+            let inner = housecraft_geom::math::inset_polygon(&pts, 50.0);
+            if inner.len() >= 3 {
+                line(out, f.id, inner, true, thin);
+            }
+        }
+        SiteKind::SteppingStones { spacing, size } => {
+            for (p, _) in housecraft_geom::site::along(&pts, false, spacing.mm().max(100.0)) {
+                line(out, f.id, arc_points(p, size.mm() / 2.0, 0.0, 360.0), true, stroke);
+            }
+        }
+        SiteKind::Stream { width } => {
+            let smooth = spline_points(&pts, false);
+            let (l, r) = sides(&smooth, width.mm() / 2.0);
+            line(out, f.id, l, false, stroke);
+            line(out, f.id, r, false, stroke);
+        }
+    }
+}
+
+/// A plant's canopy: a scalloped circle with a centre mark and its name.
+pub(crate) fn plant(p: &Plant, stroke: Stroke, ink: Ink, out: &mut Drawing) {
+    let c = v2(p.at);
+    let (_, spread) = p.size_now();
+    let r = spread.mm().max(100.0) / 2.0;
+    let lobes = match p.form {
+        PlantForm::Conifer => 16,
+        PlantForm::Grass => 20,
+        _ => 10,
+    };
+    let canopy: Vec<DVec2> = (0..lobes * 6)
+        .map(|i| {
+            let a = i as f64 / (lobes * 6) as f64 * std::f64::consts::TAU;
+            let wave = if p.form == PlantForm::Conifer {
+                // Spiky.
+                if i % 6 < 3 { 1.0 } else { 0.85 }
+            } else {
+                0.92 + 0.08 * ((i % 6) as f64 / 6.0 * std::f64::consts::PI).sin()
+            };
+            c + DVec2::from_angle(a) * r * wave
+        })
+        .collect();
+    line(out, p.id, canopy, true, stroke);
+    let s = (r * 0.08).clamp(40.0, 200.0);
+    line(out, p.id, vec![c - DVec2::new(s, 0.0), c + DVec2::new(s, 0.0)], false, stroke);
+    line(out, p.id, vec![c - DVec2::new(0.0, s), c + DVec2::new(0.0, s)], false, stroke);
+    label(out, p.id, c + DVec2::new(r * 0.75, -r * 0.75), p.name.clone(), ink);
+}

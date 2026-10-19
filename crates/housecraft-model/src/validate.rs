@@ -715,6 +715,47 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     }
                 }
             }
+            Object::SiteFeature(f) => {
+                c.reference(id, "floor", f.floor, K::Floor);
+                c.reference(id, "layer", f.layer, K::Layer);
+                let min = if f.feature.closed() { 3 } else { 2 };
+                if f.points.len() < min {
+                    c.issue(id, format!("a {} needs at least {min} points", f.feature.name().to_lowercase()));
+                }
+                let flat: Vec<f64> = f.points.iter().flat_map(|p| p.mm()).collect();
+                c.finite(id, "points", &flat);
+                match &f.feature {
+                    SiteKind::RetainingWall { thickness, .. } => c.positive(id, "thickness", *thickness),
+                    SiteKind::Road { width, thickness, .. } => {
+                        c.positive(id, "width", *width);
+                        c.positive(id, "thickness", *thickness);
+                    }
+                    SiteKind::Fence { height, post_spacing, gates, .. } => {
+                        c.positive(id, "height", *height);
+                        c.positive(id, "post_spacing", *post_spacing);
+                        for g in gates {
+                            c.positive(id, "gate width", g.width);
+                            c.non_negative(id, "gate position", g.at);
+                        }
+                    }
+                    SiteKind::GardenBed { height } => c.positive(id, "height", *height),
+                    SiteKind::SteppingStones { spacing, size } => {
+                        c.positive(id, "spacing", *spacing);
+                        c.positive(id, "size", *size);
+                    }
+                    SiteKind::Stream { width } => c.positive(id, "width", *width),
+                }
+            }
+            Object::Plant(p) => {
+                c.reference(id, "floor", p.floor, K::Floor);
+                c.reference(id, "layer", p.layer, K::Layer);
+                c.positive(id, "height", p.height);
+                c.positive(id, "spread", p.spread);
+                c.finite(id, "at", &p.at.mm());
+                if p.age < 0.0 || p.years_to_mature < 0.0 {
+                    c.issue(id, "age and years to mature can't be negative");
+                }
+            }
             Object::Terrain(t) => {
                 c.reference(id, "floor", t.floor, K::Floor);
                 c.reference(id, "layer", t.layer, K::Layer);

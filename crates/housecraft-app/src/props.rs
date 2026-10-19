@@ -596,6 +596,112 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.label(format!("{} surfaces", st.materials.len()));
             ui.end_row();
         }
+        Object::SiteFeature(f) => {
+            let mut kind = f.feature.clone();
+            let len = |ui: &mut Ui, ed: &mut Ed<'_>, label: &str, key: &str, v: &mut Length| {
+                if let Some(l) = ed.length(ui, label, key, *v) {
+                    *v = l;
+                }
+            };
+            match &mut kind {
+                SiteKind::RetainingWall { top, thickness } => {
+                    len(ui, ed, "Top Elevation", "feature.top", top);
+                    len(ui, ed, "Thickness", "feature.thickness", thickness);
+                }
+                SiteKind::Road { style, width, thickness, curbs } => {
+                    Ed::label(ui, "Type");
+                    ui.horizontal(|ui| {
+                        for s in [RoadStyle::Road, RoadStyle::Driveway, RoadStyle::Sidewalk] {
+                            ui.selectable_value(style, s, s.name());
+                        }
+                    });
+                    ui.end_row();
+                    len(ui, ed, "Width", "feature.width", width);
+                    len(ui, ed, "Thickness", "feature.thickness", thickness);
+                    Ed::label(ui, "");
+                    ui.checkbox(curbs, "Curbs and gutters");
+                    ui.end_row();
+                }
+                SiteKind::Fence { style, height, post_spacing, gates } => {
+                    Ed::label(ui, "Style");
+                    ui.horizontal(|ui| {
+                        for s in FenceStyle::ALL {
+                            ui.selectable_value(style, s, s.name());
+                        }
+                    });
+                    ui.end_row();
+                    len(ui, ed, "Height", "feature.height", height);
+                    len(ui, ed, "Post Spacing", "feature.post_spacing", post_spacing);
+                    Ed::label(ui, "Gates");
+                    ui.vertical(|ui| {
+                        let mut remove = None;
+                        for (i, g) in gates.iter_mut().enumerate() {
+                            ui.horizontal(|ui| {
+                                for (label, v) in [("at ", &mut g.at), ("wide ", &mut g.width)] {
+                                    let mut x = v.inches();
+                                    if ui.add(egui::DragValue::new(&mut x).range(0.0..=6000.0).prefix(label).suffix("\"")).changed() {
+                                        *v = Length::from_inches(x);
+                                    }
+                                }
+                                if ui.small_button("✕").clicked() {
+                                    remove = Some(i);
+                                }
+                            });
+                        }
+                        if let Some(i) = remove {
+                            gates.remove(i);
+                        }
+                        if ui.small_button("Add Gate").clicked() {
+                            gates.push(Gate { at: Length::from_feet(2.0), width: Length::from_feet(4.0) });
+                        }
+                    });
+                    ui.end_row();
+                }
+                SiteKind::GardenBed { height } => len(ui, ed, "Height", "feature.height", height),
+                SiteKind::SteppingStones { spacing, size } => {
+                    len(ui, ed, "Spacing", "feature.spacing", spacing);
+                    len(ui, ed, "Stone Size", "feature.size", size);
+                }
+                SiteKind::Stream { width } => len(ui, ed, "Width", "feature.width", width),
+            }
+            if kind != f.feature {
+                ed.out.push(patch(id, json!({ "feature": kind })));
+            }
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(f.layer), None);
+        }
+        Object::Plant(p) => {
+            ed.text(ui, "Name", "name", &p.name);
+            Ed::label(ui, "Form");
+            let mut form = p.form;
+            ui.horizontal(|ui| {
+                for f in PlantForm::ALL {
+                    ui.selectable_value(&mut form, f, f.name());
+                }
+            });
+            ui.end_row();
+            if form != p.form {
+                ed.out.push(patch(id, json!({ "form": form })));
+            }
+            for (label, field, v) in [("Mature Height", "height", p.height), ("Spread", "spread", p.spread)] {
+                if let Some(l) = ed.length(ui, label, field, v) {
+                    ed.out.push(patch(id, json!({ field: l })));
+                }
+            }
+            for (label, field, v) in [("Years to Mature", "years_to_mature", p.years_to_mature), ("Show at Age (years)", "age", p.age)] {
+                if let Some(x) = ed.number(ui, label, field, v)
+                    && x >= 0.0
+                {
+                    ed.out.push(patch(id, json!({ field: x })));
+                }
+            }
+            Ed::label(ui, "Colour");
+            let mut c32 = to_color32(p.color);
+            if ui.color_edit_button_srgba(&mut c32).changed() {
+                ed.out.push(patch(id, json!({ "color": from_color32(c32) })));
+            }
+            ui.end_row();
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(p.layer), None);
+        }
         Object::Terrain(t) => {
             if let Some(l) = ed.length(ui, "Base Elevation", "base_elevation", t.base_elevation) {
                 ed.out.push(patch(id, json!({ "base_elevation": l })));

@@ -1170,7 +1170,21 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
             | Tool::FloorRegion
             | Tool::TerrainPerimeter
             | Tool::ElevationLine
-            | Tool::FlatRegion => pending.push(p),
+            | Tool::FlatRegion
+            | Tool::RetainingWall
+            | Tool::Road(_)
+            | Tool::Fence
+            | Tool::GardenBed
+            | Tool::SteppingStones
+            | Tool::Stream => pending.push(p),
+            Tool::Plant(form) => commands.push(Command::AddPlant {
+                floor,
+                at: pt(p),
+                name: None,
+                form,
+                height: None,
+                spread: None,
+            }),
             Tool::ElevationPoint => commands.push(Command::AddElevationData {
                 floor,
                 shape: ElevationShape::Point {
@@ -1371,6 +1385,18 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 points: pending.iter().map(|p| pt(*p)).collect(),
                 arc: None,
                 label: None,
+            });
+        }
+        return;
+    }
+    if finish && let Some(kind) = tool.site_kind() {
+        let pending = std::mem::take(&mut app.plan.pending);
+        let min = if kind.closed() { 3 } else { 2 };
+        if pending.len() >= min {
+            commands.push(Command::AddSiteFeature {
+                floor,
+                points: pending.iter().map(|p| pt(*p)).collect(),
+                feature: kind,
             });
         }
         return;

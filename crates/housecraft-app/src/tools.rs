@@ -3,7 +3,8 @@
 //! already know, so muscle memory carries over.
 
 use housecraft_api::model::{
-    ApplianceKind, CabinetKind, DoorStyle, ElectricalKind, Id, SectionKind, WindowStyle,
+    ApplianceKind, CabinetKind, DoorStyle, ElectricalKind, Id, PlantForm, RoadStyle, SectionKind, SiteKind,
+    WindowStyle,
 };
 
 use crate::icons::Icon;
@@ -78,6 +79,13 @@ pub enum Tool {
     Hill,
     /// Dig a rounded valley.
     Valley,
+    RetainingWall,
+    Road(RoadStyle),
+    Fence,
+    GardenBed,
+    SteppingStones,
+    Stream,
+    Plant(PlantForm),
 }
 
 impl Tool {
@@ -90,6 +98,35 @@ impl Tool {
         Tool::Hill,
         Tool::Valley,
     ];
+
+    /// The site tools, in menu order.
+    pub const SITE: [Tool; 12] = [
+        Tool::RetainingWall,
+        Tool::Road(RoadStyle::Road),
+        Tool::Road(RoadStyle::Driveway),
+        Tool::Road(RoadStyle::Sidewalk),
+        Tool::Fence,
+        Tool::GardenBed,
+        Tool::SteppingStones,
+        Tool::Stream,
+        Tool::Plant(PlantForm::Tree),
+        Tool::Plant(PlantForm::Conifer),
+        Tool::Plant(PlantForm::Shrub),
+        Tool::Plant(PlantForm::Grass),
+    ];
+
+    /// The site feature a multi-click site tool draws.
+    pub fn site_kind(self) -> Option<SiteKind> {
+        Some(match self {
+            Tool::RetainingWall => SiteKind::retaining_wall(),
+            Tool::Road(s) => SiteKind::road(s),
+            Tool::Fence => SiteKind::fence(),
+            Tool::GardenBed => SiteKind::garden_bed(),
+            Tool::SteppingStones => SiteKind::stepping_stones(),
+            Tool::Stream => SiteKind::stream(),
+            _ => return None,
+        })
+    }
 }
 
 /// The shapes offered by the stair tools.
@@ -403,6 +440,18 @@ impl Tool {
             Tool::FlatRegion => "Flat Region",
             Tool::Hill => "Hill",
             Tool::Valley => "Valley",
+            Tool::RetainingWall => "Retaining Wall",
+            Tool::Road(RoadStyle::Road) => "Road",
+            Tool::Road(RoadStyle::Driveway) => "Driveway",
+            Tool::Road(RoadStyle::Sidewalk) => "Sidewalk",
+            Tool::Fence => "Fence",
+            Tool::GardenBed => "Garden Bed",
+            Tool::SteppingStones => "Stepping Stones",
+            Tool::Stream => "Stream",
+            Tool::Plant(PlantForm::Tree) => "Tree",
+            Tool::Plant(PlantForm::Conifer) => "Conifer",
+            Tool::Plant(PlantForm::Shrub) => "Shrub",
+            Tool::Plant(PlantForm::Grass) => "Grass / Perennial",
             Tool::PlaceGroup => "Place Group",
         }
     }
@@ -439,7 +488,8 @@ impl Tool {
             Tool::WallRegion | Tool::Solid => Icon::Box,
             Tool::TerrainPerimeter | Tool::ElevationLine | Tool::FlatRegion => Icon::Polyline,
             Tool::ElevationPoint => Icon::Point,
-            Tool::Hill | Tool::Valley => Icon::Circle,
+            Tool::Hill | Tool::Valley | Tool::Plant(_) | Tool::SteppingStones => Icon::Circle,
+            Tool::RetainingWall | Tool::Road(_) | Tool::Fence | Tool::GardenBed | Tool::Stream => Icon::Polyline,
             Tool::ObjectPainter => Icon::Select,
             Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => Icon::Box,
             Tool::Callout | Tool::Marker | Tool::RevisionCloud => Icon::Text,
@@ -554,6 +604,13 @@ impl Tool {
             Tool::ElevationLine => "Click along the line; double-click or Enter to finish.",
             Tool::FlatRegion => "Click the corners of the flat area; double-click or Enter to finish.",
             Tool::Hill | Tool::Valley => "Click the centre, then a point on its edge.",
+            Tool::RetainingWall
+            | Tool::Road(_)
+            | Tool::Fence
+            | Tool::SteppingStones
+            | Tool::Stream => "Click along its path; double-click or Enter to finish.",
+            Tool::GardenBed => "Click the corners of the bed; double-click or Enter to finish.",
+            Tool::Plant(_) => "Click to plant it (set its name and size in its specification).",
             Tool::WallRegion => "Click the two ends of the region on one side of a wall.",
             Tool::ObjectPainter => {
                 "Alt+click an object to copy from, tick what to copy, then click objects to paint them."

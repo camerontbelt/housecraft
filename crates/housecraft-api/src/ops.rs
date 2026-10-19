@@ -456,6 +456,19 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             }
             Object::MaterialRegion(r)
         }
+        Object::SiteFeature(f) => {
+            let mut f = f.clone();
+            f.points = f.points.iter().map(|p| t.apply_point(*p)).collect();
+            if t.is_reflection() && f.feature.closed() {
+                f.points.reverse();
+            }
+            Object::SiteFeature(f)
+        }
+        Object::Plant(p) => {
+            let mut p = p.clone();
+            p.at = t.apply_point(p.at);
+            Object::Plant(p)
+        }
         Object::Terrain(ter) => {
             let mut ter = ter.clone();
             ter.perimeter = ter.perimeter.iter().map(|p| t.apply_point(*p)).collect();
@@ -1180,6 +1193,8 @@ pub(crate) fn insert_objects(
                 Object::MoldingPolyline(m) => m.floor = f,
                 Object::Solid(x) => x.floor = f,
                 Object::Terrain(t) => t.floor = f,
+                Object::SiteFeature(s) => s.floor = f,
+                Object::Plant(p) => p.floor = f,
                 Object::ElevationData(e) => e.floor = f,
                 Object::MaterialRegion(r) => r.floor = f,
                 _ => {}
@@ -1237,6 +1252,8 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::MoldingPolyline(m) => &mut m.floor,
             Object::Solid(x) => &mut x.floor,
             Object::Terrain(t) => &mut t.floor,
+            Object::SiteFeature(s) => &mut s.floor,
+            Object::Plant(p) => &mut p.floor,
             Object::ElevationData(e) => &mut e.floor,
             Object::MaterialRegion(r) => &mut r.floor,
             _ => continue,

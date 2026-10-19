@@ -252,6 +252,8 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         Object::Appliance(a) => format!("{} {} wide", a.appliance_kind.name(), fmt(a.width)),
         Object::Backsplash(b) => format!("backsplash {} high", fmt(b.height)),
         Object::Terrain(t) => format!("terrain, {} points", t.perimeter.len()),
+        Object::SiteFeature(f) => f.feature.name().to_lowercase(),
+        Object::Plant(p) => format!("{} ({}), {} high", p.name, p.form.name().to_lowercase(), fmt(p.height)),
         Object::ElevationData(e) => match &e.shape {
             ElevationShape::Point { elevation, .. }
             | ElevationShape::Line { elevation, .. }

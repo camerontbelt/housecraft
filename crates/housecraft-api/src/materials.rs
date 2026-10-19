@@ -359,6 +359,39 @@ pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
         }
     }
 
+    // Site work: paving area and volume, fence and wall runs, plants.
+    for f in doc.iter::<SiteFeature>() {
+        if !on_floor(f.floor) || !shown(f.id) {
+            continue;
+        }
+        let pts: Vec<DVec2> = f.points.iter().map(|p| v2(*p)).collect();
+        let run: f64 = pts.windows(2).map(|w| w[0].distance(w[1])).sum();
+        match &f.feature {
+            SiteKind::Road { style, width, thickness, .. } => {
+                let area = run * width.mm();
+                t.add("Site", format!("{} paving", style.name()), Measure::Area, area, f.id);
+                t.add("Site", format!("{} base, {} thick", style.name(), fmt(*thickness)), Measure::Volume, area * thickness.mm(), f.id);
+            }
+            SiteKind::Fence { style, height, .. } => {
+                t.add("Site", format!("{} fence {} high", style.name(), fmt(*height)), Measure::Length, run, f.id);
+            }
+            SiteKind::RetainingWall { thickness, .. } => {
+                t.add("Site", format!("Retaining wall {} thick", fmt(*thickness)), Measure::Length, run, f.id);
+            }
+            SiteKind::GardenBed { height } => {
+                t.add("Site", format!("Garden bed edging {} high", fmt(*height)), Measure::Length, perimeter(&pts), f.id);
+            }
+            SiteKind::SteppingStones { spacing, size } => {
+                let n = (run / spacing.mm().max(1.0)).floor() + 1.0;
+                t.add("Site", format!("Stepping stone {}", fmt(*size)), Measure::Count, n, f.id);
+            }
+            SiteKind::Stream { .. } => {}
+        }
+    }
+    for p in doc.iter::<Plant>().filter(|p| on_floor(p.floor) && shown(p.id)) {
+        t.add("Plants", p.name.clone(), Measure::Count, 1.0, p.id);
+    }
+
     let imperial = imperial(unit);
     let mut lines = Vec::new();
     let mut subtotal = 0.0;

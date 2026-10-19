@@ -13,6 +13,7 @@ pub mod pattern;
 pub mod piers;
 pub mod roof;
 pub mod rooms;
+pub mod site;
 pub mod skeleton;
 pub mod solid;
 pub mod stairs;

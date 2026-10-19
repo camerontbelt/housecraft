@@ -123,6 +123,13 @@ pub fn surface(doc: &Document, t: &Terrain) -> Option<Surface> {
             _ => {}
         }
     }
+    // Retaining walls hold the ground at their top along them.
+    for f in doc.iter::<housecraft_model::SiteFeature>() {
+        if let housecraft_model::SiteKind::RetainingWall { top, .. } = f.feature {
+            let pts: Vec<DVec2> = f.points.iter().map(|p| v2(*p)).collect();
+            samples.extend(resample(&pts, false, cell / 2.0).into_iter().map(|p| (p, top.mm())));
+        }
+    }
     let base = t.base_elevation.mm();
     let mut heights = vec![base; (nx + 1) * (ny + 1)];
     if !samples.is_empty() {

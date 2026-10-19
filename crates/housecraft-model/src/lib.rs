@@ -176,6 +176,8 @@ objects! {
     Solid => "solid",
     Terrain => "terrain",
     ElevationData => "elevation_data",
+    SiteFeature => "site_feature",
+    Plant => "plant",
 }
 
 impl fmt::Display for ObjectKind {
@@ -211,6 +213,8 @@ impl ObjectKind {
                 | ObjectKind::Solid
                 | ObjectKind::Terrain
                 | ObjectKind::ElevationData
+                | ObjectKind::SiteFeature
+                | ObjectKind::Plant
                 | ObjectKind::MaterialRegion
         )
     }
@@ -461,6 +465,8 @@ impl Document {
             Object::Solid(x) => Some(x.floor),
             Object::Terrain(t) => Some(t.floor),
             Object::ElevationData(e) => Some(e.floor),
+            Object::SiteFeature(f) => Some(f.floor),
+            Object::Plant(p) => Some(p.floor),
             Object::MaterialRegion(r) => Some(r.floor),
             _ => None,
         }
@@ -493,6 +499,8 @@ impl Document {
             Object::Solid(x) => Some(x.layer),
             Object::Terrain(t) => Some(t.layer),
             Object::ElevationData(e) => Some(e.layer),
+            Object::SiteFeature(f) => Some(f.layer),
+            Object::Plant(p) => Some(p.layer),
             Object::MaterialRegion(r) => Some(r.layer),
             _ => None,
         }

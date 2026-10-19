@@ -572,6 +572,7 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
             crate::terrain::terrain_mesh(doc, t, &mut mesh);
         }
     }
+    crate::site::build(doc, only_floor, &mut mesh);
     for x in doc.iter::<housecraft_model::Solid>() {
         if only_floor.is_some_and(|f| f != x.floor) {
             continue;

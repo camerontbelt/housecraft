@@ -420,6 +420,24 @@ pub enum Command {
     },
     /// Remove the terrain and all elevation data.
     ClearTerrain,
+    /// Add a retaining wall, road, fence, garden bed, stepping stones or
+    /// stream along `points`.
+    AddSiteFeature {
+        floor: Option<Id>,
+        points: Vec<Point2>,
+        feature: SiteKind,
+    },
+    /// Plant a tree, shrub or grass; unset sizes are typical for its form.
+    AddPlant {
+        floor: Option<Id>,
+        at: Point2,
+        #[serde(default)]
+        name: Option<String>,
+        #[serde(default)]
+        form: PlantForm,
+        height: Option<Length>,
+        spread: Option<Length>,
+    },
     /// Add a 3D solid; an unset colour comes from the solid defaults.
     AddSolid {
         floor: Option<Id>,
@@ -845,6 +863,8 @@ impl Command {
             Command::AddElevationData { .. } => "add_elevation_data",
             Command::ImportTerrainPoints { .. } => "import_terrain_points",
             Command::ClearTerrain => "clear_terrain",
+            Command::AddSiteFeature { .. } => "add_site_feature",
+            Command::AddPlant { .. } => "add_plant",
             Command::CadBoolean { .. } => "cad_boolean",
             Command::ExtrudeCad { .. } => "extrude_cad",
             Command::RevolveCad { .. } => "revolve_cad",
@@ -1846,6 +1866,33 @@ impl Command {
                     ];
                     out.created.push(doc.insert(Terrain::new(floor, d.layers.cad, perimeter)));
                 }
+            }
+            Command::AddSiteFeature { floor, points, feature } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                out.created.push(doc.insert(SiteFeature {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.cad,
+                    points: points.clone(),
+                    feature: feature.clone(),
+                }));
+            }
+            Command::AddPlant { floor, at, name, form, height, spread } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                let (h, s) = form.typical();
+                out.created.push(doc.insert(Plant {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.cad,
+                    at: *at,
+                    name: name.clone().unwrap_or_else(|| form.name().to_string()),
+                    form: *form,
+                    height: height.unwrap_or(h),
+                    spread: spread.unwrap_or(s),
+                    years_to_mature: 0.0,
+                    age: 0.0,
+                    color: Color::rgb(80, 130, 60),
+                }));
             }
             Command::ClearTerrain => {
                 let ids: Vec<Id> = doc

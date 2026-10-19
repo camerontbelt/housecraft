@@ -418,19 +418,19 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-07 | Elevation splines, lines, regions, points; subfloor marker; clear terrain | P2 | M6 ◐ elevation points, lines (smooth splines) and flat regions; Clear Terrain; no subfloor marker |
 | SITE-08 | Terrain elevation labels | P2 | M6 ✓ spot heights and major contours labelled in plan |
 | SITE-09 | Terrain modifiers: hills, valleys, elevated and flat regions | P2 | M6 ✓ hills, valleys and flat (elevated) regions |
-| SITE-10 | Retaining walls and terrain breaks | P2 | M6 |
-| SITE-11 | Stepping stones, streams, curbing, garden beds | P3 | M6 |
-| SITE-12 | Roads, medians, striping, curbs, gutters, driveways, sidewalks, cul-de-sacs | P2 | M6 |
-| SITE-13 | Road/driveway/sidewalk volumes in materials list | P3 | M6 |
+| SITE-10 | Retaining walls and terrain breaks | P2 | M6 ◐ retaining walls with a top height that holds the terrain along them; no separate terrain-break lines |
+| SITE-11 | Stepping stones, streams, curbing, garden beds | P3 | M6 ◐ stepping stones, streams and raised garden beds; curbing comes with roads |
+| SITE-12 | Roads, medians, striping, curbs, gutters, driveways, sidewalks, cul-de-sacs | P2 | M6 ◐ roads (curbs, gutters, centre striping), driveways and sidewalks that follow the ground; no medians or cul-de-sacs |
+| SITE-13 | Road/driveway/sidewalk volumes in materials list | P3 | M6 ✓ paving area and base volume in the materials list |
 | SITE-14 | Auto plan footprint CAD detail for site plans | P2 | M6 |
 | SITE-15 | Deck designer (straight, curved, polygon, covered) | P2 | M6 |
-| SITE-16 | Fences that follow terrain; gates | P2 | M6 |
+| SITE-16 | Fences that follow terrain; gates | P2 | M6 ✓ picket, privacy and split-rail fences with posts following the ground; gates |
 | SITE-17 | Sprinkler designer (zones, runs) | P3 | M8 |
-| SITE-18 | Plant images/symbols in 2D/3D | P2 | M6 |
-| SITE-19 | Import own plant images with growth data | P3 | M6 |
+| SITE-18 | Plant images/symbols in 2D/3D | P2 | M6 ✓ trees, conifers, shrubs and grasses as plan canopies and 3D shapes |
+| SITE-19 | Import own plant images with growth data | P3 | M6 ◐ growth data (years to mature, show at age); no imported plant images |
 | SITE-20 | Plant chooser with hardiness zone maps | P3 | M8 |
 | SITE-21 | Plant encyclopedia data | P3 | M8 (own data) |
-| SITE-22 | Landscaping plans and plant schedules | P3 | M6 |
+| SITE-22 | Landscaping plans and plant schedules | P3 | M6 ✓ plant schedule; plants and site work in the materials list |
 | SITE-23 | Plant growth over time | P3 | M8 |
 | SITE-24 | 3D plants with shadows | P2 | M7 |
 

@@ -1333,6 +1333,13 @@ impl App {
                         self.set_tool(tool);
                     }
                 }
+                ui.menu_button("Site", |ui| {
+                    for tool in Tool::SITE {
+                        if tool_item(ui, tool) {
+                            self.set_tool(tool);
+                        }
+                    }
+                });
                 ui.separator();
                 let terrain = self.doc().iter::<Terrain>().next().map(|t| t.id);
                 if item(ui, "Terrain Specification", "", terrain.is_some())

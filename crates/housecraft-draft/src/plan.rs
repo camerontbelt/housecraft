@@ -516,6 +516,18 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             crate::site::terrain(doc, t, look.stroke, look.ink, &mut out);
         }
     }
+    for f in doc.iter::<SiteFeature>().filter(|f| f.floor == opts.floor) {
+        let look = ctx.look(f.layer);
+        if look.visible {
+            crate::site::feature(f, look.stroke, &mut out);
+        }
+    }
+    for p in doc.iter::<Plant>().filter(|p| p.floor == opts.floor) {
+        let look = ctx.look(p.layer);
+        if look.visible {
+            crate::site::plant(p, look.stroke, look.ink, &mut out);
+        }
+    }
     for e in doc.iter::<ElevationData>().filter(|e| e.floor == opts.floor) {
         let look = ctx.look(e.layer);
         if look.visible {
