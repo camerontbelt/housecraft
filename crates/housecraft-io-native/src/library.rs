@@ -351,6 +351,8 @@ pub fn builtin() -> Vec<LibraryItem> {
                 target: Some(housecraft_units::Point2(Length::from_inches(-24.0), Length::from_inches(-12.0))),
                 marker: None,
                 height: None,
+                link: None,
+                    note: false,
             })
         } else {
             Object::Text(Text {

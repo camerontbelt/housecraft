@@ -215,6 +215,9 @@ pub enum ArrowStyle {
     Arrow,
     Dot,
     None,
+    /// A CAD block drawn pointing right (+x) with its tip at the insertion
+    /// point, scaled to the arrow size.
+    Block(Id),
 }
 
 /// Which layer each kind of new object goes on.

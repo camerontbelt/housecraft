@@ -30,6 +30,23 @@ pub(crate) struct DimStyle {
     pub arrow: ArrowStyle,
     pub gap: f64,
     pub overshoot: f64,
+    /// A block arrowhead's outlines, normalised: tip at the origin,
+    /// pointing +x, one unit long.
+    pub block: Vec<(Vec<DVec2>, bool)>,
+}
+
+/// A block's outlines scaled to unit length with the tip (its insertion
+/// point) at the origin.
+pub(crate) fn arrow_block(doc: &Document, block: housecraft_model::Id) -> Vec<(Vec<DVec2>, bool)> {
+    let polys: Vec<(Vec<DVec2>, bool)> = housecraft_api::blocks::block_shapes(doc, block)
+        .iter()
+        .flat_map(|s| housecraft_geom::math::shape_polylines(&s.shape))
+        .collect();
+    let reach = polys.iter().flat_map(|(p, _)| p.iter()).map(|p| p.length()).fold(0.0, f64::max);
+    if reach < 1e-9 {
+        return Vec::new();
+    }
+    polys.into_iter().map(|(p, c)| (p.into_iter().map(|q| q / reach).collect(), c)).collect()
 }
 
 fn readable(angle_deg: f64) -> f64 {
@@ -66,6 +83,21 @@ fn terminator(out: &mut Drawing, id: housecraft_model::Id, at: DVec2, dir: DVec2
                     fill: Fill::Ink(s.ink),
                 },
             );
+        }
+        ArrowStyle::Block(_) => {
+            // The block points +x; here the arrow points away from `dir`.
+            let x = -dir * size * 2.2;
+            let y = perp(-dir) * size * 2.2;
+            for (pts, closed) in &s.block {
+                out.push(
+                    Some(id),
+                    Prim::Polyline {
+                        points: pts.iter().map(|p| at + x * p.x + y * p.y).collect(),
+                        closed: *closed,
+                        stroke: s.stroke,
+                    },
+                );
+            }
         }
         ArrowStyle::Dot => {
             let mut pts = arc_points(at, size * 0.45, 0.0, 360.0);

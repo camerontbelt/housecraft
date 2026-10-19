@@ -772,6 +772,16 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
         }
     }
 
+    // Alt+click a linked callout to open what it points at.
+    if resp.clicked()
+        && ui.input(|i| i.modifiers.alt)
+        && let Some(c) = app.plan.cursor
+        && let Some(Object::Callout(co)) = hit_test(doc, cache, c, tol).first().and_then(|id| doc.object(*id))
+        && let Some(link) = co.link
+    {
+        app.open_link(link);
+        return;
+    }
     // Alt+click a note's link to open it.
     if resp.clicked()
         && ui.input(|i| i.modifiers.alt)

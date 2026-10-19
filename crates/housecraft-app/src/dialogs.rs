@@ -198,6 +198,8 @@ pub struct Dialogs {
     pub layers: bool,
     pub text_styles: bool,
     pub line_styles: bool,
+    pub find_replace: FindReplace,
+    pub macros: MacrosDialog,
     /// Project Information being edited (open while `Some`).
     pub project: Option<ProjectInfo>,
     /// Custom field name, revision description and "by" being typed.
@@ -273,6 +275,8 @@ pub fn show(app: &mut App, ctx: &Context) {
     );
     save_view_dialog(app, ctx);
     line_styles_dialog(app, ctx);
+    find_replace_dialog(app, ctx);
+    macros_dialog(app, ctx);
     project_dialog(app, ctx);
     shortcuts_dialog(app, ctx);
     about_dialog(app, ctx);
@@ -1067,6 +1071,22 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                 (ArrowStyle::None, "None"),
                             ] {
                                 ui.radio_value(&mut a, v, n);
+                            }
+                            // A CAD block as the arrowhead (drawn pointing right, tip at its insertion point).
+                            let blocks: Vec<(Id, String)> = doc.iter::<Block>().map(|b| (b.id, b.name.clone())).collect();
+                            if !blocks.is_empty() {
+                                egui::ComboBox::from_id_salt("arrow_block")
+                                    .selected_text(match a {
+                                        ArrowStyle::Block(b) => blocks.iter().find(|x| x.0 == b).map_or("Block".to_string(), |x| x.1.clone()),
+                                        _ => "Block…".to_string(),
+                                    })
+                                    .show_ui(ui, |ui| {
+                                        for (bid, name) in &blocks {
+                                            ui.selectable_value(&mut a, ArrowStyle::Block(*bid), name);
+                                        }
+                                    })
+                                    .response
+                                    .on_hover_text("Draw the block pointing right with its tip at the insertion point");
                             }
                             if a != d.dimensions.arrow {
                                 commands.push(p(json!({"dimensions": {"arrow": a}})));
@@ -1948,6 +1968,168 @@ fn project_dialog(app: &mut App, ctx: &Context) {
     if open {
         app.dialogs.project = Some(info);
     }
+    if !commands.is_empty() {
+        app.run(commands);
+    }
+}
+
+#[derive(Default)]
+pub struct FindReplace {
+    pub open: bool,
+    pub find: String,
+    pub replace: String,
+    pub match_case: bool,
+    pub selection_only: bool,
+    pub font_from: String,
+    pub font_to: String,
+}
+
+/// Edit > Find and Replace Text: in notes, callouts, room names, labels and
+/// layout notes; and fonts in text styles.
+fn find_replace_dialog(app: &mut App, ctx: &Context) {
+    if !app.dialogs.find_replace.open {
+        return;
+    }
+    let mut open = true;
+    let mut commands = Vec::new();
+    let mut select = None;
+    egui::Window::new("Find and Replace Text").open(&mut open).resizable(false).show(ctx, |ui| {
+        let doc = app.session.document();
+        let selection = app.selection.clone();
+        let f = &mut app.dialogs.find_replace;
+        egui::Grid::new("find_replace").num_columns(2).show(ui, |ui| {
+            ui.label("Find");
+            ui.add(egui::TextEdit::singleline(&mut f.find).desired_width(240.0));
+            ui.end_row();
+            ui.label("Replace with");
+            ui.add(egui::TextEdit::singleline(&mut f.replace).desired_width(240.0));
+            ui.end_row();
+        });
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut f.match_case, "Match case");
+            ui.checkbox(&mut f.selection_only, "Selected objects only");
+        });
+        let mut hits = housecraft_api::ops_text_matches(doc, &f.find, f.match_case);
+        if f.selection_only {
+            hits.retain(|id| selection.contains(id));
+        }
+        ui.horizontal(|ui| {
+            ui.label(if f.find.is_empty() { "Type something to find".to_string() } else { format!("{} object(s) contain it", hits.len()) });
+            if ui.add_enabled(!hits.is_empty(), egui::Button::new("Select Them")).clicked() {
+                select = Some(hits.clone());
+            }
+            if ui.add_enabled(!hits.is_empty(), egui::Button::new("Replace All")).clicked() {
+                commands.push(Command::ReplaceText {
+                    find: f.find.clone(),
+                    replace: f.replace.clone(),
+                    match_case: f.match_case,
+                    ids: if f.selection_only { hits.clone() } else { Vec::new() },
+                });
+            }
+        });
+        ui.separator();
+        ui.strong("Replace Fonts");
+        let mut fonts: Vec<String> = doc.iter::<TextStyle>().map(|t| t.font.clone()).collect();
+        fonts.sort();
+        fonts.dedup();
+        ui.horizontal(|ui| {
+            egui::ComboBox::from_id_salt("font_from")
+                .selected_text(if f.font_from.is_empty() { "Font in use".to_string() } else { f.font_from.clone() })
+                .show_ui(ui, |ui| {
+                    for font in &fonts {
+                        ui.selectable_value(&mut f.font_from, font.clone(), font);
+                    }
+                });
+            ui.label("→");
+            ui.add(egui::TextEdit::singleline(&mut f.font_to).hint_text("New font").desired_width(140.0));
+            if ui.add_enabled(!f.font_from.is_empty() && !f.font_to.trim().is_empty(), egui::Button::new("Replace")).clicked() {
+                commands.push(Command::ReplaceFont { from: f.font_from.clone(), to: f.font_to.trim().to_string() });
+            }
+        });
+    });
+    app.dialogs.find_replace.open = open;
+    if let Some(ids) = select {
+        app.selection = ids;
+    }
+    for c in commands {
+        if let Some(out) = app.run1(c) {
+            app.info(format!("{} object(s) changed", out.modified.len()));
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct MacrosDialog {
+    pub open: bool,
+    pub new_name: String,
+    pub test: String,
+}
+
+/// Tools > Text Macros: the built-in macros and the plan's own, and a box
+/// to try them out.
+fn macros_dialog(app: &mut App, ctx: &Context) {
+    if !app.dialogs.macros.open {
+        return;
+    }
+    let mut open = true;
+    let mut commands = Vec::new();
+    egui::Window::new("Text Macros").open(&mut open).resizable(true).default_width(460.0).show(ctx, |ui| {
+        let doc = app.session.document();
+        ui.label("Type {name} in any text, label, callout or layout note; it is replaced by the value.");
+        ui.separator();
+        ui.strong("Your macros");
+        egui::Grid::new("user_macros").num_columns(3).striped(true).show(ui, |ui| {
+            for (name, text) in &doc.settings.macros {
+                ui.monospace(format!("{{{name}}}"));
+                let key = egui::Id::unique(("user_macro", name));
+                if let Some(t) = app.bufs.text(ui, key, text, 240.0) {
+                    commands.push(Command::SetMacro { name: name.clone(), text: Some(t) });
+                }
+                if ui.small_button("Delete").clicked() {
+                    commands.push(Command::SetMacro { name: name.clone(), text: None });
+                }
+                ui.end_row();
+            }
+        });
+        ui.horizontal(|ui| {
+            let m = &mut app.dialogs.macros;
+            ui.add(egui::TextEdit::singleline(&mut m.new_name).hint_text("New macro name, e.g. builder").desired_width(200.0));
+            let name = m.new_name.trim().to_string();
+            let ok = !name.is_empty() && !name.contains(['{', '}', ' ']) && !doc.settings.macros.contains_key(&name);
+            if ui.add_enabled(ok, egui::Button::new("Add")).clicked() {
+                commands.push(Command::SetMacro { name, text: Some(String::new()) });
+                m.new_name.clear();
+            }
+        });
+        ui.separator();
+        ui.strong("Try it");
+        ui.add(egui::TextEdit::multiline(&mut app.dialogs.macros.test).hint_text("e.g. {project} for {client}, {date}").desired_rows(2).desired_width(f32::INFINITY));
+        ui.label(housecraft_draft::macros::expand(doc, &app.dialogs.macros.test));
+        ui.separator();
+        egui::CollapsingHeader::new("Built-in macros").show(ui, |ui| {
+            egui::Grid::new("builtin_macros").num_columns(3).striped(true).show(ui, |ui| {
+                for (m, what) in housecraft_draft::macros::MACROS {
+                    ui.monospace(format!("{{{m}}}"));
+                    ui.label(*what);
+                    ui.weak(housecraft_draft::macros::expand(doc, &format!("{{{m}}}")));
+                    ui.end_row();
+                }
+                for (m, what) in housecraft_draft::macros::PAGE_MACROS {
+                    ui.monospace(format!("{{{m}}}"));
+                    ui.label(*what);
+                    ui.weak("on layout pages");
+                    ui.end_row();
+                }
+                for (m, what) in housecraft_draft::macros::OBJECT_MACROS {
+                    ui.monospace(format!("{{{m}}}"));
+                    ui.label(*what);
+                    ui.weak("in object labels");
+                    ui.end_row();
+                }
+            });
+        });
+    });
+    app.dialogs.macros.open = open;
     if !commands.is_empty() {
         app.run(commands);
     }

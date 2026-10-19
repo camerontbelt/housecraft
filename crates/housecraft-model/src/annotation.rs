@@ -194,10 +194,12 @@ pub enum ScheduleKind {
     Framing,
     /// Closed CAD shapes (polylines, rectangles, circles): area and perimeter.
     Shapes,
+    /// Numbered notes and their text.
+    Notes,
 }
 
 impl ScheduleKind {
-    pub const ALL: [ScheduleKind; 11] = [
+    pub const ALL: [ScheduleKind; 12] = [
         ScheduleKind::Doors,
         ScheduleKind::Windows,
         ScheduleKind::Rooms,
@@ -209,6 +211,7 @@ impl ScheduleKind {
         ScheduleKind::Plants,
         ScheduleKind::Framing,
         ScheduleKind::Shapes,
+        ScheduleKind::Notes,
     ];
 
     pub fn name(self) -> &'static str {
@@ -224,6 +227,7 @@ impl ScheduleKind {
             ScheduleKind::Plants => "Plant Schedule",
             ScheduleKind::Framing => "Framing Cut List",
             ScheduleKind::Shapes => "Shape Schedule",
+            ScheduleKind::Notes => "Note Schedule",
         }
     }
 }
@@ -287,6 +291,14 @@ pub struct Callout {
     pub marker: Option<MarkerShape>,
     #[serde(default)]
     pub height: Option<Length>,
+    /// The view, detail, plan view or layout this callout opens (and whose
+    /// layout page it can name with `{link}`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub link: Option<Id>,
+    /// A numbered note: the marker shows its number and the text is listed
+    /// in the Note Schedule.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub note: bool,
 }
 
 /// A revision cloud: a scalloped outline around changed work, tagged with

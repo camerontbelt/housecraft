@@ -295,6 +295,10 @@ pub struct Settings {
     /// replacing what the take-off counts for them).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub components: BTreeMap<Id, ObjectComponents>,
+    /// User-defined text macros: `{name}` is replaced by the text (which may
+    /// use other macros).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub macros: BTreeMap<String, String>,
 }
 
 /// An object's own materials list lines.
@@ -496,6 +500,7 @@ impl Document {
                 revisions: Vec::new(),
                 watermark: None,
                 components: BTreeMap::new(),
+                macros: BTreeMap::new(),
             },
             next_id: 1,
             objects: BTreeMap::new(),

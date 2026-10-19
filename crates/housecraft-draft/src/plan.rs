@@ -1002,6 +1002,10 @@ fn notes(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
             arrow: defaults.dimensions.arrow,
             gap: defaults.dimensions.extension_gap.mm(),
             overshoot: defaults.dimensions.extension_overshoot.mm(),
+            block: match defaults.dimensions.arrow {
+                ArrowStyle::Block(b) => crate::dims::arrow_block(doc, b),
+                _ => Vec::new(),
+            },
         };
         draw_dimension(doc, defaults, dim, &style, out);
     }
@@ -1461,7 +1465,22 @@ fn marker_outline(m: MarkerShape, at: DVec2, r: f64) -> Vec<DVec2> {
 fn callout(doc: &Document, c: &Callout, h: f64, stroke: Stroke, out: &mut Drawing) {
     let id = Some(c.id);
     let at = v2(c.at);
-    let text = crate::macros::expand(doc, &c.text);
+    let text = if c.note {
+        // A numbered note shows its number; the text is in the Note Schedule.
+        housecraft_api::schedule::note_numbers(doc).get(&c.id).map_or_else(String::new, |n| n.to_string())
+    } else {
+        // {link}: where the linked view is placed on a layout ("2/A-1").
+        let link = c
+            .link
+            .and_then(|l| match doc.object(l) {
+                Some(Object::SectionView(_)) => Some(LayoutSource::View { view: l }),
+                Some(Object::CadDetail(_)) => Some(LayoutSource::Detail { detail: l }),
+                _ => None,
+            })
+            .and_then(|s| layout_page_of(doc, s))
+            .map_or_else(String::new, |(n, p)| n.map_or(p.clone(), |n| format!("{n}/{p}")));
+        crate::macros::expand(doc, &c.text.replace("{link}", &link))
+    };
     let lines: Vec<&str> = text.lines().collect();
     let w = lines
         .iter()

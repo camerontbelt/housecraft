@@ -1897,3 +1897,76 @@ pub(crate) fn convert_space_plan(doc: &mut Document, ids: &[Id], out: &mut Outco
     }
     Ok(())
 }
+
+/// `text` with `find` replaced (ignoring case unless `match_case`), or
+/// `None` when it does not occur.
+pub fn replaced(text: &str, find: &str, replace: &str, match_case: bool) -> Option<String> {
+    if find.is_empty() {
+        return None;
+    }
+    if match_case {
+        return text.contains(find).then(|| text.replace(find, replace));
+    }
+    let lower = text.to_lowercase();
+    let needle = find.to_lowercase();
+    if !lower.contains(&needle) || lower.len() != text.len() {
+        // Lower-casing changed byte lengths: fall back to exact matching.
+        return text.contains(find).then(|| text.replace(find, replace));
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut i = 0;
+    while let Some(k) = lower[i..].find(&needle) {
+        out.push_str(&text[i..i + k]);
+        out.push_str(replace);
+        i += k + needle.len();
+    }
+    out.push_str(&text[i..]);
+    Some(out)
+}
+
+/// Objects whose text contains `find`: notes, callouts, room names, object
+/// labels and layout notes.
+pub fn text_matches(doc: &Document, find: &str, match_case: bool) -> Vec<Id> {
+    let mut probe = doc.clone();
+    replace_text(&mut probe, find, "", match_case, &[])
+}
+
+/// Replace text in place; returns the objects changed.
+pub(crate) fn replace_text(doc: &mut Document, find: &str, replace: &str, match_case: bool, only: &[Id]) -> Vec<Id> {
+    let mut changed = Vec::new();
+    let wanted = |id: Id| only.is_empty() || only.contains(&id);
+    let swap = |s: &mut String| match replaced(s, find, replace, match_case) {
+        Some(t) => {
+            *s = t;
+            true
+        }
+        None => false,
+    };
+    for (id, o) in doc.objects.iter_mut() {
+        if !wanted(*id) {
+            continue;
+        }
+        let hit = match o {
+            Object::Text(t) => swap(&mut t.text),
+            Object::Callout(c) => swap(&mut c.text),
+            Object::Room(r) => r.name.as_mut().is_some_and(swap),
+            Object::LayoutBox(b) => {
+                let note = match &mut b.source {
+                    LayoutSource::Text { text } => swap(text),
+                    _ => false,
+                };
+                b.label.as_mut().is_some_and(swap) | note
+            }
+            _ => false,
+        };
+        if hit {
+            changed.push(*id);
+        }
+    }
+    for (id, label) in doc.settings.labels.iter_mut() {
+        if wanted(*id) && swap(label) && !changed.contains(id) {
+            changed.push(*id);
+        }
+    }
+    changed
+}

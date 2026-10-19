@@ -29,6 +29,11 @@ pub use housecraft_model as model;
 pub use housecraft_units as units;
 pub use session::Session;
 
+/// Objects whose text contains `find` (Edit > Find and Replace Text).
+pub fn ops_text_matches(doc: &model::Document, find: &str, match_case: bool) -> Vec<model::Id> {
+    ops::text_matches(doc, find, match_case)
+}
+
 /// How many objects use the plan's line style `index` (Tools > Line Styles).
 pub fn ops_line_type_uses(doc: &model::Document, index: u32) -> usize {
     ops::line_type_uses(doc, index)

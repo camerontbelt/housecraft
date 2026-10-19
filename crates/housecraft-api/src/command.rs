@@ -271,6 +271,20 @@ pub enum Command {
     },
     /// Client, designer and custom project fields.
     SetProjectInfo { info: ProjectInfo },
+    /// Set (or with `null`, delete) user text macro `name`.
+    SetMacro { name: String, text: Option<String> },
+    /// Replace `find` with `replace` in text, callouts, room names, object
+    /// labels and layout notes (`ids`: only those objects).
+    ReplaceText {
+        find: String,
+        replace: String,
+        #[serde(default)]
+        match_case: bool,
+        #[serde(default)]
+        ids: Vec<Id>,
+    },
+    /// Every text style using font `from` uses `to` instead.
+    ReplaceFont { from: String, to: String },
     /// Record a revision (numbered after the last; dated today unless given).
     AddRevision {
         description: String,
@@ -1203,6 +1217,9 @@ impl Command {
             Command::ConvertBoxToLines { .. } => "convert_box_to_lines",
             Command::DeleteLayoutBoxes { .. } => "delete_layout_boxes",
             Command::SetProjectInfo { .. } => "set_project_info",
+            Command::SetMacro { .. } => "set_macro",
+            Command::ReplaceText { .. } => "replace_text",
+            Command::ReplaceFont { .. } => "replace_font",
             Command::AddRevision { .. } => "add_revision",
             Command::DeleteRevision { .. } => "delete_revision",
             Command::SetWatermark { .. } => "set_watermark",
@@ -1793,6 +1810,38 @@ impl Command {
                 }
                 out.modified.push(*id);
             }
+            Command::SetMacro { name, text } => {
+                let name = name.trim();
+                if name.is_empty() || name.contains(['{', '}']) || name.chars().any(char::is_whitespace) {
+                    return Err(ApiError::Invalid("a macro name is one word without braces".into()));
+                }
+                match text {
+                    Some(t) => {
+                        doc.settings.macros.insert(name.to_string(), t.clone());
+                    }
+                    None => {
+                        doc.settings.macros.remove(name);
+                    }
+                }
+            }
+            Command::ReplaceText { find, replace, match_case, ids } => {
+                if find.is_empty() {
+                    return Err(ApiError::Invalid("nothing to find".into()));
+                }
+                for id in crate::ops::replace_text(doc, find, replace, *match_case, ids) {
+                    out.modified.push(id);
+                }
+            }
+            Command::ReplaceFont { from, to } => {
+                for o in doc.objects.values_mut() {
+                    if let Object::TextStyle(t) = o
+                        && t.font.eq_ignore_ascii_case(from)
+                    {
+                        t.font = to.clone();
+                        out.modified.push(t.id);
+                    }
+                }
+            }
             Command::SetProjectInfo { info } => {
                 doc.settings.project = info.clone();
             }
@@ -1869,6 +1918,8 @@ impl Command {
                     target: *target,
                     marker: *marker,
                     height: None,
+                    link: None,
+                    note: false,
                 }));
             }
             Command::AddRevisionCloud {

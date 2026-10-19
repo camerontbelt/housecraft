@@ -2213,6 +2213,9 @@ impl App {
                         self.run1(Command::ExtendTo { id, boundary });
                     }
                     ui.separator();
+                    if item(ui, "Find and Replace Text…", "", true) {
+                        self.dialogs.find_replace.open = true;
+                    }
                     if item(ui, "Match Properties", "", self.selection.len() == 1) {
                         self.start_pick(crate::canvas::Pick::Match(self.selection[0]));
                     }
@@ -2916,6 +2919,9 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                 }
                 if item(ui, "Text Styles…", "", true) {
                     self.dialogs.text_styles = true;
+                }
+                if item(ui, "Text Macros…", "", true) {
+                    self.dialogs.macros.open = true;
                 }
                 if item(ui, "Line Styles…", "", true) {
                     self.dialogs.line_styles = true;
@@ -3953,6 +3959,19 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
         match std::fs::write(&path, bytes) {
             Ok(()) => self.info(format!("Exported {}", path.display())),
             Err(e) => self.status = Some((format!("Export failed: {e}"), true)),
+        }
+    }
+
+    /// Open what a callout links to: a view or detail, a plan view or a layout.
+    pub fn open_link(&mut self, id: Id) {
+        match self.doc().object(id).cloned() {
+            Some(Object::SectionView(_) | Object::CadDetail(_)) => self.open_sheet(id),
+            Some(Object::PlanView(v)) => {
+                self.show_plan();
+                self.apply_plan_view(&v);
+            }
+            Some(Object::Layout(_)) => self.mode = Mode::Drawing(crate::drawing_view::DrawingSource::Layout(id, 0)),
+            _ => self.info("The callout's link is gone"),
         }
     }
 

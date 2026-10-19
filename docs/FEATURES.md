@@ -525,12 +525,12 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | TXT-01 | Editable text: font, size, weight, color, justification | P0 | M1 ◐ size, weight, color, justification; font families need font loading |
 | TXT-02 | Rich text, hyperlinks | P1 | M1 ◐ note markup: **bold**, __underline__, [label](link), {#rrggbb}colour{/}; no italic or mixed fonts |
-| TXT-03 | Find/replace text | P2 | M4 |
-| TXT-04 | Replace fonts | P3 | M4 |
+| TXT-03 | Find/replace text | P2 | M4 ✓ Edit > Find and Replace Text: notes, callouts, room names, labels, layout notes; match case; selection only |
+| TXT-04 | Replace fonts | P3 | M4 ✓ in Find and Replace Text |
 | TXT-05 | Text arrows / leaders with auto orientation | P1 | M1 ✓ Text with Arrow tool; leaders start from whichever side of the note faces the tip and move with it |
-| TXT-06 | Custom arrowheads from CAD blocks | P2 | M4 |
+| TXT-06 | Custom arrowheads from CAD blocks | P2 | M4 ✓ dimension arrows can be a CAD block |
 | TXT-07 | Callouts & markers (styles, own layers) | P1 | M4 ✓ |
-| TXT-08 | Linked callouts that navigate between views | P2 | M4 |
+| TXT-08 | Linked callouts that navigate between views | P2 | M4 ✓ callout Link (view, detail, plan view, layout); Alt+click opens it; {link} shows its layout reference |
 | TXT-09 | Object labels with macros | P1 | M1 ✓ Default Settings > Object Labels: templates for doors, windows, cabinets, fixtures with {width} {size} {type} {code}…; per-object label or - to hide |
 | TXT-10 | Label formatting (justify, border, wrap) | P1 | M1 ◐ border and wrap width for notes and labels, justify for notes; labels are always centred |
 | TXT-11 | Per-view label hide (X18+) | P2 | M1 |
@@ -538,11 +538,11 @@ These come from reading the whole list and change the architecture, not just the
 | TXT-13 | Text styles per layer/default/object | P0 | M1 ✓ |
 | TXT-14 | Default sets for annotation | P1 | M1 ✓ default sets carry the text style, dimension defaults or style, label templates and layers for annotation; plan views and camera default sets pick them |
 | TXT-15 | Annotations on 3D views | P2 | M7 ✓ 3D > Notes and Dimensions: notes pinned to the model, shown for one camera or all |
-| TXT-16 | Numbered notes with schedule; note markers in 3D | P2 | M4 |
+| TXT-16 | Numbered notes with schedule; note markers in 3D | P2 | M4 ◐ numbered note callouts and a Note Schedule; 3D markers later |
 | TXT-17 | Spell check | P3 | GUI |
 | TXT-18 | Hyperlinks | P2 | M1 ◐ [label](url) links in notes, Alt+click opens them; not yet clickable in exported PDFs |
 | TXT-19 | Text macros incl. user-defined (contact, file, plan info, dates) | P1 | M4 ◐ {project}, {date}, {year}, {living_area}, {floors}, {rooms} in plan text and layout notes; user-defined macros later |
-| TXT-20 | Macro management (create, test) | P2 | M4 |
+| TXT-20 | Macro management (create, test) | P2 | M4 ✓ Tools > Text Macros: your own macros, built-in list with values, a try-it box |
 | TXT-21 | Scripting console (CA: Ruby → ours: Rhai/Lua over the command API) | P2 | M8 |
 | TXT-22 | Revision clouds with defaults | P1 | M4 ✓ |
 

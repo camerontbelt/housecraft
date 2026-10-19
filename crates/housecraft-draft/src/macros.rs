@@ -181,8 +181,26 @@ fn value(doc: &Document, name: &str) -> Option<String> {
         "rooms" => doc.iter::<housecraft_model::Room>().count().to_string(),
         "revision" => doc.settings.revisions.last().map_or("0".into(), |r| r.number.to_string()),
         "revision_date" => doc.settings.revisions.last().map_or(String::new(), |r| r.date.clone()),
-        other => doc.settings.project.get(other)?.clone(),
+        other => match doc.settings.project.get(other) {
+            Some(v) => v.clone(),
+            // A user macro, itself expanded (not too deep: macros may loop).
+            None => {
+                let text = doc.settings.macros.get(other)?;
+                let depth = DEPTH.with(|d| d.get());
+                if depth >= 8 {
+                    return Some(text.clone());
+                }
+                DEPTH.with(|d| d.set(depth + 1));
+                let v = expand(doc, text);
+                DEPTH.with(|d| d.set(depth));
+                v
+            }
+        },
     })
+}
+
+thread_local! {
+    static DEPTH: std::cell::Cell<u8> = const { std::cell::Cell::new(0) };
 }
 
 /// Fill page macros (`{sheet}`, `{page}`…) for page `page` of `layout`,

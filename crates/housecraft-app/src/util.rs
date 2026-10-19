@@ -40,7 +40,8 @@ impl EditBuffers {
     /// the user presses Enter or leaves the field after changing it.
     pub fn text(&mut self, ui: &mut Ui, id: egui::Id, current: &str, width: f32) -> Option<String> {
         let buf = self.0.entry(id).or_insert_with(|| current.to_string());
-        let resp = ui.add(egui::TextEdit::singleline(buf).id(id).desired_width(width));
+        // Sized explicitly: inside a grid a text edit's desired width is not kept.
+        let resp = ui.add_sized([width, ui.spacing().interact_size.y], egui::TextEdit::singleline(buf).id(id));
         if resp.lost_focus() {
             let value = self.0.remove(&id).unwrap_or_default();
             return (value != current).then_some(value);

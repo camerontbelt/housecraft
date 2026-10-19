@@ -108,6 +108,7 @@ pub fn available_columns(kind: ScheduleKind) -> &'static [&'static str] {
         ScheduleKind::Plants => &["Plant", "Form", "Qty", "Mature Height", "Spread"],
         ScheduleKind::Framing => &["Role", "Size", "Material", "Qty", "Cut Length", "Floor"],
         ScheduleKind::Shapes => &["Label", "Layer", "Area", "Perimeter", "Floor"],
+        ScheduleKind::Notes => &["No.", "Note", "Floor"],
     }
 }
 
@@ -124,7 +125,13 @@ pub fn title(kind: ScheduleKind) -> &'static str {
         ScheduleKind::Plants => "Plant Schedule",
         ScheduleKind::Framing => "Framing Cut List",
         ScheduleKind::Shapes => "Shape Schedule",
+        ScheduleKind::Notes => "Note Schedule",
     }
+}
+
+/// Numbered notes' numbers: in the order they were made, from 1.
+pub fn note_numbers(doc: &Document) -> BTreeMap<Id, u32> {
+    doc.iter::<Callout>().filter(|c| c.note).enumerate().map(|(i, c)| (c.id, i as u32 + 1)).collect()
 }
 
 /// A full row: column name → value, plus the objects it covers.
@@ -481,6 +488,16 @@ fn kind_rows(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> Vec<
                 row.insert("Area", area(a));
                 row.insert("Perimeter", fmt(Length::from_mm(per)));
                 row.insert("Floor", doc.get::<Floor>(c.floor).map_or_else(|| "(detail)".to_string(), |f| f.name.clone()));
+                raw.push((vec![c.id], row));
+            }
+        }
+        ScheduleKind::Notes => {
+            let numbers = note_numbers(doc);
+            for c in doc.iter::<Callout>().filter(|c| c.note && on_floor(c.floor)) {
+                let mut row = BTreeMap::new();
+                row.insert("No.", numbers[&c.id].to_string());
+                row.insert("Note", c.text.clone());
+                row.insert("Floor", doc.get::<Floor>(c.floor).map_or_else(|| "(sheet)".to_string(), |f| f.name.clone()));
                 raw.push((vec![c.id], row));
             }
         }

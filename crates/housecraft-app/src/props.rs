@@ -1105,6 +1105,28 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "target": v })));
             }
             ui.end_row();
+            ed.check(ui, "Numbered Note", "note", "Show a number; list the text in the Note Schedule", c.note);
+            Ed::label(ui, "Link");
+            let mut targets: Vec<(Id, String)> = Vec::new();
+            targets.extend(doc.iter::<SectionView>().map(|v| (v.id, v.name.clone())));
+            targets.extend(doc.iter::<CadDetail>().map(|d| (d.id, format!("Detail: {}", d.name))));
+            targets.extend(doc.iter::<PlanView>().map(|v| (v.id, format!("Plan view: {}", v.name))));
+            targets.extend(doc.iter::<Layout>().map(|l| (l.id, format!("Layout: {}", l.name))));
+            let mut link = c.link;
+            egui::ComboBox::from_id_salt(ed.key("callout_link"))
+                .selected_text(link.and_then(|l| targets.iter().find(|t| t.0 == l)).map_or("None".to_string(), |t| t.1.clone()))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut link, None, "None");
+                    for (tid, name) in &targets {
+                        ui.selectable_value(&mut link, Some(*tid), name);
+                    }
+                })
+                .response
+                .on_hover_text("Alt+click the callout to open it; {link} in the text shows where the view is on a layout");
+            if link != c.link {
+                ed.out.push(patch(id, json!({ "link": link })));
+            }
+            ui.end_row();
             ed.pick::<Layer>(ui, "Layer", "layer", Some(c.layer), None);
         }
         Object::Cabinet(c) => cabinet_editor(ui, ed, c),

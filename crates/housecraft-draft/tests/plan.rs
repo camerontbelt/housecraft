@@ -661,3 +661,57 @@ fn schedule_thumbnails_and_marker_labels() {
     };
     assert!(table_lines > plain + 2, "{table_lines} vs {plain}");
 }
+
+#[test]
+fn notes_links_macros_find_replace_and_block_arrows() {
+    use housecraft_api::model::{Callout, Text, TextStyle};
+    let mut s = house();
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "add_section_view", "name": "South", "a": ["-10'","-10'"], "b": ["50'","-10'"]},
+            {"op": "add_layout", "name": "Set", "pages": 2},
+            {"op": "set_macro", "name": "builder", "text": "Acme for {project}"},
+            {"op": "add_text", "position": ["5'","5'"], "text": "Built by {builder}"},
+            {"op": "add_callout", "at": ["10'","10'"], "text": "Seal all joints"},
+            {"op": "add_callout", "at": ["12'","10'"], "text": "Flash sill"},
+            {"op": "add_callout", "at": ["14'","10'"], "text": "See {link}"},
+            {"op": "add_block", "name": "Open arrow", "shapes": [{"shape": {"shape": "polyline", "points": [[0,0],["-6\"","3\""],["-6\"","-3\""]], "closed": true}}]}]"#,
+    )
+    .unwrap();
+    let out = s.apply(&cmds).unwrap();
+    let doc = s.document();
+    let view = doc.iter::<housecraft_api::model::SectionView>().next().unwrap().id;
+    let layout = doc.iter::<housecraft_api::model::Layout>().next().unwrap().id;
+    let calls: Vec<_> = doc.iter::<Callout>().map(|c| c.id).collect();
+    let block = doc.iter::<housecraft_api::model::Block>().next().unwrap().id;
+    let set = doc.settings.active_default_set;
+    let _ = out;
+    let p = |v: serde_json::Value| v.as_object().unwrap().clone();
+    s.apply(&[
+        Command::Update { id: calls[0], set: p(serde_json::json!({"note": true})) },
+        Command::Update { id: calls[1], set: p(serde_json::json!({"note": true})) },
+        Command::Update { id: calls[2], set: p(serde_json::json!({"link": view.0})) },
+        Command::Update { id: set, set: p(serde_json::json!({"dimensions": {"arrow": {"block": block.0}}})) },
+    ])
+    .unwrap();
+    s.apply(&[serde_json::from_value(serde_json::json!({"op": "send_to_layout", "layout": layout.0, "page": 1, "source": {"type": "view", "view": view.0}})).unwrap()])
+        .unwrap();
+    let doc = s.document();
+    let d = plan(doc, &PlanOptions::first(doc).unwrap());
+    let texts: Vec<String> = d.items.iter().filter_map(|i| match &i.prim { Prim::Text { text, .. } => Some(text.clone()), _ => None }).collect();
+    assert!(texts.iter().any(|t| t == "Built by Acme for Test House"), "{texts:?}");
+    assert!(texts.iter().any(|t| t == "1") && texts.iter().any(|t| t == "2"), "note numbers");
+    assert!(texts.iter().any(|t| t == "See 1/A-2"), "{texts:?}");
+    let notes = housecraft_api::schedule::schedule(doc, housecraft_api::model::ScheduleKind::Notes, &Default::default());
+    assert_eq!(notes.rows.iter().map(|r| r.cells[1].as_str()).collect::<Vec<_>>(), ["Seal all joints", "Flash sill"]);
+    // Dimensions end in the block: closed triangles.
+    let tris = d.items.iter().filter(|i| matches!(&i.prim, Prim::Polyline { points, closed: true, .. } if points.len() == 3)).count();
+    assert!(tris >= 2, "{tris}");
+    // Find and replace, case-insensitively; fonts too.
+    assert_eq!(housecraft_api::ops_text_matches(doc, "FLASH", false).len(), 1);
+    s.apply(&[Command::ReplaceText { find: "flash".into(), replace: "Caulk".into(), match_case: false, ids: Vec::new() }]).unwrap();
+    assert!(s.document().iter::<Callout>().any(|c| c.text == "Caulk sill"));
+    let font = s.document().iter::<TextStyle>().next().unwrap().font.clone();
+    s.apply(&[Command::ReplaceFont { from: font, to: "Courier".into() }]).unwrap();
+    assert!(s.document().iter::<TextStyle>().all(|t| t.font == "Courier"));
+    assert!(s.document().iter::<Text>().any(|t| t.text == "Built by {builder}"));
+}
