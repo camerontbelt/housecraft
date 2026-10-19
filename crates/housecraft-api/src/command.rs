@@ -402,6 +402,24 @@ pub enum Command {
         ids: Vec<Id>,
         surface: Option<Surface>,
     },
+    /// Make the plan's terrain with this outline (replacing any terrain).
+    AddTerrain { floor: Option<Id>, points: Vec<Point2> },
+    /// Add a piece of elevation data shaping the terrain.
+    AddElevationData { floor: Option<Id>, shape: ElevationShape },
+    /// Add survey points as elevation points: one point per line as
+    /// "x, y, elevation" (or whitespace-separated) in `unit`, or a GPX
+    /// track/waypoint file (`gpx: true`, metres, placed around the first
+    /// point). A terrain is made around them when the plan has none.
+    ImportTerrainPoints {
+        floor: Option<Id>,
+        text: String,
+        #[serde(default)]
+        gpx: bool,
+        #[serde(default)]
+        unit: Option<DisplayUnit>,
+    },
+    /// Remove the terrain and all elevation data.
+    ClearTerrain,
     /// Add a 3D solid; an unset colour comes from the solid defaults.
     AddSolid {
         floor: Option<Id>,
@@ -823,6 +841,10 @@ impl Command {
             Command::AddMaterial { .. } => "add_material",
             Command::AddMaterialRegion { .. } => "add_material_region",
             Command::AddSolid { .. } => "add_solid",
+            Command::AddTerrain { .. } => "add_terrain",
+            Command::AddElevationData { .. } => "add_elevation_data",
+            Command::ImportTerrainPoints { .. } => "import_terrain_points",
+            Command::ClearTerrain => "clear_terrain",
             Command::CadBoolean { .. } => "cad_boolean",
             Command::ExtrudeCad { .. } => "extrude_cad",
             Command::RevolveCad { .. } => "revolve_cad",
@@ -1766,6 +1788,75 @@ impl Command {
                     m.color = *c;
                 }
                 out.created.push(doc.insert(m));
+            }
+            Command::AddTerrain { floor, points } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                if points.len() < 3 {
+                    return invalid("a terrain outline needs at least three points");
+                }
+                let old: Vec<Id> = doc.iter::<Terrain>().map(|t| t.id).collect();
+                let mut t = match old.first().and_then(|id| doc.get::<Terrain>(*id)) {
+                    Some(t) => t.clone(),
+                    None => Terrain::new(floor, d.layers.cad, Vec::new()),
+                };
+                if !old.is_empty() {
+                    ops::delete(doc, &old, &mut out)?;
+                }
+                t.id = Id(0);
+                t.floor = floor;
+                t.perimeter = points.clone();
+                out.created.push(doc.insert(t));
+            }
+            Command::AddElevationData { floor, shape } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                out.created.push(doc.insert(ElevationData {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.cad,
+                    shape: shape.clone(),
+                }));
+            }
+            Command::ImportTerrainPoints { floor, text, gpx, unit } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                let pts = crate::site::parse_points(text, *gpx, unit.unwrap_or(doc.settings.display_unit))?;
+                if pts.is_empty() {
+                    return invalid("no points found");
+                }
+                for (x, y, z) in &pts {
+                    out.created.push(doc.insert(ElevationData {
+                        id: Id(0),
+                        floor,
+                        layer: d.layers.cad,
+                        shape: ElevationShape::Point {
+                            at: Point2(Length::from_mm(*x), Length::from_mm(*y)),
+                            elevation: Length::from_mm(*z),
+                        },
+                    }));
+                }
+                if doc.count::<Terrain>() == 0 {
+                    let pad = 3000.0;
+                    let lo = pts.iter().fold((f64::MAX, f64::MAX), |a, p| (a.0.min(p.0), a.1.min(p.1)));
+                    let hi = pts.iter().fold((f64::MIN, f64::MIN), |a, p| (a.0.max(p.0), a.1.max(p.1)));
+                    let q = |x: f64, y: f64| Point2(Length::from_mm(x), Length::from_mm(y));
+                    let perimeter = vec![
+                        q(lo.0 - pad, lo.1 - pad),
+                        q(hi.0 + pad, lo.1 - pad),
+                        q(hi.0 + pad, hi.1 + pad),
+                        q(lo.0 - pad, hi.1 + pad),
+                    ];
+                    out.created.push(doc.insert(Terrain::new(floor, d.layers.cad, perimeter)));
+                }
+            }
+            Command::ClearTerrain => {
+                let ids: Vec<Id> = doc
+                    .objects
+                    .values()
+                    .filter(|o| matches!(o.kind(), ObjectKind::Terrain | ObjectKind::ElevationData))
+                    .map(|o| o.id())
+                    .collect();
+                if !ids.is_empty() {
+                    ops::delete(doc, &ids, &mut out)?;
+                }
             }
             Command::AddSolid {
                 floor,

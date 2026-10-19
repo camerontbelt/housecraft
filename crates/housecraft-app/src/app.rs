@@ -493,6 +493,57 @@ impl App {
         }
     }
 
+    /// Terrain > Terrain Around Building: a lot 30' bigger than the plan
+    /// on every side.
+    fn terrain_around_building(&mut self) {
+        let doc = self.doc();
+        let floor = doc.floors_by_elevation()[0].id;
+        let pts = housecraft_api::geom::walls::wall_geoms(doc, floor)
+            .into_iter()
+            .flat_map(|g| [g.start, g.end]);
+        let (lo, hi) = housecraft_api::geom::math::bounds(pts)
+            .unwrap_or((glam::DVec2::splat(-6000.0), glam::DVec2::splat(6000.0)));
+        use housecraft_api::units::{Length, Point2};
+        let pad = Length::from_feet(30.0).mm();
+        let p = |x: f64, y: f64| Point2(Length::from_mm(x), Length::from_mm(y));
+        self.run1(Command::AddTerrain {
+            floor: Some(floor),
+            points: vec![
+                p(lo.x - pad, lo.y - pad),
+                p(hi.x + pad, lo.y - pad),
+                p(hi.x + pad, hi.y + pad),
+                p(lo.x - pad, hi.y + pad),
+            ],
+        });
+    }
+
+    /// Terrain > Import Survey Points: a text file of x, y, elevation (in
+    /// the plan's units) or a GPX file.
+    fn import_survey_points(&mut self) {
+        let Some(path) = rfd::FileDialog::new()
+            .add_filter("Survey points", &["txt", "csv", "xyz", "gpx"])
+            .pick_file()
+        else {
+            return;
+        };
+        let text = match std::fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(e) => {
+                self.error(format!("Could not read {}: {e}", path.display()));
+                return;
+            }
+        };
+        let gpx = path.extension().is_some_and(|e| e.eq_ignore_ascii_case("gpx"));
+        if let Some(out) = self.run1(Command::ImportTerrainPoints {
+            floor: Some(self.plan.floor),
+            text,
+            gpx,
+            unit: None,
+        }) {
+            self.info(format!("Imported {} points", out.created.len()));
+        }
+    }
+
     /// File > Export Settings: wall types, room types, text styles, layers,
     /// materials and molding profiles to share with other plans.
     fn export_settings(&mut self) {
@@ -1277,7 +1328,28 @@ impl App {
                 });
             });
             ui.menu_button("Terrain", |ui| {
-                ui.weak("Terrain tools are planned for a later release (backlog M6).");
+                for tool in Tool::TERRAIN {
+                    if tool_item(ui, tool) {
+                        self.set_tool(tool);
+                    }
+                }
+                ui.separator();
+                let terrain = self.doc().iter::<Terrain>().next().map(|t| t.id);
+                if item(ui, "Terrain Specification", "", terrain.is_some())
+                    && let Some(t) = terrain
+                {
+                    self.selection = vec![t];
+                    self.spec.push(t);
+                }
+                if item(ui, "Terrain Around Building", "", terrain.is_none()) {
+                    self.terrain_around_building();
+                }
+                if item(ui, "Import Survey Points…", "", true) {
+                    self.import_survey_points();
+                }
+                if item(ui, "Clear Terrain", "", terrain.is_some()) {
+                    self.run1(Command::ClearTerrain);
+                }
             });
             ui.menu_button("Library", |ui| {
                 if item(ui, "Library Browser", "", true) {

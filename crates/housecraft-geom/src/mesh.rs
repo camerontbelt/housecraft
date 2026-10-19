@@ -267,6 +267,7 @@ pub enum Category {
     Fixture,
     /// Cabinets, countertops and appliances.
     Cabinet,
+    Terrain,
 }
 
 
@@ -564,6 +565,11 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
                     spread: 0,
                 });
             }
+        }
+    }
+    for t in doc.iter::<housecraft_model::Terrain>() {
+        if only_floor.is_none_or(|f| f == t.floor) {
+            crate::terrain::terrain_mesh(doc, t, &mut mesh);
         }
     }
     for x in doc.iter::<housecraft_model::Solid>() {

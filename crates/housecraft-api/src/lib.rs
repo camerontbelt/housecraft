@@ -17,6 +17,7 @@ mod roofs;
 mod rooms;
 pub mod schedule;
 mod session;
+mod site;
 mod solids;
 mod symbols;
 mod views;

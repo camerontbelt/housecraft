@@ -510,6 +510,18 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             crate::cabinets::molding_polyline(m, look.stroke, &mut out);
         }
     }
+    for t in doc.iter::<Terrain>().filter(|t| t.floor == opts.floor) {
+        let look = ctx.look(t.layer);
+        if look.visible {
+            crate::site::terrain(doc, t, look.stroke, look.ink, &mut out);
+        }
+    }
+    for e in doc.iter::<ElevationData>().filter(|e| e.floor == opts.floor) {
+        let look = ctx.look(e.layer);
+        if look.visible {
+            crate::site::elevation_data(doc, e, look.stroke, look.ink, &mut out);
+        }
+    }
     for x in doc.iter::<Solid>().filter(|x| x.floor == opts.floor) {
         let look = ctx.look(x.layer);
         if look.visible {

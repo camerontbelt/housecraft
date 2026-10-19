@@ -715,6 +715,42 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     }
                 }
             }
+            Object::Terrain(t) => {
+                c.reference(id, "floor", t.floor, K::Floor);
+                c.reference(id, "layer", t.layer, K::Layer);
+                if t.perimeter.len() < 3 {
+                    c.issue(id, "a terrain outline needs at least three points");
+                }
+                c.non_negative(id, "skirt", t.skirt);
+                c.non_negative(id, "contour_interval", t.contour_interval);
+                let flat: Vec<f64> = t.perimeter.iter().flat_map(|p| p.mm()).collect();
+                c.finite(id, "perimeter", &flat);
+            }
+            Object::ElevationData(e) => {
+                c.reference(id, "floor", e.floor, K::Floor);
+                c.reference(id, "layer", e.layer, K::Layer);
+                let points: Vec<housecraft_units::Point2> = match &e.shape {
+                    ElevationShape::Point { at, .. } => vec![*at],
+                    ElevationShape::Line { points, .. } => {
+                        if points.len() < 2 {
+                            c.issue(id, "an elevation line needs at least two points");
+                        }
+                        points.clone()
+                    }
+                    ElevationShape::Region { points, .. } => {
+                        if points.len() < 3 {
+                            c.issue(id, "a flat region needs at least three points");
+                        }
+                        points.clone()
+                    }
+                    ElevationShape::Hill { center, radius, .. } | ElevationShape::Valley { center, radius, .. } => {
+                        c.positive(id, "radius", *radius);
+                        vec![*center]
+                    }
+                };
+                let flat: Vec<f64> = points.iter().flat_map(|p| p.mm()).collect();
+                c.finite(id, "points", &flat);
+            }
             Object::Solid(x) => {
                 c.reference(id, "floor", x.floor, K::Floor);
                 c.reference(id, "layer", x.layer, K::Layer);

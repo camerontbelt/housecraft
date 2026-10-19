@@ -1164,7 +1164,37 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 depth: None,
                 height: None,
             }),
-            Tool::Countertop | Tool::Backsplash | Tool::MoldingPolyline | Tool::FloorRegion => pending.push(p),
+            Tool::Countertop
+            | Tool::Backsplash
+            | Tool::MoldingPolyline
+            | Tool::FloorRegion
+            | Tool::TerrainPerimeter
+            | Tool::ElevationLine
+            | Tool::FlatRegion => pending.push(p),
+            Tool::ElevationPoint => commands.push(Command::AddElevationData {
+                floor,
+                shape: ElevationShape::Point {
+                    at: pt(p),
+                    elevation: Length::from_mm(ground_at(doc, p)),
+                },
+            }),
+            Tool::Hill | Tool::Valley => {
+                if let Some(c) = pending.pop() {
+                    let radius = Length::from_mm(c.distance(p));
+                    if radius.mm() > 10.0 {
+                        commands.push(Command::AddElevationData {
+                            floor,
+                            shape: if tool == Tool::Hill {
+                                ElevationShape::Hill { center: pt(c), radius, height: Length::from_feet(4.0) }
+                            } else {
+                                ElevationShape::Valley { center: pt(c), radius, depth: Length::from_feet(3.0) }
+                            },
+                        });
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
             Tool::WallRegion => {
                 if let Some(a) = pending.pop() {
                     if let Some(cmd) = wall_region(doc, app.plan.floor, a, p, region_material) {
@@ -1345,6 +1375,24 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
         }
         return;
     }
+    if finish && matches!(tool, Tool::TerrainPerimeter | Tool::ElevationLine | Tool::FlatRegion) {
+        let pending = std::mem::take(&mut app.plan.pending);
+        let points: Vec<Point2> = pending.iter().map(|p| pt(*p)).collect();
+        let at = pending.first().map_or(0.0, |p| ground_at(doc, *p));
+        match tool {
+            Tool::TerrainPerimeter if points.len() >= 3 => commands.push(Command::AddTerrain { floor, points }),
+            Tool::ElevationLine if points.len() >= 2 => commands.push(Command::AddElevationData {
+                floor,
+                shape: ElevationShape::Line { points, elevation: Length::from_mm(at), smooth: true },
+            }),
+            Tool::FlatRegion if points.len() >= 3 => commands.push(Command::AddElevationData {
+                floor,
+                shape: ElevationShape::Region { points, elevation: Length::from_mm(at) },
+            }),
+            _ => {}
+        }
+        return;
+    }
     if finish && tool == Tool::FloorRegion {
         let pending = std::mem::take(&mut app.plan.pending);
         if pending.len() >= 3
@@ -1471,6 +1519,15 @@ fn wall_region(doc: &Document, floor: Id, a: DVec2, b: DVec2, material: Option<I
             z1: Length::from_inches(48.0),
         },
     })
+}
+
+/// The terrain's height at `p` (mm), or 0 without a terrain: new elevation
+/// data starts at the ground it is drawn on.
+fn ground_at(doc: &Document, p: DVec2) -> f64 {
+    doc.iter::<Terrain>()
+        .next()
+        .and_then(|t| housecraft_api::geom::terrain::surface(doc, t))
+        .map_or(0.0, |s| s.height_at(p))
 }
 
 fn cad(floor: Option<Id>, shape: Shape) -> Command {
@@ -1851,7 +1908,7 @@ fn rubber_band(
             pts.push(pts[0]);
             painter.add(EShape::line(pts, stroke));
         }
-        Tool::Circle => {
+        Tool::Circle | Tool::Hill | Tool::Valley => {
             painter.circle_stroke(
                 view.to_screen(last),
                 view.len_px(last.distance(cursor)),

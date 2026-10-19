@@ -456,6 +456,29 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             }
             Object::MaterialRegion(r)
         }
+        Object::Terrain(ter) => {
+            let mut ter = ter.clone();
+            ter.perimeter = ter.perimeter.iter().map(|p| t.apply_point(*p)).collect();
+            if t.is_reflection() {
+                ter.perimeter.reverse();
+            }
+            Object::Terrain(ter)
+        }
+        Object::ElevationData(e) => {
+            let mut e = e.clone();
+            let k = t.scale_factor();
+            match &mut e.shape {
+                ElevationShape::Point { at, .. } => *at = t.apply_point(*at),
+                ElevationShape::Line { points, .. } | ElevationShape::Region { points, .. } => {
+                    *points = points.iter().map(|p| t.apply_point(*p)).collect();
+                }
+                ElevationShape::Hill { center, radius, .. } | ElevationShape::Valley { center, radius, .. } => {
+                    *center = t.apply_point(*center);
+                    *radius = *radius * k;
+                }
+            }
+            Object::ElevationData(e)
+        }
         Object::Solid(x) => {
             let mut x = x.clone();
             let k = t.scale_factor();
@@ -1156,6 +1179,8 @@ pub(crate) fn insert_objects(
                 Object::Backsplash(b) => b.floor = f,
                 Object::MoldingPolyline(m) => m.floor = f,
                 Object::Solid(x) => x.floor = f,
+                Object::Terrain(t) => t.floor = f,
+                Object::ElevationData(e) => e.floor = f,
                 Object::MaterialRegion(r) => r.floor = f,
                 _ => {}
             }
@@ -1211,6 +1236,8 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::Backsplash(b) => &mut b.floor,
             Object::MoldingPolyline(m) => &mut m.floor,
             Object::Solid(x) => &mut x.floor,
+            Object::Terrain(t) => &mut t.floor,
+            Object::ElevationData(e) => &mut e.floor,
             Object::MaterialRegion(r) => &mut r.floor,
             _ => continue,
         };

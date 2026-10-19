@@ -12,6 +12,7 @@ pub mod layout;
 pub mod macros;
 pub mod pdf;
 mod plan;
+mod site;
 pub mod svg;
 
 use housecraft_geom::DVec2;

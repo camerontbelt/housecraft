@@ -596,6 +596,66 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.label(format!("{} surfaces", st.materials.len()));
             ui.end_row();
         }
+        Object::Terrain(t) => {
+            if let Some(l) = ed.length(ui, "Base Elevation", "base_elevation", t.base_elevation) {
+                ed.out.push(patch(id, json!({ "base_elevation": l })));
+            }
+            if let Some(v) = ed.number(ui, "Smoothing", "smoothing", t.smoothing as f64)
+                && (0.0..=20.0).contains(&v)
+            {
+                ed.out.push(patch(id, json!({ "smoothing": v.round() as u32 })));
+            }
+            for (label, field, v) in [
+                ("Skirt Depth", "skirt", t.skirt),
+                ("Contour Interval", "contour_interval", t.contour_interval),
+            ] {
+                if let Some(l) = ed.length(ui, label, field, v) {
+                    ed.out.push(patch(id, json!({ field: l })));
+                }
+            }
+            if let Some(v) = ed.number(ui, "Label Every nth Contour", "major_every", t.major_every as f64)
+                && v >= 1.0
+            {
+                ed.out.push(patch(id, json!({ "major_every": v.round() as u32 })));
+            }
+            ed.check(ui, "Horizon", "extend_to_horizon", "Extend flat ground to the horizon in 3D", t.extend_to_horizon);
+            Ed::label(ui, "Colour");
+            let mut c32 = to_color32(t.color);
+            if ui.color_edit_button_srgba(&mut c32).changed() {
+                ed.out.push(patch(id, json!({ "color": from_color32(c32) })));
+            }
+            ui.end_row();
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(t.layer), None);
+        }
+        Object::ElevationData(e) => {
+            let mut shape = e.shape.clone();
+            match &mut shape {
+                ElevationShape::Point { elevation, .. }
+                | ElevationShape::Line { elevation, .. }
+                | ElevationShape::Region { elevation, .. } => {
+                    if let Some(l) = ed.length(ui, "Elevation", "shape.elevation", *elevation) {
+                        *elevation = l;
+                    }
+                }
+                ElevationShape::Hill { radius, height, .. } | ElevationShape::Valley { radius, depth: height, .. } => {
+                    if let Some(l) = ed.length(ui, "Radius", "shape.radius", *radius) {
+                        *radius = l;
+                    }
+                    if let Some(l) = ed.length(ui, "Height", "shape.height", *height) {
+                        *height = l;
+                    }
+                }
+            }
+            if let ElevationShape::Line { smooth, .. } = &mut shape {
+                Ed::label(ui, "");
+                ui.checkbox(smooth, "Smooth (spline)");
+                ui.end_row();
+            }
+            if shape != e.shape {
+                ed.out.push(patch(id, json!({ "shape": shape })));
+            }
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(e.layer), None);
+        }
         Object::Solid(x) => {
             match &x.shape {
                 SolidShape::Extrude { height, .. } => {

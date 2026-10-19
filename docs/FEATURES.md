@@ -74,7 +74,7 @@ These come from reading the whole list and change the architecture, not just the
 | VIS-15 | Spherical (360°) backdrops with offset/orientation/eye level | P2 | M7 |
 | VIS-16 | HDR backdrops providing environment lighting | P2 | M7 |
 | VIS-17 | HDR image export | P2 | M7 |
-| VIS-18 | Extend terrain to horizon in 3D | P2 | M6 |
+| VIS-18 | Extend terrain to horizon in 3D | P2 | M6 ✓ terrain option: extend flat ground to the horizon in 3D |
 | VIS-19 | Procedural grass regions (length, density, color) | P3 | M7 |
 | VIS-20 | Render techniques: standard, PBR, watercolor, squiggle line, technical illustration, clay, vector, glass house, duotone | P1→P2 | M5/M7 |
 | VIS-21 | Line-drawing overlay on standard/duotone/watercolor/PBR/clay | P2 | M7 |
@@ -412,12 +412,12 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-01 | North pointer, sun angles from lat/long/date/time; 2D and 3D shadows | P1 | M3 ✓ |
 | SITE-02 | Copy sun angles for studies | P3 | M7 |
 | SITE-03 | Bearing/angle display formats (azimuth, quadrant, DMS) | P1 | M1 |
-| SITE-04 | Terrain model from elevation data: smoothing, triangulation, skirt, contours | P2 | M6 |
+| SITE-04 | Terrain model from elevation data: smoothing, triangulation, skirt, contours | P2 | M6 ✓ terrain from elevation data: trend plane plus distance blending, smoothing passes, building cut-out, skirt, contours |
 | SITE-05 | Plot plans, site plans, subdivisions from bearings, distances and setbacks | P2 | M6 |
-| SITE-06 | Terrain import: text/GPS/GPX, DWG/DXF | P2 | M6 |
-| SITE-07 | Elevation splines, lines, regions, points; subfloor marker; clear terrain | P2 | M6 |
-| SITE-08 | Terrain elevation labels | P2 | M6 |
-| SITE-09 | Terrain modifiers: hills, valleys, elevated and flat regions | P2 | M6 |
+| SITE-06 | Terrain import: text/GPS/GPX, DWG/DXF | P2 | M6 ◐ text/CSV x,y,z and GPX survey points; no DWG/DXF terrain import |
+| SITE-07 | Elevation splines, lines, regions, points; subfloor marker; clear terrain | P2 | M6 ◐ elevation points, lines (smooth splines) and flat regions; Clear Terrain; no subfloor marker |
+| SITE-08 | Terrain elevation labels | P2 | M6 ✓ spot heights and major contours labelled in plan |
+| SITE-09 | Terrain modifiers: hills, valleys, elevated and flat regions | P2 | M6 ✓ hills, valleys and flat (elevated) regions |
 | SITE-10 | Retaining walls and terrain breaks | P2 | M6 |
 | SITE-11 | Stepping stones, streams, curbing, garden beds | P3 | M6 |
 | SITE-12 | Roads, medians, striping, curbs, gutters, driveways, sidewalks, cul-de-sacs | P2 | M6 |
@@ -568,7 +568,7 @@ These come from reading the whole list and change the architecture, not just the
 | IO-07 | Import/export settings objects (views, default sets, layer sets, hotkeys, wall types, line styles, macros, scripts) | P2 | M5 ◐ File > Export/Import Settings: wall types, room types, text styles, layers, materials, molding profiles (not views, default sets, hotkeys or macros) |
 | IO-08 | 3D mass import → library objects | P2 | M5 ✓ Library Browser > Import 3D Models… adds every OBJ/STL in a folder as library symbols |
 | IO-09 | Textures → materials in bulk | P2 | M5 ✓ Import Textures… makes a material per image in a folder |
-| IO-10 | Terrain survey import | P2 | M6 |
+| IO-10 | Terrain survey import | P2 | M6 ✓ Terrain > Import Survey Points… (x,y,z text or GPX) |
 | IO-11 | Settings migration between versions | P3 | M8 |
 | IO-12 | **Open Chief Architect `.plan` / `.layout`** (ours) | P1/P2 | M2/M8 |
 | IO-13 | **Open Home Designer plans** (same family) | P2 | M8 |

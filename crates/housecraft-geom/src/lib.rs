@@ -18,6 +18,7 @@ pub mod solid;
 pub mod stairs;
 pub mod sun;
 pub mod sweep;
+pub mod terrain;
 pub mod transform;
 pub mod trim;
 pub mod triangulate;

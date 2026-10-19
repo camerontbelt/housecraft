@@ -251,6 +251,14 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         ),
         Object::Appliance(a) => format!("{} {} wide", a.appliance_kind.name(), fmt(a.width)),
         Object::Backsplash(b) => format!("backsplash {} high", fmt(b.height)),
+        Object::Terrain(t) => format!("terrain, {} points", t.perimeter.len()),
+        Object::ElevationData(e) => match &e.shape {
+            ElevationShape::Point { elevation, .. }
+            | ElevationShape::Line { elevation, .. }
+            | ElevationShape::Region { elevation, .. } => format!("{} at {}", e.shape.name(), fmt(*elevation)),
+            ElevationShape::Hill { height, .. } => format!("hill {} high", fmt(*height)),
+            ElevationShape::Valley { depth, .. } => format!("valley {} deep", fmt(*depth)),
+        },
         Object::Solid(x) => match &x.shape {
             SolidShape::Extrude { height, .. } => format!("solid {} high", fmt(*height)),
             SolidShape::Revolve { sweep, .. } => format!("revolved solid, {sweep}°"),

@@ -376,6 +376,8 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_molding_profile", "name": "P", "points": [[0,0],[10,0],[0,10]]}},
                 {{"op": "save_style", "name": "S"}},
                 {{"op": "add_molding_polyline", "points": [["1'","2'"], ["3'","2'"]], "stack": [{{"height": 50, "depth": 10}}]}},
+                {{"op": "add_terrain", "points": [["-20'","-20'"], ["40'","-20'"], ["40'","50'"]]}},
+                {{"op": "add_elevation_data", "shape": {{"type": "hill", "center": [0,0], "radius": "10'", "height": "3'"}}}},
                 {{"op": "add_solid", "shape": {{"type": "extrude", "points": [[0,0],[1000,0],[0,1000]], "height": 500}}}},
                 {{"op": "add_picture", "path": "x.png", "position": [0,0], "width": "1'"}},
                 {{"op": "add_symbol_def", "name": "S", "positions": [[0,0,0],[1,0,0],[0,-1,0],[0,0,1]], "triangles": [[0,1,2],[0,1,3]]}},

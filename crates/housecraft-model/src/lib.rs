@@ -10,6 +10,7 @@ mod building;
 mod cabinet;
 mod display;
 mod imported;
+mod site;
 mod solid;
 mod material;
 mod template;
@@ -29,6 +30,7 @@ pub use building::*;
 pub use cabinet::*;
 pub use display::*;
 pub use imported::*;
+pub use site::*;
 pub use solid::*;
 pub use material::*;
 pub use trim::*;
@@ -172,6 +174,8 @@ objects! {
     MaterialRegion => "material_region",
     StylePalette => "style_palette",
     Solid => "solid",
+    Terrain => "terrain",
+    ElevationData => "elevation_data",
 }
 
 impl fmt::Display for ObjectKind {
@@ -205,6 +209,8 @@ impl ObjectKind {
                 | ObjectKind::Backsplash
                 | ObjectKind::MoldingPolyline
                 | ObjectKind::Solid
+                | ObjectKind::Terrain
+                | ObjectKind::ElevationData
                 | ObjectKind::MaterialRegion
         )
     }
@@ -453,6 +459,8 @@ impl Document {
             Object::Backsplash(b) => Some(b.floor),
             Object::MoldingPolyline(m) => Some(m.floor),
             Object::Solid(x) => Some(x.floor),
+            Object::Terrain(t) => Some(t.floor),
+            Object::ElevationData(e) => Some(e.floor),
             Object::MaterialRegion(r) => Some(r.floor),
             _ => None,
         }
@@ -483,6 +491,8 @@ impl Document {
             Object::Backsplash(b) => Some(b.layer),
             Object::MoldingPolyline(m) => Some(m.layer),
             Object::Solid(x) => Some(x.layer),
+            Object::Terrain(t) => Some(t.layer),
+            Object::ElevationData(e) => Some(e.layer),
             Object::MaterialRegion(r) => Some(r.layer),
             _ => None,
         }

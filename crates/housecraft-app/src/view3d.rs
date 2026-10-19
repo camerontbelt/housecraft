@@ -843,11 +843,22 @@ fn grade(doc: &housecraft_api::model::Document) -> Option<f32> {
     housecraft_api::geom::sun::grade(doc).map(|z| (z / 1000.0) as f32)
 }
 
+/// Whether to draw the flat ground plane, and its height (metres) when a
+/// terrain extends to the horizon.
+fn ground(doc: &housecraft_api::model::Document) -> (bool, Option<f32>) {
+    match doc.iter::<housecraft_api::model::Terrain>().next() {
+        None => (true, None),
+        Some(t) if t.extend_to_horizon => (true, Some((t.base_elevation.mm() / 1000.0) as f32 - 0.005)),
+        Some(_) => (false, None),
+    }
+}
+
 fn to_gpu(
     mesh: &Mesh,
     selection: &[Id],
     hidden: &[Category],
     grade_z: Option<f32>,
+    ground: (bool, Option<f32>),
 ) -> (Vec<Vertex>, Vec<u32>) {
     let mut vertices: Vec<Vertex> = mesh
         .positions
@@ -877,10 +888,13 @@ fn to_gpu(
             }
         }
     }
-    // Ground plane under everything.
-    if let Some((lo, hi)) = mesh_bounds(mesh) {
-        let pad = ((hi - lo).length() * 0.6).max(10.0);
-        let z = grade_z.unwrap_or(lo.z - 0.02);
+    // Ground plane under everything (with a terrain, only out to the
+    // horizon when asked).
+    if let Some((lo, hi)) = mesh_bounds(mesh)
+        && ground.0
+    {
+        let pad = if ground.1.is_some() { 3000.0 } else { ((hi - lo).length() * 0.6).max(10.0) };
+        let z = ground.1.or(grade_z).unwrap_or(lo.z - 0.02);
         let base = vertices.len() as u32;
         // Alpha 0 marks the ground for the shader (it is drawn opaque).
         let g = [0.62, 0.68, 0.55, 0.0];
@@ -1125,6 +1139,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             &app.selection,
             &v.hidden,
             grade(app.session.document()),
+            ground(app.session.document()),
         );
         v.gpu_key = v.gpu_key.wrapping_add(1);
         v.gpu = Some((sel_hash, Arc::new(verts), Arc::new(idx)));
@@ -1255,7 +1270,7 @@ pub fn export_image(
             r.tex_keys = mesh.textures.clone();
         }
     }
-    let (verts, idx) = to_gpu(&mesh, &[], &v.hidden, grade(doc));
+    let (verts, idx) = to_gpu(&mesh, &[], &v.hidden, grade(doc), ground(doc));
     v.mesh = Some((app.rev, mesh));
     let uniforms = frame_uniforms(v, doc, v.view_proj(w as f32 / h as f32));
     let vbuf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {

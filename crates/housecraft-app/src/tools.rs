@@ -66,6 +66,30 @@ pub enum Tool {
     ObjectPainter,
     /// Draw a 3D solid (box, cylinder, cone or sphere) in a rectangle.
     Solid,
+    /// Draw the terrain's outline.
+    TerrainPerimeter,
+    /// Place a spot elevation.
+    ElevationPoint,
+    /// Draw a line of one elevation.
+    ElevationLine,
+    /// Draw a flat region.
+    FlatRegion,
+    /// Raise a rounded hill.
+    Hill,
+    /// Dig a rounded valley.
+    Valley,
+}
+
+impl Tool {
+    /// The terrain tools, in menu order.
+    pub const TERRAIN: [Tool; 6] = [
+        Tool::TerrainPerimeter,
+        Tool::ElevationPoint,
+        Tool::ElevationLine,
+        Tool::FlatRegion,
+        Tool::Hill,
+        Tool::Valley,
+    ];
 }
 
 /// The shapes offered by the stair tools.
@@ -373,6 +397,12 @@ impl Tool {
             Tool::WallRegion => "Wall Material Region",
             Tool::ObjectPainter => "Object Painter",
             Tool::Solid => "3D Solid",
+            Tool::TerrainPerimeter => "Terrain Perimeter",
+            Tool::ElevationPoint => "Elevation Point",
+            Tool::ElevationLine => "Elevation Line",
+            Tool::FlatRegion => "Flat Region",
+            Tool::Hill => "Hill",
+            Tool::Valley => "Valley",
             Tool::PlaceGroup => "Place Group",
         }
     }
@@ -407,6 +437,9 @@ impl Tool {
             Tool::Point => Icon::Point,
             Tool::MoldingPolyline | Tool::FloorRegion => Icon::Polyline,
             Tool::WallRegion | Tool::Solid => Icon::Box,
+            Tool::TerrainPerimeter | Tool::ElevationLine | Tool::FlatRegion => Icon::Polyline,
+            Tool::ElevationPoint => Icon::Point,
+            Tool::Hill | Tool::Valley => Icon::Circle,
             Tool::ObjectPainter => Icon::Select,
             Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => Icon::Box,
             Tool::Callout | Tool::Marker | Tool::RevisionCloud => Icon::Text,
@@ -516,6 +549,11 @@ impl Tool {
             Tool::Solid => {
                 "Click two opposite corners; the shape and height come from Default Settings > 3D Solids."
             }
+            Tool::TerrainPerimeter => "Click the corners of the lot; double-click or Enter to finish.",
+            Tool::ElevationPoint => "Click to place a spot elevation (set its height in its specification).",
+            Tool::ElevationLine => "Click along the line; double-click or Enter to finish.",
+            Tool::FlatRegion => "Click the corners of the flat area; double-click or Enter to finish.",
+            Tool::Hill | Tool::Valley => "Click the centre, then a point on its edge.",
             Tool::WallRegion => "Click the two ends of the region on one side of a wall.",
             Tool::ObjectPainter => {
                 "Alt+click an object to copy from, tick what to copy, then click objects to paint them."
