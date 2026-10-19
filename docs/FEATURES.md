@@ -222,19 +222,19 @@ These come from reading the whole list and change the architecture, not just the
 | DW-02 | Door types: interior, exterior, sliding, barn, pocket, bifold, atrium, fixed, double, shower, garage | P1 | M3 ✓ |
 | DW-03 | Window types: fixed, single/double hung, slider, casement, corner, recessed, louvered, bay, box, pass-through | P1 | M3 ◐ fixed, single/double hung, slider, casement, awning, hopper; corner, bay, box, recessed (P2 items) later |
 | DW-04 | Defaults per door type | P1 | M3 ✓ |
-| DW-05 | Door glass per side; glass garage panels | P2 | M3 |
+| DW-05 | Door glass per side; glass garage panels | P2 | M3 ◐ door glass, full or upper lites, in hinged, double and atrium leaves; garage doors with glass sections; one glass material for both sides |
 | DW-06 | Opening indicators; show open/partial in 3D and plan | P1 | M3 ✓ |
-| DW-07 | Multi-panel / accordion / stacking doors | P2 | M3 |
-| DW-08 | Bay/box/bow windows as editable groups incl. roofs and platforms | P2 | M3 |
-| DW-09 | Explode bay/box/bow into components | P3 | M3 |
-| DW-10 | Corner windows (with/without post) | P2 | M3 |
-| DW-11 | Mulled units; mulled doors recognized in schedules | P2 | M3 |
+| DW-07 | Multi-panel / accordion / stacking doors | P2 | M3 ✓ sliding doors with any number of panels in staggered tracks (stacking), bifolds with many leaves (accordion) |
+| DW-08 | Bay/box/bow windows as editable groups incl. roofs and platforms | P2 | M3 ◐ Bay, Box and Bow Window tools build the projecting walls with a window in each face; no roof or separate platform, and the parts are edited one by one |
+| DW-09 | Explode bay/box/bow into components | P3 | M3 ✓ bay, box and bow windows are always ordinary walls and windows you can edit or delete |
+| DW-10 | Corner windows (with/without post) | P2 | M3 ◐ Corner Window tool: a matched pair meeting at a corner post; no post-less glass corner |
+| DW-11 | Mulled units; mulled doors recognized in schedules | P2 | M3 ◐ windows can be mulled (2–8 units with mullions), shown in descriptions and schedules; doors with sidelights not yet |
 | DW-12 | Openings in double walls | P3 | M3 ✓ a door or window in either wall of a back-to-back pair cuts through both, in plan and 3D |
 | DW-13 | Custom plan symbols for symbol windows | P3 | M5 ✓ any CAD block as a window's plan symbol, stretched over the opening |
 | DW-14 | Custom muntins from CAD | P3 | M5 ✓ CAD > Make Window Grille from Selection; plus across × up grids |
 | DW-15 | Window treatments (curtains, blinds) | P3 | M5 ✓ curtains, blinds and roller shades with an open amount, in plan and 3D |
 | DW-16 | Shutters (parametric or symbol, own layer) | P2 | M5 ◐ louvered, raised-panel and board shutters in plan and 3D; drawn on the window's layer, not their own |
-| DW-17 | Lintels, sills, aprons | P2 | M3 |
+| DW-17 | Lintels, sills, aprons | P2 | M3 ✓ opening Trim: exterior lintel and sill, interior apron (3D) |
 | DW-18 | Glazing area and U-factor | P2 | M4 |
 
 ## 9. Roofs & ceilings

@@ -1583,3 +1583,111 @@ pub(crate) fn refresh_auto_dimensions(doc: &mut Document, before: &Document, out
         out.merge(o);
     }
 }
+
+/// Open `wall` around `position` and build a bay, box or bow projecting
+/// `depth` outward, a window in each face (see `Command::AddBayWindow`).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn bay_window(
+    doc: &mut Document,
+    wall: Id,
+    position: Length,
+    width: Length,
+    depth: Length,
+    bay: crate::command::BayStyle,
+    faces: u8,
+    style: Option<WindowStyle>,
+    out: &mut Outcome,
+) -> Result<(), ApiError> {
+    use crate::command::BayStyle;
+    let w = expect::<Wall>(doc, wall)?.clone();
+    let (s, e) = (v2(w.start), v2(w.end));
+    let len = s.distance(e);
+    let (pos, wid, dep) = (position.mm(), width.mm(), depth.mm());
+    let (ua, ub) = (pos - wid / 2.0, pos + wid / 2.0);
+    if ua < 1.0 || ub > len - 1.0 || dep < 50.0 {
+        return invalid("the bay must fit inside the wall and project at least 50 mm");
+    }
+    let dir = (e - s) / len;
+    let out_n = perp(dir); // the exterior side
+    let (a, b) = (s + dir * ua, s + dir * ub);
+    // The projecting outline from a to b.
+    let pts: Vec<DVec2> = match bay {
+        BayStyle::Box => vec![a, a + out_n * dep, b + out_n * dep, b],
+        BayStyle::Bay => {
+            let inset = dep.min(wid / 2.0 - 50.0).max(0.0);
+            vec![a, a + out_n * dep + dir * inset, b + out_n * dep - dir * inset, b]
+        }
+        BayStyle::Bow => {
+            // An arc through a, the middle pushed out by `depth`, and b.
+            let n = faces.clamp(3, 12) as usize;
+            let half = wid / 2.0;
+            let r = (half * half + dep * dep) / (2.0 * dep);
+            let center = (a + b) / 2.0 + out_n * (dep - r);
+            let a0 = (a - center).to_angle();
+            let a1 = (b - center).to_angle();
+            let mut sweep = a1 - a0;
+            while sweep > std::f64::consts::PI {
+                sweep -= std::f64::consts::TAU;
+            }
+            while sweep < -std::f64::consts::PI {
+                sweep += std::f64::consts::TAU;
+            }
+            (0..=n).map(|i| center + DVec2::from_angle(a0 + sweep * i as f64 / n as f64) * r).collect()
+        }
+    };
+    // Split the wall: it keeps start..a; a new wall runs b..end with the
+    // openings beyond the bay; openings inside the bay go.
+    let openings: Vec<Opening> = doc.openings_in(wall).cloned().collect();
+    let mut tail = w.clone();
+    tail.id = Id(0);
+    tail.start = pt(b);
+    let tail_id = doc.insert(tail);
+    out.created.push(tail_id);
+    if let Some(Object::Wall(x)) = doc.objects.get_mut(&wall) {
+        x.end = pt(a);
+    }
+    out.modified.push(wall);
+    for o in openings {
+        let p = o.position.mm();
+        if p + o.width.mm() / 2.0 <= ua {
+            continue;
+        }
+        if p - o.width.mm() / 2.0 >= ub
+            && let Some(Object::Opening(x)) = doc.objects.get_mut(&o.id)
+        {
+            x.wall = tail_id;
+            x.position = Length::from_mm(p - ub);
+            out.modified.push(o.id);
+        } else {
+            doc.remove(o.id);
+            out.deleted.push(o.id);
+        }
+    }
+    // The bay's walls, each with a window.
+    let layer = w.layer;
+    for pair in pts.windows(2) {
+        let id = add_wall(doc, w.floor, pt(pair[0]), pt(pair[1]), w.wall_type, w.height, layer)?;
+        out.created.push(id);
+        let face = pair[0].distance(pair[1]);
+        let t = doc.get::<WallType>(w.wall_type).map_or(150.0, |t| t.thickness().mm());
+        // Bow faces are glass nearly edge to edge; bay and box faces keep jambs.
+        let ww = if bay == BayStyle::Bow { face - 60.0 } else { face - t - 100.0 };
+        if ww > 250.0 {
+            let o = crate::Command::AddWindow {
+                wall: id,
+                position: Some(Length::from_mm(face / 2.0)),
+                at: None,
+                style,
+                width: Some(Length::from_mm(ww)),
+                height: None,
+                sill: None,
+            }
+            .apply(doc);
+            // A face too small for a window just stays wall.
+            if let Ok(o) = o {
+                out.merge(o);
+            }
+        }
+    }
+    Ok(())
+}

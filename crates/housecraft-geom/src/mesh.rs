@@ -1628,6 +1628,7 @@ fn swung_leaf(
     width: f64,
     angle: f64,
     z: (f64, f64),
+    glass: Option<housecraft_model::DoorGlass>,
     mesh: &mut Mesh,
 ) {
     let d = closed * angle.cos() + side * angle.sin();
@@ -1640,6 +1641,21 @@ fn swung_leaf(
         pivot + n * DOOR_THICKNESS,
     ];
     mesh.prism(&ccw(quad), z.0, z.1, Surface::Door);
+    if let Some(gl) = glass {
+        // A glass panel through the leaf, inside a rail and stile border.
+        let m = (width * 0.18).min(120.0);
+        let (g0, g1) = match gl {
+            housecraft_model::DoorGlass::Full => (z.0 + 250.0, z.1 - 120.0),
+            housecraft_model::DoorGlass::Upper => ((z.0 + z.1) / 2.0, z.1 - 120.0),
+        };
+        let quad = vec![
+            pivot + d * m - n * 2.0,
+            pivot + d * (width - m) - n * 2.0,
+            pivot + d * (width - m) + n * (DOOR_THICKNESS + 2.0),
+            pivot + d * m + n * (DOOR_THICKNESS + 2.0),
+        ];
+        mesh.prism(&ccw(quad), g0, g1, Surface::Glass);
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1684,6 +1700,7 @@ fn door_mesh(
                 w,
                 angle,
                 (bottom, top),
+                o.details.glass,
                 mesh,
             );
             if style == D::Shower {
@@ -1705,6 +1722,7 @@ fn door_mesh(
                 active,
                 angle,
                 (bottom, top),
+                o.details.glass,
                 mesh,
             );
             swung_leaf(
@@ -1714,6 +1732,7 @@ fn door_mesh(
                 (mid - fixed).abs(),
                 0.0,
                 (bottom, top),
+                o.details.glass,
                 mesh,
             );
         }
@@ -1743,19 +1762,26 @@ fn door_mesh(
                     (f - h).abs(),
                     angle,
                     (bottom, top),
+                    o.details.glass,
                     mesh,
                 );
             }
         }
         D::Sliding => {
+            // Panels in staggered tracks; opening stacks them toward the start.
             let (lo, hi) = (a.min(b), a.max(b));
-            let half = (hi - lo) / 2.0;
-            let lap = (hi - lo) * 0.05;
-            let off = g.half * 0.3;
-            panel(mesh, lo, lo + half + lap, off, bottom, top);
-            // The operable panel slides behind the fixed one.
-            let shift = open * half;
-            panel(mesh, lo + half - lap - shift, hi - shift, -off, bottom, top);
+            let count = (o.details.panels.max(2)) as usize;
+            let w = (hi - lo) / count as f64;
+            let lap = w * 0.08;
+            let tracks = (count.min(3)) as f64;
+            for k in 0..count {
+                let track = (k % 3) as f64;
+                let off = g.half * 0.6 * (track / (tracks - 1.0).max(1.0) - 0.5);
+                // Every panel but the first slides over the ones before it.
+                let shift = if k == 0 { 0.0 } else { open * w * k as f64 };
+                let u0 = (lo + w * k as f64 - lap - shift).max(lo - lap);
+                panel(mesh, u0, u0 + w + 2.0 * lap, off, bottom, top);
+            }
         }
         D::Pocket => {
             let (lo, hi) = (a.min(b), a.max(b));
@@ -1763,15 +1789,21 @@ fn door_mesh(
             panel(mesh, lo - shift, hi - shift, 0.0, bottom, top);
         }
         D::Bifold => {
-            // Two leaves per side; opening folds them back against each jamb.
+            // Leaves folding back against each jamb (many: an accordion door).
             let (lo, hi) = (a.min(b), a.max(b));
-            let w = (hi - lo) / 4.0;
+            let count = (o.details.panels.max(4) as usize).div_ceil(2) * 2;
+            let w = (hi - lo) / count as f64;
             for (hinge, dir) in [(lo, g.dir), (hi, -g.dir)] {
-                let p0 = inset(hinge);
                 let d1 = dir * angle.cos() + swing.side * angle.sin();
-                let p1 = p0 + d1 * w;
                 let d2 = dir * angle.cos() - swing.side * angle.sin();
-                for (p, d) in [(p0, d1), (p1, d2)] {
+                let mut p = inset(hinge);
+                let mut leaves = Vec::new();
+                for k in 0..count / 2 {
+                    let d = if k % 2 == 0 { d1 } else { d2 };
+                    leaves.push((p, d));
+                    p += d * w;
+                }
+                for (p, d) in leaves {
                     let n = perp_of(d) * DOOR_THICKNESS;
                     mesh.prism(
                         &ccw(vec![p, p + d * w, p + d * w + n, p + n]),
@@ -1792,7 +1824,20 @@ fn door_mesh(
             let gap = 5.0;
             for i in 0..sections {
                 let s0 = i as f64 * h + lift;
-                if s0 + h <= height + 1e-6 {
+                // Glass sections: all of them, or the top one.
+                let glazed = match o.details.glass {
+                    Some(housecraft_model::DoorGlass::Full) => true,
+                    Some(housecraft_model::DoorGlass::Upper) => i == sections - 1,
+                    None => false,
+                };
+                if s0 + h <= height + 1e-6 && glazed {
+                    panel(mesh, a, b, off, bottom + s0 + gap, bottom + s0 + 2.0 * gap + 60.0);
+                    panel(mesh, a, b, off, bottom + s0 + h - 60.0 - 2.0 * gap, bottom + s0 + h - gap);
+                    let t = g.left * 8.0;
+                    let o2 = g.left * off;
+                    let (c0, c1) = (g.center_at(a) + o2, g.center_at(b) + o2);
+                    mesh.prism(&ccw(vec![c0 - t, c1 - t, c1 + t, c0 + t]), bottom + s0 + 60.0 + 2.0 * gap, bottom + s0 + h - 60.0 - 2.0 * gap, Surface::Glass);
+                } else if s0 + h <= height + 1e-6 {
                     panel(mesh, a, b, off, bottom + s0 + gap, bottom + s0 + h - gap);
                 } else {
                     // Horizontal, running into the room under the ceiling.
@@ -1875,8 +1920,28 @@ fn opening_mesh(g: &WallGeom, o: &Opening, z0: f64, mesh: &mut Mesh) {
             slab(mesh, 2.0 * g.half, a, b, top - frame, top, Surface::Frame);
             slab(mesh, 2.0 * g.half, a, a + frame, bottom, top, Surface::Frame);
             slab(mesh, 2.0 * g.half, b - frame, b, bottom, top, Surface::Frame);
+            // Mulled units: a double mullion between each pair.
+            let units = o.details.mulled.max(1) as usize;
+            for k in 1..units {
+                let u = a + (b - a) * k as f64 / units as f64;
+                slab(mesh, 2.0 * g.half, u - frame, u + frame, bottom, top, Surface::Frame);
+            }
             window_details(g, o, z0, (a + frame, b - frame), (bottom + frame, top - frame), mesh);
         }
+    }
+    // Trim: lintel above and sill below outside, apron under the inside stool.
+    let dt = &o.details;
+    let trim = mesh.look(Surface::Trim);
+    let (lo, hi) = (a.min(b), a.max(b));
+    if dt.lintel {
+        wall_box(g, (lo - 100.0, hi + 100.0), (top, top + 180.0), (g.half - 1.0, g.half + 25.0), trim, mesh);
+    }
+    if dt.sill_trim && bottom > z0 + 1.0 {
+        wall_box(g, (lo - 50.0, hi + 50.0), (bottom - 45.0, bottom), (g.half - 1.0, g.half + 60.0), trim, mesh);
+    }
+    if dt.apron && bottom > z0 + 1.0 {
+        wall_box(g, (lo - 30.0, hi + 30.0), (bottom - 20.0, bottom), (-g.half - 40.0, -g.half + 1.0), trim, mesh);
+        wall_box(g, (lo, hi), (bottom - 110.0, bottom - 20.0), (-g.half - 18.0, -g.half + 1.0), trim, mesh);
     }
 }
 

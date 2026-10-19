@@ -789,6 +789,32 @@ pub enum Command {
     /// Type an object's own label (replacing its kind's template from the
     /// default set; "-" hides it), or `None` to go back to the template.
     SetObjectLabel { id: Id, text: Option<String> },
+    /// Two windows meeting at a corner: one at the end of `wall`, one at the
+    /// start of the wall joined there (or at `wall`'s start and the wall
+    /// ending there, with `at_start`).
+    AddCornerWindow {
+        wall: Id,
+        #[serde(default)]
+        at_start: bool,
+        width: Length,
+        height: Option<Length>,
+        sill: Option<Length>,
+        style: Option<WindowStyle>,
+    },
+    /// A bay, box or bow window: the wall is opened `width` wide around
+    /// `position` and walls project `depth` outward, each with a window.
+    AddBayWindow {
+        wall: Id,
+        position: Length,
+        width: Length,
+        depth: Length,
+        #[serde(default)]
+        bay: BayStyle,
+        /// Bow windows: how many faces (default 5).
+        #[serde(default)]
+        faces: Option<u8>,
+        style: Option<WindowStyle>,
+    },
     /// Show angles as decimal degrees, DMS, bearings or azimuths.
     SetAngleFormat { format: housecraft_units::AngleFormat },
     /// Set an object's information fields (`None` clears them).
@@ -904,6 +930,19 @@ pub enum Command {
 
 fn one() -> u32 {
     1
+}
+
+/// The shape of a bay window.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum BayStyle {
+    /// Sides at 45°.
+    #[default]
+    Bay,
+    /// Sides at 90°.
+    Box,
+    /// Faces on a curve.
+    Bow,
 }
 
 /// A shape on a named layer, for [`Command::ImportDrawing`].
@@ -1112,6 +1151,8 @@ impl Command {
             Command::SetLineType { .. } => "set_line_type",
             Command::AddStandardPlanViews => "add_standard_plan_views",
             Command::SetAngleFormat { .. } => "set_angle_format",
+            Command::AddCornerWindow { .. } => "add_corner_window",
+            Command::AddBayWindow { .. } => "add_bay_window",
             Command::SetObjectInfo { .. } => "set_object_info",
             Command::SetDimensionStyle { .. } => "set_dimension_style",
             Command::DeleteLineType { .. } => "delete_line_type",
@@ -2827,6 +2868,37 @@ impl Command {
             }
             Command::AddStandardPlanViews => ops::standard_plan_views(doc, &mut out)?,
             Command::SetAngleFormat { format } => doc.settings.angle_format = *format,
+            Command::AddCornerWindow { wall, at_start, width, height, sill, style } => {
+                let w = expect::<Wall>(doc, *wall)?.clone();
+                let corner = if *at_start { w.start } else { w.end };
+                let near = |p: Point2| p.distance(corner).mm() < 1.0;
+                let other = doc
+                    .walls_on(w.floor)
+                    .find(|x| x.id != w.id && (if *at_start { near(x.end) } else { near(x.start) }))
+                    .cloned()
+                    .ok_or_else(|| ApiError::Invalid("no wall joins that corner".into()))?;
+                let half_of = |x: &Wall| doc.get::<WallType>(x.wall_type).map_or(0.0, |t| t.thickness().mm() / 2.0);
+                // Each window ends at the other wall's face, leaving the corner post.
+                let wm = width.mm();
+                let p1 = if *at_start { half_of(&other) + wm / 2.0 } else { w.length().mm() - half_of(&other) - wm / 2.0 };
+                let p2 = if *at_start { other.length().mm() - half_of(&w) - wm / 2.0 } else { half_of(&w) + wm / 2.0 };
+                for (host, pos) in [(w.id, p1), (other.id, p2)] {
+                    let o = Command::AddWindow {
+                        wall: host,
+                        position: Some(Length::from_mm(pos)),
+                        at: None,
+                        style: *style,
+                        width: Some(*width),
+                        height: *height,
+                        sill: *sill,
+                    }
+                    .apply(doc)?;
+                    out.merge(o);
+                }
+            }
+            Command::AddBayWindow { wall, position, width, depth, bay, faces, style } => {
+                ops::bay_window(doc, *wall, *position, *width, *depth, *bay, faces.unwrap_or(5), *style, &mut out)?;
+            }
             Command::SetObjectInfo { id, info } => {
                 if doc.object(*id).is_none() {
                     return Err(ApiError::NotFound(*id));

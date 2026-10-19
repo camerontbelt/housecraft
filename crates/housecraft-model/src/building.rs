@@ -993,6 +993,25 @@ pub struct OpeningDetails {
     /// stretched to the opening's width and the wall's thickness.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plan_block: Option<Id>,
+    /// Panels of a sliding or bifold door (0: the style's usual 2 or 4);
+    /// more makes stacking sliders and accordion doors.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub panels: u8,
+    /// Glass in a door's leaves (and garage door sections).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glass: Option<DoorGlass>,
+    /// Units mulled together side by side (0 or 1: a single unit).
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub mulled: u8,
+    /// A lintel above the opening on the exterior face.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub lintel: bool,
+    /// A projecting sill below the opening on the exterior face.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub sill_trim: bool,
+    /// An apron under the interior stool (windows).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub apron: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -1074,4 +1093,18 @@ mod wall_shape_tests {
         assert!(WallShape::default().is_plain());
         assert_eq!(WallShape::default().top_at(1.0, 2438.4), 2438.4);
     }
+}
+
+fn is_zero_u8(v: &u8) -> bool {
+    *v == 0
+}
+
+/// Glass in a door.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DoorGlass {
+    /// Glass over nearly the whole leaf (garage doors: every section).
+    Full,
+    /// The upper part (garage doors: the top section).
+    Upper,
 }

@@ -1926,6 +1926,16 @@ fn opening_symbol(doc: &Document, g: &WallGeom, o: &Opening, stroke: Stroke, out
                     leaf(&mut line, a, mid);
                     leaf(&mut line, b, mid);
                 }
+                DoorStyle::Sliding if o.details.panels > 2 => {
+                    // Several panels in staggered tracks.
+                    let count = o.details.panels as usize;
+                    let w = (b - a) / count as f64;
+                    for k in 0..count {
+                        let off = g.left * (g.half * 0.5 * ((k % 3) as f64 / 2.0 - 0.5));
+                        let (u0, u1) = (a + w * k as f64 - w * 0.05, a + w * (k + 1) as f64 + w * 0.05);
+                        line(g.center_at(u0) + off, g.center_at(u1) + off, stroke);
+                    }
+                }
                 DoorStyle::Sliding | DoorStyle::Pocket => {
                     let t = g.left * (g.half * 0.25);
                     let mid = (a + b) / 2.0;
@@ -1943,7 +1953,7 @@ fn opening_symbol(doc: &Document, g: &WallGeom, o: &Opening, stroke: Stroke, out
                     }
                 }
                 DoorStyle::Bifold => {
-                    let n = 4;
+                    let n = (o.details.panels.max(4) as usize).div_ceil(2) * 2;
                     let w = (b - a) / n as f64;
                     let depth = w * 0.6;
                     let mut pts = Vec::new();

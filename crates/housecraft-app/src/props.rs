@@ -80,6 +80,55 @@ fn fill_style_row(ui: &mut Ui, ed: &mut Ed<'_>, label: &str, field: &str, curren
     ui.end_row();
 }
 
+/// Panels, glass, mulled units and trim of a door or window.
+fn opening_extras(ui: &mut Ui, ed: &mut Ed<'_>, o: &Opening) {
+    let id = ed.id;
+    let mut d = o.details.clone();
+    match o.opening_kind {
+        OpeningKind::Door(style) => {
+            if matches!(style, DoorStyle::Sliding | DoorStyle::Bifold) {
+                Ed::label(ui, "Panels");
+                let mut n = d.panels.max(if style == DoorStyle::Sliding { 2 } else { 4 });
+                ui.add(egui::DragValue::new(&mut n).range(2..=12));
+                d.panels = n;
+                ui.end_row();
+            }
+            Ed::label(ui, "Glass");
+            egui::ComboBox::from_id_salt(ed.key("door_glass"))
+                .selected_text(match d.glass {
+                    None => "None",
+                    Some(DoorGlass::Full) => "Full",
+                    Some(DoorGlass::Upper) => "Upper",
+                })
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut d.glass, None, "None");
+                    ui.selectable_value(&mut d.glass, Some(DoorGlass::Full), "Full (garage: every section)");
+                    ui.selectable_value(&mut d.glass, Some(DoorGlass::Upper), "Upper (garage: top section)");
+                });
+            ui.end_row();
+        }
+        OpeningKind::Window(_) => {
+            Ed::label(ui, "Mulled Units");
+            let mut n = d.mulled.max(1);
+            ui.add(egui::DragValue::new(&mut n).range(1..=8));
+            d.mulled = if n > 1 { n } else { 0 };
+            ui.end_row();
+        }
+    }
+    Ed::label(ui, "Trim");
+    ui.horizontal(|ui| {
+        ui.checkbox(&mut d.lintel, "Lintel");
+        if !o.opening_kind.is_door() {
+            ui.checkbox(&mut d.sill_trim, "Sill");
+            ui.checkbox(&mut d.apron, "Apron");
+        }
+    });
+    ui.end_row();
+    if d != o.details {
+        ed.out.push(patch(id, json!({ "details": d })));
+    }
+}
+
 /// Pony wall, raked or stepped top, niches and newels of a wall.
 fn wall_shape_rows(ui: &mut Ui, ed: &mut Ed<'_>, w: &Wall) {
     let doc = ed.doc;
@@ -2070,6 +2119,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             if !o.opening_kind.is_door() {
                 window_details_editor(ui, ed, &o.details);
             }
+            opening_extras(ui, ed, o);
             if let Some(l) = ed.length(ui, "Distance from Wall Start", "position", o.position) {
                 ed.out.push(patch(id, json!({ "position": l })));
             }

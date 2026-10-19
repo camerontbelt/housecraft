@@ -11,6 +11,10 @@ use crate::icons::Icon;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tool {
+    /// A bay, box or bow window built out from a wall.
+    BayWindow(housecraft_api::BayStyle),
+    /// Two windows meeting at a wall corner.
+    CornerWindow,
     Select,
     ExteriorWall,
     InteriorWall,
@@ -291,6 +295,10 @@ impl Family {
                 Tool::Window(W::Awning),
                 Tool::Window(W::Hopper),
                 Tool::Window(W::Fixed),
+                Tool::CornerWindow,
+                Tool::BayWindow(housecraft_api::BayStyle::Bay),
+                Tool::BayWindow(housecraft_api::BayStyle::Box),
+                Tool::BayWindow(housecraft_api::BayStyle::Bow),
             ],
             Family::Dimensions => &[Tool::Dimension, Tool::AngularDimension],
             Family::Text => &[Tool::Text, Tool::TextArrow, Tool::Callout, Tool::Marker, Tool::RevisionCloud],
@@ -390,7 +398,7 @@ impl Tool {
             Tool::Select => Family::Select,
             Tool::ExteriorWall | Tool::InteriorWall => Family::Walls,
             Tool::Door(_) => Family::Doors,
-            Tool::Window(_) => Family::Windows,
+            Tool::Window(_) | Tool::BayWindow(_) | Tool::CornerWindow => Family::Windows,
             Tool::Dimension | Tool::AngularDimension => Family::Dimensions,
             Tool::Text | Tool::TextArrow | Tool::Callout | Tool::Marker | Tool::RevisionCloud => Family::Text,
             Tool::RoofPlane => Family::Roofs,
@@ -416,6 +424,10 @@ impl Tool {
             Tool::InteriorWall => "Straight Interior Wall",
             Tool::Door(d) => d.name(),
             Tool::Window(w) => w.name(),
+            Tool::BayWindow(housecraft_api::BayStyle::Bay) => "Bay Window",
+            Tool::BayWindow(housecraft_api::BayStyle::Box) => "Box Window",
+            Tool::BayWindow(housecraft_api::BayStyle::Bow) => "Bow Window",
+            Tool::CornerWindow => "Corner Window",
             Tool::Dimension => "Manual Dimension",
             Tool::AngularDimension => "Angular Dimension",
             Tool::Text => "Text",
@@ -502,7 +514,7 @@ impl Tool {
             Tool::Door(D::Garage | D::Barn) => Icon::SlidingDoor,
             Tool::Door(D::Atrium) => Icon::DoubleDoor,
             Tool::Door(D::Shower | D::Fixed) => Icon::Door,
-            Tool::Window(_) => Icon::Window,
+            Tool::Window(_) | Tool::BayWindow(_) | Tool::CornerWindow => Icon::Window,
             Tool::Dimension => Icon::Dimension,
             Tool::AngularDimension => Icon::AngularDimension,
             Tool::Text => Icon::Text,
@@ -579,6 +591,8 @@ impl Tool {
                 "Click to start, click for each corner; type a length and Enter for exact walls. Esc or double-click ends."
             }
             Tool::Door(_) | Tool::Window(_) => "Click on a wall to place.",
+            Tool::BayWindow(_) => "Click on an exterior wall where the bay goes; edit its walls and windows afterwards.",
+            Tool::CornerWindow => "Click near the end of a wall at a corner.",
             Tool::Dimension => "Click two points, then click where the dimension line goes.",
             Tool::AngularDimension => "Click the vertex, a point on each side, then the radius.",
             Tool::Text => "Click where the text goes. Markup: **bold**, __underline__, [label](link), {#ff0000}colour{/}.",

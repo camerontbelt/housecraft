@@ -1143,6 +1143,40 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     app.plan.first_wall = None;
                 }
             }
+            Tool::BayWindow(_) | Tool::CornerWindow => {
+                let tol = PICK_PX * view.mpp;
+                let hit = wall_geoms(doc, app.plan.floor)
+                    .into_iter()
+                    .map(|g| (housecraft_api::geom::math::distance_to_segment(p, g.start, g.end) - g.half, g))
+                    .filter(|(d, _)| *d <= tol)
+                    .min_by(|a, b| a.0.total_cmp(&b.0))
+                    .map(|(_, g)| g);
+                if let Some(g) = hit {
+                    let u = (p - g.start).dot(g.dir).clamp(0.0, g.length);
+                    commands.push(match tool {
+                        Tool::BayWindow(bay) => {
+                            let bow = bay == housecraft_api::BayStyle::Bow;
+                            Command::AddBayWindow {
+                                wall: g.id,
+                                position: Length::from_mm(u),
+                                width: Length::from_feet(8.0),
+                                depth: Length::from_inches(if bow { 18.0 } else { 24.0 }),
+                                bay,
+                                faces: None,
+                                style: None,
+                            }
+                        }
+                        _ => Command::AddCornerWindow {
+                            wall: g.id,
+                            at_start: u < g.length / 2.0,
+                            width: Length::from_feet(3.0),
+                            height: None,
+                            sill: None,
+                            style: None,
+                        },
+                    });
+                }
+            }
             Tool::Door(_) | Tool::Window(_) => {
                 let tol = PICK_PX * view.mpp;
                 let wall = wall_geoms(doc, app.plan.floor)

@@ -159,8 +159,9 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
                 OpeningKind::Door(s) => s.name(),
                 OpeningKind::Window(s) => s.name(),
             };
+            let mull = if o.details.mulled > 1 { format!(", mulled x{}", o.details.mulled) } else { String::new() };
             format!(
-                "{what} {} x {} in wall {}",
+                "{what} {} x {} in wall {}{mull}",
                 fmt(o.width),
                 fmt(o.height),
                 o.wall

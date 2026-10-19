@@ -2334,3 +2334,27 @@ fn object_info_and_dimension_styles() {
     s.apply(&[Command::SetDimensionStyle { name: "Framing".into(), defaults: None }]).unwrap();
     assert!(s.document().settings.dimension_styles.is_empty());
 }
+
+#[test]
+fn bay_and_corner_windows() {
+    let mut s = boxed();
+    let w = walls(&s)[1].clone(); // the 20' north wall
+    let before = walls(&s).len();
+    s.apply(&[Command::AddBayWindow {
+        wall: w.id,
+        position: Length::from_feet(10.0),
+        width: Length::from_feet(8.0),
+        depth: Length::from_feet(2.0),
+        bay: housecraft_api::BayStyle::Bay,
+        faces: None,
+        style: None,
+    }])
+    .unwrap();
+    // The wall is split in two and three bay walls added, each with a window.
+    assert_eq!(walls(&s).len(), before + 4);
+    assert_eq!(s.document().iter::<Opening>().count(), 3);
+    let first = walls(&s)[0].id;
+    s.apply(&[Command::AddCornerWindow { wall: first, at_start: false, width: Length::from_feet(3.0), height: None, sill: None, style: None }])
+        .unwrap();
+    assert_eq!(s.document().iter::<Opening>().count(), 5);
+}
