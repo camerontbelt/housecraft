@@ -52,10 +52,12 @@ pub enum Surface {
     Backsplash,
     /// Knobs and pulls.
     Hardware,
+    /// Room moldings, corner boards, molding polylines.
+    Trim,
 }
 
 impl Surface {
-    pub const ALL: [Surface; 20] = [
+    pub const ALL: [Surface; 21] = [
         Surface::Wall,
         Surface::Floor,
         Surface::Ceiling,
@@ -76,6 +78,7 @@ impl Surface {
         Surface::Countertop,
         Surface::Backsplash,
         Surface::Hardware,
+        Surface::Trim,
     ];
 
     pub fn name(self) -> &'static str {
@@ -100,6 +103,7 @@ impl Surface {
             Surface::Countertop => "Countertops",
             Surface::Backsplash => "Backsplashes",
             Surface::Hardware => "Cabinet Hardware",
+            Surface::Trim => "Trim & Moldings",
         }
     }
 }

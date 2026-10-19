@@ -150,7 +150,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-02 | Custom room type definitions | P1 | M1 |
 | RM-03 | Living-area calculation with include/exclude | P1 | M1 |
 | RM-04 | Room polygon tool (preset shapes) | P2 | M3 |
-| RM-05 | Room molding polylines; 3D molding polylines (stacked profiles) | P2 | M5 |
+| RM-05 | Room molding polylines; 3D molding polylines (stacked profiles) | P2 | M5 ✓ |
 | RM-06 | Room polyline (perimeter for area, materials, slabs, moldings) | P1 | M1 |
 | RM-07 | Layered floor & ceiling platforms (finish, structure, sub-layers) | P1 | M3 ✓ |
 | RM-08 | Floor material regions (inlays without room boundaries) | P2 | M5 |
@@ -178,7 +178,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-12 | Remodel layers: new / existing / demolition | P1 | M3 ✓ |
 | WL-13 | Wall hatching (labels, copy/paste, shear wall marking) | P2 | M4 |
 | WL-14 | Wall definitions in library | P1 | M5 ✓ |
-| WL-15 | Corner boards & quoins (auto/manual) | P2 | M5 |
+| WL-15 | Corner boards & quoins (auto/manual) | P2 | M5 ✓ |
 | WL-16 | Wall material regions | P2 | M5 |
 | WL-17 | Double walls (marriage/multi-family) incl. openings | P3 | M3 |
 | WL-18 | Control which layer intersecting walls snap to | P1 | M1 |
@@ -253,7 +253,7 @@ These come from reading the whole list and change the architecture, not just the
 | RF-10 | Tray ceiling tool (slope, moldings, rope lights) | P2 | M3 |
 | RF-11 | Layered roof assemblies (SIP roofs) | P2 | M3 |
 | RF-12 | Gutters & frieze moldings with custom profiles | P2 | M3 |
-| RF-13 | Shadow boards on fascia | P3 | M5 |
+| RF-13 | Shadow boards on fascia | P3 | M5 ✓ |
 | RF-14 | Convert roof/ceiling planes to polylines | P3 | M4 |
 
 ## 10. Stairs & ramps
@@ -457,15 +457,15 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-17 | Hatch pattern editor | P2 | M4 |
 | MAT-18 | Generate vector hatch pattern from texture | P3 | M5 |
 | MAT-19 | Screen-capture image as material | P3 | M5 |
-| MAT-20 | 3D cladding from moldings (board & batten, lap, standing seam) (X18+) | P2 | M5 |
+| MAT-20 | 3D cladding from moldings (board & batten, lap, standing seam) (X18+) | P2 | M5 ✓ |
 | MAT-21 | Style palettes (save and apply finish sets) | P2 | M5 |
 | MAT-22 | Center object between two objects | P1 | M1 |
 | MAT-23 | Match / apply properties across same-type items | P1 | M1 |
 | MAT-24 | Import custom 3D symbols | P1 | M5 ◐ OBJ (with MTL colours) and STL models stored in the plan, placed and stretched like cabinets, paintable; glTF, DAE and SKP later |
 | MAT-25 | Smart symbols (sinks cut counters, wall-hung items, light fixtures emit) | P2 | M5 |
 | MAT-26 | Convert selection to symbol object | P2 | M5 |
-| MAT-27 | Custom molding profiles; stacked, flipped, rotated, centered | P2 | M5 |
-| MAT-28 | Edit molding polylines from library (X18+) | P3 | M5 |
+| MAT-27 | Custom molding profiles; stacked, flipped, rotated, centered | P2 | M5 ✓ |
+| MAT-28 | Edit molding polylines from library (X18+) | P3 | M5 ◐ custom profiles made from CAD shapes and edited per molding; library storage later |
 | MAT-29 | Distributed regions/paths with randomized variation | P3 | M6 |
 
 ## 19. Library / catalog

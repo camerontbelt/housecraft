@@ -68,6 +68,7 @@ pub(crate) fn standard_materials(doc: &mut Document) -> SurfaceMaterials {
         (S::Countertop, granite),
         (S::Backsplash, subway),
         (S::Hardware, nickel),
+        (S::Trim, trim),
     ])
 }
 
@@ -167,6 +168,8 @@ pub(crate) fn new_document(name: String) -> Document {
             layer_of("Interior finish", 0.5, "Gypsum board"),
         ],
         railing: None,
+        cladding: Some(Cladding::Lap { exposure: inch(6.0) }),
+        corner_trim: Some(CornerTrim::Board { width: inch(4.0) }),
     });
     let interior = doc.insert(WallType {
         id: PLACEHOLDER,
@@ -177,12 +180,16 @@ pub(crate) fn new_document(name: String) -> Document {
             layer_of("Finish", 0.5, "Gypsum board"),
         ],
         railing: None,
+        cladding: None,
+        corner_trim: None,
     });
     doc.insert(WallType {
         id: PLACEHOLDER,
         name: "Railing".into(),
         layers: vec![layer_of("Rail", 3.5, "Painted wood")],
         railing: Some(Railing::default()),
+        cladding: None,
+        corner_trim: None,
     });
 
     let mut unspecified = PLACEHOLDER;
@@ -215,6 +222,7 @@ pub(crate) fn new_document(name: String) -> Document {
                 "Paint".into()
             },
             living_area: living,
+            moldings: if living { vec![RoomMolding::base()] } else { Vec::new() },
         });
         if name == "Unspecified" {
             unspecified = id;

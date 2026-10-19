@@ -373,6 +373,8 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_countertop", "points": [["8'","8'"], ["12'","8'"], ["12'","11'"]], "holes": [{{"hole_kind": "round", "center": ["10'","9'"], "width": "2\"", "depth": "2\""}}]}},
                 {{"op": "add_appliance", "appliance_kind": "toilet", "at": ["15'","1'"]}},
                 {{"op": "add_backsplash", "points": [["1'","1'"], ["3'","1'"]]}},
+                {{"op": "add_molding_profile", "name": "P", "points": [[0,0],[10,0],[0,10]]}},
+                {{"op": "add_molding_polyline", "points": [["1'","2'"], ["3'","2'"]], "stack": [{{"height": 50, "depth": 10}}]}},
                 {{"op": "add_picture", "path": "x.png", "position": [0,0], "width": "1'"}},
                 {{"op": "add_symbol_def", "name": "S", "positions": [[0,0,0],[1,0,0],[0,-1,0],[0,0,1]], "triangles": [[0,1,2],[0,1,3]]}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
@@ -1791,4 +1793,57 @@ fn cabinet_details_schedule_and_dimensions() {
     // A backsplash along the wall.
     apply(&mut s, r#"[{"op": "add_backsplash", "points": [["7\"","4'"], ["7\"","8'"]]}]"#);
     assert!(s.document().validate().is_empty());
+}
+
+#[test]
+fn trim_moldings_cladding_and_profiles() {
+    let mut s = boxed();
+    // New plans: exterior walls carry lap siding and corner boards; living
+    // room types have a baseboard.
+    let doc = s.document();
+    let ext = doc.get::<WallType>(doc.active_defaults().exterior_wall_type).unwrap();
+    assert!(matches!(ext.cladding, Some(Cladding::Lap { .. })));
+    let mesh = housecraft_api::geom::mesh::build(doc, None);
+    assert!(mesh.surfaces.contains(&Some(Surface::Trim)), "baseboard / corner boards");
+    // A custom profile from a CAD box, used on a chair rail and a molding polyline.
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_cad", "shape": {"shape": "polyline", "points": [[0,0],[20,0],[20,60],[0,60]], "closed": true}}]"#,
+    );
+    let cad = out.created[0];
+    let out = apply(
+        &mut s,
+        &format!(r#"[{{"op": "add_molding_profile", "name": "Cap", "from_cad": {}}}]"#, cad.0),
+    );
+    let profile = out.created[0];
+    let p = s.document().get::<MoldingProfile>(profile).unwrap();
+    assert_eq!(p.points[0], [0.0, 0.0]);
+    let spec = format!(
+        r#"{{"profile": {{"type": "custom", "profile": {}}}, "height": "2\"", "depth": "1\""}}"#,
+        profile.0
+    );
+    let room = s.document().iter::<Room>().next().unwrap().id;
+    let out = apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "update", "id": {room}, "set": {{"moldings": [{{"place": "chair", "offset": "32\"", "spec": {spec}}}]}}}},
+                {{"op": "add_molding_polyline", "points": [["2'","2'"], ["8'","2'"]], "elevation": "36\"", "stack": [{spec}, {spec}]}}]"#,
+            room = room.0
+        ),
+    );
+    let poly = out.created[0];
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
+    // Deleting the profile falls back to flat boards everywhere.
+    apply(&mut s, &format!(r#"[{{"op": "delete", "ids": [{}]}}]"#, profile.0));
+    let doc = s.document();
+    assert!(doc.validate().is_empty(), "{:?}", doc.validate());
+    assert_eq!(doc.get::<MoldingPolyline>(poly).unwrap().stack[0].profile, ProfileRef::default());
+    // A shadow board on the fascia builds.
+    let set = doc.active_defaults().id;
+    apply(
+        &mut s,
+        &format!(r#"[{{"op": "update", "id": {}, "set": {{"roof": {{"shadow_board": "2\""}}}}}}, {{"op": "build_roof"}}]"#, set.0),
+    );
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    assert!(!mesh.positions.is_empty());
 }

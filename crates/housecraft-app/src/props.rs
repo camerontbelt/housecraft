@@ -1325,6 +1325,25 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             if let Some(c) = ceiling_editor(ui, ed, r.ceiling) {
                 ed.out.push(patch(id, json!({ "ceiling": c })));
             }
+            Ed::label(ui, "Moldings");
+            ui.vertical(|ui| {
+                let mut own = r.moldings.is_some();
+                if ui.checkbox(&mut own, "Own moldings (not the room type's)").changed() {
+                    let v = if own {
+                        json!(doc.get::<RoomType>(r.room_type).map(|t| t.moldings.clone()).unwrap_or_default())
+                    } else {
+                        Value::Null
+                    };
+                    ed.out.push(patch(id, json!({ "moldings": v })));
+                }
+                if let Some(ms) = &r.moldings {
+                    let mut ms = ms.clone();
+                    if room_moldings_editor(ui, doc, id, &mut ms) {
+                        ed.out.push(patch(id, json!({ "moldings": ms })));
+                    }
+                }
+            });
+            ui.end_row();
             ed.pick::<Layer>(ui, "Label Layer", "layer", Some(r.layer), None);
         }
         Object::Floor(f) => {
@@ -1756,6 +1775,12 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "living_area": l })));
             }
             ui.end_row();
+            Ed::label(ui, "Moldings");
+            let mut ms = t.moldings.clone();
+            if room_moldings_editor(ui, doc, id, &mut ms) {
+                ed.out.push(patch(id, json!({ "moldings": ms })));
+            }
+            ui.end_row();
         }
         Object::WallType(t) => {
             ed.text(ui, "Name", "name", &t.name);
@@ -1772,6 +1797,128 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ui.weak("Edit layers in Tools > Wall Types.");
             });
             ui.end_row();
+            // Exterior cladding.
+            Ed::label(ui, "Siding (3D)");
+            ui.horizontal(|ui| {
+                let i = Length::from_inches;
+                let names = ["None", "Lap", "Board & batten", "Standing seam", "Shingle"];
+                let cur = match t.cladding {
+                    None => 0,
+                    Some(Cladding::Lap { .. }) => 1,
+                    Some(Cladding::BoardAndBatten { .. }) => 2,
+                    Some(Cladding::StandingSeam { .. }) => 3,
+                    Some(Cladding::Shingle { .. }) => 4,
+                };
+                let mut k = cur;
+                egui::ComboBox::from_id_salt(ed.key("cladding"))
+                    .selected_text(names[cur])
+                    .show_ui(ui, |ui| {
+                        for (j, n) in names.iter().enumerate() {
+                            ui.selectable_value(&mut k, j, *n);
+                        }
+                    });
+                let mut c = t.cladding;
+                if k != cur {
+                    c = match k {
+                        1 => Some(Cladding::Lap { exposure: i(6.0) }),
+                        2 => Some(Cladding::BoardAndBatten { spacing: i(12.0), batten: i(2.5) }),
+                        3 => Some(Cladding::StandingSeam { spacing: i(16.0) }),
+                        4 => Some(Cladding::Shingle { exposure: i(5.0) }),
+                        _ => None,
+                    };
+                }
+                let size = |ui: &mut Ui, label: &str, v: &mut Length| {
+                    let mut x = v.inches();
+                    if ui.add(egui::DragValue::new(&mut x).range(0.5..=48.0).speed(0.25).prefix(label).suffix("\"")).changed() {
+                        *v = i(x);
+                    }
+                };
+                match &mut c {
+                    Some(Cladding::Lap { exposure }) | Some(Cladding::Shingle { exposure }) => size(ui, "exposure ", exposure),
+                    Some(Cladding::BoardAndBatten { spacing, batten }) => {
+                        size(ui, "every ", spacing);
+                        size(ui, "batten ", batten);
+                    }
+                    Some(Cladding::StandingSeam { spacing }) => size(ui, "every ", spacing),
+                    None => {}
+                }
+                if c != t.cladding {
+                    ed.out.push(patch(id, json!({ "cladding": c })));
+                }
+            });
+            ui.end_row();
+            Ed::label(ui, "Corners");
+            ui.horizontal(|ui| {
+                let i = Length::from_inches;
+                let cur = match t.corner_trim {
+                    None => 0,
+                    Some(CornerTrim::Board { .. }) => 1,
+                    Some(CornerTrim::Quoins { .. }) => 2,
+                };
+                let mut k = cur;
+                ui.selectable_value(&mut k, 0, "None");
+                ui.selectable_value(&mut k, 1, "Corner boards");
+                ui.selectable_value(&mut k, 2, "Quoins");
+                let mut c = t.corner_trim;
+                if k != cur {
+                    c = match k {
+                        1 => Some(CornerTrim::Board { width: i(4.0) }),
+                        2 => Some(CornerTrim::Quoins { width: i(12.0), height: i(8.0) }),
+                        _ => None,
+                    };
+                }
+                if let Some(CornerTrim::Board { width } | CornerTrim::Quoins { width, .. }) = &mut c {
+                    let mut x = width.inches();
+                    if ui.add(egui::DragValue::new(&mut x).range(1.0..=24.0).speed(0.25).prefix("wide ").suffix("\"")).changed() {
+                        *width = i(x);
+                    }
+                }
+                if c != t.corner_trim {
+                    ed.out.push(patch(id, json!({ "corner_trim": c })));
+                }
+            });
+            ui.end_row();
+        }
+        Object::MoldingProfile(p) => {
+            ed.text(ui, "Name", "name", &p.name);
+            Ed::label(ui, "Shape");
+            ui.label(format!("{} points", p.points.len()));
+            ui.end_row();
+        }
+        Object::MoldingPolyline(m) => {
+            if let Some(l) = ed.length(ui, "Bottom Height", "elevation", m.elevation) {
+                ed.out.push(patch(id, json!({ "elevation": l })));
+            }
+            ed.check(ui, "Closed", "closed", "Join the ends", m.closed);
+            Ed::label(ui, "Profiles (bottom up)");
+            ui.vertical(|ui| {
+                let mut stack = m.stack.clone();
+                let mut changed = false;
+                let mut remove = None;
+                for (k, s) in stack.iter_mut().enumerate() {
+                    ui.horizontal(|ui| {
+                        changed |= spec_editor(ui, doc, (id, k), s);
+                        if ui.small_button("✕").clicked() {
+                            remove = Some(k);
+                        }
+                    });
+                }
+                if let Some(k) = remove
+                    && stack.len() > 1
+                {
+                    stack.remove(k);
+                    changed = true;
+                }
+                if ui.small_button("+ Profile").clicked() {
+                    stack.push(RoomMolding::base().spec);
+                    changed = true;
+                }
+                if changed {
+                    ed.out.push(patch(id, json!({ "stack": stack })));
+                }
+            });
+            ui.end_row();
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(m.layer), None);
         }
         Object::LayerSet(s) => {
             ed.text(ui, "Name", "name", &s.name);
@@ -2501,4 +2648,96 @@ pub fn pick_image() -> Option<String> {
         .add_filter("Images", &["png", "jpg", "jpeg", "bmp", "tif", "tiff"])
         .pick_file()
         .map(|p| p.to_string_lossy().into_owned())
+}
+
+/// Edit one molding's profile, size and orientation.
+fn spec_editor(ui: &mut Ui, doc: &Document, salt: impl std::hash::Hash + std::fmt::Debug, s: &mut MoldingSpec) -> bool {
+    let mut changed = false;
+    let label = match s.profile {
+        ProfileRef::Shape { shape } => format!("{shape:?}"),
+        ProfileRef::Custom { profile } => doc.get::<MoldingProfile>(profile).map_or("?".into(), |p| p.name.clone()),
+    };
+    egui::ComboBox::from_id_salt(("spec_profile", salt))
+        .selected_text(label)
+        .width(90.0)
+        .show_ui(ui, |ui| {
+            for shape in [MoldingShape::Flat, MoldingShape::Crown, MoldingShape::Cove, MoldingShape::Bead] {
+                let r = ProfileRef::Shape { shape };
+                changed |= ui.selectable_value(&mut s.profile, r, format!("{shape:?}")).changed();
+            }
+            for p in doc.iter::<MoldingProfile>() {
+                let r = ProfileRef::Custom { profile: p.id };
+                changed |= ui.selectable_value(&mut s.profile, r, &p.name).changed();
+            }
+        });
+    let mut inch = |ui: &mut Ui, prefix: &str, v: &mut Length| {
+        let mut x = v.inches();
+        if ui
+            .add(egui::DragValue::new(&mut x).range(0.125..=24.0).speed(0.125).prefix(prefix).suffix("\""))
+            .changed()
+        {
+            *v = Length::from_inches(x);
+            changed = true;
+        }
+    };
+    inch(ui, "h ", &mut s.height);
+    inch(ui, "d ", &mut s.depth);
+    changed |= ui.checkbox(&mut s.flip, "flip").changed();
+    changed |= ui.checkbox(&mut s.rotate, "turn").changed();
+    changed |= ui.checkbox(&mut s.center, "centre").changed();
+    changed
+}
+
+/// Edit a room's (or room type's) base, chair and crown moldings.
+fn room_moldings_editor(ui: &mut Ui, doc: &Document, id: Id, ms: &mut Vec<RoomMolding>) -> bool {
+    let mut changed = false;
+    ui.vertical(|ui| {
+        let mut remove = None;
+        for (k, m) in ms.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                for (place, name) in [
+                    (RoomMoldingPlace::Base, "Base"),
+                    (RoomMoldingPlace::Chair, "Chair"),
+                    (RoomMoldingPlace::Crown, "Crown"),
+                ] {
+                    changed |= ui.selectable_value(&mut m.place, place, name).changed();
+                }
+                if m.place == RoomMoldingPlace::Chair {
+                    let mut x = m.offset.inches();
+                    if ui.add(egui::DragValue::new(&mut x).range(0.0..=96.0).prefix("at ").suffix("\"")).changed() {
+                        m.offset = Length::from_inches(x);
+                        changed = true;
+                    }
+                }
+                changed |= spec_editor(ui, doc, (id, "room", k), &mut m.spec);
+                if ui.small_button("✕").clicked() {
+                    remove = Some(k);
+                }
+            });
+        }
+        if let Some(k) = remove {
+            ms.remove(k);
+            changed = true;
+        }
+        ui.horizontal(|ui| {
+            if ui.small_button("+ Base").clicked() {
+                ms.push(RoomMolding::base());
+                changed = true;
+            }
+            if ui.small_button("+ Chair rail").clicked() {
+                let mut m = RoomMolding::base();
+                m.place = RoomMoldingPlace::Chair;
+                m.offset = Length::from_inches(32.0);
+                m.spec.height = Length::from_inches(2.5);
+                m.spec.depth = Length::from_inches(0.75);
+                ms.push(m);
+                changed = true;
+            }
+            if ui.small_button("+ Crown").clicked() {
+                ms.push(RoomMolding::crown());
+                changed = true;
+            }
+        });
+    });
+    changed
 }

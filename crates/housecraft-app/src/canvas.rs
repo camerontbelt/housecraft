@@ -1145,7 +1145,7 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 depth: None,
                 height: None,
             }),
-            Tool::Countertop | Tool::Backsplash => pending.push(p),
+            Tool::Countertop | Tool::Backsplash | Tool::MoldingPolyline => pending.push(p),
             Tool::PlaceGroup => {
                 if let Some(objects) = &group {
                     commands.push(Command::InsertObjects {
@@ -1279,6 +1279,19 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 points: pending.iter().map(|p| pt(*p)).collect(),
                 arc: None,
                 label: None,
+            });
+        }
+        return;
+    }
+    if finish && tool == Tool::MoldingPolyline {
+        let pending = std::mem::take(&mut app.plan.pending);
+        if pending.len() >= 2 {
+            commands.push(Command::AddMoldingPolyline {
+                floor,
+                points: pending.iter().map(|p| pt(*p)).collect(),
+                closed: false,
+                elevation: Length::from_inches(36.0),
+                stack: vec![RoomMolding::base().spec],
             });
         }
         return;

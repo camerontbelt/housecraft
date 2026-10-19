@@ -222,3 +222,24 @@ pub(crate) fn backsplash(b: &Backsplash, stroke: Stroke, out: &mut Drawing) {
     line(out, b.id, path, false, stroke);
     line(out, b.id, offset, false, stroke);
 }
+
+pub(crate) fn molding_polyline(m: &MoldingPolyline, stroke: Stroke, out: &mut Drawing) {
+    let path: Vec<DVec2> = m.points.iter().map(|p| v2(*p)).collect();
+    if path.len() < 2 {
+        return;
+    }
+    let depth = m.stack.iter().map(|s| s.depth.mm()).fold(0.0, f64::max);
+    let n = path.len();
+    let offset: Vec<DVec2> = (0..n)
+        .map(|i| {
+            let (a, c) = if m.closed {
+                (path[(i + n - 1) % n], path[(i + 1) % n])
+            } else {
+                (path[i.saturating_sub(1)], path[(i + 1).min(n - 1)])
+            };
+            path[i] - housecraft_geom::math::perp((c - a).normalize_or_zero()) * depth
+        })
+        .collect();
+    line(out, m.id, path, m.closed, stroke);
+    line(out, m.id, offset, m.closed, dashed(stroke));
+}

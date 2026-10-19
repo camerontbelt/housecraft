@@ -12,6 +12,7 @@ mod display;
 mod imported;
 mod material;
 mod template;
+mod trim;
 mod validate;
 mod views;
 
@@ -28,6 +29,7 @@ pub use cabinet::*;
 pub use display::*;
 pub use imported::*;
 pub use material::*;
+pub use trim::*;
 pub use validate::Issue;
 pub use views::*;
 
@@ -163,6 +165,8 @@ objects! {
     SymbolDef => "symbol_def",
     Symbol => "symbol",
     Backsplash => "backsplash",
+    MoldingProfile => "molding_profile",
+    MoldingPolyline => "molding_polyline",
 }
 
 impl fmt::Display for ObjectKind {
@@ -194,6 +198,7 @@ impl ObjectKind {
                 | ObjectKind::Picture
                 | ObjectKind::Symbol
                 | ObjectKind::Backsplash
+                | ObjectKind::MoldingPolyline
         )
     }
 }
@@ -439,6 +444,7 @@ impl Document {
             Object::Picture(p) => Some(p.floor),
             Object::Symbol(s) => Some(s.floor),
             Object::Backsplash(b) => Some(b.floor),
+            Object::MoldingPolyline(m) => Some(m.floor),
             _ => None,
         }
     }
@@ -466,6 +472,7 @@ impl Document {
             Object::Picture(p) => Some(p.layer),
             Object::Symbol(s) => Some(s.layer),
             Object::Backsplash(b) => Some(b.layer),
+            Object::MoldingPolyline(m) => Some(m.layer),
             _ => None,
         }
     }
@@ -624,7 +631,7 @@ macro_rules! named {
 }
 named!(
     Floor, WallType, RoomType, Layer, LayerSet, TextStyle, DefaultSet, PlanView, Camera, SectionView,
-    CadDetail, Block, Layout, Material, SymbolDef
+    CadDetail, Block, Layout, Material, SymbolDef, MoldingProfile
 );
 
 #[cfg(test)]

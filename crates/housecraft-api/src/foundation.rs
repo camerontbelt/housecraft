@@ -62,6 +62,8 @@ fn foundation_wall_type(doc: &mut Document, thickness: Length, out: &mut Outcome
             material: "Concrete".into(),
         }],
         railing: None,
+        cladding: None,
+        corner_trim: None,
     });
     out.created.push(id);
     id

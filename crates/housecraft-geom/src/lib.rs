@@ -16,6 +16,7 @@ pub mod stairs;
 pub mod sun;
 pub mod sweep;
 pub mod transform;
+pub mod trim;
 pub mod triangulate;
 pub mod walls;
 

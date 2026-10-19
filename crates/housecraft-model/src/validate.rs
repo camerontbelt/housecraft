@@ -641,6 +641,31 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     CabinetShape::Standard => {}
                 }
             }
+            Object::MoldingProfile(p) => {
+                if p.points.len() < 3 {
+                    c.issue(id, "a molding profile needs at least three points");
+                }
+                if p.points.iter().flatten().any(|v| !v.is_finite()) {
+                    c.issue(id, "profile points must be finite");
+                }
+            }
+            Object::MoldingPolyline(m) => {
+                c.reference(id, "floor", m.floor, K::Floor);
+                c.reference(id, "layer", m.layer, K::Layer);
+                if m.points.len() < 2 {
+                    c.issue(id, "a molding needs at least two points");
+                }
+                if m.stack.is_empty() {
+                    c.issue(id, "a molding needs at least one profile");
+                }
+                for s in &m.stack {
+                    c.positive(id, "molding height", s.height);
+                    c.positive(id, "molding depth", s.depth);
+                    if let ProfileRef::Custom { profile } = s.profile {
+                        c.reference(id, "profile", profile, K::MoldingProfile);
+                    }
+                }
+            }
             Object::Backsplash(b) => {
                 c.reference(id, "floor", b.floor, K::Floor);
                 c.reference(id, "layer", b.layer, K::Layer);

@@ -386,6 +386,9 @@ pub struct RoofDefaults {
     /// Depth of the fascia board along eaves (0 for none).
     #[serde(default = "fascia_depth")]
     pub fascia: Length,
+    /// A shadow board on the fascia's face (0 for none).
+    #[serde(default)]
+    pub shadow_board: Length,
 }
 
 fn fascia_depth() -> Length {
@@ -401,6 +404,7 @@ impl Default for RoofDefaults {
             thickness: Length::from_inches(8.0),
             heel: Length::ZERO,
             fascia: fascia_depth(),
+            shadow_board: Length::ZERO,
         }
     }
 }

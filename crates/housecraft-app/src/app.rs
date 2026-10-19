@@ -1339,6 +1339,24 @@ impl App {
                         }
                     }
                 });
+                if item(
+                    ui,
+                    "Make Molding Profile from Selection",
+                    "",
+                    self.selection.len() == 1
+                        && self.doc().kind_of(self.selection[0]) == Some(ObjectKind::Cad),
+                ) {
+                    let n = self.doc().count::<MoldingProfile>() + 1;
+                    let cad = self.selection[0];
+                    if let Some(out) = self.run1(Command::AddMoldingProfile {
+                        name: format!("Profile {n}"),
+                        points: Vec::new(),
+                        from_cad: Some(cad),
+                    }) && let Some(id) = out.created.first()
+                    {
+                        self.spec.push(*id);
+                    }
+                }
                 ui.menu_button("Blocks", |ui| {
                     let cad_selected = self
                         .selection

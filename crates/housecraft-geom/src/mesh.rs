@@ -162,6 +162,7 @@ pub fn builtin_look(surface: Surface) -> Look {
         Surface::Countertop => ([0.47, 0.44, 0.41, 1.0], [0.3, 0.0, 0.0, 1.0]),
         Surface::Backsplash => ([0.94, 0.94, 0.92, 1.0], [0.3, 0.0, 0.0, 1.0]),
         Surface::Hardware => ([0.77, 0.76, 0.74, 1.0], [0.3, 1.0, 0.0, 1.0]),
+        Surface::Trim => ([0.97, 0.97, 0.97, 1.0], [0.4, 0.0, 0.0, 1.0]),
     };
     Look {
         color,
@@ -345,7 +346,8 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
             continue;
         }
         mesh.begin(plane.id, Category::Roof);
-        roof_plane_mesh(plane, doc.active_defaults().roof.fascia.mm(), &mut mesh);
+        let roof = &doc.active_defaults().roof;
+        roof_plane_mesh(plane, roof.fascia.mm(), roof.shadow_board.mm(), &mut mesh);
         mesh.end();
     }
     for stair in doc.iter::<housecraft_model::Stair>() {
@@ -411,6 +413,7 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         crate::cabinets::countertop_mesh(doc, t, &mut mesh);
         mesh.end();
     }
+    crate::trim::build(doc, only_floor, &mut mesh);
     for bs in doc.iter::<housecraft_model::Backsplash>() {
         if only_floor.is_some_and(|f| f != bs.floor) {
             continue;
@@ -758,7 +761,7 @@ fn stairwell_holes(doc: &Document, floor: Id) -> (Vec<Vec<DVec2>>, Vec<Vec<DVec2
     (platform, ceiling)
 }
 
-fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, mesh: &mut Mesh) {
+fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, shadow: f64, mesh: &mut Mesh) {
     let top: Vec<DVec3> = plane
         .outline
         .iter()
@@ -808,6 +811,11 @@ fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, mesh: &mut 
             let board = vec![a2, b2, b2 + out * 25.0, a2 + out * 25.0];
             let depth = fascia.max(drop);
             mesh.prism(&ccw(board), low - depth, low + 10.0, Surface::Frame);
+            // A shadow board along the top of the fascia's face.
+            if shadow > 0.0 {
+                let sb = vec![a2 + out * 25.0, b2 + out * 25.0, b2 + out * 44.0, a2 + out * 44.0];
+                mesh.prism(&ccw(sb), low + 10.0 - shadow.min(depth), low + 10.0, Surface::Trim);
+            }
         }
     }
 }

@@ -328,6 +328,24 @@ pub enum Command {
         height: Option<Length>,
         thickness: Option<Length>,
     },
+    /// Add a custom molding profile from (out, up) points in mm, or from a
+    /// closed CAD polyline (drawn anywhere: its shape is used, not its place).
+    AddMoldingProfile {
+        name: String,
+        #[serde(default)]
+        points: Vec<[f64; 2]>,
+        from_cad: Option<Id>,
+    },
+    /// Add a molding along a path; profiles in `stack` sit one on another.
+    AddMoldingPolyline {
+        floor: Option<Id>,
+        points: Vec<Point2>,
+        #[serde(default)]
+        closed: bool,
+        #[serde(default)]
+        elevation: Length,
+        stack: Vec<MoldingSpec>,
+    },
     /// Dimension each run of base and tall cabinets along its front, ends
     /// and every cabinet (the NKBA way).
     AutoCabinetDimensions { floor: Option<Id> },
@@ -744,6 +762,8 @@ impl Command {
             Command::AddAppliance { .. } => "add_appliance",
             Command::AutoFillers { .. } => "auto_fillers",
             Command::AddBacksplash { .. } => "add_backsplash",
+            Command::AddMoldingProfile { .. } => "add_molding_profile",
+            Command::AddMoldingPolyline { .. } => "add_molding_polyline",
             Command::AutoCabinetDimensions { .. } => "auto_cabinet_dimensions",
             Command::PlaceObject { .. } => "place_object",
             Command::AddPicture { .. } => "add_picture",
@@ -1503,6 +1523,57 @@ impl Command {
                     thickness: thickness.unwrap_or(Length::from_inches(0.5)),
                 }));
             }
+            Command::AddMoldingProfile {
+                name,
+                points,
+                from_cad,
+            } => {
+                let pts: Vec<[f64; 2]> = match from_cad {
+                    Some(cad) => {
+                        let shape = &expect::<Cad>(doc, *cad)?.shape;
+                        let poly = housecraft_geom::math::shape_polylines(shape)
+                            .into_iter()
+                            .find(|(p, closed)| *closed && p.len() >= 3)
+                            .ok_or_else(|| {
+                                ApiError::Invalid("draw the profile as a closed polyline or box".into())
+                            })?
+                            .0;
+                        // Its lower-left corner becomes the profile's origin.
+                        let lo = poly.iter().copied().reduce(|a, b| a.min(b)).expect("points");
+                        poly.iter().map(|p| [p.x - lo.x, p.y - lo.y]).collect()
+                    }
+                    None => points.clone(),
+                };
+                if pts.len() < 3 {
+                    return invalid("a molding profile needs at least three points");
+                }
+                out.created.push(doc.insert(MoldingProfile {
+                    id: Id(0),
+                    name: name.clone(),
+                    points: pts,
+                }));
+            }
+            Command::AddMoldingPolyline {
+                floor,
+                points,
+                closed,
+                elevation,
+                stack,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                if points.len() < 2 || stack.is_empty() {
+                    return invalid("a molding needs a path and at least one profile");
+                }
+                out.created.push(doc.insert(MoldingPolyline {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.cabinets.unwrap_or(d.layers.cad),
+                    points: points.clone(),
+                    closed: *closed,
+                    elevation: *elevation,
+                    stack: stack.clone(),
+                }));
+            }
             Command::AutoCabinetDimensions { floor } => {
                 let floor = ops::resolve_floor(doc, *floor)?;
                 crate::cabinets::auto_dimensions(doc, &d, floor, &mut out);
@@ -1653,6 +1724,8 @@ impl Command {
                     name: name.clone(),
                     layers: layers.clone(),
                     railing: None,
+                    cladding: None,
+                    corner_trim: None,
                 }));
             }
             Command::AddLayer {
@@ -1751,6 +1824,7 @@ impl Command {
                     floor_finish: floor_finish.clone(),
                     wall_finish: String::new(),
                     living_area: *living_area,
+                    moldings: vec![RoomMolding::base()],
                 }));
             }
             Command::AddWall {

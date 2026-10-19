@@ -442,6 +442,14 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             a.facing = t.apply_angle(a.facing);
             Object::Appliance(a)
         }
+        Object::MoldingPolyline(m) => {
+            let mut m = m.clone();
+            m.points = m.points.iter().map(|p| t.apply_point(*p)).collect();
+            if t.is_reflection() {
+                m.points.reverse();
+            }
+            Object::MoldingPolyline(m)
+        }
         Object::Backsplash(b) => {
             let mut b = b.clone();
             b.points = b.points.iter().map(|p| t.apply_point(*p)).collect();
@@ -997,6 +1005,14 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
             }
             Object::Electrical(e) => e.controls.retain(|c| !doomed.contains(c)),
             Object::DefaultSet(d) => d.materials.retain(|_, m| !doomed.contains(m)),
+            // Moldings using a deleted profile fall back to a flat board.
+            Object::MoldingPolyline(m) => m.stack.iter_mut().for_each(|s| unprofile(s, &doomed)),
+            Object::RoomType(t) => t.moldings.iter_mut().for_each(|m| unprofile(&mut m.spec, &doomed)),
+            Object::Room(r) => {
+                if let Some(ms) = &mut r.moldings {
+                    ms.iter_mut().for_each(|m| unprofile(&mut m.spec, &doomed));
+                }
+            }
             _ => {}
         }
     }
@@ -1007,6 +1023,14 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
         }
     }
     Ok(())
+}
+
+fn unprofile(spec: &mut MoldingSpec, doomed: &BTreeSet<Id>) {
+    if let ProfileRef::Custom { profile } = spec.profile
+        && doomed.contains(&profile)
+    {
+        spec.profile = ProfileRef::default();
+    }
 }
 
 pub(crate) fn insert_objects(
@@ -1061,6 +1085,7 @@ pub(crate) fn insert_objects(
                 Object::Picture(p) => p.floor = f,
                 Object::Symbol(s) => s.floor = f,
                 Object::Backsplash(b) => b.floor = f,
+                Object::MoldingPolyline(m) => m.floor = f,
                 _ => {}
             }
         }
@@ -1113,6 +1138,7 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::Picture(p) => &mut p.floor,
             Object::Symbol(s) => &mut s.floor,
             Object::Backsplash(b) => &mut b.floor,
+            Object::MoldingPolyline(m) => &mut m.floor,
             _ => continue,
         };
         let before = *floor;

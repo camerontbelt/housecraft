@@ -56,6 +56,8 @@ pub enum Tool {
     Backsplash,
     /// Place a group of objects from the Library Browser.
     PlaceGroup,
+    /// Draw a molding along a path.
+    MoldingPolyline,
 }
 
 /// The shapes offered by the stair tools.
@@ -214,6 +216,7 @@ impl Family {
                 Tool::Ellipse,
                 Tool::Spline,
                 Tool::Point,
+                Tool::MoldingPolyline,
                 Tool::CrossBox,
                 Tool::BlockingBox,
                 Tool::Insulation,
@@ -353,6 +356,7 @@ impl Tool {
             Tool::PlaceTemplate => "Place from Library",
             Tool::PlaceSymbol(_) => "Place 3D Symbol",
             Tool::Backsplash => "Custom Backsplash",
+            Tool::MoldingPolyline => "Molding Polyline",
             Tool::PlaceGroup => "Place Group",
         }
     }
@@ -385,6 +389,7 @@ impl Tool {
             Tool::Ellipse => Icon::Ellipse,
             Tool::Spline => Icon::Spline,
             Tool::Point => Icon::Point,
+            Tool::MoldingPolyline => Icon::Polyline,
             Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => Icon::Box,
             Tool::Callout | Tool::Marker | Tool::RevisionCloud => Icon::Text,
             Tool::RoofPlane => Icon::Roof,
@@ -486,6 +491,9 @@ impl Tool {
                 "Click along the wall with the room on your right; double-click or Enter to finish."
             }
             Tool::PlaceGroup => "Click to place the group's bottom-left corner.",
+            Tool::MoldingPolyline => {
+                "Click along the path with the molding on your right; double-click or Enter to finish."
+            }
         }
     }
 }

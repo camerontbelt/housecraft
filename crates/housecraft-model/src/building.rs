@@ -4,7 +4,7 @@ use housecraft_units::{Length, Point2, Point3};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::Id;
+use crate::{Id, Cladding, CornerTrim, RoomMolding};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Floor {
@@ -105,6 +105,12 @@ pub struct WallType {
     /// Makes walls of this type railings (rail and balusters) instead of solid walls.
     #[serde(default)]
     pub railing: Option<Railing>,
+    /// 3D siding on the exterior face.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cladding: Option<Cladding>,
+    /// Corner boards or quoins at the exterior face's ends.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub corner_trim: Option<CornerTrim>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -736,6 +742,9 @@ pub struct RoomType {
     pub wall_finish: String,
     /// Counted in the living-area total.
     pub living_area: bool,
+    /// Base, chair and crown moldings around rooms of this type.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub moldings: Vec<RoomMolding>,
 }
 
 /// A room is an enclosed region of walls. Rooms are created and removed
@@ -754,6 +763,9 @@ pub struct Room {
     pub layer: Id,
     #[serde(default)]
     pub ceiling: CeilingStyle,
+    /// Overrides the room type's moldings.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub moldings: Option<Vec<RoomMolding>>,
 }
 
 /// The shape of a room's ceiling.

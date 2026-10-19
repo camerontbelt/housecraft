@@ -251,6 +251,8 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         ),
         Object::Appliance(a) => format!("{} {} wide", a.appliance_kind.name(), fmt(a.width)),
         Object::Backsplash(b) => format!("backsplash {} high", fmt(b.height)),
+        Object::MoldingProfile(p) => format!("molding profile {:?}", p.name),
+        Object::MoldingPolyline(m) => format!("molding, {} profile{}", m.stack.len(), if m.stack.len() == 1 { "" } else { "s" }),
         Object::Picture(p) => format!(
             "picture {}",
             std::path::Path::new(&p.path)
