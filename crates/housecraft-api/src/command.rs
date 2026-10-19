@@ -485,6 +485,12 @@ pub enum Command {
         #[serde(default)]
         curved: bool,
     },
+    /// Pin a note or dimension in 3D (to one camera's view, or every 3D view).
+    AddAnnotation3d {
+        #[serde(default)]
+        camera: Option<Id>,
+        mark: Mark3d,
+    },
     /// Save a camera path.
     AddWalkthrough {
         name: String,
@@ -966,6 +972,7 @@ impl Command {
             Command::WallFramingDetail { .. } => "wall_framing_detail",
             Command::AddDeck { .. } => "add_deck",
             Command::AddWalkthrough { .. } => "add_walkthrough",
+            Command::AddAnnotation3d { .. } => "add_annotation3d",
             Command::OrbitWalkthrough { .. } => "orbit_walkthrough",
             Command::AddPlotLines { .. } => "add_plot_lines",
             Command::SitePlanDetail { .. } => "site_plan_detail",
@@ -2095,6 +2102,12 @@ impl Command {
                 let (name, shapes, texts) = crate::framing::truss_detail(doc, *member)?;
                 let more = Command::AddCadDetail { name, shapes, texts }.apply(doc)?;
                 out.created.extend(more.created);
+            }
+            Command::AddAnnotation3d { camera, mark } => {
+                if let Some(c) = camera {
+                    expect::<Camera>(doc, *c)?;
+                }
+                out.created.push(doc.insert(Annotation3d { id: Id(0), camera: *camera, mark: mark.clone() }));
             }
             Command::AddWalkthrough { name, keyframes, fps } => {
                 if keyframes.is_empty() {

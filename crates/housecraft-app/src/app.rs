@@ -96,6 +96,8 @@ pub struct App {
     plot: Option<(String, String)>,
     /// A special render being set up (3D > Export).
     render_export: Option<RenderExport>,
+    /// A 3D note being written: where, its text, and its camera.
+    pub note3d: Option<(housecraft_api::units::Point3, String, Option<Id>)>,
     /// A 3D model file waiting for its import options.
     pub symbol_import: Option<(std::path::PathBuf, housecraft_io_native::symbols::ImportOptions)>,
     pub bufs: EditBuffers,
@@ -143,6 +145,7 @@ impl App {
             image_export: None,
             plot: None,
             render_export: None,
+            note3d: None,
             object_painter: None,
             bufs: EditBuffers::default(),
             spec: Vec::new(),
@@ -578,6 +581,28 @@ impl App {
             line_weight: None,
             line_style: None,
         });
+    }
+
+    /// Writing a 3D note's text after clicking where it goes.
+    fn note3d_dialog(&mut self, ctx: &egui::Context) {
+        let Some((at, mut text, camera)) = self.note3d.take() else {
+            return;
+        };
+        let mut open = true;
+        let mut ok = false;
+        egui::Window::new("3D Note").open(&mut open).resizable(false).show(ctx, |ui| {
+            let r = ui.text_edit_singleline(&mut text);
+            r.request_focus();
+            ok = ui.button("Add").clicked() || (r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
+        });
+        if ok && !text.trim().is_empty() {
+            self.run1(Command::AddAnnotation3d {
+                camera,
+                mark: housecraft_api::model::Mark3d::Note { at, text },
+            });
+        } else if open {
+            self.note3d = Some((at, text, camera));
+        }
     }
 
     /// The settings window for a special render, then the render itself.
@@ -1716,6 +1741,21 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                                 self.render_export = Some(RenderExport::new(RenderKind::Walkthrough(id)));
                             }
                         });
+                    }
+                });
+                if item(ui, "Lighting Manager…", "", true) {
+                    self.view3d.lighting_window = true;
+                }
+                ui.menu_button("Notes and Dimensions", |ui| {
+                    if item(ui, "3D Note", "", true) {
+                        self.mode = Mode::ThreeD;
+                        self.view3d.annotate = Some(crate::view3d::Annotate::Note);
+                        self.info("Click a surface to pin a note");
+                    }
+                    if item(ui, "3D Dimension", "", true) {
+                        self.mode = Mode::ThreeD;
+                        self.view3d.annotate = Some(crate::view3d::Annotate::Dimension(None));
+                        self.info("Click two points on surfaces to dimension between them");
                     }
                 });
                 ui.menu_button("Special Renders", |ui| {
@@ -3178,6 +3218,8 @@ impl eframe::App for App {
         self.image_export_dialog(&ctx);
         self.plot_dialog(&ctx);
         self.render_export_dialog(&ctx);
+        crate::view3d::lighting_window(self, &ctx);
+        self.note3d_dialog(&ctx);
         crate::view3d::render_window(self, &ctx);
         crate::object_painter::window(self, &ctx);
         self.confirm_discard(&ctx);

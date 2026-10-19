@@ -186,6 +186,7 @@ objects! {
     JoistDirection => "joist_direction",
     Deck => "deck",
     Walkthrough => "walkthrough",
+    Annotation3d => "annotation3d",
 }
 
 impl fmt::Display for ObjectKind {

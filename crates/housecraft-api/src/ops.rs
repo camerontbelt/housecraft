@@ -1111,6 +1111,8 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
             Object::Opening(o) => {
                 o.details.plan_block = o.details.plan_block.filter(|b| !doomed.contains(b));
             }
+            // A note on a deleted camera shows in every 3D view.
+            Object::Annotation3d(a) => a.camera = a.camera.filter(|c| !doomed.contains(c)),
             Object::Stair(s) => {
                 s.baluster = s.baluster.filter(|b| !doomed.contains(b));
                 s.newel = s.newel.filter(|n| !doomed.contains(n));

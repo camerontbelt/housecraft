@@ -67,6 +67,8 @@ struct Uniforms {
     misc: [f32; 4],
     /// What the camera looks at (m).
     target: [f32; 4],
+    /// Ambient light tint (rgb) and how much it applies (w).
+    ambient: [f32; 4],
 }
 
 /// Most fixture lights drawn at once (the nearest to the view).
@@ -148,7 +150,7 @@ const SHADOW_SIZE: u32 = 2048;
 const SHADOW_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
 const SHADER: &str = r#"
-struct U { view_proj: mat4x4<f32>, light_vp: mat4x4<f32>, light: vec4<f32>, params: vec4<f32>, clip: vec4<f32>, eye: vec4<f32>, lights: array<vec4<f32>, 32>, style: vec4<f32>, duo_dark: vec4<f32>, duo_light: vec4<f32>, horizon: vec4<f32>, misc: vec4<f32>, aim: vec4<f32> };
+struct U { view_proj: mat4x4<f32>, light_vp: mat4x4<f32>, light: vec4<f32>, params: vec4<f32>, clip: vec4<f32>, eye: vec4<f32>, lights: array<vec4<f32>, 32>, style: vec4<f32>, duo_dark: vec4<f32>, duo_light: vec4<f32>, horizon: vec4<f32>, misc: vec4<f32>, aim: vec4<f32>, ambient: vec4<f32> };
 @group(0) @binding(0) var<uniform> u: U;
 @group(1) @binding(0) var shadow_map: texture_depth_2d;
 @group(1) @binding(1) var shadow_sampler: sampler_comparison;
@@ -307,7 +309,8 @@ fn shade(i: VOut) -> vec4<f32> {
     }
     // Moonlight is cool and dim.
     let sun_tint = mix(vec3<f32>(1.0), vec3<f32>(0.55, 0.65, 1.0), u.misc.w);
-    var color = (base * (1.0 - metal) * lit + fresnel * spec * 0.6) * sun_tint + env + lamps + base * max(i.pbr.z, 0.0);
+    let amb = mix(vec3<f32>(1.0), u.ambient.rgb, u.ambient.w);
+    var color = (base * (1.0 - metal) * lit * amb + fresnel * spec * 0.6) * sun_tint + env + lamps + base * max(i.pbr.z, 0.0);
     let lum = dot(color, vec3<f32>(0.299, 0.587, 0.114));
     if (style == 2) {
         // Technical illustration: flat colour, a little shading by angle.
@@ -833,6 +836,14 @@ pub struct View3d {
     pub playing: Option<(Id, f64)>,
     /// Keyframes being recorded and when the last was taken (s).
     pub recording: Option<(Vec<housecraft_api::model::Keyframe>, f64)>,
+    /// Placing a 3D note or dimension (the first point of a dimension).
+    pub annotate: Option<Annotate>,
+    /// The camera last applied (3D notes can belong to one camera).
+    pub camera: Option<Id>,
+    /// The Lighting Manager window is open.
+    pub lighting_window: bool,
+    /// A panorama's average colour, cached by path.
+    pano_tint: Option<(String, [f32; 3])>,
     mesh: Option<(u64, Mesh)>,
     gpu: Option<GpuMesh>,
     gpu_key: u64,
@@ -862,6 +873,10 @@ impl Default for View3d {
             time: 0.0,
             playing: None,
             recording: None,
+            annotate: None,
+            camera: None,
+            lighting_window: false,
+            pano_tint: None,
         }
     }
 }
@@ -893,6 +908,7 @@ impl View3d {
     }
 
     pub fn apply_camera(&mut self, cam: &Camera) {
+        self.camera = Some(cam.id);
         let p = |q: Point3| {
             let [x, y, z] = q.mm();
             Vec3::new(x as f32, y as f32, z as f32) / 1000.0
@@ -1165,6 +1181,16 @@ fn pick(
     dir: Vec3,
     hidden: &[Category],
 ) -> Option<(Id, Option<housecraft_api::model::Surface>)> {
+    pick_hit(mesh, origin, dir, hidden).map(|(id, s, _)| (id, s))
+}
+
+/// The nearest surface along a ray: its object, surface role and distance.
+fn pick_hit(
+    mesh: &Mesh,
+    origin: Vec3,
+    dir: Vec3,
+    hidden: &[Category],
+) -> Option<(Id, Option<housecraft_api::model::Surface>, f32)> {
     let mut best: Option<(f32, Id, u32)> = None;
     for part in &mesh.parts {
         if part.object == Id(0) || hidden.contains(&part.category) {
@@ -1196,7 +1222,7 @@ fn pick(
             }
         }
     }
-    best.map(|(_, id, v)| (id, mesh.surfaces.get(v as usize).copied().flatten()))
+    best.map(|(t, id, v)| (id, mesh.surfaces.get(v as usize).copied().flatten(), t))
 }
 
 pub fn show(app: &mut App, ui: &mut Ui) {
@@ -1330,7 +1356,31 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         let near = inv * Vec4::new(ndc.x, ndc.y, 0.0, 1.0);
         let far = inv * Vec4::new(ndc.x, ndc.y, 1.0, 1.0);
         let (near, far) = (near.truncate() / near.w, far.truncate() / far.w);
-        let hit = pick(&mesh, near, (far - near).normalize(), &app.view3d.hidden);
+        let dir = (far - near).normalize();
+        if let Some(mode) = app.view3d.annotate {
+            if let Some((_, _, t)) = pick_hit(&mesh, near, dir, &app.view3d.hidden) {
+                let p = near + dir * t;
+                let mm = |v: Vec3| Point3::from_mm(v.x as f64 * 1000.0, v.y as f64 * 1000.0, v.z as f64 * 1000.0);
+                let camera = app.view3d.camera;
+                match mode {
+                    Annotate::Note => {
+                        app.view3d.annotate = None;
+                        app.note3d = Some((mm(p), String::new(), camera));
+                    }
+                    Annotate::Dimension(None) => app.view3d.annotate = Some(Annotate::Dimension(Some(p))),
+                    Annotate::Dimension(Some(a)) => {
+                        app.view3d.annotate = None;
+                        app.run1(Command::AddAnnotation3d {
+                            camera,
+                            mark: housecraft_api::model::Mark3d::Dimension { a: mm(a), b: mm(p) },
+                        });
+                    }
+                }
+            }
+            v_restore(app, mesh_rev, mesh);
+            return;
+        }
+        let hit = pick(&mesh, near, dir, &app.view3d.hidden);
         let (ctrl, alt) = ui.input(|i| (i.modifiers.command, i.modifiers.alt));
         if let Some(painter) = app.view3d.painter {
             match hit {
@@ -1404,6 +1454,14 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         v.gpu = Some((sel_hash, Arc::new(verts), Arc::new(idx), tris));
     }
     let (_, verts, idx, triangles) = v.gpu.clone().expect("uploaded");
+    // A panorama's colour for lighting (worked out once per image).
+    if let Some(p) = &v.render.panorama
+        && v.pano_tint.as_ref().is_none_or(|(path, _)| *path != p.path)
+        && let Some(c) = crate::images::average_color(&p.path)
+    {
+        let [r, g, b, _] = c.0;
+        v.pano_tint = Some((p.path.clone(), [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0]));
+    }
     // Water moves: keep drawing while any is in view.
     v.time = ui.input(|i| i.time) as f32;
     if mesh.pbr.iter().any(|p| p[2] < -0.5) {
@@ -1420,7 +1478,9 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         let [r, g, b, _] = c.0;
         egui::Color32::from_rgb(r, g, b)
     };
-    if dark && v.render.sky == housecraft_api::model::Sky::default() {
+    if let Some(pano) = v.render.panorama.clone() {
+        paint_panorama(ui.ctx(), &painter, rect, v, &pano, vp);
+    } else if dark && v.render.sky == housecraft_api::model::Sky::default() {
         painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(38, 44, 54));
     } else {
         let mut sky = egui::Mesh::default();
@@ -1456,8 +1516,186 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             uniforms,
         },
     ));
+    annotations(app, &painter, rect, vp);
     overlay(app, ui, rect);
     painter_bar(app, ui, rect);
+}
+
+/// Put the mesh back after an early return from `show`.
+fn v_restore(app: &mut App, rev: u64, mesh: Mesh) {
+    app.view3d.mesh = Some((rev, mesh));
+}
+
+/// What a click in 3D places.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Annotate {
+    Note,
+    /// The first end once clicked.
+    Dimension(Option<Vec3>),
+}
+
+/// A 360° image behind the model: a grid over the view whose corners look
+/// up the image by direction.
+fn paint_panorama(
+    ctx: &egui::Context,
+    painter: &egui::Painter,
+    rect: Rect,
+    v: &View3d,
+    pano: &housecraft_api::model::Panorama,
+    vp: Mat4,
+) {
+    let Some(tex) = crate::images::texture_repeat(ctx, &pano.path) else {
+        painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(90, 100, 110));
+        return;
+    };
+    let inv = vp.inverse();
+    let eye = v.eye();
+    let (nx, ny) = (24, 16);
+    let mut mesh = egui::Mesh::with_texture(tex.id());
+    let uv_at = |sx: f32, sy: f32| {
+        let ndc = Vec4::new(sx * 2.0 - 1.0, 1.0 - sy * 2.0, 1.0, 1.0);
+        let far = inv * ndc;
+        let d = (far.truncate() / far.w - eye).normalize_or_zero();
+        let lon = d.y.atan2(d.x) - (pano.rotation as f32).to_radians();
+        let lat = d.z.clamp(-1.0, 1.0).asin();
+        let u = 0.5 - lon / std::f32::consts::TAU;
+        let vv = (0.5 - lat / std::f32::consts::PI - pano.horizon as f32 * 0.25).clamp(0.0, 1.0);
+        egui::pos2(u, vv)
+    };
+    for j in 0..=ny {
+        for i in 0..=nx {
+            let (sx, sy) = (i as f32 / nx as f32, j as f32 / ny as f32);
+            let pos = egui::pos2(rect.left() + sx * rect.width(), rect.top() + sy * rect.height());
+            mesh.vertices.push(egui::epaint::Vertex { pos, uv: uv_at(sx, sy), color: egui::Color32::WHITE });
+        }
+    }
+    let w = nx + 1;
+    for j in 0..ny {
+        for i in 0..nx {
+            let k = (j * w + i) as u32;
+            // Keep each quad on one side of the image's seam.
+            let us: Vec<f32> = [k, k + 1, k + w as u32, k + w as u32 + 1].iter().map(|q| mesh.vertices[*q as usize].uv.x).collect();
+            let lo = us.iter().copied().fold(f32::MAX, f32::min);
+            if us.iter().any(|u| u - lo > 0.5) {
+                for q in [k, k + 1, k + w as u32, k + w as u32 + 1] {
+                    let vx = &mut mesh.vertices[q as usize];
+                    if vx.uv.x - lo > 0.5 {
+                        // Unwrap: the repeating texture carries on past 1.
+                        vx.uv.x -= 1.0;
+                    }
+                }
+            }
+            mesh.add_triangle(k, k + 1, k + w as u32 + 1);
+            mesh.add_triangle(k, k + w as u32 + 1, k + w as u32);
+        }
+    }
+    painter.add(mesh);
+}
+
+/// 3D notes and dimensions over the view (the ones for this camera or all).
+fn annotations(app: &App, painter: &egui::Painter, rect: Rect, vp: Mat4) {
+    let doc = app.session.document();
+    let to_screen = |p: Point3| {
+        let [x, y, z] = p.mm();
+        let c = vp * Vec4::new(x as f32 / 1000.0, y as f32 / 1000.0, z as f32 / 1000.0, 1.0);
+        (c.w > 0.0).then(|| egui::pos2(rect.left() + (c.x / c.w * 0.5 + 0.5) * rect.width(), rect.top() + (0.5 - c.y / c.w * 0.5) * rect.height()))
+    };
+    let ink = egui::Color32::from_rgb(20, 20, 24);
+    let paper = egui::Color32::from_rgba_unmultiplied(255, 255, 255, 220);
+    let font = egui::FontId::proportional(14.0);
+    let label = |at: egui::Pos2, text: String| {
+        let galley = painter.layout_no_wrap(text, font.clone(), ink);
+        let r = egui::Rect::from_center_size(at, galley.size()).expand(3.0);
+        painter.rect_filled(r, 3.0, paper);
+        painter.galley(r.min + egui::vec2(3.0, 3.0), galley, ink);
+    };
+    for a in doc.iter::<housecraft_api::model::Annotation3d>() {
+        if a.camera.is_some() && a.camera != app.view3d.camera {
+            continue;
+        }
+        match &a.mark {
+            housecraft_api::model::Mark3d::Note { at, text } => {
+                if let Some(p) = to_screen(*at) {
+                    painter.circle_filled(p, 3.5, ink);
+                    let at = p + egui::vec2(30.0, -24.0);
+                    painter.line_segment([p, at], egui::Stroke::new(1.2, ink));
+                    label(at, text.clone());
+                }
+            }
+            housecraft_api::model::Mark3d::Dimension { a, b } => {
+                if let (Some(pa), Some(pb)) = (to_screen(*a), to_screen(*b)) {
+                    let stroke = egui::Stroke::new(1.5, ink);
+                    painter.line_segment([pa, pb], stroke);
+                    let n = (pb - pa).normalized().rot90() * 6.0;
+                    for p in [pa, pb] {
+                        painter.line_segment([p - n, p + n], stroke);
+                    }
+                    let d: f64 = a.mm().iter().zip(b.mm()).map(|(x, y)| (x - y).powi(2)).sum::<f64>().sqrt();
+                    label(pa + (pb - pa) * 0.5, housecraft_api::units::Length::from_mm(d).format(doc.settings.display_unit));
+                }
+            }
+        }
+    }
+    if let Some(Annotate::Dimension(Some(first))) = app.view3d.annotate {
+        let c = vp * first.extend(1.0);
+        if c.w > 0.0 {
+            let p = egui::pos2(rect.left() + (c.x / c.w * 0.5 + 0.5) * rect.width(), rect.top() + (0.5 - c.y / c.w * 0.5) * rect.height());
+            painter.circle_filled(p, 4.0, egui::Color32::from_rgb(255, 140, 30));
+        }
+    }
+}
+
+/// The Lighting Manager: every light in the plan, switched and dimmed in
+/// one table.
+pub fn lighting_window(app: &mut App, ctx: &egui::Context) {
+    if !app.view3d.lighting_window {
+        return;
+    }
+    let mut open = true;
+    let mut commands = Vec::new();
+    let doc = app.session.document();
+    egui::Window::new("Lighting Manager").open(&mut open).default_width(560.0).show(ctx, |ui| {
+        egui::ScrollArea::vertical().max_height(420.0).show(ui, |ui| {
+            egui::Grid::new("lights").num_columns(6).striped(true).show(ui, |ui| {
+                for h in ["Light", "On", "Dimmer", "Lumens", "Kelvin", "Shadows"] {
+                    ui.strong(h);
+                }
+                ui.end_row();
+                let mut row = |ui: &mut Ui, id: Id, name: String, s: housecraft_api::model::LightSettings, field: &str| {
+                    ui.label(name);
+                    let mut t = s;
+                    ui.checkbox(&mut t.on, "");
+                    ui.add(egui::Slider::new(&mut t.dimmer, 0.0..=1.0).show_value(false));
+                    ui.add(egui::DragValue::new(&mut t.lumens).range(0.0..=20000.0).speed(10.0));
+                    ui.add(egui::DragValue::new(&mut t.kelvin).range(1500.0..=10000.0).speed(20.0));
+                    ui.checkbox(&mut t.shadows, "");
+                    ui.end_row();
+                    if t != s {
+                        let set = match field {
+                            "light" => serde_json::json!({ "light": t }),
+                            _ => serde_json::json!({ "behavior": { "type": "light", "light": t } }),
+                        };
+                        commands.push(Command::Update { id, set: set.as_object().expect("object").clone() });
+                    }
+                };
+                for e in doc.iter::<housecraft_api::model::Electrical>().filter(|e| e.electrical_kind.emits_light()) {
+                    let s = e.light.unwrap_or_else(|| housecraft_api::model::LightSettings::typical(e.electrical_kind));
+                    let floor = doc.get::<housecraft_api::model::Floor>(e.floor).map_or(String::new(), |f| f.name.clone());
+                    row(ui, e.id, format!("{} ({floor})", e.electrical_kind.name()), s, "light");
+                }
+                for d in doc.iter::<housecraft_api::model::SymbolDef>() {
+                    if let housecraft_api::model::SymbolBehavior::Light { light } = &d.behavior {
+                        row(ui, d.id, format!("{} (every copy)", d.name), *light, "behavior");
+                    }
+                }
+            });
+        });
+        ui.weak("To turn lights off in one view only, use Render Settings > Lights in this view.");
+    });
+    app.view3d.lighting_window = open;
+    if !commands.is_empty() {
+        app.run(commands);
+    }
 }
 
 /// The shader inputs for a frame: camera, sun, shadows, cutaway, lights.
@@ -1538,6 +1776,14 @@ fn frame_uniforms(v: &View3d, doc: &housecraft_api::model::Document, vp: Mat4) -
                     if night { 1.0 } else { 0.0 },
                 ],
                 target: v.target.extend(1.0).to_array(),
+                ambient: match (&r.panorama, &v.pano_tint) {
+                    (Some(p), Some((path, c))) if p.lights_scene && *path == p.path => {
+                        // Normalise so the tint changes colour, not brightness.
+                        let m = c[0].max(c[1]).max(c[2]).max(0.01);
+                        [c[0] / m, c[1] / m, c[2] / m, 0.7]
+                    }
+                    _ => [1.0, 1.0, 1.0, 0.0],
+                },
             }
 }
 
@@ -1904,6 +2150,31 @@ pub fn render_window(app: &mut App, ctx: &egui::Context) {
             ui.end_row();
             ui.label("Walls");
             ui.checkbox(&mut r.hide_near_walls, "Hide walls between me and the view");
+            ui.end_row();
+            ui.label("360° backdrop");
+            ui.vertical(|ui| {
+                ui.horizontal(|ui| {
+                    let name = r.panorama.as_ref().map_or("None".to_string(), |p| {
+                        std::path::Path::new(&p.path).file_name().map_or(p.path.clone(), |f| f.to_string_lossy().into_owned())
+                    });
+                    ui.label(name);
+                    if ui.small_button("Choose…").clicked()
+                        && let Some(f) = crate::props::pick_image()
+                    {
+                        r.panorama = Some(housecraft_api::model::Panorama { path: f, rotation: 0.0, horizon: 0.0, lights_scene: true });
+                    }
+                    if r.panorama.is_some() && ui.small_button("Remove").clicked() {
+                        r.panorama = None;
+                    }
+                });
+                if let Some(p) = &mut r.panorama {
+                    ui.horizontal(|ui| {
+                        ui.add(egui::DragValue::new(&mut p.rotation).range(-180.0..=180.0).suffix("° turn"));
+                        ui.add(egui::Slider::new(&mut p.horizon, -1.0..=1.0).text("horizon"));
+                    });
+                    ui.checkbox(&mut p.lights_scene, "Light the model with its colours");
+                }
+            });
             ui.end_row();
         });
         if !lights.is_empty() {

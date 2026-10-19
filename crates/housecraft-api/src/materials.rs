@@ -385,6 +385,8 @@ pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
                 let n = (run / spacing.mm().max(1.0)).floor() + 1.0;
                 t.add("Site", format!("Stepping stone {}", fmt(*size)), Measure::Count, n, f.id);
             }
+            SiteKind::RopeLight { .. } => t.add("Site", "Rope light", Measure::Length, run, f.id),
+            SiteKind::Grass { .. } => t.add("Site", "Lawn", Measure::Area, housecraft_geom::math::signed_area(&pts).abs(), f.id),
             SiteKind::Stream { .. } => {}
         }
     }

@@ -646,6 +646,28 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.end_row();
             ed.pick::<Layer>(ui, "Layer", "layer", Some(m.layer), None);
         }
+        Object::Annotation3d(a) => {
+            match &a.mark {
+                Mark3d::Note { text, .. } => {
+                    Ed::label(ui, "Text");
+                    let mut t = text.clone();
+                    if ui.text_edit_singleline(&mut t).lost_focus() && t != *text {
+                        let mut mark = a.mark.clone();
+                        if let Mark3d::Note { text, .. } = &mut mark {
+                            *text = t;
+                        }
+                        ed.out.push(patch(id, json!({ "mark": mark })));
+                    }
+                    ui.end_row();
+                }
+                Mark3d::Dimension { .. } => {
+                    Ed::label(ui, "Dimension");
+                    ui.label(housecraft_api::query::describe(doc, object).label);
+                    ui.end_row();
+                }
+            }
+            ed.pick::<Camera>(ui, "Shown in", "camera", a.camera, Some("Every 3D view"));
+        }
         Object::Walkthrough(w) => {
             ed.text(ui, "Name", "name", &w.name);
             if let Some(f) = ed.number(ui, "Frames per Second", "fps", w.fps)
@@ -805,6 +827,27 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     len(ui, ed, "Stone Size", "feature.size", size);
                 }
                 SiteKind::Stream { width } => len(ui, ed, "Width", "feature.width", width),
+                SiteKind::RopeLight { height, lumens_per_foot, kelvin } => {
+                    len(ui, ed, "Height above Floor", "feature.height", height);
+                    Ed::label(ui, "Brightness");
+                    ui.horizontal(|ui| {
+                        ui.add(egui::DragValue::new(lumens_per_foot).range(0.0..=1000.0).suffix(" lm/ft"));
+                        ui.add(egui::DragValue::new(kelvin).range(1500.0..=10000.0).speed(20.0).suffix(" K"));
+                    });
+                    ui.end_row();
+                }
+                SiteKind::Grass { length, density, color } => {
+                    len(ui, ed, "Blade Length", "feature.length", length);
+                    Ed::label(ui, "Density");
+                    ui.add(egui::DragValue::new(density).range(10.0..=5000.0).suffix(" blades/m²"));
+                    ui.end_row();
+                    Ed::label(ui, "Colour");
+                    let mut c32 = to_color32(*color);
+                    if ui.color_edit_button_srgba(&mut c32).changed() {
+                        *color = from_color32(c32);
+                    }
+                    ui.end_row();
+                }
             }
             if kind != f.feature {
                 ed.out.push(patch(id, json!({ "feature": kind })));

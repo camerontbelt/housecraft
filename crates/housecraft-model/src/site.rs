@@ -195,6 +195,24 @@ pub enum SiteKind {
     SteppingStones { spacing: Length, size: Length },
     /// A stream or creek bed.
     Stream { width: Length },
+    /// A strip of small lights along the path, `height` above the floor.
+    RopeLight {
+        height: Length,
+        lumens_per_foot: f64,
+        #[serde(default = "warm")]
+        kelvin: f64,
+    },
+    /// Grass blades over an area (closed outline).
+    Grass {
+        length: Length,
+        /// Blades per square metre.
+        density: f64,
+        color: Color,
+    },
+}
+
+fn warm() -> f64 {
+    2700.0
 }
 
 impl SiteKind {
@@ -206,12 +224,14 @@ impl SiteKind {
             SiteKind::GardenBed { .. } => "Garden Bed",
             SiteKind::SteppingStones { .. } => "Stepping Stones",
             SiteKind::Stream { .. } => "Stream",
+            SiteKind::RopeLight { .. } => "Rope Light",
+            SiteKind::Grass { .. } => "Grass",
         }
     }
 
     /// Whether its points make a closed outline.
     pub fn closed(&self) -> bool {
-        matches!(self, SiteKind::GardenBed { .. })
+        matches!(self, SiteKind::GardenBed { .. } | SiteKind::Grass { .. })
     }
 
     /// Typical settings.
@@ -242,6 +262,12 @@ impl SiteKind {
     }
     pub fn stream() -> Self {
         SiteKind::Stream { width: Length::from_feet(3.0) }
+    }
+    pub fn rope_light() -> Self {
+        SiteKind::RopeLight { height: Length::from_inches(84.0), lumens_per_foot: 60.0, kelvin: 2700.0 }
+    }
+    pub fn grass() -> Self {
+        SiteKind::Grass { length: Length::from_inches(4.0), density: 400.0, color: Color::rgb(95, 145, 60) }
     }
 }
 

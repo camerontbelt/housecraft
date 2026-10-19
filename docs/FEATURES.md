@@ -71,11 +71,11 @@ These come from reading the whole list and change the architecture, not just the
 | VIS-12 | 360° spherical render export (up to 8192×4096) | P2 | M7 ✓ 360° panorama export up to 8192 × 4096 |
 | VIS-13 | Sky model: sun, moon, horizon lighting controls per camera | P2 | M7 ◐ sky colours, sun brightness and moonlight per camera; no horizon light controls |
 | VIS-14 | Custom image backdrops per saved camera | P1 | M5 ✓ |
-| VIS-15 | Spherical (360°) backdrops with offset/orientation/eye level | P2 | M7 |
-| VIS-16 | HDR backdrops providing environment lighting | P2 | M7 |
+| VIS-15 | Spherical (360°) backdrops with offset/orientation/eye level | P2 | M7 ✓ Render Settings > 360° backdrop: any panorama image behind the 3D view, with turn and eye-level sliders |
+| VIS-16 | HDR backdrops providing environment lighting | P2 | M7 ◐ the backdrop's average colour tints the scene's ambient light; no image-based reflections, and plain images rather than true HDR files |
 | VIS-17 | HDR image export | P2 | M7 ✓ HDR (.hdr) image merged from three exposures |
 | VIS-18 | Extend terrain to horizon in 3D | P2 | M6 ✓ terrain option: extend flat ground to the horizon in 3D |
-| VIS-19 | Procedural grass regions (length, density, color) | P3 | M7 |
+| VIS-19 | Procedural grass regions (length, density, color) | P3 | M7 ✓ Terrain > Site > Grass: blades of a set length, density and colour over a region |
 | VIS-20 | Render techniques: standard, PBR, watercolor, squiggle line, technical illustration, clay, vector, glass house, duotone | P1→P2 | M5/M7 ◐ standard, clay, technical illustration, watercolor, duotone and glass house; no squiggle line or vector styles |
 | VIS-21 | Line-drawing overlay on standard/duotone/watercolor/PBR/clay | P2 | M7 ✓ Render Settings > Lines draws edges over any style |
 | VIS-22 | GPU path-traced PBR with soft shadows | P2 | M7 ◐ High-Quality Image averages many passes (smooth edges, soft sun shadows, depth of field); not path traced |
@@ -369,7 +369,7 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | DIM-01 | Baseline, running, centerline, angular, end-to-end, interior, point-to-point, temporary dimensions; one-click exterior | P0 | M1 ◐ point-to-point/running chains, angular, temporary, auto exterior; baseline, centerline, auto interior later |
-| DIM-02 | Dimensions in 3D views | P2 | M7 |
+| DIM-02 | Dimensions in 3D views | P2 | M7 ✓ 3D > Notes and Dimensions: click two points on the model; kept per camera |
 | DIM-03 | Move objects by editing dimensions; arithmetic in inputs | P0 | M1 ◐ arithmetic everywhere, wall/line length via temporary dimension; moving by any placed dimension later |
 | DIM-04 | Auto exterior dimensions with auto-refresh | P1 | M1 |
 | DIM-05 | Wall length editing via dimensions; type exact length while drawing | P0 | M1 ✓ |
@@ -399,9 +399,9 @@ These come from reading the whole list and change the architecture, not just the
 | EL-01 | Electrical, plumbing, HVAC symbols; circuits/wiring with auto 3-way/4-way; auto-orient to slopes | P1 | M3 ◐ electrical, plumbing and HVAC symbols; switch wiring with automatic 3-way/4-way; slope orientation later |
 | EL-02 | Auto-place outlets by room type (GFCI) | P2 | M3 |
 | EL-03 | Light fixtures emit light in renders | P1 | M5 ✓ |
-| EL-04 | Rope lighting along paths | P3 | M7 |
+| EL-04 | Rope lighting along paths | P3 | M7 ✓ Terrain > Site > Rope Light: glows in 3D, with height, brightness per foot and colour temperature |
 | EL-05 | Per-fixture light controls (shadows, intensity, dimming, on/off) | P1 | M5 ◐ on/off, brightness, dimmer, colour temperature and a shadows switch; light from fixtures doesn't cast shadows yet |
-| EL-06 | Lighting manager table | P2 | M7 |
+| EL-06 | Lighting manager table | P2 | M7 ✓ 3D > Lighting Manager: every light in one table: on/off, dimmer, brightness, colour temperature and shadows |
 | EL-07 | Kelvin color temperature (X18+) | P2 | M5 ✓ |
 | EL-08 | Lighting sets per view/camera | P2 | M7 ✓ each camera can turn individual lights off (a lighting set) |
 
@@ -537,7 +537,7 @@ These come from reading the whole list and change the architecture, not just the
 | TXT-12 | Auto labels for layout boxes | P2 | M4 |
 | TXT-13 | Text styles per layer/default/object | P0 | M1 ✓ |
 | TXT-14 | Default sets for annotation | P1 | M1 |
-| TXT-15 | Annotations on 3D views | P2 | M7 |
+| TXT-15 | Annotations on 3D views | P2 | M7 ✓ 3D > Notes and Dimensions: notes pinned to the model, shown for one camera or all |
 | TXT-16 | Numbered notes with schedule; note markers in 3D | P2 | M4 |
 | TXT-17 | Spell check | P3 | GUI |
 | TXT-18 | Hyperlinks | P2 | M1 |

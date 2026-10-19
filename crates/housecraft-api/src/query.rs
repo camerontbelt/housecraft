@@ -254,6 +254,13 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         Object::Terrain(t) => format!("terrain, {} points", t.perimeter.len()),
         Object::SiteFeature(f) => f.feature.name().to_lowercase(),
         Object::FramingMember(m) => format!("{} {} x {}", m.size_name(), m.role.name().to_lowercase(), fmt(m.length())),
+        Object::Annotation3d(a) => match &a.mark {
+            Mark3d::Note { text, .. } => format!("3D note {:?}", text),
+            Mark3d::Dimension { a, b } => {
+                let d: f64 = a.mm().iter().zip(b.mm()).map(|(x, y)| (x - y).powi(2)).sum::<f64>().sqrt();
+                format!("3D dimension {}", fmt(Length::from_mm(d)))
+            }
+        },
         Object::Walkthrough(w) => format!("walkthrough {:?}, {} keyframes, {:.0} s", w.name, w.keyframes.len(), w.duration()),
         Object::Deck(dk) => format!("{}, top at {}", if dk.platform { "platform" } else { "deck" }, fmt(dk.height)),
         Object::JoistDirection(j) => format!("{} joist direction {:.0}°", if j.ceiling { "ceiling" } else { "floor" }, j.angle),

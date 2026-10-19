@@ -91,7 +91,7 @@ pub fn post(c: DVec2, half: f64, z0: f64, z1: f64, look: Look, mesh: &mut Mesh) 
     mesh.prism_look(&sq, z0, z1, look);
 }
 
-pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, mesh: &mut Mesh) {
+pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, mesh: &mut Mesh) {
     let mut pts: Vec<DVec2> = f.points.iter().map(|p| v2(*p)).collect();
     if pts.len() < 2 {
         return;
@@ -226,6 +226,59 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, mesh: &mut Mesh) 
                 mesh.prism_look(&disc, z(p) - 20.0, z(p) + 40.0, stone);
             }
         }
+        SiteKind::RopeLight { height, lumens_per_foot, kelvin } => {
+            let glow = Look { color: [1.0, 0.9, 0.7, 1.0], pbr: [0.5, 0.0, 1.0, 1.0], surface: Some(housecraft_model::Surface::Lamp), tex: None };
+            let zr = floor_z + height.mm();
+            let s = along(&pts, false, 300.0);
+            strip(&s, 8.0, 0.0, 16.0, &|_| zr, glow, mesh);
+            // A light every 2 m (the view uses the nearest few).
+            let settings = housecraft_model::LightSettings { on: true, lumens: 0.0, dimmer: 1.0, kelvin: *kelvin, shadows: false };
+            let [r, g, b] = settings.rgb();
+            let total: f64 = pts.windows(2).map(|w| w[0].distance(w[1])).sum();
+            let n = ((total / 2000.0).ceil() as usize).max(1);
+            let per = lumens_per_foot * total / 304.8 / n as f64;
+            for (p, _) in along(&pts, false, total / n as f64).into_iter().take(n) {
+                mesh.lights.push(crate::mesh::MeshLight {
+                    object: f.id,
+                    position: [(p.x / 1000.0) as f32, (p.y / 1000.0) as f32, (zr / 1000.0) as f32],
+                    color: [r as f32, g as f32, b as f32],
+                    intensity: (per / 800.0) as f32,
+                    shadows: false,
+                    spread: 0,
+                });
+            }
+        }
+        SiteKind::Grass { length, density, color } => {
+            if signed_area(&pts) < 0.0 {
+                pts.reverse();
+            }
+            let blade = look(*color, 1.0, 0.95);
+            let tip = look(*color, 1.25, 0.95);
+            let (lo, hi) = crate::math::bounds(pts.iter().copied()).expect("points");
+            let area_m2 = signed_area(&pts).abs() / 1e6;
+            // Keep the count sane on big lawns.
+            let count = (area_m2 * density).min(60_000.0) as usize;
+            let h = length.mm();
+            let mut k = 0u64;
+            let mut placed = 0;
+            while placed < count && k < count as u64 * 4 {
+                k += 1;
+                let fx = ((k as f64 * 0.754_877_666).fract(), (k as f64 * 0.569_840_29).fract());
+                let p = DVec2::new(lo.x + fx.0 * (hi.x - lo.x), lo.y + fx.1 * (hi.y - lo.y));
+                if !crate::math::point_in_polygon(p, &pts) {
+                    continue;
+                }
+                placed += 1;
+                let a = (k as f64 * 2.399_963).rem_euclid(std::f64::consts::TAU);
+                let side = DVec2::from_angle(a) * 6.0;
+                let lean = DVec2::from_angle(a + 1.3) * h * 0.25;
+                let base = z(p);
+                let tall = h * (0.7 + 0.3 * ((k as f64 * 0.31).fract()));
+                let (b0, b1, t) = ((p - side).extend(base), (p + side).extend(base), (p + lean).extend(base + tall));
+                mesh.polygon_look(&[b0, b1, t], if k.is_multiple_of(3) { tip } else { blade });
+                mesh.polygon_look(&[b1, b0, t], blade);
+            }
+        }
         SiteKind::Stream { width } => {
             let water = Look {
                 color: [0.25, 0.45, 0.6, 1.0],
@@ -320,7 +373,8 @@ pub fn build(doc: &Document, only_floor: Option<housecraft_model::Id>, mesh: &mu
             continue;
         }
         mesh.begin(f.id, Category::Terrain);
-        feature_mesh(f, &z, mesh);
+        let floor_z = doc.get::<housecraft_model::Floor>(f.floor).map_or(0.0, |fl| fl.elevation.mm());
+        feature_mesh(f, &z, floor_z, mesh);
         mesh.end();
     }
     for p in doc.iter::<Plant>() {

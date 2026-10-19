@@ -726,6 +726,16 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     c.issue(id, "a framing member needs some length");
                 }
             }
+            Object::Annotation3d(a) => {
+                if let Some(cam) = a.camera {
+                    c.reference(id, "camera", cam, K::Camera);
+                }
+                let flat: Vec<f64> = match &a.mark {
+                    Mark3d::Note { at, .. } => at.mm().to_vec(),
+                    Mark3d::Dimension { a, b } => a.mm().into_iter().chain(b.mm()).collect(),
+                };
+                c.finite(id, "points", &flat);
+            }
             Object::Walkthrough(w) => {
                 if w.keyframes.is_empty() {
                     c.issue(id, "a walkthrough needs at least one keyframe");
@@ -798,6 +808,17 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                         c.positive(id, "size", *size);
                     }
                     SiteKind::Stream { width } => c.positive(id, "width", *width),
+                    SiteKind::RopeLight { lumens_per_foot, .. } => {
+                        if *lumens_per_foot < 0.0 {
+                            c.issue(id, "lumens can't be negative");
+                        }
+                    }
+                    SiteKind::Grass { length, density, .. } => {
+                        c.positive(id, "length", *length);
+                        if !(*density > 0.0 && *density <= 5000.0) {
+                            c.issue(id, "grass density must be between 0 and 5000 blades per m²");
+                        }
+                    }
                 }
             }
             Object::Plant(p) => {

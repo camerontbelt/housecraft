@@ -494,3 +494,23 @@ mod walk_tests {
         assert!((w.sample(99.0).unwrap().0[0] - 3000.0).abs() < 1e-6);
     }
 }
+
+/// A note or dimension placed on a 3D view.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Mark3d {
+    /// Text pinned to a point.
+    Note { at: Point3, text: String },
+    /// The distance between two points.
+    Dimension { a: Point3, b: Point3 },
+}
+
+/// A note or dimension in 3D, shown in every 3D view or only one camera's.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Annotation3d {
+    pub id: Id,
+    /// Only in this camera's view; every 3D view when unset.
+    #[serde(default)]
+    pub camera: Option<Id>,
+    pub mark: Mark3d,
+}

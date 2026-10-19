@@ -34,6 +34,9 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// Build the 3D model and report how long it took and its size by
+    /// kind of object (for finding slow or heavy parts).
+    MeshStats { path: PathBuf },
     /// List objects in a plan.
     Objects {
         path: PathBuf,
@@ -224,6 +227,23 @@ fn main() -> Result<()> {
             });
             save(&Document::new(name), &path)?;
             println!("created {}", path.display());
+        }
+        Cmd::MeshStats { path } => {
+            let doc = load(&path)?;
+            let start = std::time::Instant::now();
+            let mesh = housecraft_api::geom::mesh::build(&doc, None);
+            let took = start.elapsed();
+            let mut by_kind: std::collections::BTreeMap<String, (usize, u32)> = Default::default();
+            for part in &mesh.parts {
+                let kind = doc.kind_of(part.object).map_or("(none)".into(), |k| k.to_string());
+                let e = by_kind.entry(kind).or_default();
+                e.0 += 1;
+                e.1 += part.index_count / 3;
+            }
+            println!("built in {:.2?}: {} triangles, {} lights", took, mesh.indices.len() / 3, mesh.lights.len());
+            for (kind, (parts, tris)) in by_kind {
+                println!("  {kind:<20} {parts:>6} parts {tris:>9} triangles");
+            }
         }
         Cmd::Info { path, json } => {
             let summary = query::summary(&load(&path)?);

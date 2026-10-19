@@ -47,6 +47,26 @@ pub fn texture(ctx: &Context, path: &str, transparent: Option<Color>) -> Option<
     })
 }
 
+/// The texture for `path`, repeating (for panoramas wrapping round).
+pub fn texture_repeat(ctx: &Context, path: &str) -> Option<TextureHandle> {
+    REPEAT.with(|c| {
+        c.borrow_mut()
+            .entry(path.to_string())
+            .or_insert_with(|| {
+                let img = image::open(path).ok()?.to_rgba8();
+                let (w, h) = img.dimensions();
+                let image = ColorImage::from_rgba_unmultiplied([w as usize, h as usize], &img.into_raw());
+                let options = TextureOptions { wrap_mode: egui::TextureWrapMode::Repeat, ..TextureOptions::LINEAR };
+                Some(ctx.load_texture(format!("{path}#repeat"), image, options))
+            })
+            .clone()
+    })
+}
+
+thread_local! {
+    static REPEAT: std::cell::RefCell<std::collections::HashMap<String, Option<TextureHandle>>> = Default::default();
+}
+
 /// Paint an image stretched over screen corners bottom-left, bottom-right,
 /// top-right, top-left; a grey frame stands in when the file is missing.
 pub fn paint(

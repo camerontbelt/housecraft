@@ -1178,7 +1178,9 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
             | Tool::SteppingStones
             | Tool::Stream
             | Tool::Deck
-            | Tool::RaisedPlatform => pending.push(p),
+            | Tool::RaisedPlatform
+            | Tool::RopeLight
+            | Tool::Grass => pending.push(p),
             Tool::Plant(form) => commands.push(Command::AddPlant {
                 floor,
                 at: pt(p),

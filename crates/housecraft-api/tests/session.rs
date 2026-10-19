@@ -384,6 +384,7 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_joist_direction", "at": ["5'","5'"], "angle": 90}},
                 {{"op": "add_deck", "points": [["20'",0],["30'",0],["30'","10'"],["20'","10'"]]}},
                 {{"op": "orbit_walkthrough", "name": "Orbit"}},
+                {{"op": "add_annotation3d", "mark": {{"type": "note", "at": [0,0,1000], "text": "Hi"}}}},
                 {{"op": "add_solid", "shape": {{"type": "extrude", "points": [[0,0],[1000,0],[0,1000]], "height": 500}}}},
                 {{"op": "add_picture", "path": "x.png", "position": [0,0], "width": "1'"}},
                 {{"op": "add_symbol_def", "name": "S", "positions": [[0,0,0],[1,0,0],[0,-1,0],[0,0,1]], "triangles": [[0,1,2],[0,1,3]]}},

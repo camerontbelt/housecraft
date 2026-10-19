@@ -183,6 +183,28 @@ pub(crate) fn feature(f: &SiteFeature, stroke: Stroke, out: &mut Drawing) {
                 line(out, f.id, arc_points(p, size.mm() / 2.0, 0.0, 360.0), true, stroke);
             }
         }
+        SiteKind::RopeLight { .. } => {
+            line(out, f.id, pts.clone(), false, Stroke { dash: &[0.6, 0.6], ..stroke });
+        }
+        SiteKind::Grass { .. } => {
+            line(out, f.id, pts.clone(), true, Stroke { dash: &[1.0, 1.0], ..thin });
+            // A few tufts as a hatch.
+            if let Some((lo, hi)) = housecraft_geom::math::bounds(pts.iter().copied()) {
+                let step = ((hi - lo).max_element() / 12.0).max(300.0);
+                let mut y = lo.y + step / 2.0;
+                while y < hi.y {
+                    let mut x = lo.x + step / 2.0;
+                    while x < hi.x {
+                        let p = DVec2::new(x, y);
+                        if housecraft_geom::math::point_in_polygon(p, &pts) {
+                            line(out, f.id, vec![p + DVec2::new(-60.0, 0.0), p + DVec2::new(0.0, 90.0), p + DVec2::new(60.0, 0.0)], false, thin);
+                        }
+                        x += step;
+                    }
+                    y += step;
+                }
+            }
+        }
         SiteKind::Stream { width } => {
             let smooth = spline_points(&pts, false);
             let (l, r) = sides(&smooth, width.mm() / 2.0);
