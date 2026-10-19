@@ -33,6 +33,15 @@ pub struct ScheduleOptions {
     /// Columns to show, in order, by name; empty for all of the kind's columns.
     #[serde(default)]
     pub columns: Vec<String>,
+    /// More kinds listed in the same table (a mixed schedule).
+    #[serde(default)]
+    pub also: Vec<ScheduleKind>,
+    /// Only objects that are existing, new or to be demolished.
+    #[serde(default)]
+    pub renovation: Option<Renovation>,
+    /// The first label number (D01 when 1).
+    #[serde(default)]
+    pub start: Option<u32>,
 }
 
 /// Every column a schedule of `kind` can show, in default order.
@@ -45,6 +54,8 @@ pub fn available_columns(kind: ScheduleKind) -> &'static [&'static str] {
             "Width",
             "Height",
             "Swing",
+            "Glass Area",
+            "U-Factor",
             "Floor",
             "Renovation",
         ],
@@ -55,6 +66,9 @@ pub fn available_columns(kind: ScheduleKind) -> &'static [&'static str] {
             "Width",
             "Height",
             "Sill",
+            "Glass Area",
+            "U-Factor",
+            "SHGC",
             "Floor",
             "Renovation",
         ],
@@ -93,6 +107,7 @@ pub fn available_columns(kind: ScheduleKind) -> &'static [&'static str] {
         ],
         ScheduleKind::Plants => &["Plant", "Form", "Qty", "Mature Height", "Spread"],
         ScheduleKind::Framing => &["Role", "Size", "Material", "Qty", "Cut Length", "Floor"],
+        ScheduleKind::Shapes => &["Label", "Layer", "Area", "Perimeter", "Floor"],
     }
 }
 
@@ -108,6 +123,7 @@ pub fn title(kind: ScheduleKind) -> &'static str {
         ScheduleKind::Cabinets => "Cabinet Schedule",
         ScheduleKind::Plants => "Plant Schedule",
         ScheduleKind::Framing => "Framing Cut List",
+        ScheduleKind::Shapes => "Shape Schedule",
     }
 }
 
@@ -137,8 +153,65 @@ fn group(raw: &mut Vec<RawRow>, key: Vec<String>, id: Id, row: BTreeMap<&'static
     }
 }
 
-/// Build a schedule of `kind` from `doc`.
+/// Build a schedule of `kind` (and `opts.also`) from `doc`.
 pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> ScheduleTable {
+    let mut kinds = vec![kind];
+    kinds.extend(opts.also.iter().copied().filter(|k| *k != kind));
+    let mixed = kinds.len() > 1;
+    // Columns: the kinds' columns in order, each once ("Kind" first when mixed).
+    let mut all: Vec<&'static str> = if mixed { vec!["Kind"] } else { Vec::new() };
+    let mut raw: Vec<RawRow> = Vec::new();
+    for k in &kinds {
+        for c in available_columns(*k) {
+            if !all.contains(c) {
+                all.push(c);
+            }
+        }
+        let mut rows = kind_rows(doc, *k, opts);
+        if mixed {
+            for (_, r) in rows.iter_mut() {
+                r.insert("Kind", title(*k).trim_end_matches(" Schedule").to_string());
+            }
+        }
+        raw.extend(rows);
+    }
+    if let Some(phase) = opts.renovation {
+        let want = serde_json::to_value(phase).ok();
+        raw.retain(|(ids, _)| {
+            ids.iter().any(|id| {
+                let v = doc.object(*id).and_then(|o| serde_json::to_value(o).ok());
+                // Objects without a renovation status count as new.
+                let status = v.as_ref().and_then(|v| v.get("renovation")).cloned().or_else(|| serde_json::to_value(Renovation::default()).ok());
+                status == want
+            })
+        });
+    }
+    let columns: Vec<&str> = if opts.columns.is_empty() {
+        all.clone()
+    } else {
+        opts.columns
+            .iter()
+            .filter_map(|c| all.iter().find(|a| a.eq_ignore_ascii_case(c)).copied())
+            .collect()
+    };
+    ScheduleTable {
+        title: if mixed { "Schedule".to_string() } else { title(kind).to_string() },
+        columns: columns.iter().map(|c| c.to_string()).collect(),
+        rows: raw
+            .into_iter()
+            .map(|(ids, row)| ScheduleRow {
+                ids,
+                cells: columns
+                    .iter()
+                    .map(|c| row.get(c).cloned().unwrap_or_default())
+                    .collect(),
+            })
+            .collect(),
+    }
+}
+
+/// The rows of one kind of schedule, every column filled.
+fn kind_rows(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> Vec<RawRow> {
     let unit = doc.settings.display_unit;
     let fmt = |l: Length| l.format(unit);
     let area = |mm2: f64| format_area(mm2, unit);
@@ -172,9 +245,20 @@ pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> S
                 row.insert("Height", fmt(o.height));
                 row.insert("Sill", fmt(o.sill));
                 row.insert("Swing", if o.swing_in { "In" } else { "Out" }.to_string());
+                let d = Some(&o.details);
+                // Glass: a window's sash less a 2 1/2" frame; a door's lite.
+                let frame = 63.5;
+                let glass = match o.opening_kind {
+                    OpeningKind::Window(_) => (o.width.mm() - 2.0 * frame).max(0.0) * (o.height.mm() - 2.0 * frame).max(0.0),
+                    OpeningKind::Door(_) if d.is_some_and(|d| d.glass.is_some()) => 0.4 * o.width.mm() * o.height.mm(),
+                    OpeningKind::Door(_) => 0.0,
+                };
+                row.insert("Glass Area", if glass > 0.0 { area(glass) } else { String::new() });
+                row.insert("U-Factor", d.and_then(|d| d.u_factor).map_or(String::new(), |u| format!("{u:.2}")));
+                row.insert("SHGC", d.and_then(|d| d.shgc).map_or(String::new(), |g| format!("{g:.2}")));
                 row.insert("Floor", floor_name(floor));
                 row.insert("Renovation", o.renovation.name().to_string());
-                let key = ["Type", "Width", "Height", "Sill", "Floor", "Renovation"]
+                let key = ["Type", "Width", "Height", "Sill", "U-Factor", "SHGC", "Floor", "Renovation"]
                     .iter()
                     .map(|c| row[c].clone())
                     .collect();
@@ -187,8 +271,9 @@ pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> S
                     .then_with(|| a.1["Type"].cmp(&b.1["Type"]))
             });
             let prefix = if doors { "D" } else { "W" };
+            let start = opts.start.unwrap_or(1) as usize;
             for (i, (_, row)) in raw.iter_mut().enumerate() {
-                row.insert("Label", format!("{prefix}{:02}", i + 1));
+                row.insert("Label", format!("{prefix}{:02}", i + start));
             }
         }
         ScheduleKind::Rooms => {
@@ -371,6 +456,34 @@ pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> S
             }
             raw.sort_by(|a, b| a.1["Plant"].cmp(&b.1["Plant"]));
         }
+        ScheduleKind::Shapes => {
+            for c in doc.iter::<Cad>().filter(|c| on_floor(c.floor)) {
+                let polys = housecraft_geom::math::shape_polylines(&c.shape);
+                let closed: Vec<&Vec<housecraft_geom::DVec2>> = polys.iter().filter(|(_, closed)| *closed).map(|(p, _)| p).collect();
+                if closed.is_empty() {
+                    continue;
+                }
+                let a: f64 = closed.iter().map(|p| housecraft_geom::math::signed_area(p).abs()).sum();
+                let per: f64 = closed
+                    .iter()
+                    .map(|p| (0..p.len()).map(|i| p[i].distance(p[(i + 1) % p.len()])).sum::<f64>())
+                    .sum();
+                let label = doc
+                    .settings
+                    .labels
+                    .get(&c.id)
+                    .cloned()
+                    .or_else(|| doc.settings.object_info.get(&c.id).map(|i| i.description.clone()))
+                    .unwrap_or_default();
+                let mut row = BTreeMap::new();
+                row.insert("Label", label);
+                row.insert("Layer", doc.get::<Layer>(c.layer).map_or(String::new(), |l| l.name.clone()));
+                row.insert("Area", area(a));
+                row.insert("Perimeter", fmt(Length::from_mm(per)));
+                row.insert("Floor", doc.get::<Floor>(c.floor).map_or_else(|| "(detail)".to_string(), |f| f.name.clone()));
+                raw.push((vec![c.id], row));
+            }
+        }
         ScheduleKind::RoofPlanes => {
             for r in doc
                 .iter::<RoofPlane>()
@@ -395,29 +508,7 @@ pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> S
         }
     }
 
-    let all = available_columns(kind);
-    let columns: Vec<&str> = if opts.columns.is_empty() {
-        all.to_vec()
-    } else {
-        opts.columns
-            .iter()
-            .filter_map(|c| all.iter().find(|a| a.eq_ignore_ascii_case(c)).copied())
-            .collect()
-    };
-    ScheduleTable {
-        title: title(kind).to_string(),
-        columns: columns.iter().map(|c| c.to_string()).collect(),
-        rows: raw
-            .into_iter()
-            .map(|(ids, row)| ScheduleRow {
-                ids,
-                cells: columns
-                    .iter()
-                    .map(|c| row.get(c).cloned().unwrap_or_default())
-                    .collect(),
-            })
-            .collect(),
-    }
+    raw
 }
 
 /// Export formats for [`ScheduleTable::export`].

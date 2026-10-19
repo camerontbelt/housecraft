@@ -54,11 +54,13 @@ pub struct MaterialsList {
 #[derive(Default)]
 struct Takeoff {
     map: BTreeMap<(String, String, Measure), (f64, Vec<Id>)>,
+    /// Objects whose own components replace what is counted for them.
+    replaced: std::collections::BTreeSet<Id>,
 }
 
 impl Takeoff {
     fn add(&mut self, category: &str, item: impl Into<String>, measure: Measure, qty: f64, id: Id) {
-        if qty <= 0.0 {
+        if qty <= 0.0 || self.replaced.contains(&id) {
             return;
         }
         let e = self
@@ -103,6 +105,9 @@ pub fn price_key(category: &str, item: &str) -> String {
     format!("{category}: {item}")
 }
 
+/// A component total: quantity, the objects, a set price.
+type Extra = (f64, Vec<Id>, Option<f64>);
+
 /// Take off materials from `doc`.
 pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
     let set = opts.layer_set.and_then(|s| doc.get::<LayerSet>(s));
@@ -113,7 +118,12 @@ pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
     let on_floor = |f: Id| opts.floor.is_none_or(|o| o == f);
     let unit = doc.settings.display_unit;
     let fmt = |l: Length| l.format(unit);
-    let mut t = Takeoff::default();
+    let mut t = Takeoff {
+        replaced: doc.settings.components.iter().filter(|(_, c)| c.replace).map(|(id, _)| *id).collect(),
+        ..Default::default()
+    };
+    let roof_r = doc.active_defaults().roof.r_value;
+    let top_floor = doc.floors_by_elevation().iter().rev().find(|f| f.foundation.is_none()).map(|f| f.id);
 
     // Walls: each layer's face area (net of openings), studs and plates for
     // framing layers, concrete for foundation walls.
@@ -187,6 +197,16 @@ pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
                     );
                 }
             }
+            // Wall types given an R-value (Wall Types dialog) are insulated.
+            if wt.r_value() > 0.0 {
+                t.add(
+                    "Insulation",
+                    format!("R-{:.0} wall insulation", wt.r_value()),
+                    Measure::Area,
+                    (len * h - holes).max(0.0),
+                    w.id,
+                );
+            }
         }
         if let Some(f) = w.footing {
             t.add(
@@ -240,6 +260,11 @@ pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
                 .filter(|f| !f.is_empty())
             {
                 t.add("Flooring", f, Measure::Area, region.area, room.id);
+            }
+            // Conditioned (living) rooms under the attic get ceiling insulation.
+            let conditioned = room.living_area.unwrap_or(rt.is_some_and(|t| t.living_area));
+            if conditioned && roof_r > 0.0 && Some(floor.id) == top_floor && room.ceiling != CeilingStyle::None {
+                t.add("Insulation", format!("R-{roof_r:.0} ceiling insulation"), Measure::Area, region.area, room.id);
             }
             if room.ceiling != CeilingStyle::None && floor.foundation.is_none() {
                 t.add(
@@ -468,6 +493,27 @@ pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
             ids,
         });
     }
+    // Components set on objects, priced from the list unless they say.
+    let mut extra: BTreeMap<(String, String, String), Extra> = BTreeMap::new();
+    for (id, comps) in &doc.settings.components {
+        let floor = doc.floor_of(*id);
+        if doc.object(*id).is_none() || !shown(*id) || floor.is_some_and(|f| !on_floor(f)) {
+            continue;
+        }
+        for c in &comps.items {
+            let e = extra.entry((c.category.clone(), c.item.clone(), c.unit.clone())).or_default();
+            e.0 += c.quantity;
+            e.1.push(*id);
+            e.2 = c.price.or(e.2);
+        }
+    }
+    for ((category, item, unit), (quantity, ids, price)) in extra {
+        let unit_price = price.or_else(|| doc.settings.prices.get(&price_key(&category, &item)).copied()).unwrap_or(0.0);
+        let total = quantity * unit_price;
+        subtotal += total;
+        lines.push(MaterialLine { category, item, quantity, unit, unit_price, total, ids });
+    }
+    lines.sort_by(|a, b| (&a.category, &a.item).cmp(&(&b.category, &b.item)));
     let markup_percent = doc.settings.markup_percent;
     MaterialsList {
         lines,

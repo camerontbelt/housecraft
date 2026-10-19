@@ -1248,6 +1248,7 @@ fn schedules_group_and_export() {
         &ScheduleOptions {
             floor: None,
             columns: vec!["name".into(), "Area".into()],
+            ..Default::default()
         },
     );
     assert_eq!(rooms.columns, vec!["Name", "Area"]);
@@ -1799,7 +1800,7 @@ fn cabinet_details_schedule_and_dimensions() {
     let t = housecraft_api::schedule::schedule(
         doc,
         ScheduleKind::Cabinets,
-        &housecraft_api::schedule::ScheduleOptions { floor: None, columns: Vec::new() },
+        &housecraft_api::schedule::ScheduleOptions::default(),
     );
     let csv = t.export(housecraft_api::schedule::TableFormat::Csv);
     assert!(csv.contains("B24") && csv.contains("SB24") && csv.contains(" @ "), "{csv}");
@@ -2153,7 +2154,7 @@ fn framing_builds_rebuilds_and_lists() {
     let t = housecraft_api::schedule::schedule(
         doc,
         ScheduleKind::Framing,
-        &housecraft_api::schedule::ScheduleOptions { floor: None, columns: Vec::new() },
+        &housecraft_api::schedule::ScheduleOptions::default(),
     );
     let csv = t.export(housecraft_api::schedule::TableFormat::Csv);
     assert!(csv.contains("2x6") && csv.contains("Stud") && csv.contains("Rafter"), "{csv}");
@@ -2399,4 +2400,74 @@ fn space_plan_boxes_become_typed_rooms_and_get_outlets() {
     let gfci = doc.iter::<Electrical>().filter(|e| e.electrical_kind == ElectricalKind::GfciOutlet).count();
     let plain = doc.iter::<Electrical>().filter(|e| e.electrical_kind == ElectricalKind::Outlet).count();
     assert!(gfci >= 3 && plain >= 3, "kitchen GFCI {gfci}, other {plain}");
+}
+
+#[test]
+fn schedules_mix_kinds_filter_renovation_and_number_from_a_start() {
+    use housecraft_api::schedule::{ScheduleOptions, schedule};
+    let mut s = boxed();
+    let w = walls(&s)[0].id;
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_window", "wall": {w}, "position": "5'"}},
+                {{"op": "add_window", "wall": {w}, "position": "15'", "width": "4'"}},
+                {{"op": "add_door", "wall": {w}, "position": "25'"}},
+                {{"op": "add_cad", "shape": {{"shape": "polyline", "points": [[0,0],["10'",0],["10'","10'"],[0,"10'"]], "closed": true}}}}]"#,
+            w = w.0
+        ),
+    );
+    let win = s.document().iter::<Opening>().find(|o| !o.opening_kind.is_door()).unwrap().id;
+    s.apply(&[Command::Update { id: win, set: patch(serde_json::json!({"details": {"u_factor": 0.28, "shgc": 0.3}, "renovation": "existing"})) }]).unwrap();
+    let doc = s.document();
+    let t = schedule(doc, ScheduleKind::Windows, &ScheduleOptions { start: Some(5), ..Default::default() });
+    let col = |name: &str| t.columns.iter().position(|c| c == name).unwrap();
+    let labels: Vec<&str> = t.rows.iter().map(|r| r.cells[col("Label")].as_str()).collect();
+    assert_eq!(labels, ["W05", "W06"]);
+    let rated = t.rows.iter().find(|r| r.ids.contains(&win)).unwrap();
+    assert_eq!(rated.cells[col("U-Factor")], "0.28");
+    assert!(!rated.cells[col("Glass Area")].is_empty());
+    // Existing windows only.
+    let t = schedule(doc, ScheduleKind::Windows, &ScheduleOptions { renovation: Some(Renovation::Existing), ..Default::default() });
+    assert_eq!(t.rows.len(), 1);
+    // Doors and windows in one table, with a Kind column.
+    let t = schedule(doc, ScheduleKind::Doors, &ScheduleOptions { also: vec![ScheduleKind::Windows], ..Default::default() });
+    assert_eq!(t.columns[0], "Kind");
+    assert_eq!(t.rows.len(), 3);
+    // Closed CAD shapes with their area.
+    let t = schedule(doc, ScheduleKind::Shapes, &ScheduleOptions::default());
+    assert_eq!(t.rows.len(), 1);
+    assert!(t.rows[0].cells[t.columns.iter().position(|c| c == "Area").unwrap()].starts_with("100"), "{:?}", t.rows[0]);
+}
+
+#[test]
+fn materials_components_insulation_and_master_prices() {
+    use housecraft_api::materials::{materials, price_key};
+    let mut s = boxed();
+    let wt = walls(&s)[0].wall_type;
+    let mut t = s.document().get::<WallType>(wt).unwrap().clone();
+    t.layers[0].r_value = 21.0;
+    s.apply(&[Command::Update { id: wt, set: patch(serde_json::json!({"layers": t.layers})) }]).unwrap();
+    let doc = s.document();
+    let list = materials(doc, &Default::default());
+    assert!(list.lines.iter().any(|l| l.category == "Insulation" && l.item == "R-21 wall insulation" && l.quantity > 0.0), "{:?}", list.lines.iter().map(|l| &l.item).collect::<Vec<_>>());
+    // A wall's own components, replacing what the take-off counted for it.
+    let w = walls(&s)[0].id;
+    let before = materials(s.document(), &Default::default()).lines.iter().filter(|l| l.ids.contains(&w)).count();
+    assert!(before > 0);
+    let comps: ObjectComponents = serde_json::from_value(serde_json::json!({"replace": true, "items": [{"category": "Framing", "item": "Steel stud wall", "quantity": 12, "unit": "lin ft", "price": 4.5}]})).unwrap();
+    s.apply(&[Command::SetComponents { id: w, components: Some(comps) }]).unwrap();
+    let list = materials(s.document(), &Default::default());
+    let mine: Vec<_> = list.lines.iter().filter(|l| l.ids.contains(&w)).collect();
+    assert_eq!(mine.len(), 1);
+    assert_eq!((mine[0].item.as_str(), mine[0].total), ("Steel stud wall", 54.0));
+    // Prices merged in keep the plan's own unless overwriting.
+    let key = price_key("Framing", "Steel stud wall");
+    s.apply(&[Command::SetMaterialPrice { item: "Doors: x".into(), price: Some(10.0) }]).unwrap();
+    let prices: std::collections::BTreeMap<String, f64> = [("Doors: x".to_string(), 99.0), (key.clone(), 3.0)].into();
+    s.apply(&[Command::ImportPrices { prices: prices.clone(), overwrite: false }]).unwrap();
+    assert_eq!(s.document().settings.prices["Doors: x"], 10.0);
+    assert_eq!(s.document().settings.prices[&key], 3.0);
+    s.apply(&[Command::ImportPrices { prices, overwrite: true }]).unwrap();
+    assert_eq!(s.document().settings.prices["Doors: x"], 99.0);
 }

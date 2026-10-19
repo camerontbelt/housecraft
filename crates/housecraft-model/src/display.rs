@@ -459,6 +459,9 @@ pub struct LabelDefaults {
     pub border: bool,
     /// Wrap labels wider than this.
     pub wrap: Option<Length>,
+    /// Draw labels inside a marker (a hexagon round "W01"), instead of the box.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shape: Option<crate::MarkerShape>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

@@ -146,6 +146,31 @@ pub fn templates_dir() -> Option<PathBuf> {
     Some(app_data_dir()?.join("Templates"))
 }
 
+/// The master price list shared by every plan ("Category: Item" → price).
+pub fn master_prices_path() -> Option<PathBuf> {
+    Some(app_data_dir()?.join("master-prices.json"))
+}
+
+/// Save `prices` as the master price list, merged over what it held.
+pub fn save_master_prices(prices: &std::collections::BTreeMap<String, f64>) -> std::io::Result<PathBuf> {
+    let path = master_prices_path().ok_or_else(|| std::io::Error::other("no application-data folder"))?;
+    let mut all = load_master_prices().unwrap_or_default();
+    all.extend(prices.iter().map(|(k, v)| (k.clone(), *v)));
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    std::fs::write(&path, serde_json::to_string_pretty(&all).map_err(std::io::Error::other)?)?;
+    Ok(path)
+}
+
+/// The master price list (empty when none was saved).
+pub fn load_master_prices() -> std::io::Result<std::collections::BTreeMap<String, f64>> {
+    let Some(path) = master_prices_path().filter(|p| p.exists()) else {
+        return Ok(Default::default());
+    };
+    serde_json::from_str(&std::fs::read_to_string(path)?).map_err(std::io::Error::other)
+}
+
 /// HouseCraft's folder under the user's application-data folder.
 pub fn app_data_dir() -> Option<PathBuf> {
     let base = if cfg!(windows) {

@@ -192,10 +192,12 @@ pub enum ScheduleKind {
     Plants,
     /// Framing members by role, size and cut length (a cut list).
     Framing,
+    /// Closed CAD shapes (polylines, rectangles, circles): area and perimeter.
+    Shapes,
 }
 
 impl ScheduleKind {
-    pub const ALL: [ScheduleKind; 10] = [
+    pub const ALL: [ScheduleKind; 11] = [
         ScheduleKind::Doors,
         ScheduleKind::Windows,
         ScheduleKind::Rooms,
@@ -206,6 +208,7 @@ impl ScheduleKind {
         ScheduleKind::Cabinets,
         ScheduleKind::Plants,
         ScheduleKind::Framing,
+        ScheduleKind::Shapes,
     ];
 
     pub fn name(self) -> &'static str {
@@ -220,6 +223,7 @@ impl ScheduleKind {
             ScheduleKind::Cabinets => "Cabinet Schedule",
             ScheduleKind::Plants => "Plant Schedule",
             ScheduleKind::Framing => "Framing Cut List",
+            ScheduleKind::Shapes => "Shape Schedule",
         }
     }
 }
@@ -242,6 +246,18 @@ pub struct Schedule {
     /// Text height; `None` uses the layer's or default text style.
     #[serde(default)]
     pub text_height: Option<Length>,
+    /// Other kinds listed in the same table (a mixed schedule).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub also: Vec<ScheduleKind>,
+    /// Only existing, new or demolished objects (renovation plans).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub renovation: Option<crate::Renovation>,
+    /// Number labels (D01…) from this instead of 1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_number: Option<u32>,
+    /// A small plan picture of each row's object.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub thumbnails: bool,
 }
 
 /// Shape drawn around a marker's text.

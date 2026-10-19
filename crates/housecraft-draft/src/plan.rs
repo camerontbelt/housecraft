@@ -878,6 +878,10 @@ fn room_size(doc: &Document, format: RoomSizeFormat, w: f64, d: f64) -> String {
 /// Labels on doors, windows, cabinets and fixtures: each object's own
 /// label, else its kind's template from the default set.
 fn object_labels(ctx: &Ctx, floor: Id, out: &mut Drawing) {
+    // Thumbnails show objects, not their labels.
+    if THUMBNAIL.with(|f| f.get()) {
+        return;
+    }
     let doc = ctx.doc;
     let l = &ctx.defaults.labels;
     if l.doors.is_empty() && l.windows.is_empty() && l.cabinets.is_empty() && l.fixtures.is_empty() && doc.settings.labels.is_empty() {
@@ -912,24 +916,40 @@ fn object_labels(ctx: &Ctx, floor: Id, out: &mut Drawing) {
         }
         let style = ctx.text_style(None, &look);
         let ink = style.color.map_or(look.ink, Ink::Color);
+        let text = crate::macros::expand_object(doc, *id, text);
+        let height = style.height.mm() * 0.75;
         crate::rich::text_block(
             out,
             Some(*id),
             &crate::rich::TextBlock {
                 at,
-                text: &crate::macros::expand_object(doc, *id, text),
-                height: style.height.mm() * 0.75,
+                text: &text,
+                height,
                 rotation: 0.0,
                 justify: Justify::Center,
                 middle: true,
                 bold: false,
                 ink,
                 stroke: Stroke { ink, ..look.stroke },
-                border: l.border,
+                border: l.border && l.shape.is_none(),
                 wrap: l.wrap.map(|w| w.mm()),
                 leaders: &[],
             },
         );
+        // A schedule-style marker round the label.
+        if let Some(shape) = l.shape {
+            let lines = text.lines().count().max(1) as f64;
+            let w = text.lines().map(|t| crate::approx_text_width(t, height) * 1.3).fold(0.0, f64::max);
+            let r = (w / 2.0).max(lines * height * 0.6) + height * 0.5;
+            out.push(
+                Some(*id),
+                Prim::Polyline {
+                    points: marker_outline(shape, at, r),
+                    closed: true,
+                    stroke: Stroke { ink, ..look.stroke },
+                },
+            );
+        }
     }
 }
 
@@ -1105,18 +1125,58 @@ fn schedule_table(
     ink: Ink,
     out: &mut Drawing,
 ) {
+    // A thumbnail's own plan drawing leaves schedules out (no recursion).
+    if THUMBNAIL.with(|f| f.get()) {
+        return;
+    }
     let table = housecraft_api::schedule::schedule(
         doc,
         s.schedule_kind,
         &housecraft_api::schedule::ScheduleOptions {
             floor: (!s.all_floors).then_some(s.floor),
             columns: s.columns.clone(),
+            also: s.also.clone(),
+            renovation: s.renovation,
+            start: s.start_number,
         },
     );
-    table_drawing(&table, v2(s.position), h, stroke, ink, Some(s.id), out);
+    let thumbs = if s.thumbnails { thumbnails(doc, &table) } else { Vec::new() };
+    table_drawing(&table, v2(s.position), h, stroke, ink, Some(s.id), &thumbs, out);
+}
+
+thread_local! {
+    static THUMBNAIL: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Each row's first object as its plan shows it.
+pub(crate) fn thumbnails(doc: &Document, table: &housecraft_api::schedule::ScheduleTable) -> Vec<Drawing> {
+    let mut plans: std::collections::BTreeMap<Id, Drawing> = std::collections::BTreeMap::new();
+    THUMBNAIL.with(|f| f.set(true));
+    let thumbs = table
+        .rows
+        .iter()
+        .map(|r| {
+            let mut d = Drawing::default();
+            let Some(id) = r.ids.first().copied() else { return d };
+            let Some(floor) = doc.floor_of(id).filter(|f| doc.get::<Floor>(*f).is_some()) else {
+                return d;
+            };
+            let plan_d = plans.entry(floor).or_insert_with(|| {
+                let mut opts = PlanOptions::first(doc).expect("a floor exists");
+                opts.floor = floor;
+                plan(doc, &opts)
+            });
+            d.items = plan_d.items.iter().filter(|i| i.object == Some(id) && !matches!(i.prim, Prim::Text { .. })).cloned().collect();
+            d
+        })
+        .collect();
+    THUMBNAIL.with(|f| f.set(false));
+    thumbs
 }
 
 /// Draw `table` as a ruled table hanging down-right from `o` (its top-left).
+/// With `thumbs` (one per row), a first column shows each row's picture.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn table_drawing(
     table: &housecraft_api::schedule::ScheduleTable,
     o: DVec2,
@@ -1124,15 +1184,20 @@ pub(crate) fn table_drawing(
     stroke: Stroke,
     ink: Ink,
     id: Option<Id>,
+    thumbs: &[Drawing],
     out: &mut Drawing,
 ) {
     let pad = h * 0.6;
     let row_h = h * 2.0;
+    let pictures = !thumbs.is_empty() && thumbs.len() == table.rows.len();
+    // Rows with pictures are taller.
+    let data_h = if pictures { h * 5.0 } else { row_h };
+    let thumb_w = if pictures { data_h * 1.4 } else { 0.0 };
     // The shared width estimate is tuned for labels; table text, and the bold
     // header especially, renders wider, so allow a margin.
     let text_w =
         |t: &str, bold: bool| crate::approx_text_width(t, h) * if bold { 1.4 } else { 1.3 };
-    let widths: Vec<f64> = (0..table.columns.len())
+    let mut widths: Vec<f64> = (0..table.columns.len())
         .map(|i| {
             table
                 .rows
@@ -1143,12 +1208,17 @@ pub(crate) fn table_drawing(
                 + 2.0 * pad
         })
         .collect();
+    if pictures {
+        widths.insert(0, thumb_w);
+    }
     let width: f64 = widths
         .iter()
         .sum::<f64>()
         .max(crate::approx_text_width(&table.title, h * 1.3) + 2.0 * pad);
+    // Top of row r (0: title, 1: header, then the data rows).
+    let top = |r: usize| if r <= 2 { r as f64 * row_h } else { 2.0 * row_h + (r - 2) as f64 * data_h };
     let rows = table.rows.len() + 2; // title and header
-    let height = rows as f64 * row_h;
+    let height = top(rows);
     let at = |x: f64, y: f64| o + DVec2::new(x, -y);
     let line = |out: &mut Drawing, a: DVec2, b: DVec2, stroke: Stroke| {
         out.push(
@@ -1180,8 +1250,8 @@ pub(crate) fn table_drawing(
     for r in 1..rows {
         line(
             out,
-            at(0.0, r as f64 * row_h),
-            at(width, r as f64 * row_h),
+            at(0.0, top(r)),
+            at(width, top(r)),
             if r <= 2 { stroke } else { thin },
         );
     }
@@ -1213,13 +1283,38 @@ pub(crate) fn table_drawing(
         true,
         Justify::Center,
     );
+    let first = if pictures { thumb_w } else { 0.0 };
     let cells = std::iter::once(&table.columns).chain(table.rows.iter().map(|r| &r.cells));
     for (r, row) in cells.enumerate() {
-        let y = (r as f64 + 1.5) * row_h;
-        let mut x = 0.0;
+        let y = (top(r + 1) + top(r + 2)) / 2.0;
+        let mut x = first;
         for (c, cell) in row.iter().enumerate() {
             text(out, at(x + pad, y), cell, h, r == 0, Justify::Left);
-            x += widths[c];
+            x += widths[c + usize::from(pictures)];
+        }
+    }
+    // Pictures fitted into their cells.
+    if pictures {
+        for (r, d) in thumbs.iter().enumerate() {
+            let Some((lo, hi)) = d.bounds() else { continue };
+            let size = (hi - lo).max(DVec2::splat(1e-6));
+            let room = DVec2::new(thumb_w, data_h) - DVec2::splat(2.0 * pad);
+            let k = (room.x / size.x).min(room.y / size.y);
+            let c = (lo + hi) / 2.0;
+            let cell = at(thumb_w / 2.0, (top(r + 2) + top(r + 3)) / 2.0);
+            let map = |p: DVec2| cell + (p - c) * k;
+            for item in &d.items {
+                let prim = match &item.prim {
+                    Prim::Polyline { points, closed, stroke } => Prim::Polyline {
+                        points: points.iter().map(|p| map(*p)).collect(),
+                        closed: *closed,
+                        stroke: Stroke { width: thin.width, ..*stroke },
+                    },
+                    Prim::Polygon { points, fill } => Prim::Polygon { points: points.iter().map(|p| map(*p)).collect(), fill: *fill },
+                    _ => continue,
+                };
+                out.push(id, prim);
+            }
         }
     }
 }
@@ -1339,6 +1434,28 @@ pub fn layout_page_of(doc: &Document, source: LayoutSource) -> Option<(Option<St
     Some((housecraft_api::layouts::box_number(doc, b).map(|n| n.to_string()), page))
 }
 
+/// A marker's outline of "radius" `r` round `at`.
+fn marker_outline(m: MarkerShape, at: DVec2, r: f64) -> Vec<DVec2> {
+    match m {
+        MarkerShape::Circle => arc_points(at, r, 0.0, 360.0),
+        MarkerShape::Hexagon => (0..6)
+            .map(|k| at + DVec2::from_angle((k as f64 * 60.0).to_radians()) * r * 1.1)
+            .collect(),
+        MarkerShape::Square => vec![
+            at + DVec2::new(-r, -r),
+            at + DVec2::new(r, -r),
+            at + DVec2::new(r, r),
+            at + DVec2::new(-r, r),
+        ],
+        MarkerShape::Diamond => vec![
+            at + DVec2::new(0.0, -r * 1.3),
+            at + DVec2::new(r * 1.3, 0.0),
+            at + DVec2::new(0.0, r * 1.3),
+            at + DVec2::new(-r * 1.3, 0.0),
+        ],
+    }
+}
+
 /// A callout: text, optionally inside a marker shape, with an optional
 /// leader arrow from the text to its target.
 fn callout(doc: &Document, c: &Callout, h: f64, stroke: Stroke, out: &mut Drawing) {
@@ -1377,24 +1494,7 @@ fn callout(doc: &Document, c: &Callout, h: f64, stroke: Stroke, out: &mut Drawin
     }
     // Marker outline around the text.
     let r = (w / 2.0).max(total_h / 2.0) + h * 0.6;
-    let outline: Option<Vec<DVec2>> = c.marker.map(|m| match m {
-        MarkerShape::Circle => arc_points(at, r, 0.0, 360.0),
-        MarkerShape::Hexagon => (0..6)
-            .map(|k| at + DVec2::from_angle((k as f64 * 60.0).to_radians()) * r * 1.1)
-            .collect(),
-        MarkerShape::Square => vec![
-            at + DVec2::new(-r, -r),
-            at + DVec2::new(r, -r),
-            at + DVec2::new(r, r),
-            at + DVec2::new(-r, r),
-        ],
-        MarkerShape::Diamond => vec![
-            at + DVec2::new(0.0, -r * 1.3),
-            at + DVec2::new(r * 1.3, 0.0),
-            at + DVec2::new(0.0, r * 1.3),
-            at + DVec2::new(-r * 1.3, 0.0),
-        ],
-    });
+    let outline: Option<Vec<DVec2>> = c.marker.map(|m| marker_outline(m, at, r));
     if let Some(points) = &outline {
         out.push(
             id,

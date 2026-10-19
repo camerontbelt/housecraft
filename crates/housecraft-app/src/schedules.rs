@@ -41,7 +41,7 @@ pub fn table_window(app: &mut App, ctx: &Context) {
                 kind,
                 &ScheduleOptions {
                     floor,
-                    columns: Vec::new(),
+                    ..Default::default()
                 },
             ),
             None,
@@ -51,7 +51,7 @@ pub fn table_window(app: &mut App, ctx: &Context) {
                 doc,
                 &MaterialsOptions {
                     floor,
-                    layer_set: Some(app.plan.layer_set),
+                    layer_set: Some(app.materials_layer_set.unwrap_or(app.plan.layer_set)),
                 },
             );
             (list.table(), Some(list))
@@ -59,6 +59,8 @@ pub fn table_window(app: &mut App, ctx: &Context) {
     };
     let mut find = None;
     let mut spec = None;
+    let mut set_layer_set = None;
+    let mut master: Option<bool> = None;
     let mut export = None;
     let mut commands: Vec<Command> = Vec::new();
     egui::Window::new(source.title())
@@ -69,6 +71,30 @@ pub fn table_window(app: &mut App, ctx: &Context) {
             ui.horizontal(|ui| {
                 ui.checkbox(&mut this_floor, "Current floor only");
                 if let Some(list) = &list {
+                    ui.separator();
+                    // Which layers' objects are counted.
+                    let current = app.materials_layer_set.unwrap_or(app.plan.layer_set);
+                    let sets: Vec<(Id, String)> = doc.iter::<housecraft_api::model::LayerSet>().map(|s| (s.id, s.name.clone())).collect();
+                    let mut chosen = current;
+                    egui::ComboBox::from_id_salt("materials_layer_set")
+                        .selected_text(sets.iter().find(|s| s.0 == current).map_or("?".into(), |s| s.1.clone()))
+                        .show_ui(ui, |ui| {
+                            for (id, name) in &sets {
+                                ui.selectable_value(&mut chosen, *id, name);
+                            }
+                        })
+                        .response
+                        .on_hover_text("Count objects on the layers this layer set shows");
+                    if chosen != current {
+                        set_layer_set = Some(chosen);
+                    }
+                    ui.separator();
+                    if ui.button("Save Master Prices").on_hover_text("Keep this plan's prices as the master price list for every plan").clicked() {
+                        master = Some(true);
+                    }
+                    if ui.button("Load Master Prices").on_hover_text("Fill in prices this plan lacks from the master list").clicked() {
+                        master = Some(false);
+                    }
                     ui.separator();
                     ui.label("Markup");
                     let mut m = list.markup_percent;
@@ -161,6 +187,29 @@ pub fn table_window(app: &mut App, ctx: &Context) {
             });
         });
     app.table_this_floor = this_floor;
+    if let Some(s) = set_layer_set {
+        app.materials_layer_set = Some(s);
+    }
+    match master {
+        Some(true) => {
+            let prices = app.session.document().settings.prices.clone();
+            match housecraft_io_native::library::save_master_prices(&prices) {
+                Ok(path) => app.info(format!("{} prices saved to {}", prices.len(), path.display())),
+                Err(e) => app.error(format!("Could not save the master prices: {e}")),
+            }
+        }
+        Some(false) => match housecraft_io_native::library::load_master_prices() {
+            Ok(prices) if prices.is_empty() => app.info("The master price list is empty: Save Master Prices first"),
+            Ok(prices) => {
+                let n = prices.len();
+                if app.run1(Command::ImportPrices { prices, overwrite: false }).is_some() {
+                    app.info(format!("Loaded the master price list ({n} prices)"));
+                }
+            }
+            Err(e) => app.error(format!("Could not read the master prices: {e}")),
+        },
+        None => {}
+    }
     if !open {
         app.table_view = None;
     }

@@ -250,6 +250,7 @@ impl HouseCraftServer {
                 &housecraft_api::schedule::ScheduleOptions {
                     floor: args.floor,
                     columns: args.columns,
+                    ..Default::default()
                 },
             );
             let text = table.export(

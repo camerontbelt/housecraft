@@ -155,7 +155,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-07 | Layered floor & ceiling platforms (finish, structure, sub-layers) | P1 | M3 ✓ |
 | RM-08 | Floor material regions (inlays without room boundaries) | P2 | M5 ✓ Floor Material Region tool; tile joints drawn in plan |
 | RM-09 | Raised floor platforms (auto-framed) | P2 | M6 ✓ Raised Platform tool: a solid floor framed on joists |
-| RM-10 | Conditioned/unconditioned spaces → insulation in materials list | P2 | M4 |
+| RM-10 | Conditioned/unconditioned spaces → insulation in materials list | P2 | M4 ◐ wall types with R-values insulate their walls; living-area rooms under the attic get ceiling insulation at the roof default's R |
 | RM-11 | Multi-select edit rooms (type, vaulted, heights, platform) | P1 | M3 ✓ |
 | RM-12 | Object Information Panel (custom fields) for rooms | P1 | M1 ✓ Object Information in every placed object's and room's specification: code, description, manufacturer, comment and your own fields |
 | RM-13 | Room label dimension formats | P1 | M1 ✓ Default Settings > Rooms: labels show area, size (rounded or exact) and ceiling height |
@@ -235,7 +235,7 @@ These come from reading the whole list and change the architecture, not just the
 | DW-15 | Window treatments (curtains, blinds) | P3 | M5 ✓ curtains, blinds and roller shades with an open amount, in plan and 3D |
 | DW-16 | Shutters (parametric or symbol, own layer) | P2 | M5 ◐ louvered, raised-panel and board shutters in plan and 3D; drawn on the window's layer, not their own |
 | DW-17 | Lintels, sills, aprons | P2 | M3 ✓ opening Trim: exterior lintel and sill, interior apron (3D) |
-| DW-18 | Glazing area and U-factor | P2 | M4 |
+| DW-18 | Glazing area and U-factor | P2 | M4 ✓ U-factor and SHGC per door/window; Glass Area, U-Factor, SHGC schedule columns |
 
 ## 9. Roofs & ceilings
 
@@ -496,24 +496,24 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | EST-01 | Auto materials list (equipment, unit cost, markup, labor); plan / room / area scope; live update | P1 | M4 ◐ take-off with unit prices and markup, whole plan or floor; labor and room/area scope later |
-| EST-02 | Master materials list (pricing master data) | P2 | M4 |
+| EST-02 | Master materials list (pricing master data) | P2 | M4 ✓ Save/Load Master Prices in the materials list (shared price file; loading fills prices a plan lacks) |
 | EST-03 | Find in plan from materials list | P1 | M4 ✓ |
 | EST-04 | Per-object code/comment/description/manufacturer fields | P1 | M1 ◐ Object Information fields on any object, usable in labels ({code}, {description}…); not yet columns in schedules or the materials list |
-| EST-05 | Object components panel (calculation methods) | P2 | M4 |
+| EST-05 | Object components panel (calculation methods) | P2 | M4 ◐ Components in each object's specification: what the take-off counts, plus own lines (or replacing it); fixed quantities, no formulas yet |
 | EST-06 | Layer-based inclusion | P1 | M4 ✓ |
 | EST-07 | Scripted formulas (Rhai/Lua; CA uses Ruby) | P2 | M8 |
-| EST-08 | Materials-list layer sets | P2 | M4 |
+| EST-08 | Materials-list layer sets | P2 | M4 ✓ layer set picker in the materials list |
 | EST-09 | Schedules: doors, windows, cabinets, fixtures, appliances, furniture, electrical, HVAC, notes, plumbing, plants, room finish, walls, moldings, roof/ceiling planes, skylights, millwork, sprinklers, shapes; floor/room filters | P1 | M4 ◐ doors, windows, room finish, walls, electrical/plumbing/HVAC, stairs, roof planes; cabinets, appliances, furniture, moldings (M5) later |
 | EST-10 | Schedule formatting: styles, transpose, sort, wrapping | P1 | M4 ◐ choose and order columns; styles, transpose, sort and wrap options later |
 | EST-11 | Custom columns from object info fields | P1 | M4 ◐ any of a schedule's built-in columns; user-defined object fields later |
-| EST-12 | Callout label shapes | P2 | M4 |
-| EST-13 | Custom mixed-type schedules; existing/new splits | P2 | M4 |
+| EST-12 | Callout label shapes | P2 | M4 ✓ object labels in a circle/hexagon/square/diamond marker; {schedule} macro gives D01/W01 |
+| EST-13 | Custom mixed-type schedules; existing/new splits | P2 | M4 ✓ Also List other kinds in one table; Existing/New/Demolish-only filter |
 | EST-14 | Schedules in library | P3 | M5 ✓ schedules save to and place from the library |
-| EST-15 | Polyline objects in schedules | P2 | M4 |
+| EST-15 | Polyline objects in schedules | P2 | M4 ✓ Shape Schedule: closed CAD shapes with area and perimeter |
 | EST-16 | Find in plan from schedule | P1 | M4 ✓ |
 | EST-17 | Open object spec from schedule row | P1 | M4 ✓ |
-| EST-18 | Schedule thumbnails | P3 | M4 |
-| EST-19 | Schedule starting number | P3 | M4 |
+| EST-18 | Schedule thumbnails | P3 | M4 ✓ plan pictures per row |
+| EST-19 | Schedule starting number | P3 | M4 ✓ |
 | EST-20 | Export schedules: CSV, TXT, XML | P1 | M4 ✓ |
 | EST-21 | BuilderTREND export with NAHB accounting codes | P3 | M8 |
 | EST-22 | Cut list and buy list (structural lumber) | P2 | M6 ✓ Framing Cut List schedule; buy list (stock lengths) in the materials list |

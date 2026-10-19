@@ -291,6 +291,37 @@ pub struct Settings {
     /// Text stamped across every layout page.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub watermark: Option<Watermark>,
+    /// Materials list components set on objects (extra items, or ones
+    /// replacing what the take-off counts for them).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub components: BTreeMap<Id, ObjectComponents>,
+}
+
+/// An object's own materials list lines.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct ObjectComponents {
+    /// Leave out what the take-off would count for this object.
+    pub replace: bool,
+    pub items: Vec<Component>,
+}
+
+/// One materials list line for an object.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Component {
+    pub category: String,
+    pub item: String,
+    pub quantity: f64,
+    /// "ea", "lin ft", "sq ft"…
+    #[serde(default = "each")]
+    pub unit: String,
+    /// Unit price; the price list's when `None`.
+    #[serde(default)]
+    pub price: Option<f64>,
+}
+
+fn each() -> String {
+    "ea".into()
 }
 
 /// Who the plan is for and who drew it. Each field is a text macro of the
@@ -464,6 +495,7 @@ impl Document {
                 project: ProjectInfo::default(),
                 revisions: Vec::new(),
                 watermark: None,
+                components: BTreeMap::new(),
             },
             next_id: 1,
             objects: BTreeMap::new(),

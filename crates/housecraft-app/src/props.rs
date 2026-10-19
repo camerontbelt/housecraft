@@ -115,6 +115,18 @@ fn opening_extras(ui: &mut Ui, ed: &mut Ed<'_>, o: &Opening) {
             ui.end_row();
         }
     }
+    Ed::label(ui, "U-Factor / SHGC");
+    ui.horizontal(|ui| {
+        for (value, max, hint) in [(&mut d.u_factor, 2.0, "U-factor (Btu/h·ft²·°F)"), (&mut d.shgc, 1.0, "Solar heat gain coefficient")] {
+            let mut on = value.is_some();
+            let mut v = value.unwrap_or(if max > 1.0 { 0.30 } else { 0.25 });
+            if ui.checkbox(&mut on, "").on_hover_text(hint).changed() || on {
+                ui.add_enabled(on, egui::DragValue::new(&mut v).range(0.0..=max).speed(0.01).max_decimals(2));
+            }
+            *value = on.then_some(v);
+        }
+    });
+    ui.end_row();
     Ed::label(ui, "Trim");
     ui.horizontal(|ui| {
         ui.checkbox(&mut d.lintel, "Lintel");
@@ -301,6 +313,62 @@ fn direction_row(ui: &mut Ui, doc: &Document, a: Point2, b: Point2) {
 
 /// Object Information: code, description, manufacturer, comment and your
 /// own fields, for any object.
+/// The object's materials list lines: what the take-off counts for it, and
+/// components added by hand (or replacing the take-off).
+pub fn components_editor(ui: &mut Ui, doc: &Document, id: Id, out: &mut Vec<Command>) {
+    let current = doc.settings.components.get(&id).cloned().unwrap_or_default();
+    let mut c = current.clone();
+    egui::CollapsingHeader::new("Components (Materials List)").id_salt(("components", id)).show(ui, |ui| {
+        // Counted automatically (only worked out while this is open).
+        let mut probe = doc.clone();
+        probe.settings.components.remove(&id);
+        let list = housecraft_api::materials::materials(&probe, &Default::default());
+        let auto: Vec<_> = list.lines.iter().filter(|l| l.ids.contains(&id)).collect();
+        if auto.is_empty() {
+            ui.weak("The take-off counts nothing for this object.");
+        } else {
+            ui.weak("Counted with this object (lines may include others like it):");
+            for l in auto {
+                ui.label(format!("{}: {}  ·  {} {}", l.category, l.item, l.quantity, l.unit));
+            }
+        }
+        ui.checkbox(&mut c.replace, "Replace these with my components");
+        egui::Grid::new(("components_grid", id)).num_columns(6).show(ui, |ui| {
+            for h in ["Category", "Item", "Qty", "Unit", "Price", ""] {
+                ui.strong(h);
+            }
+            ui.end_row();
+            let mut remove = None;
+            for (i, item) in c.items.iter_mut().enumerate() {
+                ui.add(egui::TextEdit::singleline(&mut item.category).desired_width(80.0));
+                ui.add(egui::TextEdit::singleline(&mut item.item).desired_width(120.0));
+                ui.add(egui::DragValue::new(&mut item.quantity).range(0.0..=1e7).speed(0.1));
+                ui.add(egui::TextEdit::singleline(&mut item.unit).desired_width(40.0));
+                let mut priced = item.price.is_some();
+                let mut p = item.price.unwrap_or(0.0);
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut priced, "").on_hover_text("Own price (else the price list's)");
+                    ui.add_enabled(priced, egui::DragValue::new(&mut p).range(0.0..=1e7).speed(0.05).max_decimals(2));
+                });
+                item.price = priced.then_some(p);
+                if ui.small_button("✕").clicked() {
+                    remove = Some(i);
+                }
+                ui.end_row();
+            }
+            if let Some(i) = remove {
+                c.items.remove(i);
+            }
+        });
+        if ui.button("Add Component").clicked() {
+            c.items.push(Component { category: "Other".into(), item: "Item".into(), quantity: 1.0, unit: "ea".into(), price: None });
+        }
+    });
+    if c != current && c.items.iter().all(|i| !i.item.trim().is_empty()) {
+        out.push(Command::SetComponents { id, components: Some(c) });
+    }
+}
+
 pub fn info_editor(ui: &mut Ui, doc: &Document, bufs: &mut EditBuffers, id: Id, out: &mut Vec<Command>) {
     let current = doc.settings.object_info.get(&id).cloned().unwrap_or_default();
     let mut info = current.clone();
@@ -598,6 +666,7 @@ pub fn spec_windows(app: &mut App, ctx: &egui::Context) {
                 if object.kind().is_placed() || object.kind() == ObjectKind::Room {
                     ui.separator();
                     info_editor(ui, ed.doc, ed.bufs, id, &mut ed.out);
+                    components_editor(ui, ed.doc, id, &mut ed.out);
                 }
             });
         commands.extend(ed.out);
@@ -1975,6 +2044,38 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 }
             });
             ui.end_row();
+            Ed::label(ui, "Also List");
+            ui.horizontal_wrapped(|ui| {
+                for k in ScheduleKind::ALL.into_iter().filter(|k| *k != s.schedule_kind) {
+                    let mut on = s.also.contains(&k);
+                    if ui.checkbox(&mut on, k.name().trim_end_matches(" Schedule")).changed() {
+                        let also: Vec<ScheduleKind> = ScheduleKind::ALL.into_iter().filter(|x| if *x == k { on } else { s.also.contains(x) }).collect();
+                        ed.out.push(patch(id, json!({ "also": also })));
+                    }
+                }
+            });
+            ui.end_row();
+            Ed::label(ui, "Renovation");
+            let mut r = s.renovation;
+            egui::ComboBox::from_id_salt(ed.key("sched_reno"))
+                .selected_text(r.map_or("Everything", |r| r.name()))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut r, None, "Everything");
+                    for x in [Renovation::Existing, Renovation::New, Renovation::Demolish] {
+                        ui.selectable_value(&mut r, Some(x), format!("{} only", x.name()));
+                    }
+                });
+            if r != s.renovation {
+                ed.out.push(patch(id, json!({ "renovation": r })));
+            }
+            ui.end_row();
+            Ed::label(ui, "Start Number");
+            let mut n = s.start_number.unwrap_or(1);
+            if ui.add(egui::DragValue::new(&mut n).range(0..=9999)).on_hover_text("Number labels from this (D01 when 1)").changed() {
+                ed.out.push(patch(id, json!({ "start_number": (n != 1).then_some(n) })));
+            }
+            ui.end_row();
+            ed.check(ui, "Thumbnails", "thumbnails", "A small plan picture on each row", s.thumbnails);
             ed.pick::<Layer>(ui, "Layer", "layer", Some(s.layer), None);
         }
         Object::Electrical(e) => {

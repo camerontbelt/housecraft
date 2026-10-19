@@ -48,6 +48,7 @@ pub const OBJECT_MACROS: &[(&str, &str)] = &[
     ("manufacturer", "Manufacturer (Object Information)"),
     ("comment", "Comment (Object Information)"),
     ("layer", "Layer name"),
+    ("schedule", "Its schedule number (D01, W03)"),
 ];
 
 /// Feet and inches as digits: 3'-0" is "30", 2'-10" is "210".
@@ -103,8 +104,19 @@ fn object_value(doc: &Document, id: housecraft_model::Id, name: &str) -> Option<
             _ => return None,
         },
         "layer" => doc.layer_of(id).and_then(|l| doc.get::<Layer>(l)).map(|l| l.name.clone())?,
+        "schedule" => schedule_label(doc, id)?,
         other => words(&field(other)?)?,
     })
+}
+
+/// Object `id`'s label in the door or window schedule.
+pub fn schedule_label(doc: &Document, id: housecraft_model::Id) -> Option<String> {
+    use housecraft_model::{Opening, ScheduleKind};
+    let o = doc.get::<Opening>(id)?;
+    let kind = if o.opening_kind.is_door() { ScheduleKind::Doors } else { ScheduleKind::Windows };
+    let t = housecraft_api::schedule::schedule(doc, kind, &Default::default());
+    let col = t.columns.iter().position(|c| c == "Label")?;
+    t.rows.iter().find(|r| r.ids.contains(&id)).map(|r| r.cells[col].clone())
 }
 
 /// Fill object macros in `text` from object `id`, then document macros.

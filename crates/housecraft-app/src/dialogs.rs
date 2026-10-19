@@ -1196,6 +1196,30 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                             commands.push(p(json!({"labels": {"border": b}})));
                         }
                         ui.end_row();
+                        ui.label("Marker");
+                        let mut shape = l.shape;
+                        egui::ComboBox::from_id_salt("label_marker")
+                            .selected_text(shape.map_or("None", |s| match s {
+                                MarkerShape::Circle => "Circle",
+                                MarkerShape::Hexagon => "Hexagon",
+                                MarkerShape::Square => "Square",
+                                MarkerShape::Diamond => "Diamond",
+                            }))
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(&mut shape, None, "None");
+                                for (s, name) in [
+                                    (MarkerShape::Circle, "Circle"),
+                                    (MarkerShape::Hexagon, "Hexagon"),
+                                    (MarkerShape::Square, "Square"),
+                                    (MarkerShape::Diamond, "Diamond"),
+                                ] {
+                                    ui.selectable_value(&mut shape, Some(s), name);
+                                }
+                            });
+                        if shape != l.shape {
+                            commands.push(p(json!({"labels": {"shape": shape}})));
+                        }
+                        ui.end_row();
                     });
                     ui.weak("Empty shows no label. Macros:");
                     for (m, what) in housecraft_draft::macros::OBJECT_MACROS {

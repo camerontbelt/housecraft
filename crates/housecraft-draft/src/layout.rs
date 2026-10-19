@@ -27,7 +27,7 @@ fn source_drawing(doc: &Document, s: &LayoutSource) -> (Drawing, bool) {
 
 fn table_box(table: &housecraft_api::schedule::ScheduleTable, stroke: Stroke) -> Drawing {
     let mut d = Drawing::default();
-    table_drawing(table, DVec2::ZERO, 2.5, stroke, Ink::Default, None, &mut d);
+    table_drawing(table, DVec2::ZERO, 2.5, stroke, Ink::Default, None, &[], &mut d);
     d
 }
 
@@ -82,6 +82,7 @@ fn source_drawing_on(doc: &Document, s: &LayoutSource, page: Option<(&Layout, us
                 &ScheduleOptions {
                     floor: *floor,
                     columns: Vec::new(),
+                    ..Default::default()
                 },
             );
             let mut d = Drawing::default();
@@ -92,6 +93,7 @@ fn source_drawing_on(doc: &Document, s: &LayoutSource, page: Option<(&Layout, us
                 paper_stroke,
                 Ink::Default,
                 None,
+                &[],
                 &mut d,
             );
             (d, false)
@@ -106,6 +108,7 @@ fn source_drawing_on(doc: &Document, s: &LayoutSource, page: Option<(&Layout, us
                 paper_stroke,
                 Ink::Default,
                 None,
+                &[],
                 &mut d,
             );
             (d, false)

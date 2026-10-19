@@ -628,3 +628,36 @@ fn layout_boxes_paste_into_another_plan_with_their_details() {
     assert_eq!(doc.get::<CadDetail>(d).unwrap().name, "Footing");
     assert_eq!(doc.iter::<Cad>().filter(|c| c.floor == d).count(), 1);
 }
+
+#[test]
+fn schedule_thumbnails_and_marker_labels() {
+    use housecraft_api::model::Schedule;
+    let mut s = house();
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "add_schedule", "schedule_kind": "doors", "position": ["50'","30'"]}]"#,
+    )
+    .unwrap();
+    let out = s.apply(&cmds).unwrap();
+    let sched = out.created[0];
+    let set = s.document().settings.active_default_set;
+    let cmds: Vec<Command> = vec![
+        Command::Update { id: sched, set: serde_json::json!({"thumbnails": true}).as_object().unwrap().clone() },
+        Command::Update { id: set, set: serde_json::json!({"labels": {"windows": "{schedule}", "shape": "hexagon"}}).as_object().unwrap().clone() },
+    ];
+    s.apply(&cmds).unwrap();
+    let doc = s.document();
+    let d = plan(doc, &PlanOptions::first(doc).unwrap());
+    // The window's label reads its schedule number inside a hexagon.
+    let win = doc.iter::<housecraft_api::model::Opening>().find(|o| !o.opening_kind.is_door()).unwrap().id;
+    assert!(d.items.iter().any(|i| i.object == Some(win) && matches!(&i.prim, Prim::Text { text, .. } if text == "W01")));
+    assert!(d.items.iter().any(|i| i.object == Some(win) && matches!(&i.prim, Prim::Polyline { points, closed: true, .. } if points.len() == 6)));
+    // The schedule draws a picture of the door: lines inside the table.
+    let s0 = doc.get::<Schedule>(sched).unwrap();
+    let table_lines = d.items.iter().filter(|i| i.object == Some(sched) && matches!(i.prim, Prim::Polyline { .. })).count();
+    let plain = {
+        let mut doc2 = doc.clone();
+        doc2.get_mut::<Schedule>(sched).unwrap().thumbnails = false;
+        plan(&doc2, &PlanOptions::first(&doc2).unwrap()).items.iter().filter(|i| i.object == Some(s0.id) && matches!(i.prim, Prim::Polyline { .. })).count()
+    };
+    assert!(table_lines > plain + 2, "{table_lines} vs {plain}");
+}

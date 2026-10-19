@@ -1059,6 +1059,12 @@ pub struct OpeningDetails {
     /// An apron under the interior stool (windows).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub apron: bool,
+    /// Rated U-factor of the unit (Btu/h·ft²·°F); schedules show it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub u_factor: Option<f64>,
+    /// Solar heat gain coefficient (0–1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shgc: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

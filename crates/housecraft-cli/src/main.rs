@@ -703,7 +703,7 @@ fn main() -> Result<()> {
                 ),
                 None => None,
             };
-            let table = schedule(&doc, kind, &ScheduleOptions { floor, columns });
+            let table = schedule(&doc, kind, &ScheduleOptions { floor, columns, ..Default::default() });
             match output {
                 Some(out) => {
                     let ext = out.extension().and_then(|e| e.to_str()).unwrap_or("");

@@ -206,6 +206,15 @@ pub enum Command {
     SetMaterialPrice { item: String, price: Option<f64> },
     /// Markup percentage added to the materials list total.
     SetMarkup { percent: f64 },
+    /// Merge unit prices (e.g. from the master price list) into the plan's;
+    /// `overwrite` replaces prices the plan already has.
+    ImportPrices {
+        prices: std::collections::BTreeMap<String, f64>,
+        #[serde(default)]
+        overwrite: bool,
+    },
+    /// Set (or with `null`, clear) object `id`'s own materials list lines.
+    SetComponents { id: Id, components: Option<ObjectComponents> },
     /// Add an elevation or cross-section view looking across the line `a`→`b`
     /// toward its left side.
     AddSectionView {
@@ -1203,6 +1212,8 @@ impl Command {
             Command::RoomElevations { .. } => "room_elevations",
             Command::SetMaterialPrice { .. } => "set_material_price",
             Command::SetMarkup { .. } => "set_markup",
+            Command::ImportPrices { .. } => "import_prices",
+            Command::SetComponents { .. } => "set_components",
             Command::AddSchedule { .. } => "add_schedule",
             Command::AddElectrical { .. } => "add_electrical",
             Command::ConnectSwitch { .. } => "connect_switch",
@@ -1640,6 +1651,10 @@ impl Command {
                     columns: columns.clone(),
                     all_floors: *all_floors,
                     text_height: None,
+                    also: Vec::new(),
+                    renovation: None,
+                    start_number: None,
+                    thumbnails: false,
                 }));
             }
             Command::SetMaterialPrice { item, price } => match price {
@@ -1717,6 +1732,33 @@ impl Command {
                     titles: Vec::new(),
                     templates: Vec::new(),
                 }));
+            }
+            Command::ImportPrices { prices, overwrite } => {
+                for (k, v) in prices {
+                    if !(v.is_finite() && *v >= 0.0) {
+                        return Err(ApiError::Invalid(format!("bad price for {k}")));
+                    }
+                    if *overwrite || !doc.settings.prices.contains_key(k) {
+                        doc.settings.prices.insert(k.clone(), *v);
+                    }
+                }
+            }
+            Command::SetComponents { id, components } => {
+                if doc.object(*id).is_none() {
+                    return Err(ApiError::NotFound(*id));
+                }
+                match components {
+                    Some(c) if c.replace || !c.items.is_empty() => {
+                        if c.items.iter().any(|i| !(i.quantity.is_finite() && i.quantity >= 0.0) || i.item.trim().is_empty()) {
+                            return Err(ApiError::Invalid("components need a name and a quantity of 0 or more".into()));
+                        }
+                        doc.settings.components.insert(*id, c.clone());
+                    }
+                    _ => {
+                        doc.settings.components.remove(id);
+                    }
+                }
+                out.modified.push(*id);
             }
             Command::NumberPages { layout, prefix, start } => {
                 let l = doc.get_mut::<Layout>(*layout).ok_or(ApiError::NotFound(*layout))?;

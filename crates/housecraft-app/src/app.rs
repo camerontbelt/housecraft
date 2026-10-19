@@ -174,6 +174,8 @@ pub struct App {
     /// The clipboard holds layout boxes (copied from a layout page), and
     /// the file and plan they came from.
     pub clipboard_layout: Option<(Option<PathBuf>, String)>,
+    /// The layer set the materials list counts (the plan view's when `None`).
+    pub materials_layer_set: Option<Id>,
     pub status: Option<(String, bool)>,
     pub pending: Option<Pending>,
     quit_confirmed: bool,
@@ -236,6 +238,7 @@ impl App {
             drawing_view: Default::default(),
             clipboard: Vec::new(),
             clipboard_layout: None,
+            materials_layer_set: None,
             status: None,
             pending: None,
             quit_confirmed: false,
