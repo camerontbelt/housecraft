@@ -33,6 +33,14 @@ pub enum ShapeOp {
     Subtract,
 }
 
+/// One side of a lot in [`Command::AddPlotLines`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct PlotLeg {
+    /// A surveyor's bearing, e.g. "N 45°30'15\" E".
+    pub bearing: String,
+    pub distance: Length,
+}
+
 /// Text for [`Command::AddCadDetail`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct DetailText {
@@ -420,6 +428,19 @@ pub enum Command {
     },
     /// Remove the terrain and all elevation data.
     ClearTerrain,
+    /// Draw a lot from a survey's bearings and distances, starting at
+    /// `start`, each side labelled; a `setback` draws the building line
+    /// inside a closed lot.
+    AddPlotLines {
+        floor: Option<Id>,
+        start: Point2,
+        legs: Vec<PlotLeg>,
+        #[serde(default)]
+        setback: Option<Length>,
+    },
+    /// Make a CAD detail of the site: the terrain outline, building
+    /// footprints (filled), site features and plants as plain lines.
+    SitePlanDetail { name: String },
     /// Add a retaining wall, road, fence, garden bed, stepping stones or
     /// stream along `points`.
     AddSiteFeature {
@@ -863,6 +884,8 @@ impl Command {
             Command::AddElevationData { .. } => "add_elevation_data",
             Command::ImportTerrainPoints { .. } => "import_terrain_points",
             Command::ClearTerrain => "clear_terrain",
+            Command::AddPlotLines { .. } => "add_plot_lines",
+            Command::SitePlanDetail { .. } => "site_plan_detail",
             Command::AddSiteFeature { .. } => "add_site_feature",
             Command::AddPlant { .. } => "add_plant",
             Command::CadBoolean { .. } => "cad_boolean",
@@ -1866,6 +1889,79 @@ impl Command {
                     ];
                     out.created.push(doc.insert(Terrain::new(floor, d.layers.cad, perimeter)));
                 }
+            }
+            Command::AddPlotLines { floor, start, legs, setback } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                if legs.is_empty() {
+                    return invalid("give at least one side of the lot");
+                }
+                let mut pts = vec![housecraft_geom::v2(*start)];
+                for leg in legs {
+                    let dir = crate::site::parse_bearing(&leg.bearing)?;
+                    let next = *pts.last().expect("start") + dir * leg.distance.mm();
+                    let a = *pts.last().expect("start");
+                    // The bearing and distance along the side, reading upright.
+                    let mut angle = dir.to_angle().to_degrees();
+                    if !(-90.0..=90.0).contains(&angle) {
+                        angle += 180.0;
+                    }
+                    let mid = (a + next) / 2.0 + housecraft_geom::math::perp(dir) * 200.0;
+                    out.created.push(doc.insert(Text {
+                        id: Id(0),
+                        floor,
+                        layer: d.layers.text,
+                        position: housecraft_geom::pt(mid),
+                        text: format!("{}  {}", leg.bearing.trim(), leg.distance.format(doc.settings.display_unit)),
+                        style: None,
+                        rotation: angle,
+                        justify: Justify::Center,
+                        height: None,
+                        bold: None,
+                        color: None,
+                    }));
+                    pts.push(next);
+                }
+                // A lot that comes back to its start is closed.
+                let closed = pts.len() > 3 && pts[0].distance(*pts.last().expect("points")) < 10.0;
+                if closed {
+                    pts.pop();
+                }
+                out.created.push(doc.insert(Cad {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.cad,
+                    shape: Shape::Polyline {
+                        points: pts.iter().map(|p| housecraft_geom::pt(*p)).collect(),
+                        closed,
+                    },
+                    color: None,
+                    fill: None,
+                }));
+                if let (Some(s), true) = (setback, closed) {
+                    let mut poly = pts.clone();
+                    if housecraft_geom::math::signed_area(&poly) < 0.0 {
+                        poly.reverse();
+                    }
+                    let inner = housecraft_geom::math::inset_polygon(&poly, s.mm());
+                    if inner.len() >= 3 {
+                        out.created.push(doc.insert(Cad {
+                            id: Id(0),
+                            floor,
+                            layer: d.layers.cad,
+                            shape: Shape::Polyline {
+                                points: inner.iter().map(|p| housecraft_geom::pt(*p)).collect(),
+                                closed: true,
+                            },
+                            color: Some(Color::rgb(200, 60, 60)),
+                            fill: None,
+                        }));
+                    }
+                }
+            }
+            Command::SitePlanDetail { name } => {
+                let (shapes, texts) = crate::site::site_plan(doc);
+                let more = Command::AddCadDetail { name: name.clone(), shapes, texts }.apply(doc)?;
+                out.created.extend(more.created);
             }
             Command::AddSiteFeature { floor, points, feature } => {
                 let floor = ops::resolve_floor(doc, *floor)?;

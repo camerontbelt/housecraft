@@ -2091,3 +2091,27 @@ fn doors_place_from_library_templates() {
     assert!((o.position.mm() - Length::from_feet(10.0).mm()).abs() < 1.0);
     assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
 }
+
+#[test]
+fn plot_plans_from_bearings_and_site_plan_details() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_plot_lines", "start": ["-20'","-20'"], "setback": "10'", "legs": [
+            {"bearing": "N 0°00'00\" E", "distance": "80'"},
+            {"bearing": "S 90°00'00\" E", "distance": "60'"},
+            {"bearing": "S 0 W", "distance": "80'"},
+            {"bearing": "N 90 W", "distance": "60'"}]}]"#,
+    );
+    let doc = s.document();
+    let lots: Vec<&Cad> = out.created.iter().filter_map(|id| doc.get::<Cad>(*id)).collect();
+    assert_eq!(lots.len(), 2, "the lot and its setback line");
+    let Shape::Polyline { points, closed } = &lots[0].shape else { panic!() };
+    assert!(*closed && points.len() == 4);
+    assert!((points[2].x().mm() - Length::from_feet(40.0).mm()).abs() < 1.0);
+    assert_eq!(out.created.iter().filter(|id| doc.get::<Text>(**id).is_some()).count(), 4);
+    assert!(s.apply(&commands(r#"[{"op": "add_plot_lines", "start": [0,0], "legs": [{"bearing": "NE", "distance": 10}]}]"#)).is_err());
+    let out = apply(&mut s, r#"[{"op": "site_plan_detail", "name": "Site"}]"#);
+    let detail = out.created[0];
+    assert!(s.document().iter::<Cad>().filter(|c| c.floor == detail).count() >= 1, "the house footprint");
+}

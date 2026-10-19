@@ -92,6 +92,8 @@ pub struct App {
     pub render_state: Option<egui_wgpu::RenderState>,
     /// The 3D image export dialog: width, height, transparent background.
     pub image_export: Option<(u32, u32, bool)>,
+    /// Terrain > Plot Plan from Bearings: (sides, setback) being typed.
+    plot: Option<(String, String)>,
     /// A 3D model file waiting for its import options.
     pub symbol_import: Option<(std::path::PathBuf, housecraft_io_native::symbols::ImportOptions)>,
     pub bufs: EditBuffers,
@@ -137,6 +139,7 @@ impl App {
             symbol_import: None,
             render_state,
             image_export: None,
+            plot: None,
             object_painter: None,
             bufs: EditBuffers::default(),
             spec: Vec::new(),
@@ -490,6 +493,63 @@ impl App {
         match self.selection.as_slice() {
             [id] => self.doc().get::<BlockRef>(*id).cloned(),
             _ => None,
+        }
+    }
+
+    /// The Plot Plan from Bearings window: one side per line as
+    /// "bearing, distance", drawn from the plan's origin.
+    fn plot_dialog(&mut self, ctx: &egui::Context) {
+        let Some((mut sides, mut setback)) = self.plot.take() else {
+            return;
+        };
+        let mut open = true;
+        let mut go = false;
+        egui::Window::new("Plot Plan from Bearings")
+            .open(&mut open)
+            .default_width(380.0)
+            .show(ctx, |ui| {
+                ui.label("One side per line: bearing, distance (e.g. N 45°30' E, 120').");
+                ui.weak("The lot starts at the plan's origin; end where you started to close it.");
+                ui.add(egui::TextEdit::multiline(&mut sides).desired_rows(6).desired_width(f32::INFINITY));
+                ui.horizontal(|ui| {
+                    ui.label("Building setback");
+                    ui.text_edit_singleline(&mut setback);
+                });
+                go = ui.button("Draw Lot").clicked();
+            });
+        if go {
+            let unit = crate::util::input_unit(self.doc());
+            let mut legs = Vec::new();
+            for line in sides.lines().filter(|l| !l.trim().is_empty()) {
+                let Some((b, d)) = line.rsplit_once(',') else {
+                    self.error(format!("Expected \"bearing, distance\": {line}"));
+                    self.plot = Some((sides, setback));
+                    return;
+                };
+                match housecraft_api::units::Length::parse(d.trim(), unit) {
+                    Ok(distance) => legs.push(housecraft_api::PlotLeg { bearing: b.trim().into(), distance }),
+                    Err(_) => {
+                        self.error(format!("Can't read the distance in: {line}"));
+                        self.plot = Some((sides, setback));
+                        return;
+                    }
+                }
+            }
+            let setback = housecraft_api::units::Length::parse(setback.trim(), unit).ok().filter(|l| l.mm() > 0.0);
+            if self
+                .run1(Command::AddPlotLines {
+                    floor: Some(self.plan.floor),
+                    start: Default::default(),
+                    legs,
+                    setback,
+                })
+                .is_some()
+            {
+                return;
+            }
+        }
+        if open {
+            self.plot = Some((sides, setback));
         }
     }
 
@@ -1354,6 +1414,22 @@ impl App {
                 if item(ui, "Import Survey Points…", "", true) {
                     self.import_survey_points();
                 }
+                ui.separator();
+                if item(ui, "Plot Plan from Bearings…", "", true) {
+                    self.plot = Some(("N 0°00'00\" E, 100'
+S 90°00'00\" E, 80'
+S 0°00'00\" W, 100'
+N 90°00'00\" W, 80'".into(), "10'".into()));
+                }
+                if item(ui, "Site Plan Detail", "", true) {
+                    let n = self.doc().count::<CadDetail>() + 1;
+                    if let Some(out) = self.run1(Command::SitePlanDetail { name: format!("Site Plan {n}") })
+                        && let Some(id) = out.created.first()
+                    {
+                        self.open_sheet(*id);
+                    }
+                }
+                ui.separator();
                 if item(ui, "Clear Terrain", "", terrain.is_some()) {
                     self.run1(Command::ClearTerrain);
                 }
@@ -2835,6 +2911,7 @@ impl eframe::App for App {
         crate::materials::materials_dialog(self, &ctx);
         self.symbol_import_dialog(&ctx);
         self.image_export_dialog(&ctx);
+        self.plot_dialog(&ctx);
         crate::object_painter::window(self, &ctx);
         self.confirm_discard(&ctx);
     }

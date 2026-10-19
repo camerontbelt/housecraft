@@ -109,3 +109,92 @@ mod tests {
         assert!((pts[1].2 - 103_500.0).abs() < 1e-6);
     }
 }
+
+/// A surveyor's bearing ("N 45°30'15\" E", "S12-30W", "n 7 e") as a unit
+/// direction in plan (+y is north).
+pub(crate) fn parse_bearing(s: &str) -> Result<housecraft_geom::DVec2, ApiError> {
+    let t = s.trim().to_uppercase();
+    let bad = || ApiError::Invalid(format!("can't read the bearing {s:?} (use e.g. N 45°30' E)"));
+    let ns = t.chars().next().ok_or_else(bad)?;
+    let ew = t.chars().last().ok_or_else(bad)?;
+    if !matches!(ns, 'N' | 'S') || !matches!(ew, 'E' | 'W') {
+        return Err(bad());
+    }
+    let inner = &t[1..t.len() - 1];
+    let parts: Vec<f64> = inner
+        .split(|c: char| !(c.is_ascii_digit() || c == '.'))
+        .filter(|p| !p.is_empty())
+        .map(|p| p.parse::<f64>().map_err(|_| bad()))
+        .collect::<Result<_, _>>()?;
+    let deg = match parts.as_slice() {
+        [d] => *d,
+        [d, m] => d + m / 60.0,
+        [d, m, sec] => d + m / 60.0 + sec / 3600.0,
+        _ => return Err(bad()),
+    };
+    if !(0.0..=90.0).contains(&deg) {
+        return Err(bad());
+    }
+    let a = deg.to_radians();
+    let x = if ew == 'E' { a.sin() } else { -a.sin() };
+    let y = if ns == 'N' { a.cos() } else { -a.cos() };
+    Ok(housecraft_geom::DVec2::new(x, y))
+}
+
+#[cfg(test)]
+mod bearing_tests {
+    use super::*;
+
+    #[test]
+    fn bearings() {
+        let d = parse_bearing("N 90°00'00\" E").unwrap();
+        assert!((d.x - 1.0).abs() < 1e-9 && d.y.abs() < 1e-9);
+        let d = parse_bearing("s45-0-0w").unwrap();
+        assert!((d.x - d.y).abs() < 1e-9 && d.x < 0.0 && d.y < 0.0);
+        assert!(parse_bearing("NE").is_err());
+        assert!(parse_bearing("N 95 E").is_err());
+    }
+}
+
+/// A site plan's shapes: the terrain outline, filled building footprints,
+/// site features and plant canopies, with a label on each building.
+pub(crate) fn site_plan(doc: &housecraft_model::Document) -> (Vec<housecraft_model::DetailShape>, Vec<crate::DetailText>) {
+    use housecraft_geom::{pt, v2};
+    use housecraft_model::*;
+    let mut shapes = Vec::new();
+    let mut texts = Vec::new();
+    let poly = |pts: Vec<housecraft_geom::DVec2>, closed: bool, fill: Option<Color>| DetailShape {
+        shape: Shape::Polyline { points: pts.into_iter().map(pt).collect(), closed },
+        color: None,
+        fill,
+    };
+    for t in doc.iter::<Terrain>() {
+        shapes.push(poly(t.perimeter.iter().map(|p| v2(*p)).collect(), true, None));
+    }
+    if let Some(floor) = doc.floors_by_elevation().first() {
+        for f in housecraft_geom::rooms::detect(doc, floor.id).footprints {
+            let c = housecraft_geom::math::centroid(&f);
+            let area = housecraft_geom::math::signed_area(&f).abs();
+            texts.push(crate::DetailText {
+                position: pt(c),
+                text: format!("House ({})", housecraft_units::format_area(area, doc.settings.display_unit)),
+                height: None,
+                rotation: 0.0,
+                justify: Justify::Center,
+            });
+            shapes.push(poly(f, true, Some(Color::rgb(200, 200, 200))));
+        }
+    }
+    for f in doc.iter::<SiteFeature>() {
+        let pts: Vec<housecraft_geom::DVec2> = f.points.iter().map(|p| v2(*p)).collect();
+        shapes.push(poly(pts, f.feature.closed(), None));
+    }
+    for p in doc.iter::<Plant>() {
+        shapes.push(DetailShape {
+            shape: Shape::Circle { center: p.at, radius: p.spread * 0.5 },
+            color: Some(Color::rgb(60, 120, 60)),
+            fill: None,
+        });
+    }
+    (shapes, texts)
+}

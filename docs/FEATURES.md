@@ -413,7 +413,7 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-02 | Copy sun angles for studies | P3 | M7 |
 | SITE-03 | Bearing/angle display formats (azimuth, quadrant, DMS) | P1 | M1 |
 | SITE-04 | Terrain model from elevation data: smoothing, triangulation, skirt, contours | P2 | M6 ✓ terrain from elevation data: trend plane plus distance blending, smoothing passes, building cut-out, skirt, contours |
-| SITE-05 | Plot plans, site plans, subdivisions from bearings, distances and setbacks | P2 | M6 |
+| SITE-05 | Plot plans, site plans, subdivisions from bearings, distances and setbacks | P2 | M6 ◐ Terrain > Plot Plan from Bearings: lot lines from bearings and distances, labelled, with a setback line; no multi-lot subdivisions |
 | SITE-06 | Terrain import: text/GPS/GPX, DWG/DXF | P2 | M6 ◐ text/CSV x,y,z and GPX survey points; no DWG/DXF terrain import |
 | SITE-07 | Elevation splines, lines, regions, points; subfloor marker; clear terrain | P2 | M6 ◐ elevation points, lines (smooth splines) and flat regions; Clear Terrain; no subfloor marker |
 | SITE-08 | Terrain elevation labels | P2 | M6 ✓ spot heights and major contours labelled in plan |
@@ -422,7 +422,7 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-11 | Stepping stones, streams, curbing, garden beds | P3 | M6 ◐ stepping stones, streams and raised garden beds; curbing comes with roads |
 | SITE-12 | Roads, medians, striping, curbs, gutters, driveways, sidewalks, cul-de-sacs | P2 | M6 ◐ roads (curbs, gutters, centre striping), driveways and sidewalks that follow the ground; no medians or cul-de-sacs |
 | SITE-13 | Road/driveway/sidewalk volumes in materials list | P3 | M6 ✓ paving area and base volume in the materials list |
-| SITE-14 | Auto plan footprint CAD detail for site plans | P2 | M6 |
+| SITE-14 | Auto plan footprint CAD detail for site plans | P2 | M6 ✓ Terrain > Site Plan Detail makes a CAD detail of the lot, footprints, site work and plants |
 | SITE-15 | Deck designer (straight, curved, polygon, covered) | P2 | M6 |
 | SITE-16 | Fences that follow terrain; gates | P2 | M6 ✓ picket, privacy and split-rail fences with posts following the ground; gates |
 | SITE-17 | Sprinkler designer (zones, runs) | P3 | M8 |
