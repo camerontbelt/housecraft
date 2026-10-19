@@ -372,6 +372,7 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'","5'"], "sink": true}},
                 {{"op": "add_countertop", "points": [["8'","8'"], ["12'","8'"], ["12'","11'"]], "holes": [{{"hole_kind": "round", "center": ["10'","9'"], "width": "2\"", "depth": "2\""}}]}},
                 {{"op": "add_appliance", "appliance_kind": "toilet", "at": ["15'","1'"]}},
+                {{"op": "add_backsplash", "points": [["1'","1'"], ["3'","1'"]]}},
                 {{"op": "add_picture", "path": "x.png", "position": [0,0], "width": "1'"}},
                 {{"op": "add_symbol_def", "name": "S", "positions": [[0,0,0],[1,0,0],[0,-1,0],[0,0,1]], "triangles": [[0,1,2],[0,1,3]]}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
@@ -1741,4 +1742,53 @@ fn pictures_and_3d_symbols() {
     apply(&mut s, &format!(r#"[{{"op": "delete", "ids": [{}]}}]"#, def.0));
     assert_eq!(s.document().count::<Symbol>(), 0);
     assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
+}
+
+#[test]
+fn cabinet_details_schedule_and_dimensions() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'","5'"]},
+            {"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'","7'"], "sink": true, "width": "24\""},
+            {"op": "add_cabinet", "cabinet_kind": "wall", "at": ["1'","5'"]}]"#,
+    );
+    let (a, sink, wall) = (out.created[0], out.created[1], out.created[2]);
+    // Open doors, crown molding, end panel, legs, rounded waterfall top.
+    apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "update", "id": {a}, "set": {{"open": 0.5, "ends": {{"left": true, "right": false, "legs": true}},
+                 "countertop": {{"corner": {{"type": "round", "radius": "3\""}}, "corner_left": true, "waterfall_left": true}}}}}},
+                {{"op": "update", "id": {w}, "set": {{"moldings": [{{"place": "top", "shape": "crown", "height": "3\"", "projection": "2\""}},
+                                                                   {{"place": "bottom", "shape": "bead", "height": "1\"", "projection": "1\""}}]}}}}]"#,
+            a = a.0,
+            w = wall.0
+        ),
+    );
+    let doc = s.document();
+    assert!(doc.validate().is_empty(), "{:?}", doc.validate());
+    assert_eq!(doc.get::<Cabinet>(a).unwrap().code(), "B24");
+    assert_eq!(doc.get::<Cabinet>(sink).unwrap().code(), "SB24");
+    assert_eq!(doc.get::<Cabinet>(wall).unwrap().code(), "W2430");
+    // The 3D model builds (moldings, open doors, waterfall) without trouble.
+    let mesh = housecraft_api::geom::mesh::build(doc, None);
+    assert!(mesh.surfaces.contains(&Some(Surface::Countertop)));
+    // The cabinet schedule lists door and drawer sizes.
+    let t = housecraft_api::schedule::schedule(
+        doc,
+        ScheduleKind::Cabinets,
+        &housecraft_api::schedule::ScheduleOptions { floor: None, columns: Vec::new() },
+    );
+    let csv = t.export(housecraft_api::schedule::TableFormat::Csv);
+    assert!(csv.contains("B24") && csv.contains("SB24") && csv.contains(" @ "), "{csv}");
+    // Auto dimensions: one chain across the run of two base cabinets.
+    let out = apply(&mut s, r#"[{"op": "auto_cabinet_dimensions"}]"#);
+    assert_eq!(out.created.len(), 1);
+    let dim = s.document().get::<Dimension>(out.created[0]).unwrap();
+    let DimensionGeometry::Linear { points, .. } = &dim.geometry else { panic!() };
+    assert!(points.len() >= 3, "{points:?}");
+    // A backsplash along the wall.
+    apply(&mut s, r#"[{"op": "add_backsplash", "points": [["7\"","4'"], ["7\"","8'"]]}]"#);
+    assert!(s.document().validate().is_empty());
 }

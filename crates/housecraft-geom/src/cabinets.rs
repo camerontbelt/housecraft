@@ -8,7 +8,8 @@
 use glam::{DVec2, DVec3};
 use housecraft_model::{
     Appliance, ApplianceKind, Symbol, SymbolDef, Cabinet, CabinetConstruction, CabinetKind, CabinetShape, Countertop,
-    DoorStyleCab, Document, EdgeProfile, FaceItem, Floor, HardwareStyle, HoleKind, Id, Surface,
+    DoorStyleCab, Document, EdgeProfile, FaceItem, Floor, HardwareStyle, HoleKind, Id, MoldingPlace,
+    Side, Surface,
 };
 
 use crate::math::{inset_polygon, minus_convex_holes, perp, signed_area, v2};
@@ -193,7 +194,53 @@ pub fn countertop_outline(c: &Cabinet) -> Option<Vec<DVec2>> {
             }
         })
         .collect();
+    let local = round_front_corners(local, top, c.shape == CabinetShape::Standard);
     Some(ccw(local.into_iter().map(|p| f.world(p)).collect()))
+}
+
+/// Round or chamfer the countertop's front corners (standard cabinets:
+/// points 2 = front right and 3 = front left).
+fn round_front_corners(pts: Vec<DVec2>, top: &housecraft_model::CabinetTop, standard: bool) -> Vec<DVec2> {
+    use housecraft_model::CornerTreatment as T;
+    if !standard || pts.len() != 4 || top.corner == T::Square {
+        return pts;
+    }
+    let mut out = Vec::new();
+    for (i, p) in pts.iter().enumerate() {
+        let on = (i == 2 && top.corner_right) || (i == 3 && top.corner_left);
+        if !on {
+            out.push(*p);
+            continue;
+        }
+        let prev = pts[(i + 3) % 4];
+        let next = pts[(i + 1) % 4];
+        let (a, bb) = ((prev - *p).normalize_or_zero(), (next - *p).normalize_or_zero());
+        match top.corner {
+            T::Chamfer { size } => {
+                let k = size.mm().max(0.0);
+                out.push(*p + a * k);
+                out.push(*p + bb * k);
+            }
+            T::Round { radius } => {
+                let r = radius.mm().max(0.0);
+                let center = *p + (a + bb) * r;
+                let start = (*p + a * r - center).to_angle();
+                let end = (*p + bb * r - center).to_angle();
+                let mut sweep = end - start;
+                while sweep > std::f64::consts::PI {
+                    sweep -= std::f64::consts::TAU;
+                }
+                while sweep < -std::f64::consts::PI {
+                    sweep += std::f64::consts::TAU;
+                }
+                for k in 0..=6 {
+                    out.push(center + DVec2::from_angle(start + sweep * k as f64 / 6.0) * r);
+                }
+            }
+            T::Square => out.push(*p),
+        }
+    }
+    out
 }
 
 /// The sink cut-out in a sink cabinet's countertop (plan, counter-clockwise).
@@ -213,8 +260,9 @@ pub fn sink_hole(c: &Cabinet) -> Option<Vec<DVec2>> {
     ))
 }
 
-/// One door, drawer or opening on a cabinet front: its span along the
-/// front (mm from the left end) and heights (mm above the cabinet bottom).
+/// One door, drawer or opening on a cabinet front: the door or drawer
+/// face (mm along the front from the left end, and mm above the cabinet
+/// bottom) and the opening in the box behind it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Cell {
     pub item: FaceItem,
@@ -224,29 +272,72 @@ pub struct Cell {
     pub z1: f64,
     /// For doors: the hinge is at s0 (left) rather than s1.
     pub hinge_left: bool,
+    /// The opening: s0, s1, z0, z1.
+    pub opening: [f64; 4],
+    /// Which face row (top first).
+    pub row: usize,
 }
 
 fn length(pts: &[DVec2]) -> f64 {
     pts.windows(2).map(|w| w[0].distance(w[1])).sum()
 }
 
-/// Lay out the cabinet front: rows top to bottom, cells left to right.
+/// Face-frame stile/rail width and the gap between openings.
+fn frame_sizes(c: &Cabinet) -> (f64, f64) {
+    match c.construction {
+        CabinetConstruction::Framed => (1.5 * IN, 1.0 * IN),
+        CabinetConstruction::Frameless => {
+            let r = c.build.reveal.mm().max(0.0);
+            (r / 2.0, r)
+        }
+    }
+}
+
+/// Height of the box bottom above the cabinet's base (the toe kick or legs).
+pub fn base_height(c: &Cabinet) -> f64 {
+    match c.cabinet_kind {
+        CabinetKind::Wall => 0.0,
+        _ => c.toe_kick.map_or(0.0, |(h, _)| h.mm()),
+    }
+}
+
+/// Lay out the cabinet front: rows top to bottom, cells left to right. A
+/// blind corner's hidden part becomes a fixed panel.
 pub fn cells(c: &Cabinet) -> Vec<Cell> {
     let front = local_shape(c, 0.0).1;
     let len = length(&front);
-    let toe = match c.cabinet_kind {
-        CabinetKind::Wall => 0.0,
-        _ => c.toe_kick.map_or(0.0, |(h, _)| h.mm()),
-    };
-    let (edge, gap) = match c.construction {
-        CabinetConstruction::Framed => (1.5 * IN, 1.0 * IN),
-        CabinetConstruction::Frameless => (0.0625 * IN, 0.125 * IN),
-    };
-    let bottom = toe + edge;
+    let (edge, gap) = frame_sizes(c);
+    let bottom = base_height(c) + edge;
     let top = c.height.mm() - edge;
     let rows = &c.face;
     if rows.is_empty() || top <= bottom {
         return Vec::new();
+    }
+    let mut out = Vec::new();
+    // The blind part of the front.
+    let (mut start, mut end) = (edge, len - edge);
+    if let Some(b) = c.blind {
+        let w = b.width.mm().clamp(0.0, len - 2.0 * edge - 4.0 * IN);
+        let panel = match b.side {
+            Side::Left => {
+                start = edge + w + gap;
+                (edge, edge + w)
+            }
+            Side::Right => {
+                end = len - edge - w - gap;
+                (len - edge - w, len - edge)
+            }
+        };
+        out.push(Cell {
+            item: FaceItem::Panel,
+            s0: panel.0,
+            s1: panel.1,
+            z0: bottom,
+            z1: top,
+            hinge_left: false,
+            opening: [panel.0, panel.1, bottom, top],
+            row: 0,
+        });
     }
     let fixed: f64 = rows.iter().filter_map(|r| r.height).map(|h| h.mm()).sum();
     let flexible = rows.iter().filter(|r| r.height.is_none()).count();
@@ -256,30 +347,61 @@ pub fn cells(c: &Cabinet) -> Vec<Cell> {
     } else {
         0.0
     };
-    let mut out = Vec::new();
+    let framed = c.construction == CabinetConstruction::Framed;
+    let [ol, or, ot, ob] = c.build.overlay.map(|l| l.mm().max(0.0));
+    // Doors overlap shared rails and mullions by at most half the gap.
+    let inner = (gap / 2.0 - 0.0625 * IN).max(0.0);
+    let nrows = rows.len();
     let mut z = top;
-    for row in rows {
+    for (r, row) in rows.iter().enumerate() {
         let h = row.height.map_or(share, |h| h.mm());
         let (z0, z1) = ((z - h).max(bottom), z);
         z = z0 - gap;
-        let n = row.items.len().max(1) as f64;
-        let span = len - 2.0 * edge;
-        let cw = (span - gap * (n - 1.0)) / n;
-        for (i, item) in row.items.iter().enumerate() {
-            let s0 = edge + i as f64 * (cw + gap);
-            let s1 = s0 + cw;
+        let n = row.items.len().max(1);
+        let span = end - start;
+        let cw = (span - gap * (n as f64 - 1.0)) / n as f64;
+        for (k, item) in row.items.iter().enumerate() {
+            let o0 = start + k as f64 * (cw + gap);
+            let o1 = o0 + cw;
+            let opening = [o0, o1, z0, z1];
+            // The face: framed doors overlay the frame around the opening.
+            let (mut f0, mut f1, mut g0, mut g1) = (o0, o1, z0, z1);
+            if framed {
+                f0 -= if k == 0 { ol } else { ol.min(inner) };
+                f1 += if k == n - 1 { or } else { or.min(inner) };
+                g1 += if r == 0 { ot } else { ot.min(inner) };
+                g0 -= if r == nrows - 1 { ob } else { ob.min(inner) };
+            }
             if *item == FaceItem::DoubleDoor {
-                let mid = (s0 + s1) / 2.0;
+                let mid = (f0 + f1) / 2.0;
                 let g = 0.0625 * IN;
-                out.push(Cell { item: FaceItem::DoorLeft, s0, s1: mid - g, z0, z1, hinge_left: true });
-                out.push(Cell { item: FaceItem::DoorRight, s0: mid + g, s1, z0, z1, hinge_left: false });
+                out.push(Cell { item: FaceItem::DoorLeft, s0: f0, s1: mid - g, z0: g0, z1: g1, hinge_left: true, opening, row: r });
+                out.push(Cell { item: FaceItem::DoorRight, s0: mid + g, s1: f1, z0: g0, z1: g1, hinge_left: false, opening, row: r });
             } else {
                 let hinge_left = matches!(item, FaceItem::DoorLeft | FaceItem::GlassDoor);
-                out.push(Cell { item: *item, s0, s1, z0, z1, hinge_left });
+                out.push(Cell { item: *item, s0: f0, s1: f1, z0: g0, z1: g1, hinge_left, opening, row: r });
             }
         }
     }
     out
+}
+
+/// Face sizes: (width, height) in mm.
+pub type Sizes = Vec<(f64, f64)>;
+
+/// Door and drawer face sizes for reports.
+pub fn front_sizes(c: &Cabinet) -> (Sizes, Sizes) {
+    let mut doors = Vec::new();
+    let mut drawers = Vec::new();
+    for cell in cells(c) {
+        let size = (cell.s1 - cell.s0, cell.z1 - cell.z0);
+        match cell.item {
+            FaceItem::Drawer => drawers.push(size),
+            FaceItem::DoorLeft | FaceItem::DoorRight | FaceItem::GlassDoor => doors.push(size),
+            _ => {}
+        }
+    }
+    (doors, drawers)
 }
 
 /// The point and outward normal at distance `s` along a polyline (local).
@@ -319,16 +441,36 @@ struct Builder<'a> {
     f: Frame,
     z0: f64,
     mesh: &'a mut Mesh,
+    /// A local move applied before placing (an opening door or drawer):
+    /// rotate by the angle about the pivot, then shift.
+    xf: Option<(DVec2, f64, DVec2)>,
 }
 
 impl Builder<'_> {
+    fn local(&self, p: DVec3) -> DVec3 {
+        match self.xf {
+            Some((pivot, angle, shift)) => {
+                let q = DVec2::from_angle(angle).rotate(p.truncate() - pivot) + pivot + shift;
+                q.extend(p.z)
+            }
+            None => p,
+        }
+    }
+
+    fn local_dir(&self, d: DVec3) -> DVec3 {
+        match self.xf {
+            Some((_, angle, _)) => DVec2::from_angle(angle).rotate(d.truncate()).extend(d.z),
+            None => d,
+        }
+    }
+
     fn face(&mut self, pts: &[DVec3], want: DVec3, surface: Surface) {
         let mut w: Vec<DVec3> = pts
             .iter()
-            .map(|p| self.f.world3(*p + DVec3::Z * self.z0))
+            .map(|p| self.f.world3(self.local(*p) + DVec3::Z * self.z0))
             .collect();
         let n = crate::roof::newell(&w);
-        if n.dot(self.f.world_dir(want)) < 0.0 {
+        if n.dot(self.f.world_dir(self.local_dir(want))) < 0.0 {
             w.reverse();
         }
         self.mesh.polygon(&w, surface);
@@ -445,7 +587,7 @@ pub fn hardware_spot(c: &Cabinet, cell: &Cell) -> Option<(f64, f64, bool)> {
             };
             Some((s, z, true))
         }
-        FaceItem::DoubleDoor | FaceItem::Open | FaceItem::Panel => None,
+        FaceItem::DoubleDoor | FaceItem::Open | FaceItem::Panel | FaceItem::Appliance => None,
     }
 }
 
@@ -506,55 +648,186 @@ fn counter_slab(mesh: &mut Mesh, outline: &[DVec2], holes: &[Vec<DVec2>], z0: f6
     }
 }
 
-/// The 3D cabinet: box, toe kick, fillers, doors and drawers, hardware,
-/// countertop with sink and backsplash.
+/// A box in local coordinates: u, v and z ranges.
+fn block(b: &mut Builder, u: (f64, f64), v: (f64, f64), z: (f64, f64), surface: Surface) {
+    if u.1 - u.0 < 0.1 || v.1 - v.0 < 0.1 || z.1 - z.0 < 0.1 {
+        return;
+    }
+    let pts = [
+        DVec2::new(u.0, v.0),
+        DVec2::new(u.1, v.0),
+        DVec2::new(u.1, v.1),
+        DVec2::new(u.0, v.1),
+    ];
+    b.prism(&pts, z.0, z.1, surface);
+}
+
+/// The 3D cabinet: box (panels for standard cabinets, so open doors show
+/// shelves), face frame, toe kick or legs, end panels, fillers, doors and
+/// drawers (opened by `open`), hardware, moldings, countertop with sink,
+/// waterfall ends and backsplash.
 pub fn cabinet_mesh(doc: &Document, c: &Cabinet, mesh: &mut Mesh) {
     let Some(floor) = doc.get::<Floor>(c.floor) else {
         return;
     };
     let z0 = floor.elevation.mm() + c.elevation.mm();
     let h = c.height.mm();
-    let mut b = Builder { f: frame(c), z0, mesh };
+    let d = c.depth.mm();
+    let half = c.width.mm() / 2.0;
+    let mut b = Builder { f: frame(c), z0, mesh, xf: None };
     let (shape, front) = local_shape(c, 0.0);
+    let base = base_height(c);
     let toe = match (c.cabinet_kind, c.toe_kick) {
         (CabinetKind::Wall, _) | (_, None) => None,
         (_, Some((th, td))) => Some((th.mm(), td.mm())),
     };
-    match toe {
-        Some((th, td)) if th > 0.0 => {
-            b.prism(&local_shape(c, td).0, 0.0, th, Surface::CabinetBox);
-            b.prism(&shape, th, h, Surface::CabinetBox);
+    let build = c.build;
+    let standard = c.shape == CabinetShape::Standard;
+    let (edge, gap) = frame_sizes(c);
+    let all = cells(c);
+    if standard {
+        let t = build.side_thickness.mm().max(1.0);
+        let bt = build.back_thickness.mm().max(1.0);
+        let (ul, ur) = (-half, half);
+        if build.left {
+            block(&mut b, (ul, ul + t), (0.0, d), (base, h), Surface::CabinetBox);
         }
-        _ => b.prism(&shape, 0.0, h, Surface::CabinetBox),
+        if build.right {
+            block(&mut b, (ur - t, ur), (0.0, d), (base, h), Surface::CabinetBox);
+        }
+        let (il, ir) = (ul + if build.left { t } else { 0.0 }, ur - if build.right { t } else { 0.0 });
+        if build.top {
+            block(&mut b, (il, ir), (0.0, d), (h - t, h), Surface::CabinetBox);
+        }
+        if build.bottom {
+            block(&mut b, (il, ir), (0.0, d), (base, base + t), Surface::CabinetBox);
+        }
+        if build.back {
+            block(&mut b, (il, ir), (0.0, bt), (base, h), Surface::CabinetBox);
+        }
+        // Shelves behind doors and in open bays.
+        for cell in &all {
+            if !matches!(cell.item, FaceItem::DoorLeft | FaceItem::DoorRight | FaceItem::GlassDoor | FaceItem::Open) {
+                continue;
+            }
+            // Each opening once (double doors share one).
+            if cell.item == FaceItem::DoorRight
+                && all.iter().any(|o| o.opening == cell.opening && o.item == FaceItem::DoorLeft)
+            {
+                continue;
+            }
+            let n = c.face.get(cell.row).and_then(|r| r.shelves).unwrap_or(c.shelves);
+            let [o0, o1, oz0, oz1] = cell.opening;
+            for k in 1..=n {
+                let z = oz0 + (oz1 - oz0) * k as f64 / (n + 1) as f64;
+                block(
+                    &mut b,
+                    (ul + o0.max(t), ul + o1.min(2.0 * half - t)),
+                    (bt, d - IN),
+                    (z - 0.375 * IN, z + 0.375 * IN),
+                    Surface::CabinetBox,
+                );
+            }
+        }
+        // Toe kick board, set back.
+        if let Some((th, td)) = toe
+            && !c.ends.legs
+        {
+            block(&mut b, (ul, ur), (d - td - 0.5 * IN, d - td), (0.0, th), Surface::CabinetBox);
+        }
+    } else {
+        match toe {
+            Some((th, td)) if th > 0.0 && !c.ends.legs => {
+                b.prism(&local_shape(c, td).0, 0.0, th, Surface::CabinetBox);
+                b.prism(&shape, th, h, Surface::CabinetBox);
+            }
+            _ => b.prism(&shape, base, h, Surface::CabinetBox),
+        }
+    }
+    // Legs at the corners instead of a toe kick.
+    if c.ends.legs && base > 0.0 {
+        let s = 2.5 * IN;
+        for (u, v) in [(-half, 0.0), (half - s, 0.0), (-half, d - s), (half - s, d - s)] {
+            block(&mut b, (u, u + s), (v, v + s), (0.0, base), Surface::CabinetBox);
+        }
+    }
+    // Face frame: stiles, rails, mullions (framed cabinets).
+    if c.construction == CabinetConstruction::Framed {
+        let len = length(&front);
+        let ft = 0.75 * IN;
+        let zb = if build.extended_stiles { 0.0 } else { base };
+        b.slab(&front, 0.0, edge, zb, h, -ft, ft, Surface::CabinetBox);
+        b.slab(&front, len - edge, len, zb, h, -ft, ft, Surface::CabinetBox);
+        b.slab(&front, edge, len - edge, h - edge, h, -ft, ft, Surface::CabinetBox);
+        b.slab(&front, edge, len - edge, base, base + edge, -ft, ft, Surface::CabinetBox);
+        let mut rows: Vec<[f64; 4]> = all.iter().map(|c| c.opening).collect();
+        rows.dedup();
+        for (k, o) in rows.iter().enumerate() {
+            // Rail below each opening that isn't the bottom one.
+            if o[2] - gap > base + edge + 1.0 {
+                b.slab(&front, o[0], o[1], o[2] - gap, o[2], -ft, ft, Surface::CabinetBox);
+            }
+            // Mullion to the right of each opening that has a neighbour.
+            if rows.get(k + 1).is_some_and(|n| (n[2] - o[2]).abs() < 1.0 && n[0] > o[1]) {
+                b.slab(&front, o[1], rows[k + 1][0], o[2], o[3], -ft, ft, Surface::CabinetBox);
+            }
+        }
+    }
+    // End panels.
+    let et = 0.75 * IN;
+    if c.ends.left {
+        block(&mut b, (-half - c.filler_left.mm() - et, -half - c.filler_left.mm()), (0.0, d + et), (0.0, h), Surface::CabinetBox);
+    }
+    if c.ends.right {
+        block(&mut b, (half + c.filler_right.mm(), half + c.filler_right.mm() + et), (0.0, d + et), (0.0, h), Surface::CabinetBox);
     }
     // Fillers: strips flush with the front beside the box.
-    let half = c.width.mm() / 2.0;
-    let bottom = toe.map_or(0.0, |(th, _)| th);
-    let d = c.depth.mm();
-    for (u0, u1) in [
-        (-half - c.filler_left.mm(), -half),
-        (half, half + c.filler_right.mm()),
-    ] {
+    for (u0, u1) in [(-half - c.filler_left.mm(), -half), (half, half + c.filler_right.mm())] {
         if u1 - u0 > 0.5 {
             b.prism(
                 &[DVec2::new(u0, d - IN), DVec2::new(u1, d - IN), DVec2::new(u1, d), DVec2::new(u0, d)],
-                bottom,
+                base,
                 h,
                 Surface::CabinetBox,
             );
         }
     }
-    for cell in cells(c) {
+    // Doors and drawers, opened by `open`.
+    let open = c.open.clamp(0.0, 1.0);
+    let straight = front.len() == 2;
+    for cell in &all {
+        b.xf = None;
+        if open > 0.0 && straight {
+            let t = (front[1] - front[0]).normalize_or(DVec2::X);
+            match cell.item {
+                FaceItem::DoorLeft | FaceItem::DoorRight | FaceItem::GlassDoor => {
+                    let hinge = if cell.hinge_left { cell.s0 } else { cell.s1 };
+                    let pivot = front[0] + t * hinge + perp(t) * DOOR_T;
+                    let sign = if cell.hinge_left { 1.0 } else { -1.0 };
+                    b.xf = Some((pivot, sign * open * 95f64.to_radians(), DVec2::ZERO));
+                }
+                FaceItem::Drawer => {
+                    b.xf = Some((DVec2::ZERO, 0.0, perp(t) * open * d * 0.7));
+                }
+                _ => {}
+            }
+        }
         match cell.item {
             FaceItem::Open => {
-                // A recessed back shows the opening.
-                b.slab(&front, cell.s0, cell.s1, cell.z0, cell.z1, -0.5 * IN, 0.4 * IN, Surface::CabinetBox);
+                if !standard {
+                    b.slab(&front, cell.s0, cell.s1, cell.z0, cell.z1, -0.5 * IN, 0.4 * IN, Surface::CabinetBox);
+                }
             }
-            FaceItem::GlassDoor => front_panel(&mut b, &front, &cell, c.door_style, true),
-            _ => front_panel(&mut b, &front, &cell, c.door_style, false),
+            FaceItem::GlassDoor => front_panel(&mut b, &front, cell, c.door_style, true),
+            FaceItem::Appliance => {
+                b.slab(&front, cell.s0, cell.s1, cell.z0, cell.z1, 0.0, DOOR_T, Surface::Hardware);
+                let m = ((cell.s1 - cell.s0).min(cell.z1 - cell.z0) * 0.15).min(3.0 * IN);
+                b.slab(&front, cell.s0 + m, cell.s1 - m, cell.z0 + m, cell.z1 - 2.0 * m, DOOR_T, 0.1 * IN, Surface::Glass);
+            }
+            _ => front_panel(&mut b, &front, cell, c.door_style, false),
         }
         if c.hardware != HardwareStyle::None
-            && let Some((s, z, vertical)) = hardware_spot(c, &cell)
+            && let Some((s, z, vertical)) = hardware_spot(c, cell)
         {
             let proud = DOOR_T + 0.2 * IN;
             match (c.hardware, vertical) {
@@ -564,11 +837,55 @@ pub fn cabinet_mesh(doc: &Document, c: &Cabinet, mesh: &mut Mesh) {
             }
         }
     }
-    // Countertop and backsplash.
+    b.xf = None;
+    // Moldings, stacked outward from the box at the top and bottom.
+    if !c.moldings.is_empty() {
+        let (el, er) = (
+            c.filler_left.mm() + if c.ends.left { et } else { 0.0 },
+            c.filler_right.mm() + if c.ends.right { et } else { 0.0 },
+        );
+        let fv = d + DOOR_T;
+        let path: Vec<DVec2> = [
+            DVec2::new(-half - el, 0.0),
+            DVec2::new(-half - el, fv),
+            DVec2::new(half + er, fv),
+            DVec2::new(half + er, 0.0),
+        ]
+        .iter()
+        .map(|p| b.f.world(*p))
+        .collect();
+        let (mut top, mut bot) = (h, 0.0);
+        for m in &c.moldings {
+            let (mh, mp) = (m.height.mm().max(1.0), m.projection.mm().max(1.0));
+            let prof = crate::sweep::profile(m.shape, mh, mp);
+            let zb = match (m.place, m.flush) {
+                (MoldingPlace::Top, false) => {
+                    let z = top;
+                    top += mh;
+                    z
+                }
+                (MoldingPlace::Top, true) => h - mh,
+                (MoldingPlace::Bottom, false) => {
+                    bot -= mh;
+                    bot
+                }
+                (MoldingPlace::Bottom, true) => 0.0,
+            };
+            // Bottom moldings hang with their profile upside down.
+            let prof: Vec<DVec2> = if m.place == MoldingPlace::Bottom {
+                prof.iter().rev().map(|q| DVec2::new(q.x, mh - q.y)).collect()
+            } else {
+                prof
+            };
+            crate::sweep::sweep(b.mesh, &path, false, &prof, z0 + zb, Surface::CabinetBox);
+        }
+    }
+    // Countertop, waterfall ends and backsplash.
     if let (Some(top), Some(outline)) = (&c.countertop, countertop_outline(c)) {
         let zt = z0 + h;
+        let tt = top.thickness.mm();
         let holes: Vec<Vec<DVec2>> = sink_hole(c).into_iter().collect();
-        counter_slab(b.mesh, &outline, &holes, zt, zt + top.thickness.mm(), top.edge);
+        counter_slab(b.mesh, &outline, &holes, zt, zt + tt, top.edge);
         if let Some(hole) = holes.first() {
             // The sink bowl under the cut-out.
             b.mesh.prism(hole, zt - 8.0 * IN, zt - 7.5 * IN, Surface::Hardware);
@@ -581,21 +898,18 @@ pub fn cabinet_mesh(doc: &Document, c: &Cabinet, mesh: &mut Mesh) {
                 );
             }
         }
+        let (l, r) = (c.filler_left.mm(), c.filler_right.mm());
+        let o = top.overhang.mm();
+        if top.waterfall_left {
+            block(&mut b, (-half - l - tt, -half - l), (0.0, d + o), (0.0, h + tt), Surface::Countertop);
+        }
+        if top.waterfall_right {
+            block(&mut b, (half + r, half + r + tt), (0.0, d + o), (0.0, h + tt), Surface::Countertop);
+        }
         let bs = top.backsplash.mm();
         if bs > 0.0 {
-            let (l, r) = (c.filler_left.mm(), c.filler_right.mm());
-            let zb = top.thickness.mm() + h;
-            b.prism(
-                &[
-                    DVec2::new(-half - l, 0.0),
-                    DVec2::new(half + r, 0.0),
-                    DVec2::new(half + r, 0.75 * IN),
-                    DVec2::new(-half - l, 0.75 * IN),
-                ],
-                zb,
-                zb + bs,
-                Surface::Backsplash,
-            );
+            let zb = tt + h;
+            block(&mut b, (-half - l, half + r), (0.0, 0.75 * IN), (zb, zb + bs), Surface::Backsplash);
         }
     }
 }
@@ -669,7 +983,7 @@ pub fn appliance_mesh(doc: &Document, a: &Appliance, mesh: &mut Mesh) {
     let z0 = floor.elevation.mm() + a.elevation.mm();
     let (w, d, h) = (a.width.mm(), a.depth.mm(), a.height.mm());
     let f = appliance_frame(a);
-    let mut b = Builder { f, z0, mesh };
+    let mut b = Builder { f, z0, mesh, xf: None };
     let rect = |u0: f64, v0: f64, u1: f64, v1: f64| {
         vec![DVec2::new(u0, v0), DVec2::new(u1, v0), DVec2::new(u1, v1), DVec2::new(u0, v1)]
     };
@@ -935,7 +1249,7 @@ pub fn auto_fillers(doc: &Document, floor: Id, max: f64) -> Vec<(Id, f64, f64)> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use housecraft_model::{CabinetDefaults, FaceRow, Renovation};
+    use housecraft_model::{CabinetBuild, CabinetDefaults, EndPanels, FaceRow, Renovation};
     use housecraft_units::{Length, Point2};
 
     fn cab(kind: CabinetKind, width_in: f64) -> Cabinet {
@@ -964,6 +1278,11 @@ mod tests {
             filler_right: Length::ZERO,
             no_auto_filler: false,
             renovation: Renovation::Existing,
+            build: CabinetBuild::default(),
+            open: 0.0,
+            blind: None,
+            moldings: Vec::new(),
+            ends: EndPanels::default(),
         }
     }
 
@@ -975,9 +1294,23 @@ mod tests {
         assert_eq!(cells[0].item, FaceItem::Drawer);
         assert!(cells[0].z0 > cells[1].z1, "drawer above doors");
         assert!(cells[1].hinge_left && !cells[2].hinge_left);
-        // Framed: 1.5" stiles each side.
-        assert!((cells[0].s0 - 1.5 * IN).abs() < 1e-6);
-        assert!((cells[0].s1 - 28.5 * IN).abs() < 1e-6);
+        // Framed: 1.5" stiles each side; doors overlay them by 1/2".
+        assert!((cells[0].opening[0] - 1.5 * IN).abs() < 1e-6);
+        assert!((cells[0].opening[1] - 28.5 * IN).abs() < 1e-6);
+        assert!((cells[0].s0 - 1.0 * IN).abs() < 1e-6);
+        assert!((cells[0].s1 - 29.0 * IN).abs() < 1e-6);
+        // Frameless: faces sit a reveal apart.
+        let mut fl = c.clone();
+        fl.construction = CabinetConstruction::Frameless;
+        let f = super::cells(&fl);
+        assert!((f[0].s0 - 0.0625 * IN).abs() < 1e-6);
+        assert!(((f[2].s0 - f[1].s1) - 0.125 * IN).abs() < 0.2 * IN);
+        // A blind corner turns the left 12" into a panel.
+        let mut bl = c.clone();
+        bl.blind = Some(housecraft_model::BlindCorner { side: housecraft_model::Side::Left, width: Length::from_inches(12.0) });
+        let b = super::cells(&bl);
+        assert_eq!(b[0].item, FaceItem::Panel);
+        assert!(b[1].opening[0] > 13.0 * IN);
         // Pulls: drawer centred and horizontal; doors near the meeting edge, near the top.
         let (s, _, vert) = hardware_spot(&c, &cells[0]).unwrap();
         assert!(!vert && (s - 15.0 * IN).abs() < 1e-6);
@@ -986,16 +1319,39 @@ mod tests {
     }
 
     #[test]
+    fn crown_molding_sits_on_top() {
+        let doc = Document::new("t");
+        let floor = doc.floors_by_elevation()[0].id;
+        let mut c = cab(CabinetKind::Wall, 30.0);
+        c.floor = floor;
+        c.height = Length::from_inches(30.0);
+        c.toe_kick = None;
+        c.moldings = vec![housecraft_model::CabinetMolding {
+            place: MoldingPlace::Top,
+            shape: housecraft_model::MoldingShape::Crown,
+            height: Length::from_inches(3.0),
+            projection: Length::from_inches(2.0),
+            flush: false,
+        }];
+        let mut mesh = Mesh::default();
+        mesh.begin(Id(1), crate::mesh::Category::Cabinet);
+        cabinet_mesh(&doc, &c, &mut mesh);
+        let top = mesh.positions.iter().map(|p| p[2]).fold(f32::MIN, f32::max);
+        let want = (Length::from_inches(33.0).mm() / 1000.0) as f32;
+        assert!((top - want).abs() < 0.002, "top {top} want {want}");
+    }
+
+    #[test]
     fn faces_by_row_heights() {
         let mut c = cab(CabinetKind::Full, 24.0);
         c.height = Length::from_inches(84.0);
         c.face = vec![
-            FaceRow { height: None, items: vec![FaceItem::DoorRight] },
-            FaceRow { height: Some(Length::from_inches(10.0)), items: vec![FaceItem::Drawer, FaceItem::Drawer] },
+            FaceRow { height: None, items: vec![FaceItem::DoorRight], shelves: None },
+            FaceRow { height: Some(Length::from_inches(10.0)), items: vec![FaceItem::Drawer, FaceItem::Drawer], shelves: None },
         ];
         let cells = cells(&c);
         assert_eq!(cells.len(), 3);
-        assert!((cells[1].z1 - cells[1].z0 - 10.0 * IN).abs() < 1e-6);
+        assert!((cells[1].opening[3] - cells[1].opening[2] - 10.0 * IN).abs() < 1e-6);
     }
 
     #[test]

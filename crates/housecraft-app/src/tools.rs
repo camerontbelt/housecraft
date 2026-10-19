@@ -52,6 +52,10 @@ pub enum Tool {
     PlaceTemplate,
     /// Place copies of an imported 3D symbol.
     PlaceSymbol(Id),
+    /// Draw a backsplash along the wall.
+    Backsplash,
+    /// Place a group of objects from the Library Browser.
+    PlaceGroup,
 }
 
 /// The shapes offered by the stair tools.
@@ -247,6 +251,7 @@ impl Family {
                 Tool::Cabinet(CabinetKind::Full),
                 Tool::SinkCabinet,
                 Tool::Countertop,
+                Tool::Backsplash,
                 Tool::Appliance(ApplianceKind::Refrigerator),
                 Tool::Appliance(ApplianceKind::Range),
                 Tool::Appliance(ApplianceKind::Cooktop),
@@ -300,7 +305,9 @@ impl Tool {
             | Tool::Countertop
             | Tool::Appliance(_)
             | Tool::PlaceTemplate
-            | Tool::PlaceSymbol(_) => Family::Cabinets,
+            | Tool::PlaceSymbol(_)
+            | Tool::Backsplash
+            | Tool::PlaceGroup => Family::Cabinets,
             _ => Family::Cad,
         }
     }
@@ -345,6 +352,8 @@ impl Tool {
             Tool::Appliance(k) => k.name(),
             Tool::PlaceTemplate => "Place from Library",
             Tool::PlaceSymbol(_) => "Place 3D Symbol",
+            Tool::Backsplash => "Custom Backsplash",
+            Tool::PlaceGroup => "Place Group",
         }
     }
 
@@ -388,7 +397,9 @@ impl Tool {
             | Tool::Countertop
             | Tool::Appliance(_)
             | Tool::PlaceTemplate
-            | Tool::PlaceSymbol(_) => Icon::Cabinet,
+            | Tool::PlaceSymbol(_)
+            | Tool::Backsplash
+            | Tool::PlaceGroup => Icon::Cabinet,
         }
     }
 
@@ -471,6 +482,10 @@ impl Tool {
             Tool::Appliance(_) | Tool::PlaceTemplate | Tool::PlaceSymbol(_) => {
                 "Click near a wall to back it onto the wall."
             }
+            Tool::Backsplash => {
+                "Click along the wall with the room on your right; double-click or Enter to finish."
+            }
+            Tool::PlaceGroup => "Click to place the group's bottom-left corner.",
         }
     }
 }

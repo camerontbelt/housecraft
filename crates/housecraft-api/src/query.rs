@@ -250,6 +250,7 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
             if c.holes.len() == 1 { "" } else { "s" }
         ),
         Object::Appliance(a) => format!("{} {} wide", a.appliance_kind.name(), fmt(a.width)),
+        Object::Backsplash(b) => format!("backsplash {} high", fmt(b.height)),
         Object::Picture(p) => format!(
             "picture {}",
             std::path::Path::new(&p.path)

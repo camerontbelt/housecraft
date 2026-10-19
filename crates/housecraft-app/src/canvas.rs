@@ -775,6 +775,7 @@ fn move_command(doc: &Document, ids: &[Id], d: DVec2) -> Command {
 fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &mut Vec<Command>) {
     let tool = app.plan.tool;
     let placing = app.library.placing.clone();
+    let group = app.library.group.clone();
     let floor = Some(app.plan.target());
     let doc = app.session.document();
     if app.plan.sheet.is_some() && !tool.is_drafting() {
@@ -1144,7 +1145,17 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 depth: None,
                 height: None,
             }),
-            Tool::Countertop => pending.push(p),
+            Tool::Countertop | Tool::Backsplash => pending.push(p),
+            Tool::PlaceGroup => {
+                if let Some(objects) = &group {
+                    commands.push(Command::InsertObjects {
+                        objects: objects.clone(),
+                        floor,
+                        dx: Length::from_mm(p.x),
+                        dy: Length::from_mm(p.y),
+                    });
+                }
+            }
             Tool::PlaceSymbol(def) => commands.push(Command::AddSymbol {
                 floor,
                 def,
@@ -1268,6 +1279,19 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 points: pending.iter().map(|p| pt(*p)).collect(),
                 arc: None,
                 label: None,
+            });
+        }
+        return;
+    }
+    if finish && tool == Tool::Backsplash {
+        let pending = std::mem::take(&mut app.plan.pending);
+        if pending.len() >= 2 {
+            commands.push(Command::AddBacksplash {
+                floor,
+                points: pending.iter().map(|p| pt(*p)).collect(),
+                bottom: None,
+                height: None,
+                thickness: None,
             });
         }
         return;

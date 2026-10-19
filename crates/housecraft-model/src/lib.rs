@@ -162,6 +162,7 @@ objects! {
     Picture => "picture",
     SymbolDef => "symbol_def",
     Symbol => "symbol",
+    Backsplash => "backsplash",
 }
 
 impl fmt::Display for ObjectKind {
@@ -192,6 +193,7 @@ impl ObjectKind {
                 | ObjectKind::Appliance
                 | ObjectKind::Picture
                 | ObjectKind::Symbol
+                | ObjectKind::Backsplash
         )
     }
 }
@@ -436,6 +438,7 @@ impl Document {
             Object::Appliance(a) => Some(a.floor),
             Object::Picture(p) => Some(p.floor),
             Object::Symbol(s) => Some(s.floor),
+            Object::Backsplash(b) => Some(b.floor),
             _ => None,
         }
     }
@@ -462,6 +465,7 @@ impl Document {
             Object::Appliance(a) => Some(a.layer),
             Object::Picture(p) => Some(p.layer),
             Object::Symbol(s) => Some(s.layer),
+            Object::Backsplash(b) => Some(b.layer),
             _ => None,
         }
     }

@@ -442,6 +442,15 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             a.facing = t.apply_angle(a.facing);
             Object::Appliance(a)
         }
+        Object::Backsplash(b) => {
+            let mut b = b.clone();
+            b.points = b.points.iter().map(|p| t.apply_point(*p)).collect();
+            if t.is_reflection() {
+                // Keep it on the same side of the wall.
+                b.points.reverse();
+            }
+            Object::Backsplash(b)
+        }
         Object::Symbol(s) => {
             let mut s = s.clone();
             s.position = t.apply_point(s.position);
@@ -1051,6 +1060,7 @@ pub(crate) fn insert_objects(
                 Object::Appliance(a) => a.floor = f,
                 Object::Picture(p) => p.floor = f,
                 Object::Symbol(s) => s.floor = f,
+                Object::Backsplash(b) => b.floor = f,
                 _ => {}
             }
         }
@@ -1102,6 +1112,7 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::Appliance(a) => &mut a.floor,
             Object::Picture(p) => &mut p.floor,
             Object::Symbol(s) => &mut s.floor,
+            Object::Backsplash(b) => &mut b.floor,
             _ => continue,
         };
         let before = *floor;

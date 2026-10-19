@@ -76,6 +76,8 @@ pub enum FaceItem {
     Panel,
     /// A glass door hinged on the left (wall cabinets).
     GlassDoor,
+    /// A built-in appliance face (oven, microwave, dishwasher panel).
+    Appliance,
 }
 
 /// A horizontal band of the cabinet front, split into equal cells.
@@ -85,6 +87,9 @@ pub struct FaceRow {
     #[serde(default)]
     pub height: Option<Length>,
     pub items: Vec<FaceItem>,
+    /// Shelves behind this band's doors; the cabinet's count when `None`.
+    #[serde(default)]
+    pub shelves: Option<u32>,
 }
 
 /// Door and drawer front style.
@@ -180,6 +185,131 @@ pub struct CabinetTop {
     /// Backsplash height along the back; none when zero.
     #[serde(default)]
     pub backsplash: Length,
+    /// Rounded or chamfered front corners.
+    #[serde(default)]
+    pub corner: CornerTreatment,
+    #[serde(default)]
+    pub corner_left: bool,
+    #[serde(default)]
+    pub corner_right: bool,
+    /// The countertop turns down the exposed end to the floor.
+    #[serde(default)]
+    pub waterfall_left: bool,
+    #[serde(default)]
+    pub waterfall_right: bool,
+}
+
+/// How a corner is finished.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum CornerTreatment {
+    #[default]
+    Square,
+    Round { radius: Length },
+    Chamfer { size: Length },
+}
+
+/// Which parts the cabinet box is built from and how thick they are; how
+/// doors sit on the box.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct CabinetBuild {
+    pub top: bool,
+    pub bottom: bool,
+    pub left: bool,
+    pub right: bool,
+    pub back: bool,
+    pub side_thickness: Length,
+    pub back_thickness: Length,
+    /// Framed: how far doors overlap the face frame at the left, right,
+    /// top and bottom.
+    pub overlay: [Length; 4],
+    /// Frameless: the gap around and between doors.
+    pub reveal: Length,
+    /// Face-frame stiles run down to the floor past the toe kick.
+    #[serde(default)]
+    pub extended_stiles: bool,
+}
+
+impl Default for CabinetBuild {
+    fn default() -> Self {
+        let i = Length::from_inches;
+        CabinetBuild {
+            top: true,
+            bottom: true,
+            left: true,
+            right: true,
+            back: true,
+            side_thickness: i(0.75),
+            back_thickness: i(0.25),
+            overlay: [i(0.5); 4],
+            reveal: i(0.125),
+            extended_stiles: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Side {
+    #[default]
+    Left,
+    Right,
+}
+
+/// Part of the front hidden by a cabinet butting in at a corner.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct BlindCorner {
+    pub side: Side,
+    pub width: Length,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MoldingPlace {
+    /// Crown at the top.
+    #[default]
+    Top,
+    /// Light rail under a wall cabinet.
+    Bottom,
+}
+
+/// A cabinet molding profile shape.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MoldingShape {
+    /// Sloped crown.
+    #[default]
+    Crown,
+    /// Square-edged board.
+    Flat,
+    /// Quarter-round cove.
+    Cove,
+    /// Bead along the bottom edge.
+    Bead,
+}
+
+/// A molding along the front and exposed ends; several at one place stack
+/// outward from the box (auto-stacking).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct CabinetMolding {
+    pub place: MoldingPlace,
+    pub shape: MoldingShape,
+    pub height: Length,
+    /// How far it stands out from the box.
+    pub projection: Length,
+    /// Set into the box face instead of above/below it.
+    #[serde(default)]
+    pub flush: bool,
+}
+
+/// Furniture-style ends.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct EndPanels {
+    pub left: bool,
+    pub right: bool,
+    /// Legs at the corners instead of a toe kick.
+    #[serde(default)]
+    pub legs: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -231,6 +361,37 @@ pub struct Cabinet {
     pub no_auto_filler: bool,
     #[serde(default)]
     pub renovation: Renovation,
+    #[serde(default)]
+    pub build: CabinetBuild,
+    /// Doors swung and drawers pulled open this much, 0–1 (2D and 3D).
+    #[serde(default)]
+    pub open: f64,
+    #[serde(default)]
+    pub blind: Option<BlindCorner>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub moldings: Vec<CabinetMolding>,
+    #[serde(default)]
+    pub ends: EndPanels,
+}
+
+impl Cabinet {
+    /// The NKBA-style label: B24, SB36, DB18, W3030, T2484.
+    pub fn code(&self) -> String {
+        let w = self.width.inches().round() as i64;
+        let h = self.height.inches().round() as i64;
+        let all_drawers = self
+            .face
+            .iter()
+            .all(|r| r.items.iter().all(|i| *i == FaceItem::Drawer));
+        match self.cabinet_kind {
+            CabinetKind::Base if self.sink => format!("SB{w}"),
+            CabinetKind::Base if all_drawers => format!("DB{w}"),
+            CabinetKind::Base if self.blind.is_some() => format!("BBC{w}"),
+            CabinetKind::Base => format!("B{w}"),
+            CabinetKind::Wall => format!("W{w}{h}"),
+            CabinetKind::Full => format!("T{w}{h}"),
+        }
+    }
 }
 
 /// A countertop drawn as its own shape, across any cabinets.
@@ -402,6 +563,9 @@ pub struct CabinetDefaults {
     pub backsplash: Length,
     /// Gaps up to this wide are closed by automatic fillers.
     pub max_filler: Length,
+    /// Label cabinets in plan with their NKBA codes (B24, W3030…).
+    #[serde(default)]
+    pub show_codes: bool,
 }
 
 impl Default for CabinetDefaults {
@@ -427,6 +591,7 @@ impl Default for CabinetDefaults {
             edge: EdgeProfile::Eased,
             backsplash: i(4.0),
             max_filler: i(6.0),
+            show_codes: false,
         }
     }
 }
@@ -441,7 +606,11 @@ impl CabinetDefaults {
         } else {
             FaceItem::DoorRight
         };
-        let row = |height: Option<Length>, items: Vec<FaceItem>| FaceRow { height, items };
+        let row = |height: Option<Length>, items: Vec<FaceItem>| FaceRow {
+            height,
+            items,
+            shelves: None,
+        };
         match kind {
             CabinetKind::Base => vec![
                 row(
@@ -457,4 +626,20 @@ impl CabinetDefaults {
             ],
         }
     }
+}
+
+/// A backsplash drawn along any path (wrapping corners and ends), standing
+/// on the counter.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Backsplash {
+    pub id: Id,
+    pub floor: Id,
+    pub layer: Id,
+    /// Along the wall face; the backsplash stands to the right of the path's
+    /// direction.
+    pub points: Vec<Point2>,
+    /// Height of its bottom above the floor.
+    pub bottom: Length,
+    pub height: Length,
+    pub thickness: Length,
 }

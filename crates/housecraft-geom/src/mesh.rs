@@ -411,6 +411,27 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         crate::cabinets::countertop_mesh(doc, t, &mut mesh);
         mesh.end();
     }
+    for bs in doc.iter::<housecraft_model::Backsplash>() {
+        if only_floor.is_some_and(|f| f != bs.floor) {
+            continue;
+        }
+        let Some(floor) = doc.get::<Floor>(bs.floor) else {
+            continue;
+        };
+        mesh.begin(bs.id, Category::Cabinet);
+        let path: Vec<DVec2> = bs.points.iter().map(|p| v2(*p)).collect();
+        let (t, h) = (bs.thickness.mm(), bs.height.mm());
+        let profile = [DVec2::ZERO, DVec2::new(t, 0.0), DVec2::new(t, h), DVec2::new(0.0, h)];
+        crate::sweep::sweep(
+            &mut mesh,
+            &path,
+            false,
+            &profile,
+            floor.elevation.mm() + bs.bottom.mm(),
+            Surface::Backsplash,
+        );
+        mesh.end();
+    }
     for s in doc.iter::<housecraft_model::Symbol>() {
         if only_floor.is_some_and(|f| f != s.floor) || s.renovation == Renovation::Demolish {
             continue;

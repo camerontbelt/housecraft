@@ -602,6 +602,15 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 c.non_negative(id, "elevation", cab.elevation);
                 c.non_negative(id, "filler_left", cab.filler_left);
                 c.non_negative(id, "filler_right", cab.filler_right);
+                if !(0.0..=1.0).contains(&cab.open) {
+                    c.issue(id, "open must be between 0 and 1");
+                }
+                c.positive(id, "build.side_thickness", cab.build.side_thickness);
+                c.positive(id, "build.back_thickness", cab.build.back_thickness);
+                for m in &cab.moldings {
+                    c.positive(id, "molding height", m.height);
+                    c.positive(id, "molding projection", m.projection);
+                }
                 c.finite(id, "position", &cab.position.mm());
                 if cab.face.iter().any(|r| r.items.is_empty()) {
                     c.issue(id, "every face row needs at least one door, drawer or opening");
@@ -631,6 +640,18 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     }
                     CabinetShape::Standard => {}
                 }
+            }
+            Object::Backsplash(b) => {
+                c.reference(id, "floor", b.floor, K::Floor);
+                c.reference(id, "layer", b.layer, K::Layer);
+                c.positive(id, "height", b.height);
+                c.positive(id, "thickness", b.thickness);
+                c.non_negative(id, "bottom", b.bottom);
+                if b.points.len() < 2 {
+                    c.issue(id, "a backsplash needs at least two points");
+                }
+                let flat: Vec<f64> = b.points.iter().flat_map(|p| p.mm()).collect();
+                c.finite(id, "points", &flat);
             }
             Object::Countertop(t) => {
                 c.reference(id, "floor", t.floor, K::Floor);

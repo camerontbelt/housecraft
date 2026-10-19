@@ -566,6 +566,18 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ed.pick::<Layer>(ui, "Layer", "layer", Some(c.layer), None);
         }
         Object::Cabinet(c) => cabinet_editor(ui, ed, c),
+        Object::Backsplash(bs) => {
+            for (label, field, v) in [
+                ("Height", "height", bs.height),
+                ("Thickness", "thickness", bs.thickness),
+                ("Bottom", "bottom", bs.bottom),
+            ] {
+                if let Some(l) = ed.length(ui, label, field, v) {
+                    ed.out.push(patch(id, json!({ field: l })));
+                }
+            }
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(bs.layer), None);
+        }
         Object::Picture(p) => {
             Ed::label(ui, "Image File");
             ui.horizontal(|ui| {
@@ -2029,6 +2041,7 @@ fn face_item_name(i: FaceItem) -> &'static str {
         FaceItem::Open => "Open shelves",
         FaceItem::Panel => "Fixed panel",
         FaceItem::GlassDoor => "Glass door",
+        FaceItem::Appliance => "Built-in appliance",
     }
 }
 
@@ -2158,6 +2171,7 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
             FaceItem::Open,
             FaceItem::Panel,
             FaceItem::GlassDoor,
+            FaceItem::Appliance,
         ];
         for (r, row) in face.iter_mut().enumerate() {
             ui.horizontal(|ui| {
@@ -2196,6 +2210,20 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
                         changed = true;
                     }
                 }
+                let mut has = row.shelves.is_some();
+                if ui
+                    .checkbox(&mut has, "shelves")
+                    .on_hover_text("Set this band's own shelf count")
+                    .changed()
+                {
+                    row.shelves = has.then_some(1);
+                    changed = true;
+                }
+                if let Some(n) = &mut row.shelves
+                    && ui.add(egui::DragValue::new(n).range(0..=12)).changed()
+                {
+                    changed = true;
+                }
                 if ui.small_button("✕").on_hover_text("Remove this row").clicked() {
                     remove_row = Some(r);
                 }
@@ -2208,7 +2236,11 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
             changed = true;
         }
         if ui.small_button("Add row").clicked() {
-            face.push(FaceRow { height: None, items: vec![FaceItem::DoorRight] });
+            face.push(FaceRow {
+                height: None,
+                items: vec![FaceItem::DoorRight],
+                shelves: None,
+            });
             changed = true;
         }
         if changed {
@@ -2241,6 +2273,11 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
                 overhang: d.countertop_overhang,
                 edge: d.edge,
                 backsplash: d.backsplash,
+                corner: CornerTreatment::Square,
+                corner_left: false,
+                corner_right: false,
+                waterfall_left: false,
+                waterfall_right: false,
             })
         } else {
             Value::Null
@@ -2281,6 +2318,171 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
         }
         if c.cabinet_kind == CabinetKind::Base {
             ed.check(ui, "Sink", "sink", "Sink in this cabinet", c.sink);
+        }
+    }
+    // Shown open (2D swing lines and 3D).
+    Ed::label(ui, "Doors Open");
+    let mut pct = c.open * 100.0;
+    if ui.add(egui::Slider::new(&mut pct, 0.0..=100.0).suffix("%")).drag_stopped() {
+        ed.out.push(patch(id, json!({ "open": pct / 100.0 })));
+    }
+    ui.end_row();
+    // Blind corner.
+    Ed::label(ui, "Blind Corner");
+    ui.horizontal(|ui| {
+        let mut blind = c.blind;
+        let mut on = blind.is_some();
+        if ui.checkbox(&mut on, "").changed() {
+            blind = on.then_some(BlindCorner { side: Side::Left, width: Length::from_inches(24.0) });
+        }
+        if let Some(b) = &mut blind {
+            ui.selectable_value(&mut b.side, Side::Left, "Left");
+            ui.selectable_value(&mut b.side, Side::Right, "Right");
+            let mut w = b.width.inches();
+            if ui.add(egui::DragValue::new(&mut w).range(1.0..=48.0).suffix("\"")).changed() {
+                b.width = Length::from_inches(w);
+            }
+        }
+        if blind != c.blind {
+            ed.out.push(patch(id, json!({ "blind": blind })));
+        }
+    });
+    ui.end_row();
+    // Box construction.
+    let mut build = c.build;
+    Ed::label(ui, "Box Parts");
+    ui.horizontal(|ui| {
+        ui.checkbox(&mut build.top, "Top");
+        ui.checkbox(&mut build.bottom, "Bottom");
+        ui.checkbox(&mut build.left, "Left");
+        ui.checkbox(&mut build.right, "Right");
+        ui.checkbox(&mut build.back, "Back");
+    });
+    ui.end_row();
+    let inch_row = |ui: &mut Ui, label: &str, v: &mut Length, max: f64| {
+        Ed::label(ui, label);
+        let mut x = v.inches();
+        if ui.add(egui::DragValue::new(&mut x).range(0.0..=max).speed(0.0625).suffix("\"")).changed() {
+            *v = Length::from_inches(x);
+        }
+        ui.end_row();
+    };
+    inch_row(ui, "Side Thickness", &mut build.side_thickness, 3.0);
+    inch_row(ui, "Back Thickness", &mut build.back_thickness, 2.0);
+    if c.construction == CabinetConstruction::Framed {
+        let names = ["Overlay Left", "Overlay Right", "Overlay Top", "Overlay Bottom"];
+        for (k, n) in names.iter().enumerate() {
+            inch_row(ui, n, &mut build.overlay[k], 1.5);
+        }
+        Ed::label(ui, "Stiles");
+        ui.checkbox(&mut build.extended_stiles, "Run down to the floor");
+        ui.end_row();
+    } else {
+        inch_row(ui, "Reveal", &mut build.reveal, 0.5);
+    }
+    if build != c.build {
+        ed.out.push(patch(id, json!({ "build": build })));
+    }
+    // End panels and legs.
+    let mut ends = c.ends;
+    Ed::label(ui, "End Panels");
+    ui.horizontal(|ui| {
+        ui.checkbox(&mut ends.left, "Left");
+        ui.checkbox(&mut ends.right, "Right");
+        ui.checkbox(&mut ends.legs, "Legs instead of toe kick");
+    });
+    ui.end_row();
+    if ends != c.ends {
+        ed.out.push(patch(id, json!({ "ends": ends })));
+    }
+    // Moldings.
+    Ed::label(ui, "Moldings");
+    ui.vertical(|ui| {
+        let mut ms = c.moldings.clone();
+        let mut changed = false;
+        let mut remove = None;
+        for (k, m) in ms.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                egui::ComboBox::from_id_salt(("molding_shape", id, k))
+                    .selected_text(format!("{:?}", m.shape))
+                    .width(70.0)
+                    .show_ui(ui, |ui| {
+                        for sh in [MoldingShape::Crown, MoldingShape::Flat, MoldingShape::Cove, MoldingShape::Bead] {
+                            changed |= ui.selectable_value(&mut m.shape, sh, format!("{sh:?}")).changed();
+                        }
+                    });
+                changed |= ui.selectable_value(&mut m.place, MoldingPlace::Top, "Top").changed();
+                changed |= ui.selectable_value(&mut m.place, MoldingPlace::Bottom, "Bottom").changed();
+                let mut hh = m.height.inches();
+                if ui.add(egui::DragValue::new(&mut hh).range(0.25..=12.0).speed(0.125).prefix("h ").suffix("\"")).changed() {
+                    m.height = Length::from_inches(hh);
+                    changed = true;
+                }
+                let mut pp = m.projection.inches();
+                if ui.add(egui::DragValue::new(&mut pp).range(0.25..=6.0).speed(0.125).prefix("out ").suffix("\"")).changed() {
+                    m.projection = Length::from_inches(pp);
+                    changed = true;
+                }
+                changed |= ui.checkbox(&mut m.flush, "flush").changed();
+                if ui.small_button("✕").clicked() {
+                    remove = Some(k);
+                }
+            });
+        }
+        if let Some(k) = remove {
+            ms.remove(k);
+            changed = true;
+        }
+        ui.horizontal(|ui| {
+            let i = Length::from_inches;
+            if ui.small_button("+ Crown").clicked() {
+                ms.push(CabinetMolding { place: MoldingPlace::Top, shape: MoldingShape::Crown, height: i(3.5), projection: i(2.5), flush: false });
+                changed = true;
+            }
+            if ui.small_button("+ Light rail").clicked() {
+                ms.push(CabinetMolding { place: MoldingPlace::Bottom, shape: MoldingShape::Bead, height: i(1.5), projection: i(0.75), flush: false });
+                changed = true;
+            }
+        });
+        if changed {
+            ed.out.push(patch(id, json!({ "moldings": ms })));
+        }
+    });
+    ui.end_row();
+    // Countertop corners and waterfall ends.
+    if let Some(top) = &c.countertop {
+        let mut t = top.clone();
+        Ed::label(ui, "  Front Corners");
+        ui.horizontal(|ui| {
+            let mut kind = match t.corner {
+                CornerTreatment::Square => 0,
+                CornerTreatment::Round { .. } => 1,
+                CornerTreatment::Chamfer { .. } => 2,
+            };
+            let before = kind;
+            ui.selectable_value(&mut kind, 0, "Square");
+            ui.selectable_value(&mut kind, 1, "Round");
+            ui.selectable_value(&mut kind, 2, "Chamfer");
+            if kind != before {
+                let s = Length::from_inches(3.0);
+                t.corner = match kind {
+                    1 => CornerTreatment::Round { radius: s },
+                    2 => CornerTreatment::Chamfer { size: s },
+                    _ => CornerTreatment::Square,
+                };
+            }
+            ui.checkbox(&mut t.corner_left, "Left");
+            ui.checkbox(&mut t.corner_right, "Right");
+        });
+        ui.end_row();
+        Ed::label(ui, "  Waterfall Ends");
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut t.waterfall_left, "Left");
+            ui.checkbox(&mut t.waterfall_right, "Right");
+        });
+        ui.end_row();
+        if &t != top {
+            ed.out.push(patch(id, json!({ "countertop": t })));
         }
     }
     if let Some(l) = ed.length(ui, "Filler Left", "filler_left", c.filler_left) {

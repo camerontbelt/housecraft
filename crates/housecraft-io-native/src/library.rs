@@ -33,6 +33,9 @@ pub enum LibraryKind {
     Cabinet,
     /// An [`Appliance`] template.
     Appliance,
+    /// Several plan objects kept together (a whole kitchen run): `data` is
+    /// `{"objects": [...]}` with positions relative to the group's corner.
+    Group,
 }
 
 impl LibraryKind {
@@ -43,6 +46,7 @@ impl LibraryKind {
             LibraryKind::Material => "material",
             LibraryKind::Cabinet => "cabinet",
             LibraryKind::Appliance => "appliance",
+            LibraryKind::Group => "group",
         }
     }
 
@@ -53,6 +57,7 @@ impl LibraryKind {
             LibraryKind::Material => "materials",
             LibraryKind::Cabinet => "cabinets",
             LibraryKind::Appliance => "appliances",
+            LibraryKind::Group => "groups",
         }
     }
 }
@@ -289,6 +294,11 @@ pub fn builtin() -> Vec<LibraryItem> {
             overhang: d.countertop_overhang,
             edge: d.edge,
             backsplash: d.backsplash,
+            corner: CornerTreatment::Square,
+            corner_left: false,
+            corner_right: false,
+            waterfall_left: false,
+            waterfall_right: false,
         });
         let toe = if kind == CabinetKind::Wall {
             Value::Null
@@ -334,9 +344,9 @@ pub fn builtin() -> Vec<LibraryItem> {
     }
     for w in [12.0, 15.0, 18.0, 24.0, 30.0] {
         let drawers = vec![
-            FaceRow { height: Some(i(6.0)), items: vec![FaceItem::Drawer] },
-            FaceRow { height: None, items: vec![FaceItem::Drawer] },
-            FaceRow { height: None, items: vec![FaceItem::Drawer] },
+            FaceRow { height: Some(i(6.0)), items: vec![FaceItem::Drawer], shelves: None },
+            FaceRow { height: None, items: vec![FaceItem::Drawer], shelves: None },
+            FaceRow { height: None, items: vec![FaceItem::Drawer], shelves: None },
         ];
         out.push(item(
             format!("Drawer Base {w}\""),
@@ -474,6 +484,70 @@ pub fn item_from_object(doc: &Document, id: Id) -> Option<LibraryItem> {
         kind,
         tags: Vec::new(),
         data,
+        source: Source::BuiltIn,
+    })
+}
+
+/// A group item from several plan objects: cabinets, appliances,
+/// countertops, backsplashes and symbols, moved so the group's bottom-left
+/// corner is the origin.
+pub fn group_from_objects(doc: &Document, ids: &[Id]) -> Option<LibraryItem> {
+    use housecraft_units::Point2;
+    let mut objects: Vec<Object> = ids
+        .iter()
+        .filter_map(|id| doc.object(*id))
+        .filter(|o| {
+            matches!(
+                o.kind(),
+                ObjectKind::Cabinet
+                    | ObjectKind::Appliance
+                    | ObjectKind::Countertop
+                    | ObjectKind::Backsplash
+                    | ObjectKind::Symbol
+            )
+        })
+        .cloned()
+        .collect();
+    if objects.len() < 2 {
+        return None;
+    }
+    // The lowest x and y of any reference point.
+    let points = |o: &Object| -> Vec<Point2> {
+        match o {
+            Object::Cabinet(c) => vec![c.position],
+            Object::Appliance(a) => vec![a.position],
+            Object::Symbol(s) => vec![s.position],
+            Object::Countertop(t) => t.points.clone(),
+            Object::Backsplash(b) => b.points.clone(),
+            _ => Vec::new(),
+        }
+    };
+    let all: Vec<Point2> = objects.iter().flat_map(points).collect();
+    let min_x = all.iter().map(|p| p.x().mm()).fold(f64::MAX, f64::min);
+    let min_y = all.iter().map(|p| p.y().mm()).fold(f64::MAX, f64::min);
+    let shift = |p: &mut Point2| {
+        *p = Point2(
+            Length::from_mm(p.x().mm() - min_x),
+            Length::from_mm(p.y().mm() - min_y),
+        )
+    };
+    for o in &mut objects {
+        match o {
+            Object::Cabinet(c) => shift(&mut c.position),
+            Object::Appliance(a) => shift(&mut a.position),
+            Object::Symbol(s) => shift(&mut s.position),
+            Object::Countertop(t) => t.points.iter_mut().for_each(shift),
+            Object::Backsplash(b) => b.points.iter_mut().for_each(shift),
+            _ => {}
+        }
+    }
+    let n = objects.len();
+    Some(LibraryItem {
+        name: format!("Group of {n}"),
+        category: "My Library/Groups".into(),
+        kind: LibraryKind::Group,
+        tags: Vec::new(),
+        data: json!({ "objects": objects }),
         source: Source::BuiltIn,
     })
 }

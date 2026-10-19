@@ -53,8 +53,45 @@ fn burners(out: &mut Drawing, id: Id, outline: &[DVec2], stroke: Stroke) {
     }
 }
 
-pub(crate) fn cabinet(c: &Cabinet, stroke: Stroke, out: &mut Drawing) {
+pub(crate) fn cabinet(c: &Cabinet, stroke: Stroke, label: Option<(f64, Ink)>, out: &mut Drawing) {
     let id = c.id;
+    // Doors shown open: swing lines from the hinges.
+    let open = c.open.clamp(0.0, 1.0);
+    let front = front_line(c);
+    if open > 0.0 && front.len() == 2 {
+        let t = (front[1] - front[0]).normalize_or_zero();
+        let n = housecraft_geom::math::perp(t);
+        for cell in housecraft_geom::cabinets::cells(c) {
+            if !matches!(cell.item, FaceItem::DoorLeft | FaceItem::DoorRight | FaceItem::GlassDoor) {
+                continue;
+            }
+            let (hinge, w, sign) = if cell.hinge_left {
+                (cell.s0, cell.s1 - cell.s0, 1.0)
+            } else {
+                (cell.s1, cell.s1 - cell.s0, -1.0)
+            };
+            let p = front[0] + t * hinge + n * 0.75 * IN;
+            let a = sign * open * 95f64.to_radians();
+            let dir = DVec2::from_angle(a).rotate(t * sign);
+            line(out, id, vec![p, p + dir * w], false, stroke);
+        }
+    }
+    if let Some((h, ink)) = label {
+        let at = centroid(&outline_with_fillers(c));
+        out.push(
+            Some(id),
+            Prim::Text {
+                at,
+                text: c.code(),
+                height: h,
+                rotation: 0.0,
+                justify: Justify::Center,
+                middle: true,
+                bold: false,
+                ink,
+            },
+        );
+    }
     let outline = outline_with_fillers(c);
     match c.cabinet_kind {
         CabinetKind::Base => {
@@ -165,4 +202,23 @@ pub(crate) fn appliance(a: &Appliance, stroke: Stroke, text: f64, ink: Ink, out:
             },
         );
     }
+}
+
+pub(crate) fn backsplash(b: &Backsplash, stroke: Stroke, out: &mut Drawing) {
+    let path: Vec<DVec2> = b.points.iter().map(|p| v2(*p)).collect();
+    if path.len() < 2 {
+        return;
+    }
+    // The face line, offset by the thickness to the right of the path.
+    let t = b.thickness.mm();
+    let offset: Vec<DVec2> = (0..path.len())
+        .map(|i| {
+            let a = path[i.saturating_sub(1)];
+            let c = path[(i + 1).min(path.len() - 1)];
+            let n = -housecraft_geom::math::perp((c - a).normalize_or_zero());
+            path[i] + n * t
+        })
+        .collect();
+    line(out, b.id, path, false, stroke);
+    line(out, b.id, offset, false, stroke);
 }

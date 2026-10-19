@@ -63,6 +63,11 @@ pub(crate) fn add_cabinet(
         overhang: c.countertop_overhang,
         edge: c.edge,
         backsplash: c.backsplash,
+        corner: CornerTreatment::Square,
+        corner_left: false,
+        corner_right: false,
+        waterfall_left: false,
+        waterfall_right: false,
     });
     Ok(doc.insert(Cabinet {
         id: Id(0),
@@ -88,6 +93,11 @@ pub(crate) fn add_cabinet(
         filler_right: Length::ZERO,
         no_auto_filler: false,
         renovation: Renovation::default(),
+        build: CabinetBuild::default(),
+        open: 0.0,
+        blind: None,
+        moldings: Vec::new(),
+        ends: EndPanels::default(),
     }))
 }
 
@@ -237,4 +247,60 @@ pub(crate) fn replace_with(
         out.modified.push(id);
     }
     Ok(())
+}
+
+/// Dimension runs of base and tall cabinets: cabinets facing the same way
+/// with their backs on one line form a run; a chain dimension in front of
+/// the run marks each cabinet's ends.
+pub(crate) fn auto_dimensions(doc: &mut Document, d: &DefaultSet, floor: Id, out: &mut Outcome) {
+    let cabs: Vec<Cabinet> = doc
+        .iter::<Cabinet>()
+        .filter(|c| c.floor == floor && c.cabinet_kind != CabinetKind::Wall)
+        .cloned()
+        .collect();
+    let mut runs: Vec<Vec<&Cabinet>> = Vec::new();
+    for c in &cabs {
+        let f = housecraft_geom::cabinets::frame(c);
+        let found = runs.iter_mut().find(|r| {
+            let g = housecraft_geom::cabinets::frame(r[0]);
+            (f.out.dot(g.out) - 1.0).abs() < 1e-6 && (f.origin - g.origin).dot(g.out).abs() < 25.0
+        });
+        match found {
+            Some(r) => r.push(c),
+            None => runs.push(vec![c]),
+        }
+    }
+    for run in runs {
+        let f = housecraft_geom::cabinets::frame(run[0]);
+        let depth = run.iter().map(|c| c.depth.mm()).fold(0.0, f64::max);
+        let mut ts: Vec<f64> = Vec::new();
+        for c in &run {
+            let o = (v2(c.position) - f.origin).dot(f.along);
+            let h = c.width.mm() / 2.0;
+            ts.push(o - h - c.filler_left.mm());
+            ts.push(o + h + c.filler_right.mm());
+        }
+        ts.sort_by(f64::total_cmp);
+        ts.dedup_by(|a, b| (*a - *b).abs() < 3.0);
+        if ts.len() < 2 {
+            continue;
+        }
+        let points: Vec<Point2> = ts
+            .iter()
+            .map(|t| pt(f.origin + f.along * *t + f.out * depth))
+            .collect();
+        // Aligned offsets go to the left of first→last, which is toward the
+        // wall; the dimension belongs in the room.
+        out.created.push(doc.insert(Dimension {
+            id: Id(0),
+            floor,
+            layer: d.layers.dimensions,
+            geometry: DimensionGeometry::Linear {
+                points,
+                orientation: DimOrientation::Aligned,
+                offset: Length::from_inches(-12.0),
+            },
+            text_override: None,
+        }));
+    }
 }

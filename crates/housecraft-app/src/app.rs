@@ -1191,7 +1191,25 @@ impl App {
                             self.set_tool(*tool);
                         }
                     }
+                    if tool_item(ui, Tool::Backsplash) {
+                        self.set_tool(Tool::Backsplash);
+                    }
                     ui.separator();
+                    if item(ui, "Auto Cabinet Dimensions", "", true) {
+                        let floor = Some(self.plan.floor);
+                        self.run1(Command::AutoCabinetDimensions { floor });
+                    }
+                    let d = self.doc().active_defaults();
+                    let (set, shown) = (d.id, d.cabinets.show_codes);
+                    if item(ui, if shown { "Hide Cabinet Codes" } else { "Show Cabinet Codes (NKBA)" }, "", true) {
+                        self.run1(Command::Update {
+                            id: set,
+                            set: serde_json::json!({ "cabinets": { "show_codes": !shown } })
+                                .as_object()
+                                .expect("object")
+                                .clone(),
+                        });
+                    }
                     if item(ui, "Auto Fillers", "", true) {
                         let floor = Some(self.plan.floor);
                         self.run1(Command::AutoFillers { floor });

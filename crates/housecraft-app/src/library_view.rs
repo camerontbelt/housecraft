@@ -17,6 +17,8 @@ pub struct LibraryState {
     items: Option<Vec<LibraryItem>>,
     /// The cabinet or appliance template being placed.
     pub placing: Option<(ObjectKind, Value, String)>,
+    /// A group of objects being placed (relative to its corner).
+    pub group: Option<Vec<Value>>,
 }
 
 impl LibraryState {
@@ -34,6 +36,27 @@ impl LibraryState {
     pub fn refresh(&mut self) {
         self.items = None;
     }
+}
+
+/// A group item's objects ready for this plan: on its cabinet layer.
+fn group_objects(app: &App, item: &LibraryItem) -> Vec<Value> {
+    let d = app.doc().active_defaults();
+    let layer = d.layers.cabinets.unwrap_or(d.layers.cad);
+    item.data
+        .get("objects")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|mut o| {
+            if let Some(m) = o.as_object_mut()
+                && m.contains_key("layer")
+            {
+                m.insert("layer".into(), json!(layer));
+            }
+            o
+        })
+        .collect()
 }
 
 fn kind_of(item: &LibraryItem) -> Option<ObjectKind> {
@@ -85,6 +108,10 @@ fn activate(app: &mut App, item: &LibraryItem) {
             if let Ok(b) = serde_json::from_value::<library::LibraryBlock>(item.data.clone()) {
                 app.place_library_block(&b);
             }
+        }
+        LibraryKind::Group => {
+            app.library.group = Some(group_objects(app, item));
+            app.set_tool(Tool::PlaceGroup);
         }
         LibraryKind::Material => {
             if let Some(id) = ensure_in_plan(app, item) {
@@ -146,7 +173,7 @@ fn item_row(app: &mut App, ui: &mut Ui, item: &LibraryItem, show_category: bool)
         })
         .inner;
     let hint = match item.kind {
-        LibraryKind::Cabinet | LibraryKind::Appliance | LibraryKind::Block => {
+        LibraryKind::Cabinet | LibraryKind::Appliance | LibraryKind::Block | LibraryKind::Group => {
             "Click, then click in the plan to place it"
         }
         LibraryKind::Material => "Click to paint with it in 3D",
@@ -214,11 +241,17 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             );
     });
     ui.horizontal(|ui| {
-        let selected = app
+        let mut selected = app
             .selection
             .iter()
             .filter_map(|id| library::item_from_object(app.doc(), *id))
             .collect::<Vec<_>>();
+        // Several cabinets and appliances together save as one group.
+        if app.selection.len() > 1
+            && let Some(g) = library::group_from_objects(app.doc(), &app.selection)
+        {
+            selected = vec![g];
+        }
         if ui
             .add_enabled(!selected.is_empty(), egui::Button::new("Add Selected"))
             .on_hover_text("Save the selected cabinets, appliances, blocks, materials or wall types in your library")

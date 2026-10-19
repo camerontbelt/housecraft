@@ -491,7 +491,17 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
     for c in doc.iter::<Cabinet>().filter(|c| c.floor == opts.floor) {
         let look = ctx.look(c.layer);
         if look.visible && opts.phase.shows(c.renovation) {
-            crate::cabinets::cabinet(c, look.stroke, &mut out);
+            let label = ctx.defaults.cabinets.show_codes.then(|| {
+                let style = ctx.text_style(None, &look);
+                (style.height.mm() * 0.6, look.ink)
+            });
+            crate::cabinets::cabinet(c, look.stroke, label, &mut out);
+        }
+    }
+    for b in doc.iter::<Backsplash>().filter(|b| b.floor == opts.floor) {
+        let look = ctx.look(b.layer);
+        if look.visible {
+            crate::cabinets::backsplash(b, look.stroke, &mut out);
         }
     }
     for s in doc.iter::<Symbol>().filter(|s| s.floor == opts.floor) {

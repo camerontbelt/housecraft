@@ -88,6 +88,9 @@ pub fn available_columns(kind: ScheduleKind) -> &'static [&'static str] {
             "Floor",
         ],
         ScheduleKind::RoofPlanes => &["Pitch", "Area", "Floor"],
+        ScheduleKind::Cabinets => &[
+            "Code", "Type", "Qty", "Width", "Depth", "Height", "Doors", "Drawers", "Floor",
+        ],
     }
 }
 
@@ -100,6 +103,7 @@ pub fn title(kind: ScheduleKind) -> &'static str {
         ScheduleKind::Fixtures => "Electrical, Plumbing and HVAC Schedule",
         ScheduleKind::Stairs => "Stair Schedule",
         ScheduleKind::RoofPlanes => "Roof Plane Schedule",
+        ScheduleKind::Cabinets => "Cabinet Schedule",
     }
 }
 
@@ -276,6 +280,42 @@ pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> S
                 group(&mut raw, key, e.id, row);
             }
             raw.sort_by(|a, b| (&a.1["Trade"], &a.1["Item"]).cmp(&(&b.1["Trade"], &b.1["Item"])));
+        }
+        ScheduleKind::Cabinets => {
+            // Door and drawer faces counted by size: "2 @ 11 3/4" x 23"".
+            let sizes = |list: Vec<(f64, f64)>| -> String {
+                let mut counts: Vec<(String, usize)> = Vec::new();
+                for (w, h) in list {
+                    let k = format!("{} x {}", fmt(Length::from_mm(w)), fmt(Length::from_mm(h)));
+                    match counts.iter_mut().find(|(s, _)| *s == k) {
+                        Some((_, n)) => *n += 1,
+                        None => counts.push((k, 1)),
+                    }
+                }
+                counts
+                    .iter()
+                    .map(|(k, n)| format!("{n} @ {k}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            };
+            for c in doc.iter::<Cabinet>().filter(|c| on_floor(c.floor)) {
+                let (doors, drawers) = housecraft_geom::cabinets::front_sizes(c);
+                let mut row = BTreeMap::new();
+                row.insert("Code", c.code());
+                row.insert("Type", c.cabinet_kind.name().into());
+                row.insert("Width", fmt(c.width));
+                row.insert("Depth", fmt(c.depth));
+                row.insert("Height", fmt(c.height));
+                row.insert("Doors", sizes(doors));
+                row.insert("Drawers", sizes(drawers));
+                row.insert("Floor", floor_name(c.floor));
+                let key = ["Code", "Width", "Depth", "Height", "Doors", "Drawers", "Floor"]
+                    .iter()
+                    .map(|k| row[k].clone())
+                    .collect();
+                group(&mut raw, key, c.id, row);
+            }
+            raw.sort_by(|a, b| a.1["Code"].cmp(&b.1["Code"]));
         }
         ScheduleKind::Stairs => {
             for s in doc.iter::<Stair>().filter(|s| on_floor(s.floor)) {

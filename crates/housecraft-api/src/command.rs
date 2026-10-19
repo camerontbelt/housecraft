@@ -318,6 +318,19 @@ pub enum Command {
         facing: Option<f64>,
         elevation: Option<Length>,
     },
+    /// Add a backsplash along a path (it stands to the right of the path's
+    /// direction, so draw it along the wall with the room on the right);
+    /// unset sizes come from the cabinet defaults.
+    AddBacksplash {
+        floor: Option<Id>,
+        points: Vec<Point2>,
+        bottom: Option<Length>,
+        height: Option<Length>,
+        thickness: Option<Length>,
+    },
+    /// Dimension each run of base and tall cabinets along its front, ends
+    /// and every cabinet (the NKBA way).
+    AutoCabinetDimensions { floor: Option<Id> },
     /// Close gaps up to the default set's largest filler between side-by-side
     /// cabinets and between cabinets and walls on a floor (cabinets marked
     /// `no_auto_filler` are skipped).
@@ -730,6 +743,8 @@ impl Command {
             Command::AddCountertop { .. } => "add_countertop",
             Command::AddAppliance { .. } => "add_appliance",
             Command::AutoFillers { .. } => "auto_fillers",
+            Command::AddBacksplash { .. } => "add_backsplash",
+            Command::AutoCabinetDimensions { .. } => "auto_cabinet_dimensions",
             Command::PlaceObject { .. } => "place_object",
             Command::AddPicture { .. } => "add_picture",
             Command::AddSymbolDef { .. } => "add_symbol_def",
@@ -1466,6 +1481,32 @@ impl Command {
                 template,
                 all_identical,
             } => crate::cabinets::replace_with(doc, ids, template, *all_identical, &mut out)?,
+            Command::AddBacksplash {
+                floor,
+                points,
+                bottom,
+                height,
+                thickness,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                if points.len() < 2 {
+                    return invalid("a backsplash needs at least two points");
+                }
+                let c = &d.cabinets;
+                out.created.push(doc.insert(Backsplash {
+                    id: Id(0),
+                    floor,
+                    layer: d.layers.cabinets.unwrap_or(d.layers.cad),
+                    points: points.clone(),
+                    bottom: bottom.unwrap_or(c.base_height + c.countertop_thickness),
+                    height: height.unwrap_or(Length::from_inches(18.0)),
+                    thickness: thickness.unwrap_or(Length::from_inches(0.5)),
+                }));
+            }
+            Command::AutoCabinetDimensions { floor } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                crate::cabinets::auto_dimensions(doc, &d, floor, &mut out);
+            }
             Command::AutoFillers { floor } => {
                 let floor = ops::resolve_floor(doc, *floor)?;
                 let max = d.cabinets.max_filler.mm();
