@@ -228,6 +228,7 @@ pub fn show(app: &mut App, ui: &mut Ui, source: DrawingSource) {
                         points.iter_mut().for_each(|p| *p += d)
                     }
                     Prim::Text { at, .. } => *at += d,
+                    Prim::Image { corners, .. } => corners.iter_mut().for_each(|p| *p += d),
                 }
                 if let Prim::Polygon { points, fill } = &prim {
                     paint_fill(&painter, &v, points, tri, fill_color(&paper, *fill));

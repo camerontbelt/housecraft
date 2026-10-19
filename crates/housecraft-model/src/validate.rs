@@ -658,6 +658,42 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 c.non_negative(id, "elevation", a.elevation);
                 c.finite(id, "position", &a.position.mm());
             }
+            Object::Picture(p) => {
+                c.sheet(id, p.floor, false);
+                c.reference(id, "layer", p.layer, K::Layer);
+                c.positive(id, "width", p.width);
+                c.positive(id, "height", p.height);
+                c.finite(id, "position", &p.position.mm());
+                if !(0.0..=1.0).contains(&p.opacity) {
+                    c.issue(id, "opacity must be between 0 and 1");
+                }
+                if p.path.trim().is_empty() {
+                    c.issue(id, "a picture needs an image file");
+                }
+            }
+            Object::SymbolDef(s) => {
+                let n = s.positions.len() as u32;
+                if s.triangles.iter().any(|t| t.iter().any(|i| *i >= n)) {
+                    c.issue(id, "a triangle refers to a missing point");
+                }
+                if s.positions.iter().flatten().any(|v| !v.is_finite()) {
+                    c.issue(id, "points must be finite");
+                }
+                let t = s.triangles.len() as u64;
+                if s.groups.iter().any(|g| g.first as u64 + g.count as u64 > t) {
+                    c.issue(id, "a colour group runs past the last triangle");
+                }
+            }
+            Object::Symbol(s) => {
+                c.reference(id, "floor", s.floor, K::Floor);
+                c.reference(id, "layer", s.layer, K::Layer);
+                c.reference(id, "def", s.def, K::SymbolDef);
+                c.positive(id, "width", s.width);
+                c.positive(id, "depth", s.depth);
+                c.positive(id, "height", s.height);
+                c.non_negative(id, "elevation", s.elevation);
+                c.finite(id, "position", &s.position.mm());
+            }
             Object::BlockRef(b) => {
                 c.sheet(id, b.floor, false);
                 c.reference(id, "layer", b.layer, K::Layer);

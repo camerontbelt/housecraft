@@ -315,6 +315,7 @@ pub(crate) fn new_document(name: String) -> Document {
         eye: Point3::from_mm(-9000.0, -12000.0, 9000.0),
         target: Point3::from_mm(4000.0, 3000.0, 1200.0),
         layer_set: working,
+        backdrop: None,
     });
     doc
 }

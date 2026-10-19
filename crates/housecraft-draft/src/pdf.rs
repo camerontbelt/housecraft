@@ -234,6 +234,20 @@ fn draw_items(c: &mut Content, drawing: &Drawing, map: impl Fn(DVec2) -> glam::V
     c.set_line_join(pdf_writer::types::LineJoinStyle::RoundJoin);
     for item in &drawing.items {
         match &item.prim {
+            Prim::Image { corners, .. } => {
+                // Pictures aren't embedded in PDFs yet: a frame marks the place.
+                c.set_stroke_rgb(0.6, 0.6, 0.6);
+                c.set_line_width(0.5);
+                c.set_dash_pattern([3.0f32, 2.0], 0.0);
+                let p0 = map(corners[0]);
+                c.move_to(p0.x, p0.y);
+                for p in &corners[1..] {
+                    let q = map(*p);
+                    c.line_to(q.x, q.y);
+                }
+                c.close_path();
+                c.stroke();
+            }
             Prim::Polygon { points, fill } => {
                 if points.len() < 3 {
                     continue;

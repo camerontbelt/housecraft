@@ -208,6 +208,16 @@ impl Mesh {
         self.palette.look(surface)
     }
 
+    /// A material painted on the whole of the part being built (or its
+    /// floor), if any.
+    pub fn painted_whole(&self) -> Option<Look> {
+        [self.palette.object, self.palette.floor]
+            .into_iter()
+            .flatten()
+            .find_map(|o| self.palette.painted.get(&(o, None)))
+            .copied()
+    }
+
     /// Start a part for `object` (its surfaces take materials painted on it
     /// or on its floor).
     pub fn begin(&mut self, object: Id, category: Category) -> u32 {
@@ -399,6 +409,14 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         }
         mesh.begin(t.id, Category::Cabinet);
         crate::cabinets::countertop_mesh(doc, t, &mut mesh);
+        mesh.end();
+    }
+    for s in doc.iter::<housecraft_model::Symbol>() {
+        if only_floor.is_some_and(|f| f != s.floor) || s.renovation == Renovation::Demolish {
+            continue;
+        }
+        mesh.begin(s.id, Category::Cabinet);
+        crate::cabinets::symbol_mesh(doc, s, &mut mesh);
         mesh.end();
     }
     for a in doc.iter::<housecraft_model::Appliance>() {

@@ -11,6 +11,7 @@ name = "housecraft-app"
 path = "src/main.rs"
 
 [dependencies]
+image.workspace = true
 housecraft-api.workspace = true
 housecraft-draft.workspace = true
 housecraft-io-native.workspace = true

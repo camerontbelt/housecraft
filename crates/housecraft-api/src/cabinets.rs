@@ -166,8 +166,8 @@ pub(crate) fn place_object(
     at: Point2,
     facing: Option<f64>,
 ) -> Result<Id, ApiError> {
-    if !matches!(kind, ObjectKind::Cabinet | ObjectKind::Appliance) {
-        return invalid("only cabinets and appliances are placed from templates");
+    if !matches!(kind, ObjectKind::Cabinet | ObjectKind::Appliance | ObjectKind::Symbol) {
+        return invalid("only cabinets, appliances and symbols are placed from templates");
     }
     let (position, facing) = place(doc, floor, at, facing);
     let placement = json!({

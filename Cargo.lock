@@ -1344,6 +1344,7 @@ dependencies = [
  "housecraft-api",
  "housecraft-draft",
  "housecraft-io-native",
+ "image",
  "log",
  "rfd",
  "serde",
@@ -1381,6 +1382,7 @@ dependencies = [
  "housecraft-geom",
  "housecraft-model",
  "housecraft-units",
+ "image",
  "pdf-writer",
  "resvg",
  "serde_json",
@@ -1506,6 +1508,8 @@ dependencies = [
  "num-traits",
  "png",
  "tiff",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]

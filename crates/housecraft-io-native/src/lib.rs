@@ -8,6 +8,7 @@
 //! Files from early builds used the `.hcraft` extension; they are identical inside.
 
 pub mod library;
+pub mod symbols;
 
 use std::io::{Read, Seek, Write};
 use std::path::Path;

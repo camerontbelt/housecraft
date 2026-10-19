@@ -61,6 +61,14 @@ pub enum Prim {
         points: Vec<DVec2>,
         fill: Fill,
     },
+    /// An image file stretched over a quadrilateral: corners bottom-left,
+    /// bottom-right, top-right, top-left.
+    Image {
+        corners: [DVec2; 4],
+        path: String,
+        opacity: f64,
+        transparent: Option<housecraft_model::Color>,
+    },
     Text {
         at: DVec2,
         text: String,
@@ -98,6 +106,7 @@ impl Drawing {
         housecraft_geom::math::bounds(self.items.iter().flat_map(|i| match &i.prim {
             Prim::Polyline { points, .. } | Prim::Polygon { points, .. } => points.clone(),
             Prim::Text { at, .. } => vec![*at],
+            Prim::Image { corners, .. } => corners.to_vec(),
         }))
     }
 }
@@ -105,4 +114,32 @@ impl Drawing {
 /// Rough text width for layout when no font metrics are available.
 pub fn approx_text_width(text: &str, height: f64) -> f64 {
     text.chars().count() as f64 * height * 0.55
+}
+
+/// Standard base64 (for embedding images in SVG).
+pub(crate) fn base64(bytes: &[u8]) -> String {
+    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let n = (b[0] as u32) << 16 | (b[1] as u32) << 8 | b[2] as u32;
+        for k in 0..4 {
+            if k <= chunk.len() {
+                out.push(T[(n >> (18 - 6 * k) & 63) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod base64_tests {
+    #[test]
+    fn encodes() {
+        assert_eq!(super::base64(b"Man"), "TWFu");
+        assert_eq!(super::base64(b"Ma"), "TWE=");
+        assert_eq!(super::base64(b"M"), "TQ==");
+    }
 }

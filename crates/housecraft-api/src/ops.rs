@@ -442,6 +442,26 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             a.facing = t.apply_angle(a.facing);
             Object::Appliance(a)
         }
+        Object::Symbol(s) => {
+            let mut s = s.clone();
+            s.position = t.apply_point(s.position);
+            s.facing = t.apply_angle(s.facing);
+            let k = t.scale_factor();
+            s.width = s.width * k;
+            s.depth = s.depth * k;
+            s.height = s.height * k;
+            Object::Symbol(s)
+        }
+        Object::Picture(p) => {
+            let mut p = p.clone();
+            p.position = t.apply_point(p.position);
+            if !t.is_reflection() {
+                p.rotation = t.apply_angle(p.rotation);
+            }
+            p.width = t.apply_length(p.width);
+            p.height = t.apply_length(p.height);
+            Object::Picture(p)
+        }
         Object::Countertop(c) => {
             let mut c = c.clone();
             c.points = c.points.iter().map(|p| t.apply_point(*p)).collect();
@@ -910,6 +930,7 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
             .filter(|o| {
                 doc.floor_of(o.id()).is_some_and(|f| doomed.contains(&f))
                     || matches!(o, Object::BlockRef(b) if doomed.contains(&b.block))
+                    || matches!(o, Object::Symbol(s) if doomed.contains(&s.def))
                     || matches!(o, Object::MaterialAssignment(a)
                         if doomed.contains(&a.object) || doomed.contains(&a.material))
             })
@@ -1028,6 +1049,8 @@ pub(crate) fn insert_objects(
                 Object::Cabinet(c) => c.floor = f,
                 Object::Countertop(c) => c.floor = f,
                 Object::Appliance(a) => a.floor = f,
+                Object::Picture(p) => p.floor = f,
+                Object::Symbol(s) => s.floor = f,
                 _ => {}
             }
         }
@@ -1077,6 +1100,8 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::Cabinet(c) => &mut c.floor,
             Object::Countertop(c) => &mut c.floor,
             Object::Appliance(a) => &mut a.floor,
+            Object::Picture(p) => &mut p.floor,
+            Object::Symbol(s) => &mut s.floor,
             _ => continue,
         };
         let before = *floor;

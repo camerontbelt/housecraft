@@ -227,6 +227,26 @@ pub fn layout_page(doc: &Document, layout: &Layout, page: usize) -> Drawing {
         let id = Some(b.id);
         for item in &d.items {
             match &item.prim {
+                Prim::Image {
+                    corners,
+                    path,
+                    opacity,
+                    transparent,
+                } => {
+                    let corners = corners.map(&map);
+                    // Images aren't cut to the box: keep those inside it.
+                    if corners.iter().any(|p| p.cmpge(lo).all() && p.cmple(hi).all()) {
+                        out.push(
+                            id,
+                            Prim::Image {
+                                corners,
+                                path: path.clone(),
+                                opacity: *opacity,
+                                transparent: *transparent,
+                            },
+                        );
+                    }
+                }
                 Prim::Polygon { points, fill } => {
                     let pts: Vec<DVec2> = points.iter().map(|p| map(*p)).collect();
                     let clipped = clip_polygon(&pts, lo, hi);

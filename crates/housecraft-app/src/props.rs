@@ -566,6 +566,93 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ed.pick::<Layer>(ui, "Layer", "layer", Some(c.layer), None);
         }
         Object::Cabinet(c) => cabinet_editor(ui, ed, c),
+        Object::Picture(p) => {
+            Ed::label(ui, "Image File");
+            ui.horizontal(|ui| {
+                let name = std::path::Path::new(&p.path)
+                    .file_name()
+                    .map_or(p.path.clone(), |f| f.to_string_lossy().into_owned());
+                ui.label(name).on_hover_text(&p.path);
+                if ui.small_button("Change…").clicked()
+                    && let Some(f) = pick_image()
+                {
+                    ed.out.push(patch(id, json!({ "path": f })));
+                }
+            });
+            ui.end_row();
+            if let Some(w) = ed.length(ui, "Width", "width", p.width)
+                && w.mm() > 0.0
+            {
+                // Keep the proportions when the width changes.
+                let h = p.height * (w.mm() / p.width.mm());
+                ed.out.push(patch(id, json!({ "width": w, "height": h })));
+            }
+            if let Some(h) = ed.length(ui, "Height", "height", p.height)
+                && h.mm() > 0.0
+            {
+                ed.out.push(patch(id, json!({ "height": h })));
+            }
+            if let Some(n) = ed.number(ui, "Rotation (°)", "rotation", p.rotation) {
+                ed.out.push(patch(id, json!({ "rotation": n })));
+            }
+            Ed::label(ui, "Opacity");
+            let mut o = p.opacity * 100.0;
+            if ui.add(egui::Slider::new(&mut o, 0.0..=100.0).suffix("%")).drag_stopped() {
+                ed.out.push(patch(id, json!({ "opacity": o / 100.0 })));
+            }
+            ui.end_row();
+            ed.color(ui, "Transparent Color", "transparent", p.transparent, "None");
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(p.layer), None);
+        }
+        Object::SymbolDef(s) => {
+            ed.text(ui, "Name", "name", &s.name);
+            Ed::label(ui, "Model");
+            let [w, d, h] = s.size();
+            ui.label(format!(
+                "{} triangles, {} × {} × {}",
+                s.triangles.len(),
+                fmt(doc, Length::from_mm(w)),
+                fmt(doc, Length::from_mm(d)),
+                fmt(doc, Length::from_mm(h))
+            ));
+            ui.end_row();
+        }
+        Object::Symbol(s) => {
+            ed.pick::<SymbolDef>(ui, "Model", "def", Some(s.def), None);
+            for (label, field, v) in [
+                ("Width", "width", s.width),
+                ("Depth", "depth", s.depth),
+                ("Height", "height", s.height),
+            ] {
+                if let Some(l) = ed.length(ui, label, field, v)
+                    && l.mm() > 0.0
+                {
+                    ed.out.push(patch(id, json!({ field: l })));
+                }
+            }
+            if let Some(def) = doc.get::<SymbolDef>(s.def) {
+                Ed::label(ui, "");
+                if ui.button("Reset to the model's size").clicked() {
+                    let [w, d, h] = def.size();
+                    ed.out.push(patch(
+                        id,
+                        json!({
+                            "width": Length::from_mm(w),
+                            "depth": Length::from_mm(d),
+                            "height": Length::from_mm(h),
+                        }),
+                    ));
+                }
+                ui.end_row();
+            }
+            if let Some(l) = ed.length(ui, "Off the Floor", "elevation", s.elevation) {
+                ed.out.push(patch(id, json!({ "elevation": l })));
+            }
+            if let Some(n) = ed.number(ui, "Facing (°)", "facing", s.facing) {
+                ed.out.push(patch(id, json!({ "facing": n })));
+            }
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(s.layer), None);
+        }
         Object::Countertop(t) => {
             if let Some(h) = ed.length(ui, "Top Height", "height", t.height) {
                 ed.out.push(patch(id, json!({ "height": h })));
@@ -1596,6 +1683,29 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ui.end_row();
         }
         Object::Camera(c) => {
+            Ed::label(ui, "Backdrop");
+            ui.horizontal(|ui| {
+                match &c.backdrop {
+                    Some(b) => {
+                        let name = std::path::Path::new(b)
+                            .file_name()
+                            .map_or(b.clone(), |f| f.to_string_lossy().into_owned());
+                        ui.label(name).on_hover_text(b);
+                    }
+                    None => {
+                        ui.weak("Sky color");
+                    }
+                }
+                if ui.small_button("Choose…").clicked()
+                    && let Some(f) = pick_image()
+                {
+                    ed.out.push(patch(id, json!({ "backdrop": f })));
+                }
+                if c.backdrop.is_some() && ui.small_button("Clear").clicked() {
+                    ed.out.push(patch(id, json!({ "backdrop": Value::Null })));
+                }
+            });
+            ui.end_row();
             ed.text(ui, "Name", "name", &c.name);
             Ed::label(ui, "Projection");
             let persp = matches!(c.projection, Projection::Perspective { .. });
@@ -2181,4 +2291,12 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
     }
     ed.check(ui, "Auto Fillers", "no_auto_filler", "Exclude from auto fillers", c.no_auto_filler);
     ed.pick::<Layer>(ui, "Layer", "layer", Some(c.layer), None);
+}
+
+/// Ask for an image file.
+pub fn pick_image() -> Option<String> {
+    rfd::FileDialog::new()
+        .add_filter("Images", &["png", "jpg", "jpeg", "bmp", "tif", "tiff"])
+        .pick_file()
+        .map(|p| p.to_string_lossy().into_owned())
 }

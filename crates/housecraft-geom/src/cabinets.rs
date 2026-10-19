@@ -7,7 +7,7 @@
 
 use glam::{DVec2, DVec3};
 use housecraft_model::{
-    Appliance, ApplianceKind, Cabinet, CabinetConstruction, CabinetKind, CabinetShape, Countertop,
+    Appliance, ApplianceKind, Symbol, SymbolDef, Cabinet, CabinetConstruction, CabinetKind, CabinetShape, Countertop,
     DoorStyleCab, Document, EdgeProfile, FaceItem, Floor, HardwareStyle, HoleKind, Id, Surface,
 };
 
@@ -757,6 +757,96 @@ pub fn appliance_mesh(doc: &Document, a: &Appliance, mesh: &mut Mesh) {
                 .map(|i| c + DVec2::from_angle(i as f64 / 20.0 * std::f64::consts::TAU) * w / 2.0)
                 .collect();
             b.prism(&disc, 0.0, h, Surface::Device);
+        }
+    }
+}
+
+/// Where a symbol's model points (mm, as imported) land in the plan (mm).
+fn symbol_points(s: &Symbol, def: &SymbolDef) -> impl Fn([f32; 3]) -> DVec3 {
+    let f = Frame::new(v2(s.position), s.facing);
+    let size = def.size();
+    let k = [
+        s.width.mm() / size[0].max(1e-6),
+        s.depth.mm() / size[1].max(1e-6),
+        s.height.mm() / size[2].max(1e-6),
+    ];
+    let z0 = s.elevation.mm();
+    move |p: [f32; 3]| {
+        let local = DVec2::new(p[0] as f64 * k[0], -(p[1] as f64) * k[1]);
+        f.world(local).extend(z0 + p[2] as f64 * k[2])
+    }
+}
+
+/// A placed 3D symbol's footprint in plan: the outline around all its
+/// points (counter-clockwise).
+pub fn symbol_outline(doc: &Document, s: &Symbol) -> Vec<DVec2> {
+    let Some(def) = doc.get::<SymbolDef>(s.def) else {
+        return Vec::new();
+    };
+    let place = symbol_points(s, def);
+    let mut pts: Vec<DVec2> = def.positions.iter().map(|p| place(*p).truncate()).collect();
+    convex_hull(&mut pts)
+}
+
+/// Monotone-chain convex hull (counter-clockwise).
+fn convex_hull(pts: &mut [DVec2]) -> Vec<DVec2> {
+    pts.sort_by(|a, b| a.x.total_cmp(&b.x).then(a.y.total_cmp(&b.y)));
+    let cross = |o: DVec2, a: DVec2, b: DVec2| (a - o).perp_dot(b - o);
+    let mut hull: Vec<DVec2> = Vec::new();
+    for pass in 0..2 {
+        let start = hull.len();
+        let iter: Box<dyn Iterator<Item = &DVec2>> = if pass == 0 {
+            Box::new(pts.iter())
+        } else {
+            Box::new(pts.iter().rev())
+        };
+        for &p in iter {
+            while hull.len() >= start + 2 && cross(hull[hull.len() - 2], hull[hull.len() - 1], p) <= 0.0 {
+                hull.pop();
+            }
+            hull.push(p);
+        }
+        hull.pop();
+    }
+    hull
+}
+
+/// A placed 3D symbol: its triangles in their imported colours, or in the
+/// material painted on it.
+pub fn symbol_mesh(doc: &Document, s: &Symbol, mesh: &mut Mesh) {
+    let (Some(def), Some(floor)) = (doc.get::<SymbolDef>(s.def), doc.get::<Floor>(s.floor)) else {
+        return;
+    };
+    let place = symbol_points(s, def);
+    let z0 = floor.elevation.mm();
+    let painted = mesh.painted_whole();
+    let look_of = |c: housecraft_model::Color| {
+        let [r, g, b, _] = c.0;
+        let f = |v: u8| v as f32 / 255.0;
+        crate::mesh::Look {
+            color: [f(r), f(g), f(b), 1.0],
+            pbr: [0.6, 0.0, 0.0, 1.0],
+            surface: None,
+        }
+    };
+    let grey = look_of(housecraft_model::Color::rgb(190, 190, 190));
+    let mut group_of = vec![grey; def.triangles.len()];
+    for g in &def.groups {
+        let look = look_of(g.color);
+        for t in g.first as usize..(g.first + g.count) as usize {
+            if let Some(slot) = group_of.get_mut(t) {
+                *slot = look;
+            }
+        }
+    }
+    for (t, tri) in def.triangles.iter().enumerate() {
+        let pts: Vec<DVec3> = tri
+            .iter()
+            .filter_map(|i| def.positions.get(*i as usize))
+            .map(|p| place(*p) + DVec3::Z * z0)
+            .collect();
+        if pts.len() == 3 {
+            mesh.polygon_look(&pts, painted.unwrap_or(group_of[t]));
         }
     }
 }

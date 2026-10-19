@@ -372,6 +372,8 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'","5'"], "sink": true}},
                 {{"op": "add_countertop", "points": [["8'","8'"], ["12'","8'"], ["12'","11'"]], "holes": [{{"hole_kind": "round", "center": ["10'","9'"], "width": "2\"", "depth": "2\""}}]}},
                 {{"op": "add_appliance", "appliance_kind": "toilet", "at": ["15'","1'"]}},
+                {{"op": "add_picture", "path": "x.png", "position": [0,0], "width": "1'"}},
+                {{"op": "add_symbol_def", "name": "S", "positions": [[0,0,0],[1,0,0],[0,-1,0],[0,0,1]], "triangles": [[0,1,2],[0,1,3]]}},
                 {{"op": "add_camera", "name": "Cam", "projection": {{"type": "orthographic", "height": 5000}}, "eye": [0,0,1000], "target": [1000,1000,0]}}]"##,
             w = wall.0
         ),
@@ -379,13 +381,15 @@ fn every_object_kind_round_trips_through_json() {
     let layout = s.document().iter::<Layout>().next().unwrap().id;
     let block = s.document().iter::<Block>().next().unwrap().id;
     let material = s.document().iter::<Material>().next().unwrap().id;
+    let symbol_def = s.document().iter::<SymbolDef>().next().unwrap().id;
     apply(
         &mut s,
         &format!(
             r#"[{{"op": "send_to_layout", "layout": {}, "source": {{"type": "text", "text": "notes"}}}},
                 {{"op": "add_block_ref", "block": {}, "at": [0,0], "rotation": 30}},
-                {{"op": "paint_material", "material": {}, "ids": [{}], "surface": "wall"}}]"#,
-            layout.0, block.0, material.0, wall.0
+                {{"op": "paint_material", "material": {}, "ids": [{}], "surface": "wall"}},
+                {{"op": "add_symbol", "def": {}, "at": ["5'","5'"]}}]"#,
+            layout.0, block.0, material.0, wall.0, symbol_def.0
         ),
     );
     let doc = s.document();
@@ -1701,5 +1705,40 @@ fn place_and_replace_from_templates() {
     assert!((w(&s, c) - 30.0).abs() < 1e-9);
     // Positions are kept.
     assert!((s.document().get::<Cabinet>(b).unwrap().position.y().feet() - 9.0).abs() < 0.1);
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
+}
+
+#[test]
+fn pictures_and_3d_symbols() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r##"[{"op": "add_picture", "path": "survey.png", "position": [0,0], "width": "20'", "pixels": [400, 200]},
+            {"op": "add_symbol_def", "name": "Box", "positions": [[-500,-400,0],[500,-400,0],[500,0,0],[-500,0,0],[0,-200,800]],
+             "triangles": [[0,1,4],[1,2,4],[2,3,4],[3,0,4],[0,2,1],[0,3,2]],
+             "groups": [{"first": 0, "count": 6, "color": "#ff0000"}]}]"##,
+    );
+    let pic = s.document().get::<Picture>(out.created[0]).unwrap();
+    assert!((pic.height.feet() - 10.0).abs() < 1e-9, "keeps proportions");
+    let def = out.created[1];
+    // Placed by a wall at its imported size, facing into the room.
+    let out = apply(
+        &mut s,
+        &format!(r#"[{{"op": "add_symbol", "def": {}, "at": ["10'","1'"]}}]"#, def.0),
+    );
+    let sym = s.document().get::<Symbol>(out.created[0]).unwrap().clone();
+    assert!((sym.width.mm() - 1000.0).abs() < 1e-6 && (sym.depth.mm() - 400.0).abs() < 1e-6);
+    assert!((sym.facing - 90.0).abs() < 1e-6);
+    // Its 3D triangles are in its colour and it has a plan outline.
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    assert!(mesh.colors.contains(&[1.0, 0.0, 0.0, 1.0]));
+    let outline = housecraft_api::geom::cabinets::symbol_outline(s.document(), &sym);
+    assert!(outline.len() >= 4);
+    // Every point of the outline lies in front of the wall face (y >= face).
+    let face = sym.position.y().mm();
+    assert!(outline.iter().all(|p| p.y >= face - 1e-6), "{outline:?}");
+    // Deleting the model deletes its copies.
+    apply(&mut s, &format!(r#"[{{"op": "delete", "ids": [{}]}}]"#, def.0));
+    assert_eq!(s.document().count::<Symbol>(), 0);
     assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
 }

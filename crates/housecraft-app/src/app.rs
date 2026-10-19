@@ -87,6 +87,8 @@ pub struct App {
     pub dialogs: Dialogs,
     pub materials: crate::materials::MaterialsDialog,
     pub library: crate::library_view::LibraryState,
+    /// A 3D model file waiting for its import options.
+    pub symbol_import: Option<(std::path::PathBuf, housecraft_io_native::symbols::ImportOptions)>,
     pub bufs: EditBuffers,
     /// Objects whose specification windows are open.
     pub spec: Vec<Id>,
@@ -126,6 +128,7 @@ impl App {
             dialogs: Dialogs::default(),
             materials: Default::default(),
             library: Default::default(),
+            symbol_import: None,
             bufs: EditBuffers::default(),
             spec: Vec::new(),
             room_multi: None,
@@ -292,6 +295,91 @@ impl App {
         {
             self.open_sheet(*id);
             self.info(format!("Made CAD detail {detail_name:?}"));
+        }
+    }
+
+    /// File > Import > Picture: place an image in the middle of the view,
+    /// 20' wide (10' on a view or detail), keeping its proportions.
+    pub fn import_picture(&mut self) {
+        let Some(path) = crate::props::pick_image() else {
+            return;
+        };
+        let pixels = crate::images::pixel_size(&path);
+        let width = housecraft_api::units::Length::from_feet(if self.plan.sheet.is_some() { 10.0 } else { 20.0 });
+        let height = pixels.map_or(width, |[w, h]| width * (h as f64 / w.max(1) as f64));
+        let c = self.plan.center;
+        let position = housecraft_api::units::Point2(
+            housecraft_api::units::Length::from_mm(c.x - width.mm() / 2.0),
+            housecraft_api::units::Length::from_mm(c.y - height.mm() / 2.0),
+        );
+        self.mode = Mode::Plan;
+        if let Some(out) = self.run1(Command::AddPicture {
+            floor: Some(self.plan.target()),
+            path,
+            position,
+            width,
+            height: Some(height),
+            pixels,
+            transparent: None,
+        }) {
+            self.selection = out.created;
+        }
+    }
+
+    /// The 3D model import options window.
+    pub fn symbol_import_dialog(&mut self, ctx: &egui::Context) {
+        use housecraft_io_native::symbols::{ModelUnit, read_model};
+        let Some((path, mut opts)) = self.symbol_import.clone() else {
+            return;
+        };
+        let mut open = true;
+        let mut go = false;
+        egui::Window::new("Import 3D Symbol")
+            .open(&mut open)
+            .resizable(false)
+            .show(ctx, |ui| {
+                ui.label(path.file_name().map_or(String::new(), |f| f.to_string_lossy().into_owned()));
+                egui::Grid::new("symbol_import").num_columns(2).show(ui, |ui| {
+                    ui.label("Drawn in");
+                    egui::ComboBox::from_id_salt("symbol_unit")
+                        .selected_text(opts.unit.name())
+                        .show_ui(ui, |ui| {
+                            for u in ModelUnit::ALL {
+                                ui.selectable_value(&mut opts.unit, u, u.name());
+                            }
+                        });
+                    ui.end_row();
+                    ui.label("Up is");
+                    ui.horizontal(|ui| {
+                        ui.radio_value(&mut opts.y_up, true, "Y (most OBJ files)");
+                        ui.radio_value(&mut opts.y_up, false, "Z");
+                    });
+                    ui.end_row();
+                });
+                ui.weak("If it comes in lying down or the wrong size, delete it and import again with other choices.");
+                go = ui.button("Import").clicked();
+            });
+        if go {
+            self.symbol_import = None;
+            match read_model(&path, opts) {
+                Ok(def) => {
+                    if let Some(out) = self.run1(Command::AddSymbolDef {
+                        name: def.name,
+                        positions: def.positions,
+                        triangles: def.triangles,
+                        groups: def.groups,
+                    }) && let Some(id) = out.created.first()
+                    {
+                        self.set_tool(Tool::PlaceSymbol(*id));
+                        self.info("Click in the plan to place the symbol");
+                    }
+                }
+                Err(e) => self.error(format!("Could not import: {e}")),
+            }
+        } else if !open {
+            self.symbol_import = None;
+        } else {
+            self.symbol_import = Some((path, opts));
         }
     }
 
@@ -805,6 +893,18 @@ impl App {
                         && item(ui, "Export Layout as PDF…", "", true)
                     {
                         self.export_layout_pdf(id);
+                    }
+                });
+                ui.menu_button("Import", |ui| {
+                    if item(ui, "Picture…", "", true) {
+                        self.import_picture();
+                    }
+                    if item(ui, "3D Symbol (OBJ, STL)…", "", true)
+                        && let Some(path) = rfd::FileDialog::new()
+                            .add_filter("3D models", &["obj", "stl"])
+                            .pick_file()
+                    {
+                        self.symbol_import = Some((path, Default::default()));
                     }
                 });
                 ui.menu_button("Export", |ui| {
@@ -2448,6 +2548,7 @@ impl eframe::App for App {
         crate::schedules::table_window(self, &ctx);
         crate::dialogs::show(self, &ctx);
         crate::materials::materials_dialog(self, &ctx);
+        self.symbol_import_dialog(&ctx);
         self.confirm_discard(&ctx);
     }
 

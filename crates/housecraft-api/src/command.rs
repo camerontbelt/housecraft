@@ -289,6 +289,35 @@ pub enum Command {
         #[serde(default)]
         all_identical: bool,
     },
+    /// Place an image on a floor, view or CAD detail; `height` defaults to
+    /// keeping `pixels` (width, height) in proportion.
+    AddPicture {
+        floor: Option<Id>,
+        path: String,
+        position: Point2,
+        width: Length,
+        height: Option<Length>,
+        pixels: Option<[u32; 2]>,
+        transparent: Option<Color>,
+    },
+    /// Store an imported 3D model in the plan (see `housecraft-io-native`'s
+    /// model readers); place copies with `add_symbol`.
+    AddSymbolDef {
+        name: String,
+        positions: Vec<[f32; 3]>,
+        triangles: Vec<[u32; 3]>,
+        #[serde(default)]
+        groups: Vec<SymbolGroup>,
+    },
+    /// Place a 3D symbol at its imported size; it backs onto a nearby wall
+    /// when `facing` is unset.
+    AddSymbol {
+        floor: Option<Id>,
+        def: Id,
+        at: Point2,
+        facing: Option<f64>,
+        elevation: Option<Length>,
+    },
     /// Close gaps up to the default set's largest filler between side-by-side
     /// cabinets and between cabinets and walls on a floor (cabinets marked
     /// `no_auto_filler` are skipped).
@@ -702,6 +731,9 @@ impl Command {
             Command::AddAppliance { .. } => "add_appliance",
             Command::AutoFillers { .. } => "auto_fillers",
             Command::PlaceObject { .. } => "place_object",
+            Command::AddPicture { .. } => "add_picture",
+            Command::AddSymbolDef { .. } => "add_symbol_def",
+            Command::AddSymbol { .. } => "add_symbol",
             Command::ReplaceWith { .. } => "replace_with",
             Command::PaintMaterial { .. } => "paint_material",
             Command::ReplaceMaterial { .. } => "replace_material",
@@ -1339,6 +1371,84 @@ impl Command {
                     [*width, *depth, *height],
                 )?);
             }
+            Command::AddPicture {
+                floor,
+                path,
+                position,
+                width,
+                height,
+                pixels,
+                transparent,
+            } => {
+                let floor = ops::resolve_sheet(doc, *floor, false)?;
+                if path.trim().is_empty() {
+                    return invalid("choose an image file");
+                }
+                let height = match (height, pixels) {
+                    (Some(h), _) => *h,
+                    (None, Some([w, h])) if *w > 0 => *width * (*h as f64 / *w as f64),
+                    _ => *width,
+                };
+                let layer = doc.defaults_for(floor).layers.cad;
+                out.created.push(doc.insert(Picture {
+                    id: Id(0),
+                    floor,
+                    layer,
+                    path: path.clone(),
+                    position: *position,
+                    width: *width,
+                    height,
+                    rotation: 0.0,
+                    transparent: *transparent,
+                    opacity: 1.0,
+                }));
+            }
+            Command::AddSymbolDef {
+                name,
+                positions,
+                triangles,
+                groups,
+            } => {
+                if triangles.is_empty() {
+                    return invalid("a 3D symbol needs at least one triangle");
+                }
+                out.created.push(doc.insert(SymbolDef {
+                    id: Id(0),
+                    name: name.clone(),
+                    positions: positions.clone(),
+                    triangles: triangles.clone(),
+                    groups: groups.clone(),
+                }));
+            }
+            Command::AddSymbol {
+                floor,
+                def,
+                at,
+                facing,
+                elevation,
+            } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                let size = expect::<SymbolDef>(doc, *def)?.size();
+                if size.iter().any(|s| *s <= 0.0) {
+                    return invalid("the symbol is flat; it needs width, depth and height");
+                }
+                let template = serde_json::json!({
+                    "def": def,
+                    "width": Length::from_mm(size[0]),
+                    "depth": Length::from_mm(size[1]),
+                    "height": Length::from_mm(size[2]),
+                    "elevation": elevation.unwrap_or(Length::ZERO),
+                });
+                out.created.push(crate::cabinets::place_object(
+                    doc,
+                    &d,
+                    floor,
+                    ObjectKind::Symbol,
+                    &template,
+                    *at,
+                    *facing,
+                )?);
+            }
             Command::PlaceObject {
                 floor,
                 kind,
@@ -1857,6 +1967,7 @@ impl Command {
                     eye: *eye,
                     target: *target,
                     layer_set,
+                    backdrop: None,
                 }));
             }
             Command::Update { id, set } => ops::update(doc, *id, set, &mut out)?,

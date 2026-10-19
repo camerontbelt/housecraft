@@ -626,6 +626,8 @@ pub struct View3d {
     pub cut: f32,
     /// The material painter, when active.
     pub painter: Option<Painter>,
+    /// Image behind the model (the applied camera's backdrop).
+    pub backdrop: Option<String>,
     mesh: Option<(u64, Mesh)>,
     gpu: Option<GpuMesh>,
     gpu_key: u64,
@@ -649,6 +651,7 @@ impl Default for View3d {
             gpu: None,
             gpu_key: 0,
             painter: None,
+            backdrop: None,
         }
     }
 }
@@ -694,6 +697,7 @@ impl View3d {
         }
         self.walk = false;
         self.fit_requested = false;
+        self.backdrop = cam.backdrop.clone();
     }
 
     pub fn save_command(&self, name: String, layer_set: Id) -> Command {
@@ -1084,6 +1088,17 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             egui::Color32::from_rgb(196, 214, 232)
         },
     );
+    if let Some(path) = &v.backdrop {
+        let r = rect;
+        crate::images::paint(
+            ui.ctx(),
+            &painter,
+            [r.left_bottom(), r.right_bottom(), r.right_top(), r.left_top()],
+            path,
+            1.0,
+            None,
+        );
+    }
     let doc = app.session.document();
     let light = sun_direction(doc);
     // Below the horizon the sun stops lighting and casting.
@@ -1207,6 +1222,7 @@ fn overlay(app: &mut App, ui: &mut Ui, rect: Rect) {
                     ("Iso", 45.0, 35.26),
                 ] {
                     if ui.button(name).clicked() {
+                        v.backdrop = None;
                         v.walk = false;
                         v.yaw = yaw.to_radians();
                         v.pitch = pitch.to_radians();

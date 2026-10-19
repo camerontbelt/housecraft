@@ -386,6 +386,7 @@ fn prim_points(p: &Prim) -> Vec<DVec2> {
     match p {
         Prim::Polyline { points, .. } | Prim::Polygon { points, .. } => points.clone(),
         Prim::Text { at, .. } => vec![*at],
+        Prim::Image { corners, .. } => corners.to_vec(),
     }
 }
 
@@ -435,6 +436,7 @@ fn hit_test(doc: &Document, cache: &Cache, p: DVec2, tol: f64) -> Vec<Id> {
             continue;
         }
         let hit = match &item.prim {
+            Prim::Image { corners, .. } => point_in_polygon(p, corners),
             Prim::Polyline { points, closed, .. } => {
                 distance_to_polyline(p, points, *closed) <= tol
             }
@@ -1143,6 +1145,13 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 height: None,
             }),
             Tool::Countertop => pending.push(p),
+            Tool::PlaceSymbol(def) => commands.push(Command::AddSymbol {
+                floor,
+                def,
+                at: pt(p),
+                facing: None,
+                elevation: None,
+            }),
             Tool::PlaceTemplate => {
                 if let Some((kind, template, _)) = &placing {
                     commands.push(Command::PlaceObject {
@@ -1560,6 +1569,7 @@ fn shift_prim(p: &Prim, d: DVec2) -> Prim {
             points.iter_mut().for_each(|q| *q += d)
         }
         Prim::Text { at, .. } => *at += d,
+        Prim::Image { corners, .. } => corners.iter_mut().for_each(|p| *p += d),
     }
     p
 }
@@ -1574,6 +1584,22 @@ pub(crate) fn paint_prim(
     extra: f32,
 ) {
     match prim {
+        Prim::Image {
+            corners,
+            path,
+            opacity,
+            transparent,
+        } => {
+            let screen = corners.map(|p| view.to_screen(p));
+            match highlight {
+                Some(h) => {
+                    let mut pts = screen.to_vec();
+                    pts.push(screen[0]);
+                    painter.add(EShape::line(pts, Stroke::new(1.0 + extra, h)));
+                }
+                None => crate::images::paint(ui.ctx(), painter, screen, path, *opacity, *transparent),
+            }
+        }
         Prim::Polyline {
             points,
             closed,

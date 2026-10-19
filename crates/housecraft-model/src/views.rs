@@ -101,6 +101,9 @@ pub struct Camera {
     pub eye: Point3,
     pub target: Point3,
     pub layer_set: Id,
+    /// Image shown behind the model when this camera is viewed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backdrop: Option<String>,
 }
 
 /// Elevation (everything in view) or cross section (cut at the line).

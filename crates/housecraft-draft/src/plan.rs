@@ -159,6 +159,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         defaults,
     };
     let mut out = Drawing::default();
+    pictures(&ctx, opts.floor, &mut out);
 
     if opts.sun_shadows {
         sun_shadows(doc, opts.floor, &mut out);
@@ -493,6 +494,22 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             crate::cabinets::cabinet(c, look.stroke, &mut out);
         }
     }
+    for s in doc.iter::<Symbol>().filter(|s| s.floor == opts.floor) {
+        let look = ctx.look(s.layer);
+        if look.visible && opts.phase.shows(s.renovation) {
+            let outline = housecraft_geom::cabinets::symbol_outline(doc, s);
+            if outline.len() >= 3 {
+                out.push(
+                    Some(s.id),
+                    Prim::Polyline {
+                        points: outline,
+                        closed: true,
+                        stroke: look.stroke,
+                    },
+                );
+            }
+        }
+    }
     for a in doc.iter::<Appliance>().filter(|a| a.floor == opts.floor) {
         let look = ctx.look(a.layer);
         if look.visible && opts.phase.shows(a.renovation) {
@@ -524,6 +541,27 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
 
     notes(&ctx, opts.floor, &mut out);
     out
+}
+
+/// Pictures placed on `sheet`, under everything else.
+fn pictures(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
+    for p in ctx.doc.iter::<Picture>().filter(|p| p.floor == sheet) {
+        if !ctx.look(p.layer).visible {
+            continue;
+        }
+        let o = v2(p.position);
+        let a = DVec2::from_angle(p.rotation.to_radians());
+        let (w, h) = (a * p.width.mm(), perp(a) * p.height.mm());
+        out.push(
+            Some(p.id),
+            Prim::Image {
+                corners: [o, o + w, o + w + h, o + h],
+                path: p.path.clone(),
+                opacity: p.opacity,
+                transparent: p.transparent,
+            },
+        );
+    }
 }
 
 /// CAD shapes and placed blocks drawn on `sheet`.
@@ -696,6 +734,7 @@ pub fn drafting(doc: &Document, sheet: Id, layer_set: Option<Id>) -> Drawing {
         defaults: doc.defaults_for(sheet),
     };
     let mut out = Drawing::default();
+    pictures(&ctx, sheet, &mut out);
     cad_shapes(&ctx, sheet, &mut out);
     notes(&ctx, sheet, &mut out);
     out

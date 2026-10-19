@@ -97,6 +97,44 @@ pub fn to_svg(drawing: &Drawing, opts: &SvgOptions) -> String {
     );
     for item in &drawing.items {
         match &item.prim {
+            Prim::Image {
+                corners,
+                path,
+                opacity,
+                ..
+            } => {
+                // Embed the file; map the unit square onto the corners.
+                let Ok(bytes) = std::fs::read(path) else {
+                    continue;
+                };
+                let mime = match std::path::Path::new(path)
+                    .extension()
+                    .map(|e| e.to_string_lossy().to_lowercase())
+                    .as_deref()
+                {
+                    Some("jpg" | "jpeg") => "image/jpeg",
+                    Some("bmp") => "image/bmp",
+                    Some("gif") => "image/gif",
+                    Some("webp") => "image/webp",
+                    Some("tif" | "tiff") => "image/tiff",
+                    _ => "image/png",
+                };
+                let [bl, br, _, tl] = corners.map(|p| DVec2::new(p.x, y(p.y)));
+                let (a, b) = (br - bl, tl - bl);
+                // The image's top-left is at (0, 0) of the unit square.
+                let _ = writeln!(
+                    s,
+                    r#"<image x="0" y="0" width="1" height="1" preserveAspectRatio="none" opacity="{:.2}" transform="matrix({:.3} {:.3} {:.3} {:.3} {:.3} {:.3})" href="data:{mime};base64,{}"/>"#,
+                    opacity,
+                    a.x,
+                    a.y,
+                    -b.x,
+                    -b.y,
+                    tl.x,
+                    tl.y,
+                    crate::base64(&bytes)
+                );
+            }
             Prim::Polygon { points, fill } => {
                 let pts: Vec<String> = points
                     .iter()

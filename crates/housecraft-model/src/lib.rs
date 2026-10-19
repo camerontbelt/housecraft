@@ -9,6 +9,7 @@ mod annotation;
 mod building;
 mod cabinet;
 mod display;
+mod imported;
 mod material;
 mod template;
 mod validate;
@@ -25,6 +26,7 @@ pub use annotation::*;
 pub use building::*;
 pub use cabinet::*;
 pub use display::*;
+pub use imported::*;
 pub use material::*;
 pub use validate::Issue;
 pub use views::*;
@@ -157,6 +159,9 @@ objects! {
     Cabinet => "cabinet",
     Countertop => "countertop",
     Appliance => "appliance",
+    Picture => "picture",
+    SymbolDef => "symbol_def",
+    Symbol => "symbol",
 }
 
 impl fmt::Display for ObjectKind {
@@ -185,6 +190,8 @@ impl ObjectKind {
                 | ObjectKind::Cabinet
                 | ObjectKind::Countertop
                 | ObjectKind::Appliance
+                | ObjectKind::Picture
+                | ObjectKind::Symbol
         )
     }
 }
@@ -427,6 +434,8 @@ impl Document {
             Object::Cabinet(c) => Some(c.floor),
             Object::Countertop(c) => Some(c.floor),
             Object::Appliance(a) => Some(a.floor),
+            Object::Picture(p) => Some(p.floor),
+            Object::Symbol(s) => Some(s.floor),
             _ => None,
         }
     }
@@ -451,6 +460,8 @@ impl Document {
             Object::Cabinet(c) => Some(c.layer),
             Object::Countertop(c) => Some(c.layer),
             Object::Appliance(a) => Some(a.layer),
+            Object::Picture(p) => Some(p.layer),
+            Object::Symbol(s) => Some(s.layer),
             _ => None,
         }
     }
@@ -609,7 +620,7 @@ macro_rules! named {
 }
 named!(
     Floor, WallType, RoomType, Layer, LayerSet, TextStyle, DefaultSet, PlanView, Camera, SectionView,
-    CadDetail, Block, Layout, Material
+    CadDetail, Block, Layout, Material, SymbolDef
 );
 
 #[cfg(test)]

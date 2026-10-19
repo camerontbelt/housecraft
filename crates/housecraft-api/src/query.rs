@@ -250,6 +250,18 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
             if c.holes.len() == 1 { "" } else { "s" }
         ),
         Object::Appliance(a) => format!("{} {} wide", a.appliance_kind.name(), fmt(a.width)),
+        Object::Picture(p) => format!(
+            "picture {}",
+            std::path::Path::new(&p.path)
+                .file_name()
+                .map_or(p.path.clone(), |f| f.to_string_lossy().into_owned())
+        ),
+        Object::SymbolDef(s) => format!("3D symbol {:?}, {} triangles", s.name, s.triangles.len()),
+        Object::Symbol(s) => format!(
+            "{} {} wide",
+            doc.get::<SymbolDef>(s.def).map_or("symbol", |d| d.name.as_str()),
+            fmt(s.width)
+        ),
         Object::MaterialAssignment(a) => format!(
             "{} painted on {}{}",
             doc.get::<Material>(a.material).map_or("?", |m| m.name.as_str()),

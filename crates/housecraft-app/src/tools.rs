@@ -50,6 +50,8 @@ pub enum Tool {
     Appliance(ApplianceKind),
     /// Place the cabinet or appliance chosen in the Library Browser.
     PlaceTemplate,
+    /// Place copies of an imported 3D symbol.
+    PlaceSymbol(Id),
 }
 
 /// The shapes offered by the stair tools.
@@ -297,7 +299,8 @@ impl Tool {
             | Tool::SinkCabinet
             | Tool::Countertop
             | Tool::Appliance(_)
-            | Tool::PlaceTemplate => Family::Cabinets,
+            | Tool::PlaceTemplate
+            | Tool::PlaceSymbol(_) => Family::Cabinets,
             _ => Family::Cad,
         }
     }
@@ -341,6 +344,7 @@ impl Tool {
             Tool::Countertop => "Custom Countertop",
             Tool::Appliance(k) => k.name(),
             Tool::PlaceTemplate => "Place from Library",
+            Tool::PlaceSymbol(_) => "Place 3D Symbol",
         }
     }
 
@@ -383,7 +387,8 @@ impl Tool {
             | Tool::SinkCabinet
             | Tool::Countertop
             | Tool::Appliance(_)
-            | Tool::PlaceTemplate => Icon::Cabinet,
+            | Tool::PlaceTemplate
+            | Tool::PlaceSymbol(_) => Icon::Cabinet,
         }
     }
 
@@ -463,7 +468,9 @@ impl Tool {
             Tool::Countertop => {
                 "Click the corners of the countertop; double-click or Enter to finish."
             }
-            Tool::Appliance(_) | Tool::PlaceTemplate => "Click near a wall to back it onto the wall.",
+            Tool::Appliance(_) | Tool::PlaceTemplate | Tool::PlaceSymbol(_) => {
+                "Click near a wall to back it onto the wall."
+            }
         }
     }
 }
