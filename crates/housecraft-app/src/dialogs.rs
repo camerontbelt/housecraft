@@ -880,6 +880,19 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                 egui::CollapsingHeader::new("Roofs")
                     .default_open(true)
                     .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            let r = &d.roof;
+                            let (mut caps, mut gut) = (r.ridge_caps, r.gutters);
+                            if ui.checkbox(&mut caps, "Ridge caps").changed() {
+                                commands.push(p(json!({"roof": {"ridge_caps": caps}})));
+                            }
+                            if ui.checkbox(&mut gut, "Gutters").changed() {
+                                commands.push(p(json!({"roof": {"gutters": gut}})));
+                            }
+                        });
+                        len_row(ui, doc, &mut app.bufs, "Frieze board (0: none)", ("roof", "frieze"), d.roof.frieze, |v| {
+                            commands.push(p(json!({"roof": {"frieze": v}})))
+                        });
                         egui::Grid::new("roof_defaults")
                             .num_columns(2)
                             .show(ui, |ui| {

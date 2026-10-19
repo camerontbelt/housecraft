@@ -582,6 +582,12 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             m.manual = true;
             Object::FramingMember(m)
         }
+        Object::Dormer(d) => {
+            let mut d = d.clone();
+            d.position = t.apply_point(d.position);
+            d.facing = t.apply_angle(d.facing);
+            Object::Dormer(d)
+        }
         Object::Deck(dk) => {
             let mut dk = dk.clone();
             dk.outline = dk.outline.iter().map(|p| t.apply_point(*p)).collect();
@@ -1381,6 +1387,7 @@ pub(crate) fn insert_objects(
                 Object::FramingMember(m) => m.floor = f,
                 Object::JoistDirection(j) => j.floor = f,
                 Object::Deck(dk) => dk.floor = f,
+                Object::Dormer(d) => d.floor = f,
                 Object::Plant(p) => p.floor = f,
                 Object::ElevationData(e) => e.floor = f,
                 Object::MaterialRegion(r) => r.floor = f,
@@ -1443,6 +1450,7 @@ pub(crate) fn swap_floors(doc: &mut Document, a: Id, b: Id, out: &mut Outcome) {
             Object::FramingMember(m) => &mut m.floor,
             Object::JoistDirection(j) => &mut j.floor,
             Object::Deck(dk) => &mut dk.floor,
+            Object::Dormer(d) => &mut d.floor,
             Object::Plant(p) => &mut p.floor,
             Object::ElevationData(e) => &mut e.floor,
             Object::MaterialRegion(r) => &mut r.floor,
@@ -1689,5 +1697,38 @@ pub(crate) fn bay_window(
             }
         }
     }
+    Ok(())
+}
+
+/// Re-pitch a roof plane keeping its eave (or ridge) where it is: the plan
+/// outline stays and the heights follow the new pitch.
+pub(crate) fn set_roof_pitch(doc: &mut Document, id: Id, pitch: f64, keep_ridge: bool, out: &mut Outcome) -> Result<(), ApiError> {
+    if !(1.0..=80.0).contains(&pitch) {
+        return invalid("pitch must be 1°–80°");
+    }
+    let r = expect::<RoofPlane>(doc, id)?.clone();
+    if r.gable {
+        return invalid("a gable infill has no pitch");
+    }
+    let pts: Vec<housecraft_geom::DVec3> = r.outline.iter().map(|q| { let [x, y, z] = q.mm(); housecraft_geom::DVec3::new(x, y, z) }).collect();
+    let down = housecraft_geom::roof_extras::downslope(&pts);
+    // Distance up the slope, measured in plan from the lowest (or highest) point.
+    let up = |p: housecraft_geom::DVec3| -(p.truncate().dot(down));
+    let pivot = if keep_ridge {
+        pts.iter().copied().max_by(|a, b| a.z.total_cmp(&b.z)).expect("outline")
+    } else {
+        pts.iter().copied().min_by(|a, b| a.z.total_cmp(&b.z)).expect("outline")
+    };
+    let tan = pitch.to_radians().tan();
+    let outline = pts
+        .iter()
+        .map(|p| Point3::from_mm(p.x, p.y, pivot.z + (up(*p) - up(pivot)) * tan))
+        .collect();
+    if let Some(Object::RoofPlane(x)) = doc.objects.get_mut(&id) {
+        x.outline = outline;
+        x.pitch = pitch;
+        x.auto = false;
+    }
+    out.modified.push(id);
     Ok(())
 }

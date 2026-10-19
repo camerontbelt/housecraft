@@ -1067,6 +1067,27 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "keyframes": keys })));
             }
         }
+        Object::Dormer(d) => {
+            ed.choice(ui, "Roof", "style", d.style, &[(DormerStyle::Gable, "Gable"), (DormerStyle::Shed, "Shed")]);
+            for (label, field, v) in [
+                ("Width", "width", d.width),
+                ("Front Wall Height", "wall_height", d.wall_height),
+                ("Overhang", "overhang", d.overhang),
+                ("Roof Thickness", "thickness", d.thickness),
+            ] {
+                if let Some(l) = ed.length(ui, label, field, v) {
+                    ed.out.push(patch(id, json!({ field: l })));
+                }
+            }
+            if let Some(p) = ed.number(ui, "Pitch (°)", "pitch", d.pitch) {
+                ed.out.push(patch(id, json!({ "pitch": p.clamp(1.0, 80.0) })));
+            }
+            if let Some(f) = ed.number(ui, "Facing (°)", "facing", d.facing) {
+                ed.out.push(patch(id, json!({ "facing": f })));
+            }
+            ed.check(ui, "Window", "window", "Window in the front", d.window);
+            ed.pick::<Layer>(ui, "Layer", "layer", Some(d.layer), None);
+        }
         Object::Deck(dk) => {
             for (label, field, v) in [
                 ("Top Height", "height", dk.height),
@@ -2069,6 +2090,27 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     r.pitch
                 ));
                 ui.end_row();
+                Ed::label(ui, "Change Pitch");
+                ui.horizontal(|ui| {
+                    let key = ed.key("new_pitch");
+                    let mut v = ui.data_mut(|d| d.get_temp::<f64>(key)).unwrap_or(r.pitch);
+                    ui.add(egui::DragValue::new(&mut v).range(1.0..=80.0).suffix("°").speed(0.2));
+                    ui.data_mut(|d| d.insert_temp(key, v));
+                    if ui.button("Keep Eave").on_hover_text("The low edge stays put; the ridge moves").clicked() {
+                        ed.out.push(Command::SetRoofPitch { id, pitch: v, keep_ridge: false });
+                    }
+                    if ui.button("Keep Ridge").on_hover_text("The high edge stays put; the eave moves").clicked() {
+                        ed.out.push(Command::SetRoofPitch { id, pitch: v, keep_ridge: true });
+                    }
+                });
+                ui.end_row();
+                if !r.skylights.is_empty() {
+                    Ed::label(ui, "Skylights");
+                    if ui.button(format!("Remove {} skylight(s)", r.skylights.len())).clicked() {
+                        ed.out.push(patch(id, json!({ "skylights": [] })));
+                    }
+                    ui.end_row();
+                }
                 if let Some(l) = ed.length(ui, "Thickness", "thickness", r.thickness) {
                     ed.out.push(patch(id, json!({ "thickness": l })));
                 }
@@ -3051,6 +3093,8 @@ fn ceiling_editor(ui: &mut Ui, ed: &mut Ed<'_>, current: CeilingStyle) -> Option
                 CeilingStyle::Tray {
                     inset: Length::from_inches(18.0),
                     rise: Length::from_inches(12.0),
+                    sloped: false,
+                    rope_light: false,
                 },
                 CeilingStyle::Coffered {
                     spacing: Length::from_inches(48.0),
@@ -3072,13 +3116,22 @@ fn ceiling_editor(ui: &mut Ui, ed: &mut Ed<'_>, current: CeilingStyle) -> Option
             }
         });
     ui.end_row();
-    if let CeilingStyle::Tray { inset, rise } = current {
+    if let CeilingStyle::Tray { inset, rise, sloped, rope_light } = current {
         let i = ed.length(ui, "Tray Inset", "tray_inset", inset);
         let r = ed.length(ui, "Tray Rise", "tray_rise", rise);
-        if i.is_some() || r.is_some() {
+        Ed::label(ui, "Tray Style");
+        let (mut s, mut l) = (sloped, rope_light);
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut s, "Sloped sides");
+            ui.checkbox(&mut l, "Rope light");
+        });
+        ui.end_row();
+        if i.is_some() || r.is_some() || s != sloped || l != rope_light {
             chosen = CeilingStyle::Tray {
                 inset: i.unwrap_or(inset),
                 rise: r.unwrap_or(rise),
+                sloped: s,
+                rope_light: l,
             };
         }
     }

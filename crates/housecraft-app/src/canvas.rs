@@ -1143,6 +1143,16 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     app.plan.first_wall = None;
                 }
             }
+            Tool::Dormer(style) => commands.push(Command::AddDormer {
+                floor: Some(app.plan.floor),
+                at: pt(p),
+                facing: None,
+                width: None,
+                wall_height: None,
+                pitch: None,
+                style,
+            }),
+            Tool::Skylight => commands.push(Command::AddSkylight { at: pt(p), width: None, length: None }),
             Tool::BayWindow(_) | Tool::CornerWindow => {
                 let tol = PICK_PX * view.mpp;
                 let hit = wall_geoms(doc, app.plan.floor)

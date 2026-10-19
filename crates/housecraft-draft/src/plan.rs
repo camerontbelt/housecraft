@@ -589,6 +589,36 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             }
         }
     }
+    // Dormers and skylights, drawn dashed like the roof above.
+    for d in doc.iter::<Dormer>().filter(|d| d.floor == opts.floor) {
+        let look = ctx.look(d.layer);
+        if !look.visible {
+            continue;
+        }
+        let dashed = Stroke { dash: &[2.0, 1.0], ..look.stroke };
+        if let Some(p) = housecraft_geom::dormer::plan(doc, d) {
+            out.push(Some(d.id), Prim::Polyline { points: p.outline, closed: true, stroke: dashed });
+            if let Some((a, b)) = p.ridge {
+                out.push(Some(d.id), Prim::Polyline { points: vec![a, b], closed: false, stroke: dashed });
+            }
+        }
+    }
+    for r in doc.iter::<RoofPlane>().filter(|r| r.floor == opts.floor && !r.skylights.is_empty()) {
+        let look = ctx.look(r.layer);
+        if !look.visible {
+            continue;
+        }
+        let pts: Vec<housecraft_geom::DVec3> = r.outline.iter().map(|q| { let [x, y, z] = q.mm(); housecraft_geom::DVec3::new(x, y, z) }).collect();
+        let down = housecraft_geom::roof_extras::downslope(&pts);
+        let across = DVec2::new(-down.y, down.x);
+        for s in &r.skylights {
+            let c = v2(s.center);
+            let (hl, hw) = (s.length.mm() / 2.0, s.width.mm() / 2.0);
+            let pts = vec![c - down * hl - across * hw, c - down * hl + across * hw, c + down * hl + across * hw, c + down * hl - across * hw];
+            out.push(Some(r.id), Prim::Polyline { points: pts.clone(), closed: true, stroke: Stroke { dash: &[2.0, 1.0], ..look.stroke } });
+            out.push(Some(r.id), Prim::Polyline { points: vec![pts[0], pts[2]], closed: false, stroke: Stroke { dash: &[2.0, 1.0], ..look.stroke } });
+        }
+    }
     for dk in doc.iter::<Deck>().filter(|d| d.floor == opts.floor) {
         let look = ctx.look(dk.layer);
         if look.visible

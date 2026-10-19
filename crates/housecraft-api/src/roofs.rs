@@ -85,6 +85,7 @@ fn regenerate(doc: &mut Document, floor: Id, out: &mut Outcome) -> usize {
             gable: g.gable,
             auto: true,
             layer,
+            skylights: Vec::new(),
         }));
     }
     generated.len()
@@ -185,6 +186,7 @@ pub(crate) fn add_plane(
         gable: false,
         auto: false,
         layer: defaults.layers.roofs.unwrap_or(defaults.layers.walls),
+        skylights: Vec::new(),
     }));
     Ok(())
 }

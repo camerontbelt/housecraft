@@ -590,6 +590,39 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
     crate::site::build(doc, only_floor, &mut mesh);
     crate::framing::build(doc, only_floor, &mut mesh);
     crate::deck::build(doc, only_floor, &mut mesh);
+    // Roof trim and accessories.
+    let roof = &doc.active_defaults().roof;
+    if roof.ridge_caps {
+        mesh.begin(Id(0), Category::Roof);
+        crate::roof_extras::ridge_caps(doc, only_floor, &mut mesh);
+        mesh.end();
+    }
+    if roof.gutters {
+        mesh.begin(Id(0), Category::Roof);
+        crate::roof_extras::gutters(doc, only_floor, roof.fascia.mm(), &mut mesh);
+        mesh.end();
+    }
+    if roof.frieze.mm() > 1.0 {
+        for floor in doc.floors_by_elevation().into_iter().filter(|f| f.foundation.is_none()) {
+            if only_floor.is_none_or(|o| o == floor.id) {
+                crate::roof_extras::frieze(doc, floor, roof.frieze.mm(), &mut mesh);
+            }
+        }
+    }
+    for plane in doc.iter::<housecraft_model::RoofPlane>().filter(|p| !p.skylights.is_empty()) {
+        if only_floor.is_none_or(|f| f == plane.floor) {
+            mesh.begin(plane.id, Category::Roof);
+            crate::roof_extras::skylights(plane, &mut mesh);
+            mesh.end();
+        }
+    }
+    for d in doc.iter::<housecraft_model::Dormer>() {
+        if only_floor.is_none_or(|f| f == d.floor) {
+            mesh.begin(d.id, Category::Roof);
+            crate::dormer::mesh(doc, d, &mut mesh);
+            mesh.end();
+        }
+    }
     // Emissive surfaces light their surroundings: one light per glowing
     // object, at the middle of its glow, brighter the more glows.
     let mut glow: std::collections::BTreeMap<usize, (DVec3, f64, [f32; 3])> = std::collections::BTreeMap::new();
@@ -1377,7 +1410,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                 );
             }
             CeilingStyle::Barrel { rise } => barrel_ceiling(&region.polygon, zc, rise.mm(), mesh),
-            CeilingStyle::Tray { inset, rise } => {
+            CeilingStyle::Tray { inset, rise, sloped, rope_light } => {
                 let inner = crate::math::inset_polygon(&region.polygon, inset.mm());
                 let outer = &region.polygon;
                 let n = outer.len();
@@ -1386,6 +1419,19 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                     for i in 0..n {
                         let j = (i + 1) % n;
                         let (o0, o1, i0, i1) = (outer[i], outer[j], inner[i], inner[j]);
+                        if sloped {
+                            // One sloped face from the walls up to the raised centre.
+                            mesh.polygon(
+                                &[
+                                    DVec3::new(o0.x, o0.y, zc),
+                                    DVec3::new(o1.x, o1.y, zc),
+                                    DVec3::new(i1.x, i1.y, zr),
+                                    DVec3::new(i0.x, i0.y, zr),
+                                ],
+                                Surface::Ceiling,
+                            );
+                            continue;
+                        }
                         // Lower ring, the vertical step, and the raised centre.
                         mesh.polygon(
                             &[
@@ -1408,6 +1454,20 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
                     }
                     let top: Vec<DVec3> = inner.iter().map(|p| DVec3::new(p.x, p.y, zr)).collect();
                     mesh.polygon(&top, Surface::Ceiling);
+                    if rope_light {
+                        // Cove lighting: a warm rope light hidden along the step.
+                        let ring: Vec<DVec2> = inner.iter().chain(inner.first()).copied().collect();
+                        for (p, _) in crate::site::along(&ring, false, 600.0) {
+                            mesh.lights.push(MeshLight {
+                                object: owner,
+                                position: to_m(p.extend(zc + 40.0)),
+                                color: [1.0, 0.82, 0.6],
+                                intensity: 0.12,
+                                shadows: false,
+                                spread: 0,
+                            });
+                        }
+                    }
                 } else {
                     mesh.polygon(&at(zc), Surface::Ceiling);
                 }

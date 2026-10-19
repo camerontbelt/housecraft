@@ -789,6 +789,28 @@ pub enum Command {
     /// Type an object's own label (replacing its kind's template from the
     /// default set; "-" hides it), or `None` to go back to the template.
     SetObjectLabel { id: Id, text: Option<String> },
+    /// A dormer on the roof at plan point `at`, facing down the roof plane
+    /// there unless `facing` is given.
+    AddDormer {
+        floor: Option<Id>,
+        at: Point2,
+        facing: Option<f64>,
+        width: Option<Length>,
+        wall_height: Option<Length>,
+        pitch: Option<f64>,
+        #[serde(default)]
+        style: DormerStyle,
+    },
+    /// A skylight in the roof plane at plan point `at`.
+    AddSkylight { at: Point2, width: Option<Length>, length: Option<Length> },
+    /// Change a roof plane's pitch, pivoting on its eave (or on its ridge
+    /// with `keep_ridge`).
+    SetRoofPitch {
+        id: Id,
+        pitch: f64,
+        #[serde(default)]
+        keep_ridge: bool,
+    },
     /// Two windows meeting at a corner: one at the end of `wall`, one at the
     /// start of the wall joined there (or at `wall`'s start and the wall
     /// ending there, with `at_start`).
@@ -1152,6 +1174,9 @@ impl Command {
             Command::AddStandardPlanViews => "add_standard_plan_views",
             Command::SetAngleFormat { .. } => "set_angle_format",
             Command::AddCornerWindow { .. } => "add_corner_window",
+            Command::AddDormer { .. } => "add_dormer",
+            Command::AddSkylight { .. } => "add_skylight",
+            Command::SetRoofPitch { .. } => "set_roof_pitch",
             Command::AddBayWindow { .. } => "add_bay_window",
             Command::SetObjectInfo { .. } => "set_object_info",
             Command::SetDimensionStyle { .. } => "set_dimension_style",
@@ -2868,6 +2893,57 @@ impl Command {
             }
             Command::AddStandardPlanViews => ops::standard_plan_views(doc, &mut out)?,
             Command::SetAngleFormat { format } => doc.settings.angle_format = *format,
+            Command::AddDormer { floor, at, facing, width, wall_height, pitch, style } => {
+                let p = housecraft_geom::v2(*at);
+                // The roof plane under the point gives the floor and facing.
+                let plane = doc
+                    .iter::<RoofPlane>()
+                    .filter(|r| !r.gable && floor.is_none_or(|f| r.floor == f))
+                    .find(|r| {
+                        let pts: Vec<housecraft_geom::DVec3> = r.outline.iter().map(|q| { let [x, y, z] = q.mm(); housecraft_geom::DVec3::new(x, y, z) }).collect();
+                        housecraft_geom::roof_extras::plane_z(&pts, p).is_some()
+                    })
+                    .cloned()
+                    .ok_or_else(|| ApiError::Invalid("a dormer goes on a sloped roof plane".into()))?;
+                let pts: Vec<housecraft_geom::DVec3> = plane.outline.iter().map(|q| { let [x, y, z] = q.mm(); housecraft_geom::DVec3::new(x, y, z) }).collect();
+                let face = facing.unwrap_or_else(|| housecraft_geom::roof_extras::downslope(&pts).to_angle().to_degrees());
+                let layer = doc.defaults_for(plane.floor).layers.roofs.unwrap_or(plane.layer);
+                out.created.push(doc.insert(Dormer {
+                    id: Id(0),
+                    floor: plane.floor,
+                    layer,
+                    position: *at,
+                    facing: face,
+                    width: width.unwrap_or(Length::from_feet(5.0)),
+                    wall_height: wall_height.unwrap_or(Length::from_feet(3.0)),
+                    pitch: pitch.unwrap_or(plane.pitch.clamp(15.0, 60.0)),
+                    style: *style,
+                    window: true,
+                    overhang: Length::from_inches(8.0),
+                    thickness: plane.thickness,
+                }));
+            }
+            Command::AddSkylight { at, width, length } => {
+                let p = housecraft_geom::v2(*at);
+                let plane = doc
+                    .iter::<RoofPlane>()
+                    .filter(|r| !r.gable)
+                    .find(|r| {
+                        let pts: Vec<housecraft_geom::DVec3> = r.outline.iter().map(|q| { let [x, y, z] = q.mm(); housecraft_geom::DVec3::new(x, y, z) }).collect();
+                        housecraft_geom::roof_extras::plane_z(&pts, p).is_some()
+                    })
+                    .map(|r| r.id)
+                    .ok_or_else(|| ApiError::Invalid("a skylight goes in a sloped roof plane".into()))?;
+                if let Some(Object::RoofPlane(r)) = doc.objects.get_mut(&plane) {
+                    r.skylights.push(Skylight {
+                        center: *at,
+                        width: width.unwrap_or(Length::from_inches(22.5)),
+                        length: length.unwrap_or(Length::from_inches(46.5)),
+                    });
+                }
+                out.modified.push(plane);
+            }
+            Command::SetRoofPitch { id, pitch, keep_ridge } => ops::set_roof_pitch(doc, *id, *pitch, *keep_ridge, &mut out)?,
             Command::AddCornerWindow { wall, at_start, width, height, sill, style } => {
                 let w = expect::<Wall>(doc, *wall)?.clone();
                 let corner = if *at_start { w.start } else { w.end };

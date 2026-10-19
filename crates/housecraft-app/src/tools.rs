@@ -11,6 +11,10 @@ use crate::icons::Icon;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tool {
+    /// A dormer on the roof.
+    Dormer(housecraft_api::model::DormerStyle),
+    /// A skylight in a roof plane.
+    Skylight,
     /// A bay, box or bow window built out from a wall.
     BayWindow(housecraft_api::BayStyle),
     /// Two windows meeting at a wall corner.
@@ -323,7 +327,12 @@ impl Family {
                 Tool::BlockingBox,
                 Tool::Insulation,
             ],
-            Family::Roofs => &[Tool::RoofPlane],
+            Family::Roofs => &[
+                Tool::RoofPlane,
+                Tool::Dormer(housecraft_api::model::DormerStyle::Gable),
+                Tool::Dormer(housecraft_api::model::DormerStyle::Shed),
+                Tool::Skylight,
+            ],
             Family::Stairs => &[
                 Tool::Stair(StairKind::Straight),
                 Tool::Stair(StairKind::L),
@@ -401,7 +410,7 @@ impl Tool {
             Tool::Window(_) | Tool::BayWindow(_) | Tool::CornerWindow => Family::Windows,
             Tool::Dimension | Tool::AngularDimension => Family::Dimensions,
             Tool::Text | Tool::TextArrow | Tool::Callout | Tool::Marker | Tool::RevisionCloud => Family::Text,
-            Tool::RoofPlane => Family::Roofs,
+            Tool::RoofPlane | Tool::Dormer(_) | Tool::Skylight => Family::Roofs,
             Tool::SectionLine(_) => Family::Cameras,
             Tool::Stair(_) => Family::Stairs,
             Tool::Electrical(_) | Tool::ConnectSwitch => Family::Electrical,
@@ -450,6 +459,9 @@ impl Tool {
             Tool::Marker => "Marker",
             Tool::RevisionCloud => "Revision Cloud",
             Tool::RoofPlane => "Roof Plane",
+            Tool::Dormer(housecraft_api::model::DormerStyle::Gable) => "Gable Dormer",
+            Tool::Dormer(housecraft_api::model::DormerStyle::Shed) => "Shed Dormer",
+            Tool::Skylight => "Skylight",
             Tool::SectionLine(SectionKind::Section) => "Cross Section / Elevation",
             Tool::SectionLine(SectionKind::Elevation) => "Elevation",
             Tool::Stair(StairKind::Straight) => "Straight Stair",
@@ -543,7 +555,8 @@ impl Tool {
             Tool::ObjectPainter => Icon::Select,
             Tool::CrossBox | Tool::BlockingBox | Tool::Insulation => Icon::Box,
             Tool::Callout | Tool::Marker | Tool::RevisionCloud => Icon::Text,
-            Tool::RoofPlane => Icon::Roof,
+            Tool::RoofPlane | Tool::Dormer(_) => Icon::Roof,
+            Tool::Skylight => Icon::Window,
             Tool::SectionLine(_) => Icon::Camera,
             Tool::Stair(_) => Icon::Stairs,
             Tool::Electrical(_) | Tool::ConnectSwitch => Icon::Electrical,
@@ -632,6 +645,8 @@ impl Tool {
             Tool::SectionLine(_) => {
                 "Click where the view stands, then click in the direction to look."
             }
+            Tool::Dormer(_) => "Click on a roof plane where the dormer's front goes; it faces down the roof.",
+            Tool::Skylight => "Click on a roof plane to place a skylight.",
             Tool::RoofPlane => {
                 "Click the two ends of the eave, then the other corners; double-click or Enter to finish."
             }

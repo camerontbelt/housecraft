@@ -242,17 +242,17 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | RF-01 | Automatic roofs: gable, hip, shed, Dutch gable, gambrel, mansard; per-eave pitch/overhang/returns; auto-rebuild | P1 | M3 ✓ |
-| RF-02 | Auto dormers (floating & structural): eyebrow, gable, hip, shed, gambrel, mansard, barrel, hip-curved | P2 | M3 |
+| RF-02 | Auto dormers (floating & structural): eyebrow, gable, hip, shed, gambrel, mansard, barrel, hip-curved | P2 | M3 ◐ Gable and Shed Dormer tools: floating dormers with a window, cheek walls and a roof that runs back into the main roof; no structural, eyebrow, hip or barrel dormers |
 | RF-03 | Roof options: raised plate/energy heel, curved, fascia, gutters, exposed rafters, returns | P1 | M3 ◐ raised plate/heel, fascia; curved, gutters, exposed rafters, returns later |
-| RF-04 | Roof pivot locks (rafter/truss/remodel) | P2 | M3 |
+| RF-04 | Roof pivot locks (rafter/truss/remodel) | P2 | M3 ◐ roof plane Change Pitch, keeping the eave or the ridge in place; no per-plane locks for trusses or remodels |
 | RF-05 | Draw/edit roof planes in 2D and 3D | P1 | M3 ◐ draw roof planes in 2D; 3D editing later |
-| RF-06 | Ridge caps with profiles | P2 | M3 |
+| RF-06 | Ridge caps with profiles | P2 | M3 ◐ ridge caps along every ridge and hip (Default Settings > Roofs); one cap profile |
 | RF-07 | Rafter spacing per plane | P2 | M6 |
-| RF-08 | Skylights with framing; shape editor | P2 | M3 |
+| RF-08 | Skylights with framing; shape editor | P2 | M3 ◐ Skylight tool: curb skylights in roof planes, shown in plan; no framing or shape editor, and rebuilding an automatic roof drops them |
 | RF-09 | Automatic ceilings; manual cathedral, tray, coffered, barrel | P1 | M3 ✓ |
-| RF-10 | Tray ceiling tool (slope, moldings, rope lights) | P2 | M3 |
+| RF-10 | Tray ceiling tool (slope, moldings, rope lights) | P2 | M3 ✓ tray ceilings with inset and rise, straight or sloped sides, and an optional rope light in the cove |
 | RF-11 | Layered roof assemblies (SIP roofs) | P2 | M3 |
-| RF-12 | Gutters & frieze moldings with custom profiles | P2 | M3 |
+| RF-12 | Gutters & frieze moldings with custom profiles | P2 | M3 ◐ gutters along the eaves and a frieze board under them (Default Settings > Roofs); fixed profiles |
 | RF-13 | Shadow boards on fascia | P3 | M5 ✓ |
 | RF-14 | Convert roof/ceiling planes to polylines | P3 | M4 |
 

@@ -517,6 +517,15 @@ impl Default for StairDefaults {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct RoofDefaults {
+    /// Caps along ridges and hips.
+    #[serde(default = "crate::display::yes_default")]
+    pub ridge_caps: bool,
+    /// Gutters along the eaves.
+    #[serde(default = "crate::display::yes_default")]
+    pub gutters: bool,
+    /// A frieze board this tall at the top of exterior walls (none: 0).
+    #[serde(default)]
+    pub frieze: Length,
     /// Degrees above horizontal (6 in 12 = 26.57°).
     pub pitch: f64,
     /// Eave overhang beyond the walls' outer faces.
@@ -542,6 +551,9 @@ fn fascia_depth() -> Length {
 impl Default for RoofDefaults {
     fn default() -> Self {
         RoofDefaults {
+            ridge_caps: true,
+            gutters: true,
+            frieze: Length::ZERO,
             pitch: (6.0f64 / 12.0).atan().to_degrees(),
             overhang: Length::from_inches(16.0),
             rake_overhang: Length::from_inches(12.0),
@@ -641,4 +653,8 @@ impl Default for FillStyle {
     fn default() -> Self {
         FillStyle { pattern: FillPattern::Hatch, color: None, spacing: Length::from_inches(6.0), angle: 45.0, opacity: 1.0 }
     }
+}
+
+pub(crate) fn yes_default() -> bool {
+    true
 }

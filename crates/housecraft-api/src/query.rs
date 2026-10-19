@@ -263,6 +263,7 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
             }
         },
         Object::Walkthrough(w) => format!("walkthrough {:?}, {} keyframes, {:.0} s", w.name, w.keyframes.len(), w.duration()),
+        Object::Dormer(d) => format!("{:?} dormer, {} wide", d.style, fmt(d.width)).to_lowercase(),
         Object::Deck(dk) => format!("{}, top at {}", if dk.platform { "platform" } else { "deck" }, fmt(dk.height)),
         Object::JoistDirection(j) => format!("{} joist direction {:.0}°", if j.ceiling { "ceiling" } else { "floor" }, j.angle),
         Object::Plant(p) => format!("{} ({}), {} high", p.name, p.form.name().to_lowercase(), fmt(p.height)),

@@ -7,6 +7,7 @@
 pub mod boolean;
 pub mod cabinets;
 pub mod deck;
+pub mod dormer;
 pub mod electrical;
 pub mod framing;
 pub mod math;
@@ -14,6 +15,7 @@ pub mod mesh;
 pub mod pattern;
 pub mod piers;
 pub mod roof;
+pub mod roof_extras;
 pub mod rooms;
 pub mod site;
 pub mod skeleton;

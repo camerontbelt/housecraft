@@ -185,6 +185,7 @@ objects! {
     FramingMember => "framing_member",
     JoistDirection => "joist_direction",
     Deck => "deck",
+    Dormer => "dormer",
     Walkthrough => "walkthrough",
     Annotation3d => "annotation3d",
 }
@@ -227,6 +228,7 @@ impl ObjectKind {
                 | ObjectKind::FramingMember
                 | ObjectKind::JoistDirection
                 | ObjectKind::Deck
+                | ObjectKind::Dormer
                 | ObjectKind::MaterialRegion
         )
     }
@@ -503,6 +505,7 @@ impl Document {
             Object::FramingMember(m) => Some(m.floor),
             Object::JoistDirection(j) => Some(j.floor),
             Object::Deck(d) => Some(d.floor),
+            Object::Dormer(d) => Some(d.floor),
             Object::MaterialRegion(r) => Some(r.floor),
             _ => None,
         }
@@ -540,6 +543,7 @@ impl Document {
             Object::FramingMember(m) => Some(m.layer),
             Object::JoistDirection(j) => Some(j.layer),
             Object::Deck(d) => Some(d.layer),
+            Object::Dormer(d) => Some(d.layer),
             Object::MaterialRegion(r) => Some(r.layer),
             _ => None,
         }

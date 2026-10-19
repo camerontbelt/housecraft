@@ -223,7 +223,7 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                     c.positive(id, "ceiling_height", h);
                 }
                 match r.ceiling {
-                    CeilingStyle::Tray { inset, rise } => {
+                    CeilingStyle::Tray { inset, rise, .. } => {
                         c.positive(id, "ceiling.inset", inset);
                         c.positive(id, "ceiling.rise", rise);
                     }
@@ -754,6 +754,13 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 c.finite(id, "keyframes", &flat);
                 if w.keyframes.iter().any(|k| k.seconds < 0.0 || k.pause < 0.0) {
                     c.issue(id, "keyframe times can't be negative");
+                }
+            }
+            Object::Dormer(d) => {
+                c.reference(id, "floor", d.floor, K::Floor);
+                c.reference(id, "layer", d.layer, K::Layer);
+                if d.width.mm() < 300.0 || d.wall_height.mm() < 0.0 || !(1.0..=80.0).contains(&d.pitch) {
+                    c.issue(id, "a dormer needs some width, a wall height and a pitch of 1°–80°");
                 }
             }
             Object::Deck(dk) => {

@@ -383,6 +383,8 @@ fn every_object_kind_round_trips_through_json() {
                 {{"op": "add_framing_member", "role": "post", "a": [0,0,0], "b": [0,0,"8'"]}},
                 {{"op": "add_joist_direction", "at": ["5'","5'"], "angle": 90}},
                 {{"op": "add_deck", "points": [["20'",0],["30'",0],["30'","10'"],["20'","10'"]]}},
+                {{"op": "add_dormer", "at": ["10'","3'"]}},
+                {{"op": "add_skylight", "at": ["10'","27'"]}},
                 {{"op": "orbit_walkthrough", "name": "Orbit"}},
                 {{"op": "add_annotation3d", "mark": {{"type": "note", "at": [0,0,1000], "text": "Hi"}}}},
                 {{"op": "add_solid", "shape": {{"type": "extrude", "points": [[0,0],[1000,0],[0,1000]], "height": 500}}}},
@@ -2357,4 +2359,20 @@ fn bay_and_corner_windows() {
     s.apply(&[Command::AddCornerWindow { wall: first, at_start: false, width: Length::from_feet(3.0), height: None, sill: None, style: None }])
         .unwrap();
     assert_eq!(s.document().iter::<Opening>().count(), 5);
+}
+
+#[test]
+fn roof_pitch_pivots_on_eave_or_ridge() {
+    let mut s = boxed();
+    s.apply(&[Command::BuildRoof { floor: None, auto_rebuild: false }]).unwrap();
+    let plane = s.document().iter::<RoofPlane>().find(|r| !r.gable).unwrap().clone();
+    let low = |r: &RoofPlane| r.outline.iter().map(|p| p.2.mm()).fold(f64::MAX, f64::min);
+    let high = |r: &RoofPlane| r.outline.iter().map(|p| p.2.mm()).fold(f64::MIN, f64::max);
+    s.apply(&[Command::SetRoofPitch { id: plane.id, pitch: plane.pitch + 10.0, keep_ridge: false }]).unwrap();
+    let r = s.document().get::<RoofPlane>(plane.id).unwrap().clone();
+    assert!((low(&r) - low(&plane)).abs() < 1.0, "eave kept");
+    assert!(high(&r) > high(&plane) + 100.0, "ridge rose");
+    s.apply(&[Command::SetRoofPitch { id: plane.id, pitch: plane.pitch, keep_ridge: true }]).unwrap();
+    let r2 = s.document().get::<RoofPlane>(plane.id).unwrap().clone();
+    assert!((high(&r2) - high(&r)).abs() < 1.0, "ridge kept");
 }

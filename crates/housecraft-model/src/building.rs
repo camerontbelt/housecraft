@@ -694,6 +694,9 @@ pub struct RoofPlane {
     #[serde(default)]
     pub auto: bool,
     pub layer: Id,
+    /// Skylights set in the plane.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skylights: Vec<Skylight>,
 }
 
 impl Wall {
@@ -1065,7 +1068,16 @@ pub enum CeilingStyle {
     /// Follows the underside of the roof above (flat until a roof exists).
     Vaulted,
     /// A raised centre: the flat ceiling steps up `rise` at `inset` from the walls.
-    Tray { inset: Length, rise: Length },
+    Tray {
+        inset: Length,
+        rise: Length,
+        /// The step slopes up from the walls instead of rising straight.
+        #[serde(default)]
+        sloped: bool,
+        /// A rope light along the inside of the step.
+        #[serde(default)]
+        rope_light: bool,
+    },
     /// Open to the floor above (no ceiling or platform drawn).
     None,
     /// A flat ceiling with a grid of beams `depth` deep every `spacing`.
@@ -1107,4 +1119,48 @@ pub enum DoorGlass {
     Full,
     /// The upper part (garage doors: the top section).
     Upper,
+}
+
+/// A curb-mounted skylight in a roof plane.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Skylight {
+    /// Centre in plan.
+    pub center: Point2,
+    /// Across the slope.
+    pub width: Length,
+    /// Up the slope (measured in plan).
+    pub length: Length,
+}
+
+/// A dormer sitting on the roof: front wall (with a window), cheek walls
+/// and its own gable or shed roof running back to the main roof.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Dormer {
+    pub id: Id,
+    /// The floor whose roof it sits on.
+    pub floor: Id,
+    pub layer: Id,
+    /// Middle of the front wall's foot, in plan.
+    pub position: Point2,
+    /// Direction the front faces (down the roof), degrees counter-clockwise from east.
+    pub facing: f64,
+    pub width: Length,
+    /// Front wall height, from the roof to the eave.
+    pub wall_height: Length,
+    /// The dormer roof's pitch, degrees.
+    pub pitch: f64,
+    pub style: DormerStyle,
+    #[serde(default = "yes")]
+    pub window: bool,
+    pub overhang: Length,
+    pub thickness: Length,
+}
+
+/// A dormer's roof.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DormerStyle {
+    #[default]
+    Gable,
+    Shed,
 }
