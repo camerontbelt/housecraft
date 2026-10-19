@@ -195,7 +195,7 @@ These come from reading the whole list and change the architecture, not just the
 | CB-05 | Shelf spacing per opening | P2 | M5 ✓ |
 | CB-06 | Waterfall countertop edges | P2 | M5 ✓ |
 | CB-07 | Custom countertops: holes, edge profiles, thickness, height | P1 | M5 ✓ |
-| CB-08 | Custom backsplash that wraps cabinets/openings/appliances | P2 | M5 ◐ backsplash along any path, wrapping corners and ends; automatic cut-outs at windows later |
+| CB-08 | Custom backsplash that wraps cabinets/openings/appliances | P2 | M5 ✓ backsplash along any path, wrapping corners and ends; it stops under the sills of windows it runs past |
 | CB-09 | Auto/manual fillers with exclusions | P1 | M5 ✓ |
 | CB-10 | Blind-corner behaviour | P2 | M5 ✓ |
 | CB-11 | Independent side/back/front configuration; side & back thickness | P2 | M5 ✓ |
@@ -233,7 +233,7 @@ These come from reading the whole list and change the architecture, not just the
 | DW-13 | Custom plan symbols for symbol windows | P3 | M5 ✓ any CAD block as a window's plan symbol, stretched over the opening |
 | DW-14 | Custom muntins from CAD | P3 | M5 ✓ CAD > Make Window Grille from Selection; plus across × up grids |
 | DW-15 | Window treatments (curtains, blinds) | P3 | M5 ✓ curtains, blinds and roller shades with an open amount, in plan and 3D |
-| DW-16 | Shutters (parametric or symbol, own layer) | P2 | M5 ◐ louvered, raised-panel and board shutters in plan and 3D; drawn on the window's layer, not their own |
+| DW-16 | Shutters (parametric or symbol, own layer) | P2 | M5 ✓ louvered, raised-panel and board shutters in plan and 3D, on the window's layer or one of their own |
 | DW-17 | Lintels, sills, aprons | P2 | M3 ✓ opening Trim: exterior lintel and sill, interior apron (3D) |
 | DW-18 | Glazing area and U-factor | P2 | M4 ✓ U-factor and SHGC per door/window; Glass Area, U-Factor, SHGC schedule columns |
 
@@ -414,11 +414,11 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-03 | Bearing/angle display formats (azimuth, quadrant, DMS) | P1 | M1 ◐ Preferences > Angles: decimal, DMS, bearings or azimuth for angular dimensions and line/wall directions; plot-plan labels keep the bearing as typed |
 | SITE-04 | Terrain model from elevation data: smoothing, triangulation, skirt, contours | P2 | M6 ✓ terrain from elevation data: trend plane plus distance blending, smoothing passes, building cut-out, skirt, contours |
 | SITE-05 | Plot plans, site plans, subdivisions from bearings, distances and setbacks | P2 | M6 ◐ Terrain > Plot Plan from Bearings: lot lines from bearings and distances, labelled, with a setback line; no multi-lot subdivisions |
-| SITE-06 | Terrain import: text/GPS/GPX, DWG/DXF | P2 | M6 ◐ text/CSV x,y,z and GPX survey points; no DWG/DXF terrain import |
-| SITE-07 | Elevation splines, lines, regions, points; subfloor marker; clear terrain | P2 | M6 ◐ elevation points, lines (smooth splines) and flat regions; Clear Terrain; no subfloor marker |
+| SITE-06 | Terrain import: text/GPS/GPX, DWG/DXF | P2 | M6 ◐ text/CSV x,y,z and GPX survey points; DXF survey drawings (contours, 3D break lines, spot points); no DWG |
+| SITE-07 | Elevation splines, lines, regions, points; subfloor marker; clear terrain | P2 | M6 ✓ elevation points, lines (smooth splines), flat regions, a subfloor marker that follows the building; Clear Terrain |
 | SITE-08 | Terrain elevation labels | P2 | M6 ✓ spot heights and major contours labelled in plan |
 | SITE-09 | Terrain modifiers: hills, valleys, elevated and flat regions | P2 | M6 ✓ hills, valleys and flat (elevated) regions |
-| SITE-10 | Retaining walls and terrain breaks | P2 | M6 ◐ retaining walls with a top height that holds the terrain along them; no separate terrain-break lines |
+| SITE-10 | Retaining walls and terrain breaks | P2 | M6 ✓ retaining walls hold the ground at their top; break lines (heights per point) the ground follows |
 | SITE-11 | Stepping stones, streams, curbing, garden beds | P3 | M6 ◐ stepping stones, streams and raised garden beds; curbing comes with roads |
 | SITE-12 | Roads, medians, striping, curbs, gutters, driveways, sidewalks, cul-de-sacs | P2 | M6 ◐ roads (curbs, gutters, centre striping), driveways and sidewalks that follow the ground; no medians or cul-de-sacs |
 | SITE-13 | Road/driveway/sidewalk volumes in materials list | P3 | M6 ✓ paving area and base volume in the materials list |
@@ -483,7 +483,7 @@ These come from reading the whole list and change the architecture, not just the
 | LIB-09 | Notes, callouts, markers in library | P2 | M5 ✓ built-in notes and callouts; save your own with Add Selected |
 | LIB-10 | Text in library | P3 | M5 ✓ text saves to and places from the library |
 | LIB-11 | Library shortcuts | P3 | M5 ✓ right-click a library folder > Add Shortcut; shortcut buttons open it on its own |
-| LIB-12 | Replace from library (one or all identical) | P1 | M5 ◐ cabinets and appliances, one or all identical; blocks later |
+| LIB-12 | Replace from library (one or all identical) | P1 | M5 ✓ cabinets, appliances and CAD blocks, one or all identical |
 | LIB-13 | Library painter with scope | P2 | M5 ✓ |
 | LIB-14 | Edit parametric items stored in library | P2 | M5 ✓ right-click > Edit… changes an item's name, folder, tags and properties (built-ins save an edited copy) |
 | LIB-15 | Edit symbol properties in library | P2 | M5 ✓ symbol behaviour and properties editable in the library |

@@ -980,6 +980,9 @@ pub struct Shutters {
     #[serde(default)]
     pub width: Option<Length>,
     pub color: Color,
+    /// Drawn on this layer in plan; the window's layer when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layer: Option<Id>,
 }
 
 impl Default for Shutters {
@@ -988,6 +991,7 @@ impl Default for Shutters {
             style: ShutterStyle::Louvered,
             width: None,
             color: Color::rgb(40, 60, 50),
+            layer: None,
         }
     }
 }

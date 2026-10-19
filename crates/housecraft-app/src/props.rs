@@ -1566,6 +1566,18 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                         *height = l;
                     }
                 }
+                ElevationShape::BreakLine { elevations, .. } => {
+                    for (i, z) in elevations.iter_mut().enumerate() {
+                        if let Some(l) = ed.length(ui, &format!("Height at Point {}", i + 1), &format!("shape.z{i}"), *z) {
+                            *z = l;
+                        }
+                    }
+                }
+                ElevationShape::Subfloor { below, .. } => {
+                    if let Some(l) = ed.length(ui, "Ground Below Subfloor", "shape.below", *below) {
+                        *below = l;
+                    }
+                }
             }
             if let ElevationShape::Line { smooth, .. } = &mut shape {
                 Ed::label(ui, "");
@@ -3267,6 +3279,17 @@ fn window_details_editor(ui: &mut Ui, ed: &mut Ed<'_>, current: &OpeningDetails)
             if ui.color_edit_button_srgba(&mut c32).changed() {
                 s.color = from_color32(c32);
             }
+            let layers: Vec<(Id, String)> = ed.doc.iter::<Layer>().map(|l| (l.id, l.name.clone())).collect();
+            egui::ComboBox::from_id_salt(ed.key("shutter_layer"))
+                .selected_text(s.layer.and_then(|l| layers.iter().find(|x| x.0 == l)).map_or("Window's layer".to_string(), |x| x.1.clone()))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut s.layer, None, "Window's layer");
+                    for (lid, name) in &layers {
+                        ui.selectable_value(&mut s.layer, Some(*lid), name);
+                    }
+                })
+                .response
+                .on_hover_text("The layer the shutters are drawn on in plan");
         }
     });
     ui.end_row();

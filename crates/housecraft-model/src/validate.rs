@@ -878,6 +878,13 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                         c.positive(id, "radius", *radius);
                         vec![*center]
                     }
+                    ElevationShape::BreakLine { points, elevations } => {
+                        if points.len() < 2 || elevations.len() != points.len() {
+                            c.issue(id, "a break line needs two or more points, each with a height");
+                        }
+                        points.clone()
+                    }
+                    ElevationShape::Subfloor { at, .. } => vec![*at],
                 };
                 let flat: Vec<f64> = points.iter().flat_map(|p| p.mm()).collect();
                 c.finite(id, "points", &flat);

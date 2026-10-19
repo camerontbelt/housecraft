@@ -96,6 +96,12 @@ pub enum ElevationShape {
     Hill { center: Point2, radius: Length, height: Length },
     /// A rounded hollow cut into the ground.
     Valley { center: Point2, radius: Length, depth: Length },
+    /// A terrain break: the ground follows this line, its height running
+    /// straight between the heights at its points (a ditch, a curb line).
+    BreakLine { points: Vec<Point2>, elevations: Vec<Length> },
+    /// Where the ground meets the building: the terrain here is `below`
+    /// under the lowest storey's subfloor, and follows the building up or down.
+    Subfloor { at: Point2, below: Length },
 }
 
 impl ElevationShape {
@@ -106,6 +112,8 @@ impl ElevationShape {
             ElevationShape::Region { .. } => "flat region",
             ElevationShape::Hill { .. } => "hill",
             ElevationShape::Valley { .. } => "valley",
+            ElevationShape::BreakLine { .. } => "break line",
+            ElevationShape::Subfloor { .. } => "subfloor marker",
         }
     }
 }

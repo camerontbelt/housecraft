@@ -541,15 +541,36 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         mesh.begin(bs.id, Category::Cabinet);
         let path: Vec<DVec2> = bs.points.iter().map(|p| v2(*p)).collect();
         let (t, h) = (bs.thickness.mm(), bs.height.mm());
-        let profile = [DVec2::ZERO, DVec2::new(t, 0.0), DVec2::new(t, h), DVec2::new(0.0, h)];
-        crate::sweep::sweep(
-            &mut mesh,
-            &path,
-            false,
-            &profile,
-            floor.elevation.mm() + bs.bottom.mm(),
-            Surface::Backsplash,
-        );
+        let profile = |h: f64| [DVec2::ZERO, DVec2::new(t, 0.0), DVec2::new(t, h), DVec2::new(0.0, h)];
+        let z0 = floor.elevation.mm() + bs.bottom.mm();
+        let cuts = backsplash_cutouts(doc, bs.floor, &path, z0, z0 + h);
+        if cuts.iter().all(|c| c.is_empty()) {
+            crate::sweep::sweep(&mut mesh, &path, false, &profile(h), z0, Surface::Backsplash);
+        } else {
+            // Stop short of windows: run by run, lower under each window's sill.
+            for (k, seg_cuts) in cuts.iter().enumerate() {
+                let (a, b) = (path[k], path[k + 1]);
+                let len = a.distance(b);
+                let d = (b - a) / len.max(1e-9);
+                let mut from = 0.0;
+                let mut runs: Vec<(f64, f64, f64)> = Vec::new();
+                for (u0, u1, sill) in seg_cuts {
+                    if *u0 > from {
+                        runs.push((from, *u0, h));
+                    }
+                    runs.push((u0.max(from), *u1, sill - z0));
+                    from = from.max(*u1);
+                }
+                if from < len {
+                    runs.push((from, len, h));
+                }
+                for (u0, u1, hh) in runs {
+                    if u1 - u0 > 1.0 && hh > 5.0 {
+                        crate::sweep::sweep(&mut mesh, &[a + d * u0, a + d * u1], false, &profile(hh.min(h)), z0, Surface::Backsplash);
+                    }
+                }
+            }
+        }
         mesh.end();
     }
     for s in doc.iter::<housecraft_model::Symbol>() {
@@ -1753,6 +1774,41 @@ fn garage_curb(doc: &Document, floor: Id, poly: &[DVec2], z0: f64, height: f64, 
             mesh.prism(&ccw(quad), z0, z0 + height, Surface::Concrete);
         }
     }
+}
+
+/// For each segment of a backsplash path, the windows it runs past whose
+/// sill is below its top: (from, to) along the segment and the sill height.
+fn backsplash_cutouts(doc: &Document, floor: Id, path: &[DVec2], _bottom: f64, top: f64) -> Vec<Vec<(f64, f64, f64)>> {
+    let fz = doc.get::<Floor>(floor).map_or(0.0, |f| f.elevation.mm());
+    let geoms = wall_geoms(doc, floor);
+    path.windows(2)
+        .map(|w| {
+            let (a, b) = (w[0], w[1]);
+            let len = a.distance(b);
+            let d = (b - a) / len.max(1e-9);
+            let mut v: Vec<(f64, f64, f64)> = Vec::new();
+            for g in &geoms {
+                if g.dir.dot(d).abs() < 0.99 {
+                    continue;
+                }
+                for o in doc.openings_in(g.id).filter(|o| !o.opening_kind.is_door()) {
+                    let c = g.center_at(o.position.mm());
+                    let off = (c - a).perp_dot(d).abs();
+                    let sill = fz + o.sill.mm();
+                    if off > g.half + 150.0 || sill >= top {
+                        continue;
+                    }
+                    let u = (c - a).dot(d);
+                    let (u0, u1) = ((u - o.width.mm() / 2.0).max(0.0), (u + o.width.mm() / 2.0).min(len));
+                    if u1 > u0 {
+                        v.push((u0, u1, sill));
+                    }
+                }
+            }
+            v.sort_by(|x, y| x.0.total_cmp(&y.0));
+            v
+        })
+        .collect()
 }
 
 fn span_of(g: &WallGeom, o: &Opening) -> (f64, f64) {

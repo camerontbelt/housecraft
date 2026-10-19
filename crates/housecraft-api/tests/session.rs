@@ -2693,3 +2693,62 @@ fn framing_lookouts_blocking_headers_rooms_splices_steel() {
     apply(&mut s, r#"[{"op": "build_framing", "parts": {"walls": false, "floors": false, "roofs": false}}]"#);
     assert!(count(&s, FramingRole::CeilingJoist) > plain + 5, "{} vs {plain}", count(&s, FramingRole::CeilingJoist));
 }
+
+#[test]
+fn break_lines_and_subfloor_markers_shape_the_ground() {
+    let mut s = boxed();
+    apply(&mut s, r#"[{"op": "add_terrain", "points": [["-50'","-50'"],["70'","-50'"],["70'","80'"],["-50'","80'"]]}]"#);
+    let height = |s: &Session, x: f64, y: f64| {
+        let doc = s.document();
+        let t = doc.iter::<Terrain>().next().unwrap();
+        housecraft_api::geom::terrain::surface(doc, t).unwrap().height_at(housecraft_api::geom::DVec2::new(x * 304.8, y * 304.8))
+    };
+    let shapes: Vec<ElevationShape> = serde_json::from_str(
+        r#"[{"type": "break_line", "points": [["-40'","60'"],["60'","60'"]], "elevations": ["-2'","6'"]},
+            {"type": "subfloor", "at": ["-2'","-2'"], "below": "8\""}]"#,
+    )
+    .unwrap();
+    s.apply(&[Command::AddElevationShapes { floor: None, shapes }]).unwrap();
+    // Along the break line the ground climbs from -2' to 6'.
+    assert!((height(&s, -40.0, 60.0) - (-2.0 * 304.8)).abs() < 150.0, "{}", height(&s, -40.0, 60.0));
+    assert!((height(&s, 60.0, 60.0) - 6.0 * 304.8).abs() < 150.0);
+    assert!((height(&s, 10.0, 60.0) - 2.0 * 304.8).abs() < 150.0);
+    // The marker holds the ground 8" under the subfloor next to the house.
+    assert!((height(&s, -2.0, -2.0) + 8.0 * 25.4).abs() < 60.0, "{}", height(&s, -2.0, -2.0));
+}
+
+#[test]
+fn backsplashes_stop_under_windows_and_shutters_take_a_layer() {
+    let mut s = boxed();
+    let w = walls(&s)[0].id; // the west wall, x = 0
+    let out = apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_window", "wall": {w}, "position": "10'", "width": "3'", "sill": "3'6\""}},
+                {{"op": "add_backsplash", "points": [["3\"","2'"],["3\"","20'"]], "bottom": "36\"", "height": "18\""}}]"#,
+            w = w.0
+        ),
+    );
+    let (win, bs) = (out.created[0], out.created[1]);
+    let doc = s.document();
+    let mesh = housecraft_api::geom::mesh::build(doc, None);
+    let ft = 304.8;
+    // Over the window's width the backsplash only reaches the sill.
+    let top_near = |y0: f64, y1: f64| {
+        mesh.faces
+            .iter()
+            .filter(|f| mesh.parts[f.part].object == bs)
+            .filter(|f| {
+                let c = f.points.iter().copied().sum::<housecraft_api::geom::DVec3>() / f.points.len() as f64;
+                c.y > y0 * ft && c.y < y1 * ft
+            })
+            .flat_map(|f| f.points.iter().map(|p| p.z))
+            .fold(f64::MIN, f64::max)
+    };
+    assert!((top_near(9.0, 11.0) - 42.0 * 25.4).abs() < 1.0, "{}", top_near(9.0, 11.0));
+    assert!((top_near(14.0, 19.0) - 54.0 * 25.4).abs() < 1.0);
+    // Shutters on their own layer.
+    let layer = apply(&mut s, r#"[{"op": "add_layer", "name": "Shutters"}]"#).created[0];
+    s.apply(&[Command::Update { id: win, set: patch(serde_json::json!({"details": {"shutters": {"style": "louvered", "color": "#283c32", "layer": layer.0}}})) }]).unwrap();
+    assert_eq!(s.document().get::<Opening>(win).unwrap().details.shutters.as_ref().unwrap().layer, Some(layer));
+}

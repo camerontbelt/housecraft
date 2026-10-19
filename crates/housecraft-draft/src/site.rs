@@ -114,6 +114,22 @@ pub(crate) fn elevation_data(doc: &Document, e: &ElevationData, stroke: Stroke, 
             let what = if matches!(e.shape, ElevationShape::Hill { .. }) { "Hill +" } else { "Valley -" };
             label(out, e.id, c, format!("{what}{}", fmt(*height)), ink);
         }
+        ElevationShape::BreakLine { points, elevations } => {
+            let pts: Vec<DVec2> = points.iter().map(|p| v2(*p)).collect();
+            line(out, e.id, pts.clone(), false, Stroke { dash: &[3.0, 0.8, 0.8, 0.8], ..stroke });
+            // Each point's height.
+            for (p, z) in pts.iter().zip(elevations) {
+                label(out, e.id, *p + DVec2::new(100.0, 100.0), fmt(*z), ink);
+            }
+        }
+        ElevationShape::Subfloor { at, below } => {
+            // A target: circle and cross, with the ground's drop below the subfloor.
+            let c = v2(*at);
+            line(out, e.id, arc_points(c, 200.0, 0.0, 360.0), true, stroke);
+            line(out, e.id, vec![c - DVec2::X * 300.0, c + DVec2::X * 300.0], false, stroke);
+            line(out, e.id, vec![c - DVec2::Y * 300.0, c + DVec2::Y * 300.0], false, stroke);
+            label(out, e.id, c + DVec2::new(350.0, 0.0), format!("Subfloor -{}", fmt(*below)), ink);
+        }
     }
 }
 

@@ -518,6 +518,9 @@ pub enum Command {
         #[serde(default)]
         unit: Option<DisplayUnit>,
     },
+    /// Add elevation data shapes (contours, points, break lines… e.g. read
+    /// from a survey drawing) on `floor`.
+    AddElevationShapes { floor: Option<Id>, shapes: Vec<ElevationShape> },
     /// Remove the terrain and all elevation data.
     ClearTerrain,
     /// Build (or rebuild) automatic framing on `floor` (every floor when
@@ -1210,6 +1213,7 @@ impl Command {
             Command::AddTerrain { .. } => "add_terrain",
             Command::AddElevationData { .. } => "add_elevation_data",
             Command::ImportTerrainPoints { .. } => "import_terrain_points",
+            Command::AddElevationShapes { .. } => "add_elevation_shapes",
             Command::ClearTerrain => "clear_terrain",
             Command::BuildFraming { .. } => "build_framing",
             Command::ClearFraming { .. } => "clear_framing",
@@ -2679,6 +2683,12 @@ impl Command {
                     age: 0.0,
                     color: Color::rgb(80, 130, 60),
                 }));
+            }
+            Command::AddElevationShapes { floor, shapes } => {
+                for shape in shapes {
+                    let o = Command::AddElevationData { floor: *floor, shape: shape.clone() }.apply(doc)?;
+                    out.merge(o);
+                }
             }
             Command::ClearTerrain => {
                 let ids: Vec<Id> = doc

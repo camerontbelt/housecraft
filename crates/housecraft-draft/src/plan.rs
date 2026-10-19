@@ -339,6 +339,21 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
                 };
                 opening_symbol(doc, g, o, stroke, &mut out);
             }
+            // Shutters on a layer of their own.
+            if let Some(layer) = o.details.shutters.as_ref().and_then(|s| s.layer)
+                && wall_shown
+                && opts.phase.shows(o.renovation)
+            {
+                let sl = ctx.look(layer);
+                if sl.visible
+                    && let Some(&span) = opening_spans(g, &[o]).first()
+                {
+                    let id = o.id;
+                    shutters_plan(g, o, span, Stroke { width: sl.stroke.width * 0.6, ..sl.stroke }, |points, closed, stroke| {
+                        out.push(Some(id), Prim::Polyline { points, closed, stroke });
+                    });
+                }
+            }
         }
     }
 
@@ -1990,7 +2005,22 @@ fn stair_symbol(
     }
 }
 
-/// Plan symbol for a door or window in its wall gap.
+/// A window's shutters in plan: a board either side, outside the wall.
+fn shutters_plan(g: &WallGeom, o: &Opening, (a, b): (f64, f64), stroke: Stroke, mut sink: impl FnMut(Vec<DVec2>, bool, Stroke)) {
+    let Some(s) = &o.details.shutters else { return };
+    let at = |u: f64, off: f64| g.center_at(u) + g.left * off;
+    let sw = s.width.map_or((b - a) / 2.0, |w| w.mm());
+    let (o0, o1) = (g.half + 25.0, g.half + 50.0);
+    for (u0, u1) in [(a - sw, a), (b, b + sw)] {
+        sink(vec![at(u0, o0), at(u1, o0), at(u1, o1), at(u0, o1)], true, stroke);
+    }
+}
+
+/// Adapts a `(points, closed)` drawer to [`shutters_plan`]'s sink.
+fn poly_sink(poly: &mut impl FnMut(Vec<DVec2>, bool)) -> impl FnMut(Vec<DVec2>, bool, Stroke) + '_ {
+    move |p, c, _| poly(p, c)
+}
+
 /// Plan symbol for a door or window in its wall gap.
 /// Shutters outside and curtains or blinds inside a window, in plan.
 fn opening_details(g: &WallGeom, o: &Opening, (a, b): (f64, f64), stroke: Stroke, out: &mut Drawing) {
@@ -2002,12 +2032,8 @@ fn opening_details(g: &WallGeom, o: &Opening, (a, b): (f64, f64), stroke: Stroke
     let mut poly = |points: Vec<DVec2>, closed: bool| {
         out.push(Some(o.id), Prim::Polyline { points, closed, stroke: thin });
     };
-    if let Some(s) = &o.details.shutters {
-        let sw = s.width.map_or((b - a) / 2.0, |w| w.mm());
-        let (o0, o1) = (g.half + 25.0, g.half + 50.0);
-        for (u0, u1) in [(a - sw, a), (b, b + sw)] {
-            poly(vec![at(u0, o0), at(u1, o0), at(u1, o1), at(u0, o1)], true);
-        }
+    if o.details.shutters.as_ref().is_some_and(|s| s.layer.is_none()) {
+        shutters_plan(g, o, (a, b), thin, poly_sink(&mut poly));
     }
     if let Some(t) = &o.details.treatment {
         let room = -g.half;

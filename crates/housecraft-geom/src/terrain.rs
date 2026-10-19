@@ -120,6 +120,23 @@ pub fn surface(doc: &Document, t: &Terrain) -> Option<Surface> {
                 let pts: Vec<DVec2> = points.iter().map(|p| v2(*p)).collect();
                 samples.extend(resample(&pts, true, cell / 2.0).into_iter().map(|p| (p, elevation.mm())));
             }
+            ElevationShape::BreakLine { points, elevations } => {
+                // Heights straight between the points, sampled densely.
+                for k in 0..points.len().saturating_sub(1) {
+                    let (a, b) = (v2(points[k]), v2(points[k + 1]));
+                    let za = elevations.get(k).map_or(0.0, |l| l.mm());
+                    let zb = elevations.get(k + 1).map_or(za, |l| l.mm());
+                    let n = (a.distance(b) / (cell / 3.0)).ceil().max(1.0) as usize;
+                    for i in 0..=n {
+                        let t = i as f64 / n as f64;
+                        samples.push((a.lerp(b, t), za + (zb - za) * t));
+                    }
+                }
+            }
+            ElevationShape::Subfloor { at, below } => {
+                let subfloor = doc.floors_by_elevation().iter().find(|f| f.foundation.is_none()).map_or(0.0, |f| f.elevation.mm());
+                samples.push((v2(*at), subfloor - below.mm()));
+            }
             _ => {}
         }
     }

@@ -176,6 +176,109 @@ pub fn read(text: &str, unit_override: Option<f64>) -> Result<DxfDrawing, String
     Ok(out)
 }
 
+/// Survey data in a DXF: contour lines (level polylines and lines),
+/// break lines (3D polylines whose height changes), and spot points, in
+/// model millimetres (heights too).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct DxfTerrain {
+    pub contours: Vec<(Vec<Point2>, Length)>,
+    pub breaks: Vec<(Vec<Point2>, Vec<Length>)>,
+    pub points: Vec<(Point2, Length)>,
+}
+
+/// Read the survey data (anything with a height) from DXF text.
+pub fn read_terrain(text: &str, unit_override: Option<f64>) -> Result<DxfTerrain, String> {
+    let lines: Vec<&str> = text.lines().map(str::trim).collect();
+    let pairs: Vec<(i32, &str)> = lines
+        .chunks(2)
+        .filter(|c| c.len() == 2)
+        .filter_map(|c| c[0].parse::<i32>().ok().map(|k| (k, c[1])))
+        .collect();
+    if !pairs.iter().any(|(k, v)| *k == 0 && *v == "SECTION") {
+        return Err("not a DXF file (no SECTION)".into());
+    }
+    let mut units = 0;
+    if let Some(i) = pairs.iter().position(|(k, v)| *k == 9 && *v == "$INSUNITS")
+        && let Some((70, v)) = pairs.get(i + 1)
+    {
+        units = v.parse().unwrap_or(0);
+    }
+    let k = unit_override.unwrap_or(unit_mm(units));
+    let pt = |x: f64, y: f64| Point2(Length::from_mm(x * k), Length::from_mm(y * k));
+    let len = |z: f64| Length::from_mm(z * k);
+    let Some(start) = pairs.iter().position(|(c, v)| *c == 2 && *v == "ENTITIES") else {
+        return Ok(DxfTerrain::default());
+    };
+    let mut entities: Vec<(&str, Vec<(i32, &str)>)> = Vec::new();
+    for &(code, value) in &pairs[start + 1..] {
+        if code == 0 {
+            if value == "ENDSEC" {
+                break;
+            }
+            entities.push((value, Vec::new()));
+        } else if let Some(e) = entities.last_mut() {
+            e.1.push((code, value));
+        }
+    }
+    let mut out = DxfTerrain::default();
+    // A line of points with heights: a contour when level, else a break.
+    let push_line = |out: &mut DxfTerrain, pts: Vec<Point2>, zs: Vec<f64>| {
+        if pts.len() < 2 {
+            return;
+        }
+        let (lo, hi) = zs.iter().fold((f64::MAX, f64::MIN), |(a, b), z| (a.min(*z), b.max(*z)));
+        if hi - lo < 1e-6 {
+            if lo.abs() > 1e-9 {
+                out.contours.push((pts, len(lo)));
+            }
+        } else {
+            out.breaks.push((pts, zs.iter().map(|z| len(*z)).collect()));
+        }
+    };
+    let mut i = 0;
+    while i < entities.len() {
+        let (kind, codes) = &entities[i];
+        let get = |c: i32| codes.iter().find(|(k, _)| *k == c).and_then(|(_, v)| v.parse::<f64>().ok());
+        match *kind {
+            "LINE" => {
+                if let (Some(x1), Some(y1), Some(x2), Some(y2)) = (get(10), get(20), get(11), get(21)) {
+                    push_line(&mut out, vec![pt(x1, y1), pt(x2, y2)], vec![get(30).unwrap_or(0.0), get(31).unwrap_or(0.0)]);
+                }
+            }
+            "LWPOLYLINE" => {
+                let xs: Vec<f64> = codes.iter().filter(|(c, _)| *c == 10).filter_map(|(_, v)| v.parse().ok()).collect();
+                let ys: Vec<f64> = codes.iter().filter(|(c, _)| *c == 20).filter_map(|(_, v)| v.parse().ok()).collect();
+                let z = get(38).unwrap_or(0.0);
+                let pts: Vec<Point2> = xs.iter().zip(&ys).map(|(x, y)| pt(*x, *y)).collect();
+                let n = pts.len();
+                push_line(&mut out, pts, vec![z; n]);
+            }
+            "POLYLINE" => {
+                let (mut pts, mut zs) = (Vec::new(), Vec::new());
+                i += 1;
+                while i < entities.len() && entities[i].0 == "VERTEX" {
+                    let v = &entities[i].1;
+                    let g = |c: i32| v.iter().find(|(k, _)| *k == c).and_then(|(_, s)| s.parse::<f64>().ok());
+                    if let (Some(x), Some(y)) = (g(10), g(20)) {
+                        pts.push(pt(x, y));
+                        zs.push(g(30).unwrap_or(0.0));
+                    }
+                    i += 1;
+                }
+                push_line(&mut out, pts, zs);
+            }
+            "POINT" => {
+                if let (Some(x), Some(y), Some(z)) = (get(10), get(20), get(30)) {
+                    out.points.push((pt(x, y), len(z)));
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    Ok(out)
+}
+
 /// MTEXT without its formatting codes: `\P` is a new line; `{\fArial;…}`
 /// style groups and `\X…;` codes are dropped.
 fn plain_mtext(s: &str) -> String {
@@ -224,5 +327,25 @@ mod tests {
         assert!(matches!(&d.shapes[1].1, Shape::Polyline { closed: true, points } if points.len() == 3));
         assert_eq!(d.texts[0].text, "Hello\nworld");
         assert_eq!(d.skipped, [("INSERT".to_string(), 1)]);
+    }
+}
+
+#[cfg(test)]
+mod terrain_tests {
+    use super::*;
+
+    #[test]
+    fn survey_lines_points_and_breaks() {
+        let dxf = "0\nSECTION\n2\nHEADER\n9\n$INSUNITS\n70\n2\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n\
+0\nLWPOLYLINE\n8\nTOPO\n90\n2\n38\n102\n10\n0\n20\n0\n10\n50\n20\n0\n\
+0\nLINE\n8\nTOPO\n10\n0\n20\n10\n30\n100\n11\n50\n21\n10\n31\n104\n\
+0\nPOINT\n8\nTOPO\n10\n5\n20\n5\n30\n101.5\n\
+0\nLINE\n8\nFLAT\n10\n0\n20\n0\n11\n1\n21\n1\n0\nENDSEC\n0\nEOF\n";
+        let t = read_terrain(dxf, None).unwrap();
+        assert_eq!(t.contours.len(), 1);
+        assert!((t.contours[0].1.mm() - 102.0 * 304.8).abs() < 1e-6);
+        assert_eq!(t.breaks.len(), 1);
+        assert!((t.breaks[0].1[1].mm() - 104.0 * 304.8).abs() < 1e-6);
+        assert_eq!(t.points.len(), 1);
     }
 }

@@ -975,12 +975,21 @@ impl App {
     /// Place a library block: add it to the plan (once) and pick the
     /// Place Block tool.
     pub fn place_library_block(&mut self, block: &housecraft_io_native::library::LibraryBlock) {
+        if let Some(id) = self.ensure_library_block(block) {
+            self.plan.set_tool(Tool::PlaceBlock(id));
+            self.palette = Family::Cad;
+            self.mode = Mode::Plan;
+        }
+    }
+
+    /// The plan's block of that name, made from the library's when missing.
+    pub fn ensure_library_block(&mut self, block: &housecraft_io_native::library::LibraryBlock) -> Option<Id> {
         let existing = self
             .doc()
             .iter::<Block>()
             .find(|b| b.name == block.name)
             .map(|b| b.id);
-        let id = match existing {
+        match existing {
             Some(id) => Some(id),
             None => self
                 .run1(Command::AddBlock {
@@ -990,11 +999,6 @@ impl App {
                     shapes: block.shapes.clone(),
                 })
                 .and_then(|o| o.created.first().copied()),
-        };
-        if let Some(id) = id {
-            self.plan.set_tool(Tool::PlaceBlock(id));
-            self.palette = Family::Cad;
-            self.mode = Mode::Plan;
         }
     }
 
@@ -2577,6 +2581,19 @@ impl App {
                     if tool_item(ui, tool) {
                         self.set_tool(tool);
                     }
+                }
+                ui.separator();
+                if item(ui, "Import Survey Drawing (DXF)…", "", true)
+                    && let Some(path) = rfd::FileDialog::new().add_filter("DXF drawing", &["dxf"]).pick_file()
+                {
+                    self.import_survey_dxf(&path);
+                }
+                let cads: Vec<Id> = self.selection.iter().copied().filter(|id| self.doc().kind_of(*id) == Some(ObjectKind::Cad)).collect();
+                if item(ui, "Selected Lines to Break Lines", "", !cads.is_empty()) {
+                    self.cad_to_break_lines(&cads);
+                }
+                if item(ui, "Add Subfloor Marker", "", true) {
+                    self.add_subfloor_marker();
                 }
                 ui.menu_button("Site", |ui| {
                     for tool in Tool::SITE {
@@ -4166,6 +4183,77 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
         });
         self.spec.push(id);
         self.info(format!("Made a material from the view: {}", path.display()));
+    }
+
+    /// Contours, break lines and spot heights from a surveyor's DXF.
+    fn import_survey_dxf(&mut self, path: &std::path::Path) {
+        let text = match std::fs::read(path) {
+            Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+            Err(e) => {
+                self.error(format!("Could not read {}: {e}", path.display()));
+                return;
+            }
+        };
+        let t = match housecraft_io_native::dxf::read_terrain(&text, None) {
+            Ok(t) => t,
+            Err(e) => {
+                self.error(format!("Could not read the DXF: {e}"));
+                return;
+            }
+        };
+        let (c, b, p) = (t.contours.len(), t.breaks.len(), t.points.len());
+        if c + b + p == 0 {
+            self.error("The drawing has no lines or points with heights");
+            return;
+        }
+        let mut shapes: Vec<ElevationShape> = t.contours.into_iter().map(|(points, elevation)| ElevationShape::Line { points, elevation, smooth: false }).collect();
+        shapes.extend(t.breaks.into_iter().map(|(points, elevations)| ElevationShape::BreakLine { points, elevations }));
+        shapes.extend(t.points.into_iter().map(|(at, elevation)| ElevationShape::Point { at, elevation }));
+        if self.run1(Command::AddElevationShapes { floor: Some(self.plan.floor), shapes }).is_some() {
+            self.plan.fit_requested = true;
+            self.info(format!("Imported {c} contours, {b} break lines and {p} spot heights"));
+        }
+    }
+
+    /// CAD lines become terrain break lines at the ground's present heights.
+    fn cad_to_break_lines(&mut self, cads: &[Id]) {
+        let doc = self.doc();
+        let surface = doc.iter::<Terrain>().next().and_then(|t| housecraft_api::geom::terrain::surface(doc, t));
+        let mut shapes = Vec::new();
+        for id in cads {
+            let Some(c) = doc.get::<Cad>(*id) else { continue };
+            for (pts, _) in housecraft_api::geom::math::shape_polylines(&c.shape) {
+                if pts.len() < 2 {
+                    continue;
+                }
+                let z = |p: housecraft_api::geom::DVec2| Length::from_mm(surface.as_ref().map_or(0.0, |s| s.height_at(p)));
+                shapes.push(ElevationShape::BreakLine {
+                    points: pts.iter().map(|p| Point2::from_mm(p.x, p.y)).collect(),
+                    elevations: pts.iter().map(|p| z(*p)).collect(),
+                });
+            }
+        }
+        let n = shapes.len();
+        let mut cmds = vec![Command::AddElevationShapes { floor: Some(self.plan.floor), shapes }];
+        cmds.push(Command::Delete { ids: cads.to_vec() });
+        if self.run(cmds).is_some() {
+            self.info(format!("{n} break line(s): set each point's height in its specification"));
+        }
+    }
+
+    /// A subfloor marker just outside the building's first corner.
+    fn add_subfloor_marker(&mut self) {
+        let doc = self.doc();
+        let floor = doc.floors_by_elevation().iter().find(|f| f.foundation.is_none()).map(|f| f.id);
+        let corner = floor
+            .and_then(|f| housecraft_api::geom::rooms::detect(doc, f).footprints.into_iter().next())
+            .and_then(housecraft_api::geom::math::bounds)
+            .map_or(housecraft_api::geom::DVec2::ZERO, |(lo, _)| lo - housecraft_api::geom::DVec2::splat(600.0));
+        let shape = ElevationShape::Subfloor { at: Point2::from_mm(corner.x, corner.y), below: Length::from_inches(8.0) };
+        if let Some(out) = self.run1(Command::AddElevationShapes { floor: Some(self.plan.floor), shapes: vec![shape] }) {
+            self.selection = out.created;
+            self.info("Subfloor marker added: the ground there sits 8\" under the subfloor (change it in its specification)");
+        }
     }
 
     /// Open what a callout links to: a view or detail, a plan view or a layout.

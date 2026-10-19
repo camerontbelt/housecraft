@@ -693,9 +693,10 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
             let k = t.scale_factor();
             match &mut e.shape {
                 ElevationShape::Point { at, .. } => *at = t.apply_point(*at),
-                ElevationShape::Line { points, .. } | ElevationShape::Region { points, .. } => {
+                ElevationShape::Line { points, .. } | ElevationShape::Region { points, .. } | ElevationShape::BreakLine { points, .. } => {
                     *points = points.iter().map(|p| t.apply_point(*p)).collect();
                 }
+                ElevationShape::Subfloor { at, .. } => *at = t.apply_point(*at),
                 ElevationShape::Hill { center, radius, .. } | ElevationShape::Valley { center, radius, .. } => {
                     *center = t.apply_point(*center);
                     *radius = *radius * k;

@@ -262,6 +262,28 @@ fn activate(app: &mut App, item: &LibraryItem) {
     }
 }
 
+/// Swap the selected block references (or all like them) to this block.
+fn replace_blocks(app: &mut App, item: &LibraryItem, all_identical: bool) {
+    let Ok(b) = serde_json::from_value::<library::LibraryBlock>(item.data.clone()) else { return };
+    let doc = app.doc();
+    let picked: Vec<&BlockRef> = app.selection.iter().filter_map(|id| doc.get::<BlockRef>(*id)).collect();
+    if picked.is_empty() {
+        app.error("Select the placed blocks to replace first.");
+        return;
+    }
+    let ids: Vec<Id> = if all_identical {
+        let defs: Vec<Id> = picked.iter().map(|r| r.block).collect();
+        doc.iter::<BlockRef>().filter(|r| defs.contains(&r.block)).map(|r| r.id).collect()
+    } else {
+        picked.iter().map(|r| r.id).collect()
+    };
+    let Some(def) = app.ensure_library_block(&b) else { return };
+    let cmds: Vec<Command> = ids.iter().map(|id| Command::Update { id: *id, set: json!({"block": def.0}).as_object().cloned().unwrap_or_default() }).collect();
+    if app.run(cmds).is_some() {
+        app.info(format!("Replaced {} block(s) with {}", ids.len(), item.name));
+    }
+}
+
 fn replace(app: &mut App, item: &LibraryItem, all_identical: bool) {
     let ids: Vec<Id> = app
         .selection
@@ -323,6 +345,16 @@ fn item_row(app: &mut App, ui: &mut Ui, item: &LibraryItem, show_category: bool)
         activate(app, item);
     }
     resp.context_menu(|ui| {
+        if item.kind == LibraryKind::Block {
+            if ui.button("Replace Selected Blocks").clicked() {
+                replace_blocks(app, item, false);
+                ui.close();
+            }
+            if ui.button("Replace All Like Selected").clicked() {
+                replace_blocks(app, item, true);
+                ui.close();
+            }
+        }
         if kind_of(item).is_some() {
             if ui.button("Replace Selected").clicked() {
                 replace(app, item, false);

@@ -273,6 +273,12 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
             | ElevationShape::Region { elevation, .. } => format!("{} at {}", e.shape.name(), fmt(*elevation)),
             ElevationShape::Hill { height, .. } => format!("hill {} high", fmt(*height)),
             ElevationShape::Valley { depth, .. } => format!("valley {} deep", fmt(*depth)),
+            ElevationShape::BreakLine { elevations, .. } => format!(
+                "break line from {} to {}",
+                elevations.first().map_or(String::new(), |l| fmt(*l)),
+                elevations.last().map_or(String::new(), |l| fmt(*l))
+            ),
+            ElevationShape::Subfloor { below, .. } => format!("subfloor marker, ground {} below", fmt(*below)),
         },
         Object::Solid(x) => match &x.shape {
             SolidShape::Extrude { height, .. } => format!("solid {} high", fmt(*height)),
