@@ -642,6 +642,7 @@ pub fn item_from_object(doc: &Document, id: Id) -> Option<LibraryItem> {
                 StairShape::L { .. } => "L-shaped Stair",
                 StairShape::U { .. } => "U-shaped Stair",
                 StairShape::Curved { .. } => "Curved Stair",
+                StairShape::Sections => "Sectioned Stair",
             }
             .into();
             item.category = "My Library/Stairs".into();

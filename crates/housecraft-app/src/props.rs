@@ -179,6 +179,102 @@ fn opening_extras(ui: &mut Ui, ed: &mut Ed<'_>, o: &Opening) {
     }
 }
 
+/// A sectioned stair's flights and landings, bottom to top.
+fn stair_sections_editor(ui: &mut Ui, ed: &mut Ed<'_>, s: &Stair) {
+    let id = ed.id;
+    let mut secs = s.sections.clone();
+    let mut changed = false;
+    let mut remove = None;
+    Ed::label(ui, "Sections");
+    ui.vertical(|ui| {
+        for (i, sec) in secs.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                match sec {
+                    StairSection::Flight { treads, width } => {
+                        ui.label(format!("{}. Flight", i + 1));
+                        changed |= ui.add(egui::DragValue::new(treads).range(1..=40).suffix(" treads")).changed();
+                        let mut own = width.is_some();
+                        if ui.checkbox(&mut own, "own width").changed() {
+                            *width = own.then_some(s.width);
+                            changed = true;
+                        }
+                        if let Some(w) = width {
+                            let mut inches = w.inches();
+                            if ui.add(egui::DragValue::new(&mut inches).range(18.0..=120.0).speed(0.5).suffix("\"")).changed() {
+                                *w = Length::from_inches(inches);
+                                changed = true;
+                            }
+                        }
+                    }
+                    StairSection::Landing { turn, u_turn, depth, split, .. } => {
+                        ui.label(format!("{}. Landing", i + 1));
+                        let mut t = match (*turn, *u_turn) {
+                            (None, _) => 0,
+                            (Some(Turn::Left), false) => 1,
+                            (Some(Turn::Right), false) => 2,
+                            (Some(Turn::Left), true) => 3,
+                            (Some(Turn::Right), true) => 4,
+                        };
+                        let before = t;
+                        egui::ComboBox::from_id_salt(egui::Id::unique(("landing_turn", id, i)))
+                            .selected_text(["Straight on", "Turn left", "Turn right", "Back, left", "Back, right"][t])
+                            .show_ui(ui, |ui| {
+                                for (k, n) in ["Straight on", "Turn left", "Turn right", "Back, left", "Back, right"].iter().enumerate() {
+                                    ui.selectable_value(&mut t, k, *n);
+                                }
+                            });
+                        if t != before {
+                            (*turn, *u_turn) = match t {
+                                0 => (None, false),
+                                1 => (Some(Turn::Left), false),
+                                2 => (Some(Turn::Right), false),
+                                3 => (Some(Turn::Left), true),
+                                _ => (Some(Turn::Right), true),
+                            };
+                            changed = true;
+                        }
+                        let mut own = depth.is_some();
+                        if ui.checkbox(&mut own, "depth").changed() {
+                            *depth = own.then_some(s.width);
+                            changed = true;
+                        }
+                        if let Some(dp) = depth {
+                            let mut inches = dp.inches();
+                            if ui.add(egui::DragValue::new(&mut inches).range(12.0..=240.0).speed(0.5).suffix("\"")).changed() {
+                                *dp = Length::from_inches(inches);
+                                changed = true;
+                            }
+                        }
+                        changed |= ui.checkbox(split, "split").on_hover_text("Two landings a riser apart").changed();
+                    }
+                }
+                if ui.small_button("×").clicked() {
+                    remove = Some(i);
+                }
+            });
+        }
+        if let Some(i) = remove {
+            secs.remove(i);
+            changed = true;
+        }
+        ui.horizontal(|ui| {
+            if ui.button("Add Flight").clicked() {
+                secs.push(StairSection::Flight { treads: 4, width: None });
+                changed = true;
+            }
+            if ui.button("Add Landing").clicked() {
+                secs.push(StairSection::Landing { turn: None, u_turn: false, gap: Length::ZERO, depth: None, split: false });
+                changed = true;
+            }
+        });
+        ui.weak("A stair started on another stair's landing climbs from that landing.");
+    });
+    ui.end_row();
+    if changed {
+        ed.out.push(patch(id, json!({ "sections": secs })));
+    }
+}
+
 /// Pony wall, raked or stepped top, niches and newels of a wall.
 fn wall_shape_rows(ui: &mut Ui, ed: &mut Ed<'_>, w: &Wall) {
     let doc = ed.doc;
@@ -2301,12 +2397,13 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ed.pick::<SymbolDef>(ui, "Newel Post Symbol", "newel", s.newel, Some("None"));
             let g = housecraft_api::geom::stairs::geometry(doc, s);
             Ed::label(ui, "Shape");
-            let names = ["Straight", "L-shaped", "U-shaped", "Curved"];
+            let names = ["Straight", "L-shaped", "U-shaped", "Curved", "Sections"];
             let current = match s.shape {
                 StairShape::Straight => 0,
                 StairShape::L { .. } => 1,
                 StairShape::U { .. } => 2,
                 StairShape::Curved { .. } => 3,
+                StairShape::Sections => 4,
             };
             let mut chosen = current;
             egui::ComboBox::from_id_salt(ed.key("shape"))
@@ -2318,7 +2415,14 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 });
             ui.end_row();
             let half = (g.risers.saturating_sub(2) / 2).max(1);
-            if chosen != current {
+            if chosen == 4 && current != 4 {
+                // Sections start from what the stair is now.
+                if current == 3 {
+                    ed.out.push(patch(id, json!({ "shape": {"type": "sections"}, "sections": [{"section": "flight", "treads": g.risers.saturating_sub(1)}] })));
+                } else {
+                    ed.out.push(Command::BreakStair { id });
+                }
+            } else if chosen != current {
                 let v = match chosen {
                     0 => json!({"type": "straight"}),
                     1 => json!({"type": "l", "turn": "right", "first_treads": half}),
@@ -2377,6 +2481,9 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     ed.out.push(patch(id, json!({ "shape": { "radius": l } })));
                 }
             }
+            if s.shape == StairShape::Sections {
+                stair_sections_editor(ui, ed, s);
+            }
             // Ramps, winders, open risers, starter step, rail ends.
             let mut x = s.extras.clone();
             Ed::label(ui, "Style");
@@ -2388,6 +2495,10 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ui.checkbox(&mut x.open_risers, "Open risers");
                 ui.checkbox(&mut x.starter, "Starter step (wide, round ends)");
                 ui.checkbox(&mut x.rail_return, "Handrail returns");
+                ui.horizontal(|ui| {
+                    ui.label("Wrap-around bottom steps");
+                    ui.add(egui::DragValue::new(&mut x.wrap).range(0..=6));
+                });
             });
             ui.end_row();
             if let Some(l) = ed.length(ui, "Handrail extension", "rail_ext", x.rail_extension) {

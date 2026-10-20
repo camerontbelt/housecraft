@@ -464,7 +464,21 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         }
         mesh.begin(plane.id, Category::Roof);
         let roof = &doc.active_defaults().roof;
-        roof_plane_mesh(plane, roof.fascia.mm(), roof.shadow_board.mm(), &mut mesh);
+        // Layer bands (top down) as fractions of the thickness, foam pale.
+        let total: f64 = roof.layers.iter().map(|l| l.thickness.mm()).sum();
+        let bands: Vec<(f64, Surface)> = if total > 0.0 {
+            roof.layers
+                .iter()
+                .map(|l| {
+                    let name = format!("{} {}", l.name, l.material).to_lowercase();
+                    let foam = ["foam", "eps", "xps", "insul", "core", "polyiso"].iter().any(|k| name.contains(k));
+                    (l.thickness.mm() / total, if foam { Surface::Trim } else { Surface::Frame })
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        roof_plane_mesh(plane, roof.fascia.mm(), roof.shadow_board.mm(), &bands, &mut mesh);
         mesh.end();
     }
     for stair in doc.iter::<housecraft_model::Stair>() {
@@ -1060,7 +1074,7 @@ fn stairwell_holes(doc: &Document, floor: Id) -> (Vec<Vec<DVec2>>, Vec<Vec<DVec2
     (platform, ceiling)
 }
 
-fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, shadow: f64, mesh: &mut Mesh) {
+fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, shadow: f64, bands: &[(f64, Surface)], mesh: &mut Mesh) {
     let top: Vec<DVec3> = plane
         .outline
         .iter()
@@ -1088,10 +1102,17 @@ fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, shadow: f64
     let n = top.len();
     for i in 0..n {
         let (a, b) = (top[i], top[(i + 1) % n]);
-        mesh.polygon(
-            &[a, b, b - DVec3::Z * drop, a - DVec3::Z * drop],
-            Surface::Frame,
-        );
+        if bands.is_empty() {
+            mesh.polygon(&[a, b, b - DVec3::Z * drop, a - DVec3::Z * drop], Surface::Frame);
+            continue;
+        }
+        // A layered roof shows its layers on the cut edges.
+        let mut from = 0.0;
+        for (f, surface) in bands {
+            let (z0, z1) = (drop * from, drop * (from + f));
+            mesh.polygon(&[a - DVec3::Z * z0, b - DVec3::Z * z0, b - DVec3::Z * z1, a - DVec3::Z * z1], *surface);
+            from += f;
+        }
     }
     // Fascia: a trim board on the level edge(s) at the bottom of the plane.
     let low = top.iter().map(|p| p.z).fold(f64::MAX, f64::min);

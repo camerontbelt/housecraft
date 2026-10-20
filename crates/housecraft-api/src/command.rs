@@ -280,6 +280,9 @@ pub enum Command {
     ConvertCad { ids: Vec<Id>, to: CadTarget },
     /// Trace roof planes as closed CAD polylines in plan (the planes stay).
     RoofPlanesToPolylines { ids: Vec<Id> },
+    /// Turn a straight, L or U stair into flights and landings that can be
+    /// edited one by one (widths, landing depths, splits).
+    BreakStair { id: Id },
     /// Cabinets on `floor` (every floor when `None`) get end panels on
     /// sides that are not against another cabinet or a wall.
     AutoEndPanels { floor: Option<Id> },
@@ -1281,6 +1284,7 @@ impl Command {
             Command::RoofPlanesToPolylines { .. } => "roof_planes_to_polylines",
             Command::Scatter { .. } => "scatter",
             Command::AutoEndPanels { .. } => "auto_end_panels",
+            Command::BreakStair { .. } => "break_stair",
             Command::AutoPostAndBeam { .. } => "auto_post_and_beam",
             Command::SetMacro { .. } => "set_macro",
             Command::ReplaceText { .. } => "replace_text",
@@ -1570,6 +1574,7 @@ impl Command {
                     baluster: None,
                     newel: None,
                     extras: Default::default(),
+                    sections: Vec::new(),
                 };
                 // Split L and U stairs evenly when asked to.
                 let risers =
@@ -1946,6 +1951,30 @@ impl Command {
             Command::ConvertCad { ids, to } => crate::convert::convert_cad(doc, ids, to, &mut out)?,
             Command::RoofPlanesToPolylines { ids } => crate::convert::roof_outlines(doc, ids, &mut out)?,
             Command::AutoEndPanels { floor } => crate::cabinets::auto_end_panels(doc, *floor, &mut out),
+            Command::BreakStair { id } => {
+                let st = crate::ops::expect::<Stair>(doc, *id)?.clone();
+                let g = housecraft_geom::stairs::geometry(doc, &st);
+                let flight = |n: u32| StairSection::Flight { treads: n, width: None };
+                let sections = match st.shape {
+                    StairShape::Straight => vec![flight(g.flights.first().copied().unwrap_or(0))],
+                    StairShape::L { turn, .. } | StairShape::U { turn, .. } => {
+                        let (u_turn, gap) = match st.shape {
+                            StairShape::U { gap, .. } => (true, gap),
+                            _ => (false, Length::ZERO),
+                        };
+                        let (a, b) = (g.flights.first().copied().unwrap_or(0), g.flights.get(1).copied().unwrap_or(0));
+                        // Winders become a plain landing.
+                        let b = if st.extras.winders { b + 2 } else { b };
+                        vec![flight(a), StairSection::Landing { turn: Some(turn), u_turn, gap, depth: None, split: false }, flight(b)]
+                    }
+                    StairShape::Curved { .. } | StairShape::Sections => return invalid("only straight, L and U stairs break into sections"),
+                };
+                let s = doc.get_mut::<Stair>(*id).ok_or(ApiError::NotFound(*id))?;
+                s.shape = StairShape::Sections;
+                s.sections = sections;
+                s.extras.winders = false;
+                out.modified.push(*id);
+            }
             Command::AutoPostAndBeam { room, max_span, post_spacing } => {
                 crate::framing::post_and_beam(doc, *room, max_span.map_or(12.0 * 304.8, |l| l.mm()), post_spacing.map_or(8.0 * 304.8, |l| l.mm()), &mut out)?
             }

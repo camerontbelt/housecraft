@@ -171,6 +171,37 @@ pub enum StairShape {
         turn: Turn,
         radius: Length,
     },
+    /// Made of the stair's own `sections`: flights and landings in order,
+    /// each flight its own width, each landing its own depth, turn and split.
+    Sections,
+}
+
+/// One piece of a sectioned stair, bottom to top.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "section", rename_all = "snake_case")]
+pub enum StairSection {
+    /// A straight run of treads, `width` wide (the stair's width when `None`).
+    Flight {
+        treads: u32,
+        #[serde(default)]
+        width: Option<Length>,
+    },
+    /// A landing: straight on, or turning left/right 90° (180° with
+    /// `u_turn`, the next flight `gap` beside the last). `depth` along the
+    /// way in (the width when `None`); `split` makes it two landings a
+    /// riser apart.
+    Landing {
+        #[serde(default)]
+        turn: Option<Turn>,
+        #[serde(default)]
+        u_turn: bool,
+        #[serde(default)]
+        gap: Length,
+        #[serde(default)]
+        depth: Option<Length>,
+        #[serde(default)]
+        split: bool,
+    },
 }
 
 /// Remodel status: what is there now, what is being added, what comes out.
@@ -464,6 +495,9 @@ pub struct Stair {
     /// Open risers, starter tread, winders, ramps and rail ends.
     #[serde(default, skip_serializing_if = "StairExtras::is_plain")]
     pub extras: StairExtras,
+    /// The flights and landings of a sectioned stair (`StairShape::Sections`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sections: Vec<StairSection>,
 }
 
 /// Stair options beyond the basic flight.
@@ -482,6 +516,8 @@ pub struct StairExtras {
     pub rail_extension: Length,
     /// Handrail ends turn down (returns).
     pub rail_return: bool,
+    /// The bottom steps wrap round the sides of the stair (this many).
+    pub wrap: u32,
 }
 
 impl StairExtras {

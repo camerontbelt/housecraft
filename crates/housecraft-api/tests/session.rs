@@ -2940,3 +2940,73 @@ fn end_panels_girders_post_and_beam_flat_headers_and_deck_beams() {
     assert!(beams.iter().any(|y| (y - 35.0 * 304.8).abs() < 10.0) && beams.iter().any(|y| (y - 41.0 * 304.8).abs() < 10.0), "{beams:?}");
     assert!(parts.members.iter().any(|m| m.role == FramingRole::Ledger && (m.depth - 9.25 * 25.4).abs() < 0.5));
 }
+
+#[test]
+fn stair_sections_split_landings_widths_auto_connect_wrap_and_sip_roofs() {
+    use housecraft_api::geom::stairs::geometry;
+    let ft = 304.8;
+    let mut s = Session::new(Document::new("Stairs"));
+    // A sectioned stair: wide first flight, split quarter-turn landing, narrower top flight.
+    let id = apply(&mut s, r#"[{"op": "add_stair", "start": [0,0], "direction": 90, "width": "36\""}]"#).created[0];
+    s.apply(&[Command::Update { id, set: patch(serde_json::json!({
+        "shape": {"type": "sections"},
+        "sections": [
+            {"section": "flight", "treads": 5, "width": "48\""},
+            {"section": "landing", "turn": "left", "split": true},
+            {"section": "flight", "treads": 6}
+        ]
+    })) }]).unwrap();
+    let st = s.document().get::<Stair>(id).unwrap().clone();
+    let g = geometry(s.document(), &st);
+    assert_eq!(g.risers, 5 + 2 + 6 + 1);
+    let landings: Vec<f64> = g.steps.iter().filter(|x| x.landing).map(|x| x.z).collect();
+    assert_eq!(landings.len(), 2);
+    assert!((landings[1] - landings[0] - g.riser_height).abs() < 1e-6, "split a riser apart");
+    let width = |st: &housecraft_api::geom::stairs::Step| {
+        let p = &st.poly;
+        (0..p.len()).map(|i| p[i].distance(p[(i + 1) % p.len()])).fold(0.0, f64::max)
+    };
+    assert!((width(&g.steps[0]) - 48.0 * 25.4).abs() < 1.0);
+    assert!((width(g.steps.last().unwrap()) - 36.0 * 25.4).abs() < 1.0);
+
+    // Breaking an L stair keeps its risers.
+    let l = apply(&mut s, r#"[{"op": "add_stair", "start": ["20'",0], "direction": 90, "shape": {"type": "l", "turn": "right", "first_treads": 0}}]"#).created[0];
+    let before = geometry(s.document(), s.document().get::<Stair>(l).unwrap()).risers;
+    s.apply(&[Command::BreakStair { id: l }]).unwrap();
+    let st = s.document().get::<Stair>(l).unwrap().clone();
+    assert_eq!(st.shape, StairShape::Sections);
+    assert_eq!(geometry(s.document(), &st).risers, before);
+
+    // A landing on its own, 4' up, and a stair starting on it climbs from there.
+    let landing = apply(&mut s, r#"[{"op": "add_stair", "start": ["40'",0], "direction": 90, "rise": "4'"}]"#).created[0];
+    s.apply(&[Command::Update { id: landing, set: patch(serde_json::json!({"shape": {"type": "sections"}, "sections": [{"section": "landing", "depth": "6'"}]})) }]).unwrap();
+    let g = geometry(s.document(), s.document().get::<Stair>(landing).unwrap());
+    assert!((g.steps[0].z - 4.0 * ft).abs() < 1.0, "{}", g.steps[0].z);
+    let upper = apply(&mut s, r#"[{"op": "add_stair", "start": ["40'","3'"], "direction": 90}]"#).created[0];
+    let g = geometry(s.document(), s.document().get::<Stair>(upper).unwrap());
+    assert!((g.base_z - 4.0 * ft).abs() < 1.0, "auto-connected: {}", g.base_z);
+    assert!(g.steps.iter().all(|x| x.z > 4.0 * ft));
+
+    // Wrap-around: the bottom steps grow round the sides.
+    let w = apply(&mut s, r#"[{"op": "add_stair", "start": ["60'",0], "direction": 90}]"#).created[0];
+    let plain = geometry(s.document(), s.document().get::<Stair>(w).unwrap()).steps.len();
+    s.apply(&[Command::Update { id: w, set: patch(serde_json::json!({"extras": {"wrap": 2}})) }]).unwrap();
+    let g = geometry(s.document(), s.document().get::<Stair>(w).unwrap());
+    assert_eq!(g.steps.len(), plain + 2);
+    assert!(width(&g.steps[0]) > width(&g.steps[2]) + 2.0 * 10.0 * 25.4 - 1.0);
+
+    // A SIP roof: planes take the assembly's thickness, layers in the materials list.
+    let mut s = boxed();
+    let set = s.document().settings.active_default_set;
+    let inch = |x: f64| Length::from_inches(x);
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({"roof": {"layers": [
+        {"name": "OSB", "thickness": inch(0.4375), "material": "OSB"},
+        {"name": "EPS foam core", "thickness": inch(7.375), "material": "EPS foam core"},
+        {"name": "OSB", "thickness": inch(0.4375), "material": "OSB"}
+    ]}})) }]).unwrap();
+    apply(&mut s, r#"[{"op": "build_roof"}]"#);
+    let plane = s.document().iter::<RoofPlane>().find(|r| !r.gable).unwrap();
+    assert!((plane.thickness.inches() - 8.25).abs() < 0.01);
+    let list = housecraft_api::materials::materials(s.document(), &Default::default());
+    assert!(list.lines.iter().any(|l| l.item.starts_with("EPS foam core")), "{:?}", list.lines.iter().map(|l| &l.item).collect::<Vec<_>>());
+}

@@ -565,6 +565,10 @@ pub struct RoofDefaults {
     /// Insulating value of the roof and ceiling assembly (R).
     #[serde(default)]
     pub r_value: f64,
+    /// A layered roof assembly (a SIP roof: OSB, foam core, OSB), top
+    /// down; new roof planes take its total thickness.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub layers: Vec<crate::WallLayer>,
     /// Degrees above horizontal (6 in 12 = 26.57°).
     pub pitch: f64,
     /// Eave overhang beyond the walls' outer faces.
@@ -583,6 +587,17 @@ pub struct RoofDefaults {
     pub shadow_board: Length,
 }
 
+impl RoofDefaults {
+    /// The roof's thickness: its layers' total when it has layers.
+    pub fn total_thickness(&self) -> Length {
+        if self.layers.is_empty() {
+            self.thickness
+        } else {
+            Length::from_mm(self.layers.iter().map(|l| l.thickness.mm()).sum())
+        }
+    }
+}
+
 fn fascia_depth() -> Length {
     Length::from_inches(7.25)
 }
@@ -594,6 +609,7 @@ impl Default for RoofDefaults {
             gutters: true,
             frieze: Length::ZERO,
             r_value: 0.0,
+            layers: Vec::new(),
             pitch: (6.0f64 / 12.0).atan().to_degrees(),
             overhang: Length::from_inches(16.0),
             rake_overhang: Length::from_inches(12.0),

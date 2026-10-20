@@ -348,7 +348,14 @@ pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
             .collect();
         let area = housecraft_geom::roof::newell(&pts).length() / 2.0;
         t.add("Roofing", "Roofing", Measure::Area, area, r.id);
-        t.add("Roofing", "Roof sheathing", Measure::Area, area, r.id);
+        let layers = &doc.active_defaults().roof.layers;
+        if layers.is_empty() {
+            t.add("Roofing", "Roof sheathing", Measure::Area, area, r.id);
+        }
+        for l in layers {
+            let name = if l.material.is_empty() { &l.name } else { &l.material };
+            t.add("Roofing", format!("{name} {}", fmt(l.thickness)), Measure::Area, area, r.id);
+        }
         let low = pts.iter().map(|p| p.z).fold(f64::MAX, f64::min);
         let eaves: f64 = (0..pts.len())
             .map(|i| (pts[i], pts[(i + 1) % pts.len()]))

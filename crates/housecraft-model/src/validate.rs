@@ -514,6 +514,10 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                         if first_treads == 0 {
                             c.issue(id, "the first flight needs at least one tread");
                         }
+                    }                    StairShape::Sections => {
+                        if st.sections.is_empty() {
+                            c.issue(id, "a sectioned stair needs at least one flight or landing");
+                        }
                     }
                 }
             }

@@ -532,6 +532,13 @@ fn transformed(doc: &Document, object: &Object, t: &Transform2) -> Result<Object
                 match &mut st.shape {
                     StairShape::L { turn, .. } | StairShape::U { turn, .. } | StairShape::Curved { turn, .. } => flip(turn),
                     StairShape::Straight => {}
+                    StairShape::Sections => {
+                        for sec in &mut st.sections {
+                            if let StairSection::Landing { turn: Some(t), .. } = sec {
+                                flip(t);
+                            }
+                        }
+                    }
                 }
                 // Mirroring also swaps which side each railing is on.
                 std::mem::swap(&mut st.railing_left, &mut st.railing_right);

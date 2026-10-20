@@ -103,7 +103,7 @@ fn regenerate(doc: &mut Document, floor: Id, out: &mut Outcome) -> usize {
             thickness: if g.gable {
                 Length::ZERO
             } else {
-                defaults.roof.thickness
+                defaults.roof.total_thickness()
             },
             gable: g.gable,
             auto: true,
@@ -206,7 +206,7 @@ pub(crate) fn add_plane(
         floor,
         outline,
         pitch,
-        thickness: defaults.roof.thickness,
+        thickness: defaults.roof.total_thickness(),
         gable: false,
         auto: false,
         layer: defaults.layers.roofs.unwrap_or(defaults.layers.walls),

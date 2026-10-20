@@ -2,7 +2,7 @@
 //! for straight, L and U stairs, plus walk line and rail paths.
 
 use glam::{DVec2, DVec3};
-use housecraft_model::{Document, Stair, StairShape, Turn};
+use housecraft_model::{Document, Stair, StairSection, StairShape, Turn};
 
 use crate::math::{perp, v2};
 
@@ -66,12 +66,53 @@ pub fn tread_count(risers: u32, shape: &StairShape) -> u32 {
 }
 
 pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
-    let rise = doc.stair_rise(stair).mm().max(1.0);
-    let risers = ((rise / stair.max_riser.mm()).ceil() as u32).max(1);
-    let r = rise / risers as f64;
-    let base_z = doc
+    geometry_with(doc, stair, true)
+}
+
+/// Where a stair starting at `p` on `floor` begins: on another stair's
+/// landing (auto-connect), its height.
+fn landing_under(doc: &Document, stair: &Stair) -> Option<f64> {
+    let p = v2(stair.start);
+    doc.iter::<Stair>()
+        .filter(|o| o.id != stair.id && o.floor == stair.floor)
+        .flat_map(|o| geometry_with(doc, o, false).steps.into_iter().filter(|s| s.landing))
+        .filter(|s| crate::math::point_in_polygon(p, &s.poly))
+        .map(|s| s.z)
+        .reduce(f64::max)
+}
+
+/// Risers a sectioned stair has: its treads, its landings (two for a split
+/// one) and the step onto the floor above (none for landings alone).
+fn section_risers(sections: &[StairSection]) -> (u32, u32) {
+    let mut treads = 0;
+    let mut landings = 0;
+    for s in sections {
+        match s {
+            StairSection::Flight { treads: n, .. } => treads += n,
+            StairSection::Landing { split, .. } => landings += if *split { 2 } else { 1 },
+        }
+    }
+    (treads, landings)
+}
+
+pub fn geometry_with(doc: &Document, stair: &Stair, connect: bool) -> StairGeom {
+    let floor_z = doc
         .get::<housecraft_model::Floor>(stair.floor)
         .map_or(0.0, |f| f.elevation.mm());
+    // A stair that starts on another stair's landing climbs from there.
+    let landing = if connect { landing_under(doc, stair) } else { None };
+    let base_z = landing.unwrap_or(floor_z);
+    let rise = match (landing, stair.rise) {
+        (Some(_), None) => (doc.stair_rise(stair).mm() - (base_z - floor_z)).max(1.0),
+        _ => doc.stair_rise(stair).mm().max(1.0),
+    };
+    let risers = if stair.shape == StairShape::Sections {
+        let (t, l) = section_risers(&stair.sections);
+        (t + l + u32::from(t > 0)).max(1)
+    } else {
+        ((rise / stair.max_riser.mm()).ceil() as u32).max(1)
+    };
+    let r = rise / risers as f64;
     let d = stair.tread_depth.mm();
     let w = stair.width.mm();
     let half = w / 2.0;
@@ -93,9 +134,11 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
     let mut flight = |start: DVec2,
                       fdir: DVec2,
                       n: u32,
+                      fhalf: f64,
                       riser: &mut u32,
                       steps: &mut Vec<Step>,
                       walk: &mut Vec<DVec3>| {
+        let half = fhalf;
         let first = *riser;
         for i in 0..n {
             *riser += 1;
@@ -152,8 +195,84 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
     }
     match stair.shape {
         StairShape::Straight => {
-            flight(origin, dir, total, &mut riser, &mut steps, &mut walk);
+            flight(origin, dir, total, half, &mut riser, &mut steps, &mut walk);
             flights.push(total);
+        }
+        StairShape::Sections => {
+            let (mut pos, mut fdir, mut fw) = (origin, dir, w);
+            for sec in &stair.sections {
+                match *sec {
+                    StairSection::Flight { treads, width } => {
+                        fw = width.map_or(w, |l| l.mm().max(300.0));
+                        pos = flight(pos, fdir, treads, fw / 2.0, &mut riser, &mut steps, &mut walk);
+                        flights.push(treads);
+                    }
+                    StairSection::Landing { turn, u_turn, gap, depth, split } => {
+                        let hw = fw / 2.0;
+                        let dl = depth.map_or(fw, |l| l.mm().max(300.0));
+                        riser += 1;
+                        let z1 = base_z + riser as f64 * r;
+                        let mut land = |poly: Vec<DVec2>, z: f64, index: u32| {
+                            steps.push(Step { poly, z, index, landing: true, nosing: Vec::new(), low_z: None });
+                        };
+                        match turn {
+                            // Straight on: split into near and far halves.
+                            None => {
+                                if split {
+                                    land(quad(pos, fdir, 0.0, dl / 2.0, hw, hw), z1, riser);
+                                    riser += 1;
+                                    land(quad(pos, fdir, dl / 2.0, dl, hw, hw), base_z + riser as f64 * r, riser);
+                                } else {
+                                    land(quad(pos, fdir, 0.0, dl, hw, hw), z1, riser);
+                                }
+                                pos += fdir * dl;
+                                walk.push(pos.extend(base_z + riser as f64 * r));
+                            }
+                            Some(t) => {
+                                let side = if t == Turn::Left { 1.0 } else { -1.0 };
+                                let sp = perp(fdir) * side;
+                                if u_turn {
+                                    // Turning back: the landing spans both flights.
+                                    let g = gap.mm().max(0.0);
+                                    let (l, rr) = if side > 0.0 { (hw + g + fw, hw) } else { (hw, hw + g + fw) };
+                                    if split {
+                                        land(quad(pos, fdir, 0.0, dl, hw, hw), z1, riser);
+                                        riser += 1;
+                                        let (l2, r2) = if side > 0.0 { (l, -hw) } else { (-hw, rr) };
+                                        land(quad(pos, fdir, 0.0, dl, l2, r2), base_z + riser as f64 * r, riser);
+                                    } else {
+                                        land(quad(pos, fdir, 0.0, dl, l, rr), z1, riser);
+                                    }
+                                    let shift = sp * (fw + g);
+                                    for q in [pos + fdir * dl / 2.0, pos + fdir * dl / 2.0 + shift] {
+                                        walk.push(q.extend(base_z + riser as f64 * r));
+                                    }
+                                    pos += shift;
+                                    fdir = -fdir;
+                                } else {
+                                    // A quarter turn: split along the diagonal from
+                                    // the far outside corner to the near inside one.
+                                    let a = pos - sp * hw;
+                                    let b = pos + fdir * dl - sp * hw;
+                                    let c = pos + fdir * dl + sp * hw;
+                                    let e = pos + sp * hw;
+                                    if split {
+                                        land(vec![a, b, e], z1, riser);
+                                        riser += 1;
+                                        land(vec![b, c, e], base_z + riser as f64 * r, riser);
+                                    } else {
+                                        land(vec![a, b, c, e], z1, riser);
+                                    }
+                                    let center = pos + fdir * dl / 2.0;
+                                    walk.push(center.extend(base_z + riser as f64 * r));
+                                    pos = center + sp * hw;
+                                    fdir = sp;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         StairShape::Curved { turn, radius } => {
             // Wedge treads round a centre on the turning side; the tread depth
@@ -194,7 +313,7 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
             turn, first_treads, ..
         } => {
             let k = first_treads.min(total);
-            let end = flight(origin, dir, k, &mut riser, &mut steps, &mut walk);
+            let end = flight(origin, dir, k, half, &mut riser, &mut steps, &mut walk);
             flights.push(k);
             let side = if turn == Turn::Left { 1.0 } else { -1.0 };
             riser += 1;
@@ -238,7 +357,7 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
                     walk.push(DVec3::new(center.x, center.y, base_z + riser as f64 * r));
                     let dir2 = perp(dir) * side;
                     let start2 = center + dir2 * half;
-                    flight(start2, dir2, rest.saturating_sub(2), &mut riser, &mut steps, &mut walk);
+                    flight(start2, dir2, rest.saturating_sub(2), half, &mut riser, &mut steps, &mut walk);
                 }
                 StairShape::L { .. } => {
                     steps.push(Step {
@@ -253,7 +372,7 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
                     walk.push(DVec3::new(center.x, center.y, landing_z));
                     let dir2 = perp(dir) * side;
                     let start2 = center + dir2 * half;
-                    flight(start2, dir2, rest, &mut riser, &mut steps, &mut walk);
+                    flight(start2, dir2, rest, half, &mut riser, &mut steps, &mut walk);
                 }
                 StairShape::U { gap, .. } => {
                     let g = gap.mm().max(0.0);
@@ -275,12 +394,32 @@ pub fn geometry(doc: &Document, stair: &Stair) -> StairGeom {
                     for p in [end + dir * half, end + dir * half + shift] {
                         walk.push(DVec3::new(p.x, p.y, landing_z));
                     }
-                    flight(end + shift, -dir, rest, &mut riser, &mut steps, &mut walk);
+                    flight(end + shift, -dir, rest, half, &mut riser, &mut steps, &mut walk);
                 }
-                StairShape::Straight | StairShape::Curved { .. } => unreachable!(),
+                StairShape::Straight | StairShape::Curved { .. } | StairShape::Sections => unreachable!(),
             }
             flights.push(rest);
         }
+    }
+    // Wrap-around: the bottom steps continue round both sides, each a
+    // tread deeper than the one above (a pyramid of steps at the foot).
+    let wrap = stair.extras.wrap.min(steps.iter().take_while(|s| !s.landing).count() as u32);
+    if wrap > 0 {
+        let mut extra = Vec::new();
+        for (i, step) in steps.iter_mut().take(wrap as usize).enumerate() {
+            let ext = (wrap as usize - i) as f64 * d;
+            let inner = (wrap as usize - i - 1) as f64 * d;
+            let (z, index) = (step.z, step.index);
+            step.poly = quad(origin, dir, i as f64 * d, (i + 1) as f64 * d, half + ext, half + ext);
+            step.nosing.clear();
+            let (from, to) = ((i + 1) as f64 * d, wrap as f64 * d);
+            if to - from > 1.0 {
+                for (l, rr) in [(half + ext, -(half + inner)), (-(half + inner), half + ext)] {
+                    extra.push(Step { poly: quad(origin, dir, from, to, l, rr), z, index, landing: false, nosing: Vec::new(), low_z: None });
+                }
+            }
+        }
+        steps.extend(extra);
     }
     // A starter step: the bottom tread wider, with round ends.
     if stair.extras.starter
@@ -421,6 +560,7 @@ mod tests {
             baluster: None,
             newel: None,
             extras: Default::default(),
+            sections: Vec::new(),
         };
         (doc, s)
     }

@@ -956,6 +956,27 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                     d.roof.thickness,
                                     |v| commands.push(p(json!({"roof": {"thickness": v}}))),
                                 );
+                                // A layered (SIP) roof assembly.
+                                ui.label("Roof assembly");
+                                ui.horizontal(|ui| {
+                                    let inch = Length::from_inches;
+                                    let layer = |name: &str, t: f64, r: f64| json!({"name": name, "thickness": inch(t), "material": name, "r_value": r});
+                                    let sip = |core: f64, r: f64| json!([layer("OSB", 0.4375, 0.5), layer("EPS foam core", core, r), layer("OSB", 0.4375, 0.5)]);
+                                    for (label, layers) in [
+                                        ("Plain", json!([])),
+                                        ("SIP 6 1/2\"", sip(5.625, 23.0)),
+                                        ("SIP 8 1/4\"", sip(7.375, 30.0)),
+                                        ("SIP 10 1/4\"", sip(9.375, 38.0)),
+                                        ("SIP 12 1/4\"", sip(11.375, 46.0)),
+                                    ] {
+                                        let total: f64 = layers.as_array().map_or(0.0, |a| a.iter().filter_map(|l| l["thickness"].as_f64()).sum());
+                                        let current: f64 = d.roof.layers.iter().map(|l| l.thickness.mm()).sum();
+                                        if ui.selectable_label((total - current).abs() < 0.5, label).clicked() {
+                                            commands.push(p(json!({"roof": {"layers": layers}})));
+                                        }
+                                    }
+                                });
+                                ui.end_row();
                                 ui.label("Raised plate (heel)");
                                 if let Some(v) = app.bufs.length(
                                     ui,

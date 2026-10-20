@@ -424,6 +424,7 @@ fn kind_rows(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> Vec<
                         StairShape::L { .. } => "L-shaped",
                         StairShape::U { .. } => "U-shaped",
                         StairShape::Curved { .. } => "Curved",
+                        StairShape::Sections => "Sectioned",
                     }
                     .into(),
                 );

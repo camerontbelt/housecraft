@@ -328,6 +328,7 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
                 StairShape::L { .. } => "L-shaped",
                 StairShape::U { .. } => "U-shaped",
                 StairShape::Curved { .. } => "curved",
+                StairShape::Sections => "sectioned",
             };
             let rise = doc.stair_rise(s);
             let risers = ((rise.mm() / s.max_riser.mm()).ceil() as u32).max(1);

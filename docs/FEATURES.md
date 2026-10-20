@@ -251,7 +251,7 @@ These come from reading the whole list and change the architecture, not just the
 | RF-08 | Skylights with framing; shape editor | P2 | M3 ◐ Skylight tool: curb skylights in roof planes, shown in plan; no framing or shape editor, and rebuilding an automatic roof drops them |
 | RF-09 | Automatic ceilings; manual cathedral, tray, coffered, barrel | P1 | M3 ✓ |
 | RF-10 | Tray ceiling tool (slope, moldings, rope lights) | P2 | M3 ✓ tray ceilings with inset and rise, straight or sloped sides, and an optional rope light in the cove |
-| RF-11 | Layered roof assemblies (SIP roofs) | P2 | M3 |
+| RF-11 | Layered roof assemblies (SIP roofs) | P2 | M3 ✓ roof assembly presets (SIP 6 1/2" to 12 1/4"): planes take its thickness, layers show on cut edges and in the materials list |
 | RF-12 | Gutters & frieze moldings with custom profiles | P2 | M3 ◐ gutters along the eaves and a frieze board under them (Default Settings > Roofs); fixed profiles |
 | RF-13 | Shadow boards on fascia | P3 | M5 ✓ |
 | RF-14 | Convert roof/ceiling planes to polylines | P3 | M4 ◐ Convert CAD To > Roof Planes to Polylines; there are no separate ceiling planes yet |
@@ -263,14 +263,14 @@ These come from reading the whole list and change the architecture, not just the
 | ST-01 | Stair tool: rise/run/width/treads/overhang/stringers/railings/brackets; riser & tread settings | P1 | M3 ◐ rise, run, width, treads, nosing, stringers, railings; brackets later |
 | ST-02 | One-click auto stairs/ramps between platforms or terrain; L and U shapes | P1 | M3 ◐ straight, L and U tools with automatic riser count; auto-connect and ramps later |
 | ST-03 | Curved, flared, starter treads, winders, walk line | P2 | M3 ◐ curved stairs (wedge treads round a centre), a wide round-ended starter step, winders in place of an L landing, and the walk line; no flared flights |
-| ST-04 | Wrap-around stairs | P3 | M3 |
-| ST-05 | Mixed-width stair sections | P3 | M3 |
-| ST-06 | Break/disconnect/edit stair sections | P2 | M3 |
-| ST-07 | Split landings for L/U | P2 | M3 |
+| ST-04 | Wrap-around stairs | P3 | M3 ✓ the bottom steps wrap round the sides (Wrap-around bottom steps) |
+| ST-05 | Mixed-width stair sections | P3 | M3 ✓ each flight of a sectioned stair can have its own width |
+| ST-06 | Break/disconnect/edit stair sections | P2 | M3 ✓ Shape > Sections breaks a straight, L or U stair into flights and landings edited one by one |
+| ST-07 | Split landings for L/U | P2 | M3 ✓ landings split in two a riser apart (diagonally on a quarter turn) |
 | ST-08 | Stringer/riser/trim component control | P2 | M3 ◐ open risers (tread boards on the stringers) and stringers on or off; no separate riser or skirt trim control |
 | ST-09 | Auto stairwell (cut platform) | P1 | M3 ✓ |
 | ST-10 | ADA ramps | P2 | M3 ✓ stair Style > Ramp: 1:12 runs rising at most 30", 5' landings between, rails both sides |
-| ST-11 | Custom landings and auto-connect | P2 | M3 |
+| ST-11 | Custom landings and auto-connect | P2 | M3 ✓ landings with their own depth and turn, landings on their own, and stairs started on a landing climb from it |
 | ST-12 | Stair railing styles; plan display of balusters | P1 | M3 ◐ handrails and balusters in 3D, baluster dots in plan; styles later |
 | ST-13 | Custom newels & balusters (library/import) | P2 | M5 ✓ any 3D symbol as the stair's balusters and newel posts |
 | ST-14 | Stair defaults interior/exterior | P1 | M3 ✓ |
