@@ -330,8 +330,7 @@
       "gap": "No Make Parallel and no Reflect About Object. Rows: CAD-01, CAD-29"
     },
     {
-      "step": "Put both roof plans in a 'Roof Tutorials' folder",
-      "gap": "No document folders. Row: PRJ-09"
+      "step": "Put both roof plans in a 'Roof Tutorials' folder"
     }
   ]
 }

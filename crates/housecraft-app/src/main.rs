@@ -13,6 +13,7 @@ mod library_view;
 mod materials;
 mod object_painter;
 mod project_tools;
+mod projects_panel;
 mod props;
 mod schedules;
 mod snap;

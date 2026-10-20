@@ -57,7 +57,8 @@ putting it in a CAD detail.
 
 ## Revisions and folders (page 329)
 
-**File › Make a Copy…** `Chic Cottage-Electrical`. *Not in HouseCraft yet:* your own folders in the Project Browser.
+**File › Make a Copy…** `Chic Cottage-Electrical`. Then file the Kitchen and Bath revisions in a
+`Kitchen and Bath Tutorials` folder: **Projects** › right-click the project › **New Folder…**, and drag them in.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -68,4 +69,3 @@ putting it in a CAD detail.
 | Ganged electrical blocks | EL-09 |
 | Wiring splines | EL-01 |
 | Schedule title; schedules in CAD details | EST-31 |
-| Project Browser folders | PRJ-09 |

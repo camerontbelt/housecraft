@@ -71,8 +71,9 @@ work (FEATURES ST-20).
 
 ## Revisions and folders (page 124)
 
-**File › Make a Copy…** `Chic Cottage-Porches`. Keep the archive copies in a folder of their own in Windows
-Explorer. HouseCraft has no Project Browser folders for documents.
+**File › Make a Copy…** `Chic Cottage-Porches`. Then, under **Projects** in the Project Browser, right-click the
+project (`Chic Cottage`) and choose **New Folder…**. Name it, then drag the revision plans onto it (Ctrl+click or
+Shift+click to pick several first). They move on disk too.
 
 ## What this tutorial showed HouseCraft still needs
 

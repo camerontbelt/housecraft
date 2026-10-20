@@ -12,7 +12,7 @@ HouseCraft ever disagree, the test catches it.
 | Chief says | In HouseCraft |
 |---|---|
 | Residential Template, "Siding-6" wall | File › New Plan; its exterior wall type is **Exterior 2x6** |
-| Project, Project Browser folders | One plan per file; the Project Browser (right side) lists that plan's floors, views and cameras |
+| Project, Project Browser folders | A project is a folder of plans. The Project Browser's **Projects** list shows the open plan's folder, its plans and your sub-folders; below it are the open plan's floors, views and cameras |
 | Open Object (Ctrl+E) | Double-click the object, or select it and click **Open Object** under Details on the right |
 | Default Settings (Edit menu) | **Edit › Default Settings…** (the same idea; fewer categories) |
 | Snap Settings (Edit menu) | **Tools › Snap Settings** |
@@ -21,7 +21,9 @@ HouseCraft ever disagree, the test catches it.
 
 ## File management, saving, plan views (pages 3–6)
 
-1. **File › New Plan.** There's no "project" step: the plan is the file. Save it (Ctrl+S) as `Chic Cottage-Current`.
+1. **File › New Plan.** Chief's New Project makes a project folder; in HouseCraft, save the plan (Ctrl+S) into a new
+   folder called `Chic Cottage` as `Chic Cottage-Current`. That folder is the project: it shows under **Projects** at
+   the top of the Project Browser, with every plan you save or copy into it.
 2. The Project Browser is the right-hand panel's **Project Browser** tab. Under **Plan Views**, right-click
    **Floor Plan** to see what a saved view keeps (floor, layer set, default set, reference floors).
 3. The tutorial turns off auto roofs and auto dimensions for clearer pictures. In HouseCraft both start off anyway:
@@ -112,7 +114,6 @@ HouseCraft ever disagree, the test catches it.
 | Tape Measure | DIM-24 |
 | Rich text with uppercase | TXT-02 |
 | Spell check | TXT-17 |
-| Projects with several plans and layouts | PRJ-09 |
 | Move Left End / Right End / Both Ends when resizing by dimension; arrow-key nudging | DIM-03 |
 | "Foundation/Dimension to Exterior of Layer" wall type settings | FD-05 |
 

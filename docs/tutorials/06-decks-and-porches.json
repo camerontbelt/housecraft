@@ -313,8 +313,7 @@
       "gap": "Schedule rows can't be reordered. Row: EST-28"
     },
     {
-      "step": "Save a copy; organise the archive plans in a Project Browser folder",
-      "gap": "No document folders (plans are separate files). Row: PRJ-09"
+      "step": "Save a copy; organise the archive plans in a Project Browser folder"
     }
   ]
 }

@@ -4,7 +4,7 @@
   "steps": [
     {
       "step": "Start a new plan from the residential template (Chief: File > New Project, Chic Cottage)",
-      "gap": "No multi-document projects: HouseCraft starts a single plan (File > New Plan). Chief's 'Siding-6' wall type is HouseCraft's 'Exterior 2x6'. Rows: PRJ-09, UI-16"
+      "gap": "Chief's 'Siding-6' wall type is HouseCraft's 'Exterior 2x6'. Row: UI-16"
     },
     {
       "step": "Look at the Working Plan View's saved settings in the Project Browser",

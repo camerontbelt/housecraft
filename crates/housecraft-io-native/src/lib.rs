@@ -11,6 +11,7 @@ pub mod dxf;
 pub mod library;
 pub mod pdf;
 pub mod project;
+pub mod projects;
 pub mod symbols;
 
 use std::io::{Read, Seek, Write};

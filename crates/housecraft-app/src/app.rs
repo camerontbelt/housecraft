@@ -46,6 +46,9 @@ pub struct Prefs {
     pub pinned: Vec<String>,
     /// The template New Plan starts from (`None`: the built-in plan).
     pub default_template: Option<String>,
+    /// The folder the Project Browser lists as the project (`None`: the open
+    /// plan's folder).
+    pub project_root: Option<String>,
     /// Minutes between automatic archive copies of a changed plan (0: off).
     pub archive_minutes: u32,
     /// How many archive copies to keep per plan.
@@ -104,6 +107,7 @@ impl Default for Prefs {
             hotkeys: Vec::new(),
             pinned: Vec::new(),
             default_template: None,
+            project_root: None,
             archive_minutes: 15,
             archive_keep: 5,
             portfolio_folder: None,
@@ -214,6 +218,7 @@ pub struct App {
     last_archive: (f64, u64),
     /// The name being typed in Save as Template.
     template_name: Option<String>,
+    pub projects: crate::projects_panel::ProjectsPanel,
 }
 
 impl App {
@@ -275,6 +280,7 @@ impl App {
             browser_filter: String::new(),
             browser_detail: None,
             template_name: None,
+            projects: Default::default(),
         };
         app.apply_theme(&cc.egui_ctx);
         if let Some(p) = path {
@@ -1799,7 +1805,7 @@ impl App {
         match &self.path {
             Some(p) => {
                 let stem = p.file_stem()?.to_string_lossy().into_owned();
-                Some(p.parent()?.join(format!("{stem} Archive")))
+                Some(p.parent()?.join(format!("{stem}{}", housecraft_io_native::projects::ARCHIVE_SUFFIX)))
             }
             None => Some(housecraft_io_native::library::app_data_dir()?.join("Archive")),
         }
@@ -3951,6 +3957,8 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
     }
 
     fn project_browser(&mut self, ui: &mut Ui) {
+        self.projects_section(ui);
+        ui.separator();
         ui.strong(self.doc().name.clone());
         // Pinned objects first.
         let pins: Vec<(Id, String)> = self
@@ -5184,7 +5192,7 @@ fn timestamp() -> String {
 }
 
 /// Open a folder in the system file manager.
-fn reveal(dir: &std::path::Path) {
+pub fn reveal(dir: &std::path::Path) {
     #[cfg(windows)]
     let _ = std::process::Command::new("explorer").arg(dir).spawn();
     #[cfg(target_os = "macos")]

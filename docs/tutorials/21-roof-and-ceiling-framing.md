@@ -54,7 +54,8 @@ rafter depth for one plane, and choosing which height stays put when it changes.
 
 ## Revision and folders (pages 378–379)
 
-**File › Make a Copy…** `Chic Cottage-Roof Framing`. *Not in HouseCraft yet:* Project Browser folders.
+**File › Make a Copy…** `Chic Cottage-Roof Framing`. Make a `Framing Tutorials` folder under
+**Projects** (right-click the project › **New Folder…**) and drag the framing revisions into it.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -66,4 +67,3 @@ rafter depth for one plane, and choosing which height stays put when it changes.
 | Framing fill and labels | FR-38 |
 | Select by type with a tool's marquee | UI-38 |
 | Reference display layer set | LY-07 |
-| Project Browser folders | PRJ-09 |

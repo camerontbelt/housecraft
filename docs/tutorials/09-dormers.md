@@ -41,6 +41,11 @@ both. **File › Make a Copy…** would leave you in the original.)
 2. **Rectangular Polyline** (CAD) along the valley, and **Text with Arrow**: `FLASHING AT WALL`.
 3. *Not in HouseCraft yet:* Make Parallel/Perpendicular and Reflect About Object.
 
+## Filing the roof plans (page 175)
+
+Under **Projects** in the Project Browser, right-click the project › **New Folder…** `Roof Tutorials`. Ctrl+click
+Chic Cottage-Roof and Chic Cottage-Dormer Option, then drag them onto the new folder.
+
 ## What this tutorial showed HouseCraft still needs
 
 | Missing | FEATURES row |
