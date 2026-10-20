@@ -117,7 +117,8 @@ pub fn parts(doc: &Document, deck: &Deck) -> Option<DeckParts> {
             let (a, b) = (rim[i], rim[(i + 1) % k]);
             let ledger = parts.ledgers.iter().any(|(x, y)| x.distance(outline[i]) < 1.0 && y.distance(outline[(i + 1) % k]) < 1.0);
             let role = if ledger { FramingRole::Ledger } else { FramingRole::RimJoist };
-            push(&mut parts, role, a.extend(joist_z), b.extend(joist_z), t, jd, 0.0);
+            let depth = if ledger { deck.ledger_depth.map_or(jd, |l| l.mm()) } else { jd };
+            push(&mut parts, role, a.extend(joist_z), b.extend(joist_z), t, depth, 0.0);
         }
     }
     let inner = inset_polygon(&outline, t);
@@ -170,6 +171,15 @@ pub fn parts(doc: &Document, deck: &Deck) -> Option<DeckParts> {
     let mut beam_at: Vec<f64> = (1..=count).map(|i| start + (end - start) * i as f64 / count as f64).collect();
     if ledger_side.is_none() {
         beam_at.insert(0, start);
+    }
+    // Beams placed by hand, measured from the ledger side (or the near edge).
+    if !deck.beam_offsets.is_empty() {
+        let (from, sign) = match ledger_side {
+            Some(l) if (l - lo).abs() < (l - hi).abs() => (lo, 1.0),
+            Some(_) => (hi, -1.0),
+            None => (lo, 1.0),
+        };
+        beam_at = deck.beam_offsets.iter().map(|o| from + sign * o.mm()).collect();
     }
     let bd = 9.25 * IN;
     let beam_z = joist_z - jd / 2.0 - bd / 2.0;

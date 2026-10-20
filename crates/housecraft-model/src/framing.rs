@@ -364,6 +364,9 @@ pub struct FramingDefaults {
     pub wall_material: FramingMaterial,
     #[serde(default)]
     pub truss_type: TrussType,
+    /// Double the first and last truss of each run (girder trusses).
+    #[serde(default)]
+    pub girder_ends: bool,
     /// Openings closer than this share one header.
     #[serde(default = "combine_headers")]
     pub combine_headers: Length,
@@ -413,6 +416,7 @@ impl Default for FramingDefaults {
             joist_splice: JoistSplice::Continuous,
             wall_material: FramingMaterial::Lumber,
             truss_type: TrussType::Common,
+            girder_ends: false,
             combine_headers: combine_headers(),
         }
     }

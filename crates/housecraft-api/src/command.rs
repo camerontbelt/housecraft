@@ -280,6 +280,13 @@ pub enum Command {
     ConvertCad { ids: Vec<Id>, to: CadTarget },
     /// Trace roof planes as closed CAD polylines in plan (the planes stay).
     RoofPlanesToPolylines { ids: Vec<Id> },
+    /// Cabinets on `floor` (every floor when `None`) get end panels on
+    /// sides that are not against another cabinet or a wall.
+    AutoEndPanels { floor: Option<Id> },
+    /// Beams and posts under the floor above room `room`: beams along the
+    /// room's long way at most `max_span` apart, posts at most
+    /// `post_spacing` apart (kept when framing is rebuilt).
+    AutoPostAndBeam { room: Id, max_span: Option<Length>, post_spacing: Option<Length> },
     /// Scatter `count` copies of plant, symbol or block `source` at random
     /// inside closed CAD shape `region` (or along it, when open), turned
     /// at random and sized up to `size_variation` (0–1) either way.
@@ -1273,6 +1280,8 @@ impl Command {
             Command::ConvertCad { .. } => "convert_cad",
             Command::RoofPlanesToPolylines { .. } => "roof_planes_to_polylines",
             Command::Scatter { .. } => "scatter",
+            Command::AutoEndPanels { .. } => "auto_end_panels",
+            Command::AutoPostAndBeam { .. } => "auto_post_and_beam",
             Command::SetMacro { .. } => "set_macro",
             Command::ReplaceText { .. } => "replace_text",
             Command::ReplaceFont { .. } => "replace_font",
@@ -1936,6 +1945,10 @@ impl Command {
             }
             Command::ConvertCad { ids, to } => crate::convert::convert_cad(doc, ids, to, &mut out)?,
             Command::RoofPlanesToPolylines { ids } => crate::convert::roof_outlines(doc, ids, &mut out)?,
+            Command::AutoEndPanels { floor } => crate::cabinets::auto_end_panels(doc, *floor, &mut out),
+            Command::AutoPostAndBeam { room, max_span, post_spacing } => {
+                crate::framing::post_and_beam(doc, *room, max_span.map_or(12.0 * 304.8, |l| l.mm()), post_spacing.map_or(8.0 * 304.8, |l| l.mm()), &mut out)?
+            }
             Command::Scatter { source, region, count, seed, size_variation, rotate } => {
                 crate::convert::scatter(doc, *source, *region, *count, *seed, *size_variation, *rotate, &mut out)?
             }

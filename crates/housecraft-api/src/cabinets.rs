@@ -308,3 +308,32 @@ pub(crate) fn auto_dimensions(doc: &mut Document, d: &DefaultSet, floor: Id, out
         }));
     }
 }
+
+/// End panels on every cabinet side that is open: not against another
+/// cabinet or a wall.
+pub(crate) fn auto_end_panels(doc: &mut Document, floor: Option<Id>, out: &mut Outcome) {
+    let cabinets: Vec<Cabinet> = doc.iter::<Cabinet>().filter(|c| floor.is_none_or(|f| f == c.floor)).cloned().collect();
+    for c in cabinets {
+        let f = housecraft_geom::cabinets::frame(&c);
+        let half = c.width.mm() / 2.0;
+        let d = c.depth.mm();
+        let walls: Vec<Vec<housecraft_geom::DVec2>> = housecraft_geom::walls::wall_geoms(doc, c.floor).iter().map(|g| g.corners.to_vec()).collect();
+        let open_at = |u: f64| {
+            let p = f.world(housecraft_geom::DVec2::new(u, d / 2.0));
+            let cabinet = doc.iter::<Cabinet>().any(|o| {
+                o.id != c.id && o.floor == c.floor && (o.cabinet_kind == CabinetKind::Wall) == (c.cabinet_kind == CabinetKind::Wall) && housecraft_geom::math::point_in_polygon(p, &housecraft_geom::cabinets::outline(o))
+            });
+            let wall = walls.iter().any(|w| housecraft_geom::math::point_in_polygon(p, w));
+            !cabinet && !wall
+        };
+        let left = open_at(-half - c.filler_left.mm() - 30.0);
+        let right = open_at(half + c.filler_right.mm() + 30.0);
+        if (left, right) != (c.ends.left, c.ends.right)
+            && let Some(Object::Cabinet(m)) = doc.objects.get_mut(&c.id)
+        {
+            m.ends.left = left;
+            m.ends.right = right;
+            out.modified.push(c.id);
+        }
+    }
+}

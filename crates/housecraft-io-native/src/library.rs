@@ -895,6 +895,14 @@ pub struct PlanSettings {
     pub hatch_patterns: Vec<HatchPattern>,
     pub dimension_styles: Vec<DimensionStyle>,
     pub auto_dim_presets: Vec<NamedAutoDims>,
+    /// Layer sets, their layers named (ids differ between plans).
+    pub layer_sets: Vec<NamedLayerSet>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct NamedLayerSet {
+    pub name: String,
+    pub layers: std::collections::BTreeMap<String, LayerDisplay>,
 }
 
 impl PlanSettings {
@@ -906,11 +914,18 @@ impl PlanSettings {
             hatch_patterns: s.hatch_patterns.clone(),
             dimension_styles: s.dimension_styles.clone(),
             auto_dim_presets: s.auto_dim_presets.clone(),
+            layer_sets: doc
+                .iter::<LayerSet>()
+                .map(|ls| NamedLayerSet {
+                    name: ls.name.clone(),
+                    layers: ls.layers.iter().filter_map(|(id, d)| doc.get::<Layer>(*id).map(|l| (l.name.clone(), d.clone()))).collect(),
+                })
+                .collect(),
         }
     }
 
     pub fn count(&self) -> usize {
-        self.macros.len() + self.line_types.len() + self.hatch_patterns.len() + self.dimension_styles.len() + self.auto_dim_presets.len()
+        self.macros.len() + self.line_types.len() + self.hatch_patterns.len() + self.dimension_styles.len() + self.auto_dim_presets.len() + self.layer_sets.len()
     }
 }
 
@@ -1397,6 +1412,10 @@ mod plan_settings_tests {
         let mut doc = Document::new("a");
         doc.settings.macros.insert("builder".into(), "Acme".into());
         doc.settings.hatch_patterns.push(HatchPattern { name: "Brick".into(), lines: vec![HatchLine::default()] });
+        let layer = doc.iter::<Layer>().next().unwrap().id;
+        let set = doc.iter::<LayerSet>().next().unwrap().id;
+        let hidden: LayerDisplay = serde_json::from_value(json!({"visible": false})).unwrap();
+        doc.get_mut::<LayerSet>(set).unwrap().layers.insert(layer, hidden);
         let path = std::env::temp_dir().join(format!("hc-settings-{}.hcsettings", std::process::id()));
         let n = export_settings_with(&doc, &path, json!([{"keys": "G W", "tool": "Straight Exterior Wall"}])).unwrap();
         assert!(n >= 2);
@@ -1404,6 +1423,11 @@ mod plan_settings_tests {
         assert_eq!(plan.macros["builder"], "Acme");
         assert_eq!(plan.hatch_patterns[0].name, "Brick");
         assert_eq!(keys[0]["keys"], "G W");
+        assert!(!plan.layer_sets.is_empty() && !plan.layer_sets[0].layers.is_empty());
+        // A layer set rebuilt with this plan's ids reads back as a layer set.
+        let (lid, d) = doc.iter::<LayerSet>().next().unwrap().layers.iter().next().map(|(k, v)| (*k, v.clone())).unwrap();
+        let v = json!({"kind": "layer_set", "id": 0, "name": "Copy", "layers": {lid.0.to_string(): d}});
+        assert!(serde_json::from_value::<Object>(v).is_ok());
         let _ = std::fs::remove_file(&path);
     }
 }

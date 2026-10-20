@@ -1300,6 +1300,12 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                         len_row(ui, doc, &mut app.bufs, "Truss spacing", ("framing", "truss_spacing"), f.truss_spacing, |v| {
                             commands.push(p(json!({"framing": {"truss_spacing": v}})))
                         });
+                        ui.label("Girder trusses");
+                        let mut g = f.girder_ends;
+                        if ui.checkbox(&mut g, "Double the first and last truss").changed() {
+                            commands.push(p(json!({"framing": {"girder_ends": g}})));
+                        }
+                        ui.end_row();
                         ui.label("Truss type");
                         ui.horizontal(|ui| {
                             for t in TrussType::ALL {

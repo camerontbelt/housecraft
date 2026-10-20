@@ -159,6 +159,7 @@ fn opening_extras(ui: &mut Ui, ed: &mut Ed<'_>, o: &Opening) {
             }
             h.depth = sized.then(|| Length::from_inches(inches));
             ui.checkbox(&mut h.flush, "Flush to plates");
+            ui.checkbox(&mut h.flat, "Flat").on_hover_text("Two flat plies, for walls that carry no load");
         } else {
             d.header = None;
         }
@@ -1376,6 +1377,21 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             ] {
                 ed.check(ui, label, field, text, v);
             }
+            if dk.ledger {
+                ed.opt_length(ui, "Ledger Depth", "ledger_depth", dk.ledger_depth, Some(dk.joist_depth));
+            }
+            Ed::label(ui, "Beam Positions");
+            ui.horizontal(|ui| {
+                let unit = doc.settings.display_unit;
+                let text = dk.beam_offsets.iter().map(|l| l.format(unit)).collect::<Vec<_>>().join(", ");
+                let key = ed.key("beam_offsets");
+                if let Some(t) = ed.bufs.text(ui, key, &text, 160.0) {
+                    let parsed: Vec<Length> = t.split(',').filter(|x| !x.trim().is_empty()).filter_map(|x| Length::parse(x.trim(), crate::util::input_unit(doc)).ok()).collect();
+                    ed.out.push(patch(id, json!({ "beam_offsets": parsed })));
+                }
+                ui.weak("from the house side; empty: automatic");
+            });
+            ui.end_row();
             Ed::label(ui, "Colour");
             let mut c32 = to_color32(dk.color);
             if ui.color_edit_button_srgba(&mut c32).changed() {

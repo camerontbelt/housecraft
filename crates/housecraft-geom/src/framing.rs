@@ -237,7 +237,13 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
             } * IN,
         );
         // A flush header fills up to the plates.
-        let header_top = if spec.flush { stud_top } else { (head + hd).min(stud_top) };
+        let header_top = if spec.flat {
+            (head + 2.0 * t).min(stud_top)
+        } else if spec.flush {
+            stud_top
+        } else {
+            (head + hd).min(stud_top)
+        };
         for (jack, king) in [(a - t / 2.0, a - 1.5 * t), (b + t / 2.0, b + 1.5 * t)] {
             push(FramingRole::JackStud, at(jack, stud_bottom), at(jack, head), t, core, across);
             push(FramingRole::KingStud, at(king, stud_bottom), at(king, stud_top), t, core, across);
@@ -1023,7 +1029,9 @@ pub fn roof_trusses(doc: &Document, d: &FramingDefaults, floor: &Floor) -> Vec<M
             k += 1;
         }
         stations.push(hi - t);
-        for s in stations {
+        let last_station = stations.len().saturating_sub(1);
+        for (si, s) in stations.into_iter().enumerate() {
+            let start = out.len();
             let o = r * s;
             for (t0, t1) in clip_line(&fp, o, n) {
                 let (e0, e1) = (o + n * t0, o + n * t1);
@@ -1126,6 +1134,15 @@ pub fn roof_trusses(doc: &Document, d: &FramingDefaults, floor: &Floor) -> Vec<M
                         }
                     }
                 }
+            }
+            // Girder trusses: a second truss beside the first and last.
+            if d.girder_ends && (si == 0 || si == last_station) {
+                let shift = r * t * if si == 0 { 1.0 } else { -1.0 };
+                let copies: Vec<Member> = out[start..]
+                    .iter()
+                    .map(|m| Member { a: m.a + shift.extend(0.0), b: m.b + shift.extend(0.0), ..m.clone() })
+                    .collect();
+                out.extend(copies);
             }
         }
     }

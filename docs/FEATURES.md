@@ -207,7 +207,7 @@ These come from reading the whole list and change the architecture, not just the
 | CB-17 | Frameless reveal controls | P2 | M5 ✓ |
 | CB-18 | Separate materials per component | P1 | M5 ✓ |
 | CB-19 | Rounded/chamfered box and countertop corners | P2 | M5 ✓ countertop and cabinet-box front corners round or chamfer |
-| CB-20 | Millwork & end panels (pilasters, feet, legs, moldings; auto end panels) | P2 | M5 ◐ end panels, pilasters, square/turned legs and bun feet, moldings; end panels are not added automatically |
+| CB-20 | Millwork & end panels (pilasters, feet, legs, moldings; auto end panels) | P2 | M5 ✓ end panels (Auto End Panels on open sides), pilasters, square/turned legs and bun feet, moldings |
 | CB-21 | Hardware per door/drawer with auto-orientation and placement | P1 | M5 ✓ |
 | CB-22 | Stacked moldings with auto-stack | P2 | M5 ✓ |
 | CB-23 | Flush cabinet moldings | P3 | M5 ✓ |
@@ -301,16 +301,16 @@ These come from reading the whole list and change the architecture, not just the
 | FR-07 | Framing materials: lumber, steel, LVL, PSL, VSL; custom types and shapes | P2 | M6 ◐ lumber, LVL, PSL, VSL and steel members; no custom section shapes |
 | FR-08 | EasyFrame panelization export (.EZF) | P3 | M8 |
 | FR-09 | Roof framing: rafters, ridges, lookouts, blocking, valley fill, rafter tails | P2 | M6 ◐ rafters and ridges, lookouts at rakes, eave (frieze) blocking, purlins, square/plumb/bevelled tails; no valley fill |
-| FR-10 | Auto-build trusses; auto-fit floor/ceiling/roof trusses (scissor, attic, girder, hip, energy heel…) | P2 | M6 ◐ trusses fitted under the roof (stepped down at hips): common (Fink), scissor and attic types; no girder or energy-heel types |
+| FR-10 | Auto-build trusses; auto-fit floor/ceiling/roof trusses (scissor, attic, girder, hip, energy heel…) | P2 | M6 ◐ trusses fitted under the roof (stepped down at hips): common (Fink), scissor and attic types, doubled girder trusses at the ends; no energy-heel type |
 | FR-11 | Truss rebuild tool; truss details with labels | P3 | M6 ✓ Build Roof Framing rebuilds trusses; Truss Detail draws one with its member sizes |
 | FR-12 | Truss chords/webbing in materials list (X18+) | P3 | M6 ✓ truss chords and webs in the cut list and buy list |
 | FR-13 | Horizontal roof framing (battens, purlins) | P3 | M6 ✓ purlins across rafters at a set spacing |
 | FR-14 | Decorative end profiles | P3 | M6 ◐ rafter tails cut square, plumb or bevelled; shaped profiles later |
-| FR-15 | Post & beam tools | P2 | M6 ◐ Post and Beam tools (6x6 posts, 2-ply beams); no automatic post-and-beam layout |
+| FR-15 | Post & beam tools | P2 | M6 ✓ Post and Beam tools, and Post and Beam Under Selected Room (beam lines by span, posts by spacing) |
 | FR-16 | Multi-ply beams/posts/girders (X18+) | P3 | M6 ✓ members can be 1–4 plies |
 | FR-17 | Wall framing options: plates, studs, bridging, knee walls; steel C/U channels; rim joists | P2 | M6 ✓ stud spacing, 1–3 top plates, mid-height blocking, rim joists, steel studs and tracks; knee and raked walls frame to their sloping tops |
 | FR-18 | Balloon framing | P3 | M6 ✓ studs run through stacked walls, floors hung on ribbons |
-| FR-19 | Header controls (cripples, rotated, flush, combined) | P2 | M6 ◐ headers sized by span, per-opening depth or flush, and close openings share one header; no rotated headers |
+| FR-19 | Header controls (cripples, rotated, flush, combined) | P2 | M6 ✓ headers sized by span, or per opening: own depth, flush to the plates, laid flat; close openings share one header |
 | FR-20 | Framing per wall-type layer (furred basement walls) | P3 | M6 ✓ wall-type layers named Furring get their own plates and studs |
 | FR-21 | Horizontal wall framing (girts) for pole/timber buildings | P3 | M6 ✓ posts-and-girts wall framing (post and girt spacing) |
 | FR-22 | Per-opening framing (box/built-up headers, trimmers, sills) | P2 | M6 ✓ king and jack studs, headers, cripples above and below, rough sills |
@@ -322,8 +322,8 @@ These come from reading the whole list and change the architecture, not just the
 | FR-28 | Platform holes with auto framing | P2 | M6 ✓ joists stop at stairwell holes, with headers |
 | FR-29 | Tray ceiling framing | P3 | M6 ✓ joists inside a tray step up by its rise, blocking frames the step |
 | FR-30 | Deck framing: planks, borders, beams, joists, posts, footings, blocking; auto-rebuild | P2 | M6 ✓ decks rebuild themselves: planks, border, joists, rims, ledger, beams, posts, footings, railings, optional blocking rows |
-| FR-31 | Deck ledger controls (X18+) | P3 | M6 ◐ a ledger is used automatically where a deck meets the house (on/off per deck) |
-| FR-32 | Deck beam controls | P3 | M6 ◐ beam inset and largest joist span set where beams go; no per-beam editing |
+| FR-31 | Deck ledger controls (X18+) | P3 | M6 ✓ a ledger where a deck meets the house (on/off), with its own depth |
+| FR-32 | Deck beam controls | P3 | M6 ✓ beam inset and largest joist span, or beam positions typed by hand |
 
 ## 13. CAD tools
 
@@ -565,7 +565,7 @@ These come from reading the whole list and change the architecture, not just the
 | IO-04 | 3D import: DXF, DWG, OBJ, 3DS, SKP, STL, DAE; 3D export: DXF, DWG, 3DS, STL, DAE (+ glTF/OBJ/IFC for us) | P1→P3 | M5/M8 |
 | IO-05 | Image import: BMP, JPG, GIF, TIFF, PNG, metafiles, WEBP; transparency color | P1 | M5 ◐ PNG, JPEG, BMP and TIFF pictures with a transparency colour, in plans, views, details and layouts (SVG embeds them); GIF, WebP, metafiles and pictures in PDF/PNG exports later |
 | IO-06 | High-resolution image export, transparent background | P1 | M7 ✓ |
-| IO-07 | Import/export settings objects (views, default sets, layer sets, hotkeys, wall types, line styles, macros, scripts) | P2 | M5 ◐ File > Export/Import Settings: wall types, room types, text styles, layers, materials, molding profiles, macros, line styles, hatch patterns, dimension styles, auto-dimension presets and hotkeys (not views, default sets or layer sets) |
+| IO-07 | Import/export settings objects (views, default sets, layer sets, hotkeys, wall types, line styles, macros, scripts) | P2 | M5 ◐ File > Export/Import Settings: wall types, room types, text styles, layers, layer sets, materials, molding profiles, macros, line styles, hatch patterns, dimension styles, auto-dimension presets and hotkeys (not plan views or default sets) |
 | IO-08 | 3D mass import → library objects | P2 | M5 ✓ Library Browser > Import 3D Models… adds every OBJ/STL in a folder as library symbols |
 | IO-09 | Textures → materials in bulk | P2 | M5 ✓ Import Textures… makes a material per image in a folder |
 | IO-10 | Terrain survey import | P2 | M6 ✓ Terrain > Import Survey Points… (x,y,z text or GPX) |

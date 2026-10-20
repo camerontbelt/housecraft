@@ -45,6 +45,13 @@ pub struct Deck {
     /// Rows of blocking between the joists (at mid-span, and every 8' on long spans).
     #[serde(default)]
     pub blocking: bool,
+    /// The ledger board's depth; the joists' when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ledger_depth: Option<Length>,
+    /// Beams placed by hand: distances across the deck from the ledger
+    /// side (or the near edge); automatic when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub beam_offsets: Vec<Length>,
     /// A railing round the free edges.
     #[serde(default = "yes")]
     pub railing: bool,
@@ -83,6 +90,8 @@ impl Deck {
             post_spacing: Length::from_feet(8.0),
             ledger: true,
             blocking: false,
+            ledger_depth: None,
+            beam_offsets: Vec::new(),
             railing: true,
             railing_height: i(36.0),
             covered: false,
@@ -98,6 +107,8 @@ impl Deck {
             border: false,
             ledger: false,
             blocking: false,
+            ledger_depth: None,
+            beam_offsets: Vec::new(),
             joist_depth: Length::from_inches(5.5),
             color: Color::rgb(200, 180, 150),
             ..Deck::new(floor, layer, outline, height)

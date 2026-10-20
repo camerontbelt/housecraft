@@ -2878,3 +2878,65 @@ fn curbs_medians_cul_de_sacs_and_lot_subdivision() {
     assert_eq!(labels.len(), 4);
     assert!(labels.iter().all(|t| t.text.contains("1250 sq ft")), "{:?}", labels.iter().map(|t| &t.text).collect::<Vec<_>>());
 }
+
+#[test]
+fn end_panels_girders_post_and_beam_flat_headers_and_deck_beams() {
+    let count = |s: &Session, r: FramingRole| s.document().iter::<FramingMember>().filter(|m| m.role == r).count();
+    let set_framing = |s: &mut Session, v: serde_json::Value| {
+        let id = s.document().settings.active_default_set;
+        s.apply(&[Command::Update { id, set: patch(serde_json::json!({ "framing": v })) }]).unwrap();
+    };
+    // Two cabinets side by side, the first against the west wall.
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'","10'"], "facing": 90, "width": "24\""},
+            {"op": "add_cabinet", "cabinet_kind": "base", "at": ["3'","10'"], "facing": 90, "width": "24\""}]"#,
+    );
+    s.apply(&[Command::AutoEndPanels { floor: None }]).unwrap();
+    let ends: Vec<(bool, bool)> = out.created.iter().map(|id| { let c = s.document().get::<Cabinet>(*id).unwrap(); (c.ends.left, c.ends.right) }).collect();
+    // The first sits between the wall and the second: only the second's far end is open.
+    assert_eq!(ends.iter().map(|(l, r)| *l as usize + *r as usize).sum::<usize>(), 1, "{ends:?}");
+    assert_eq!(ends[0], (false, false));
+
+    // Girder trusses double the end trusses.
+    let mut s = boxed();
+    let w = walls(&s);
+    for wall in [w[1].id, w[3].id] {
+        s.apply(&[Command::Update { id: wall, set: patch(serde_json::json!({"roof": {"gable": true}})) }]).unwrap();
+    }
+    apply(&mut s, r#"[{"op": "build_roof"}]"#);
+    set_framing(&mut s, serde_json::json!({"trusses": true}));
+    apply(&mut s, r#"[{"op": "build_framing", "parts": {"walls": false, "floors": false, "ceilings": false}}]"#);
+    let chords = count(&s, FramingRole::Chord);
+    set_framing(&mut s, serde_json::json!({"girder_ends": true}));
+    apply(&mut s, r#"[{"op": "build_framing", "parts": {"walls": false, "floors": false, "ceilings": false}}]"#);
+    assert!(count(&s, FramingRole::Chord) > chords + 2);
+
+    // Post and beam under a wide room.
+    let mut s = Session::new(Document::new("Basement"));
+    apply(&mut s, r#"[{"op": "add_walls", "points": [[0,0], [0,"28'"], ["40'","28'"], ["40'",0]], "closed": true}]"#);
+    let room = s.document().iter::<Room>().next().unwrap().id;
+    s.apply(&[Command::AutoPostAndBeam { room, max_span: None, post_spacing: None }]).unwrap();
+    assert_eq!(count(&s, FramingRole::Beam), 2, "28' wide: two beam lines");
+    assert!(count(&s, FramingRole::Post) >= 8);
+
+    // A flat header is two plies deep.
+    let mut s = boxed();
+    let w = walls(&s)[0].id;
+    let win = apply(&mut s, &format!(r#"[{{"op": "add_window", "wall": {}, "position": "10'"}}]"#, w.0)).created[0];
+    s.apply(&[Command::Update { id: win, set: patch(serde_json::json!({"details": {"header": {"flat": true}}})) }]).unwrap();
+    apply(&mut s, &format!(r#"[{{"op": "build_framing", "hosts": [{}], "parts": {{"floors": false, "ceilings": false, "roofs": false}}}}]"#, w.0));
+    let h = s.document().iter::<FramingMember>().find(|m| m.role == FramingRole::Header).unwrap();
+    assert!((h.depth.inches() - 3.0).abs() < 0.01, "{}", h.depth.inches());
+
+    // Deck beams placed by hand, and a deeper ledger.
+    let mut s = boxed();
+    let deck = apply(&mut s, r#"[{"op": "add_deck", "points": [[0,"30'"],["16'","30'"],["16'","42'"],[0,"42'"]], "height": "3'"}]"#).created[0];
+    s.apply(&[Command::Update { id: deck, set: patch(serde_json::json!({"beam_offsets": ["5'", "11'"], "ledger_depth": "9 1/4\""})) }]).unwrap();
+    let dk = s.document().get::<Deck>(deck).unwrap().clone();
+    let parts = housecraft_api::geom::deck::parts(s.document(), &dk).unwrap();
+    let beams: Vec<f64> = parts.members.iter().filter(|m| m.role == FramingRole::Beam).map(|m| m.a.y).collect();
+    assert!(beams.iter().any(|y| (y - 35.0 * 304.8).abs() < 10.0) && beams.iter().any(|y| (y - 41.0 * 304.8).abs() < 10.0), "{beams:?}");
+    assert!(parts.members.iter().any(|m| m.role == FramingRole::Ledger && (m.depth - 9.25 * 25.4).abs() < 0.5));
+}

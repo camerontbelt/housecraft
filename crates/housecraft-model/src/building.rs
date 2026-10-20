@@ -1045,6 +1045,8 @@ pub struct HeaderSpec {
     pub depth: Option<Length>,
     /// Raised flush to the top plates (no cripples above).
     pub flush: bool,
+    /// Laid flat (two plies of plate stock), for walls that carry no load.
+    pub flat: bool,
 }
 
 /// Window extras.

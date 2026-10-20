@@ -963,6 +963,24 @@ impl App {
                 commands.push(Command::SetAutoDimPreset { name: p.name, dims: Some(p.dims) });
                 n += 1;
             }
+            // Layer sets new to this plan, their layers found by name.
+            let sets: Vec<serde_json::Value> = plan
+                .layer_sets
+                .iter()
+                .filter(|ls| !doc.iter::<LayerSet>().any(|x| x.name == ls.name))
+                .map(|ls| {
+                    let layers: serde_json::Map<String, serde_json::Value> = ls
+                        .layers
+                        .iter()
+                        .filter_map(|(name, d)| doc.iter::<Layer>().find(|l| l.name == *name).map(|l| (l.id.0.to_string(), serde_json::to_value(d).unwrap_or_default())))
+                        .collect();
+                    serde_json::json!({"kind": "layer_set", "id": 0, "name": ls.name, "layers": layers})
+                })
+                .collect();
+            if !sets.is_empty() {
+                n += sets.len();
+                commands.push(Command::InsertObjects { objects: sets, floor: None, dx: Length::ZERO, dy: Length::ZERO });
+            }
             if let Ok(keys) = serde_json::from_value::<Vec<UserHotkey>>(hotkeys) {
                 for k in keys {
                     self.prefs.hotkeys.retain(|h| h.keys != k.keys);
@@ -2524,6 +2542,12 @@ impl App {
                     if item(ui, "Rebuild Framing of Selected Walls, Rooms or Roof Planes", "", !hosts.is_empty()) {
                         cmd = Some(Command::BuildFraming { floor: None, parts: parts(true, false, false, true), hosts: hosts.clone() });
                     }
+                    let room = self.selection.iter().copied().find(|id| self.doc().kind_of(*id) == Some(ObjectKind::Room));
+                    if item(ui, "Post and Beam Under Selected Room", "", room.is_some())
+                        && let Some(room) = room
+                    {
+                        cmd = Some(Command::AutoPostAndBeam { room, max_span: None, post_spacing: None });
+                    }
                     ui.separator();
                     for tool in [Tool::JoistDirection, Tool::Post, Tool::Beam] {
                         if tool_item(ui, tool) {
@@ -2606,6 +2630,11 @@ impl App {
                     if item(ui, "Auto Fillers", "", true) {
                         let floor = Some(self.plan.floor);
                         self.run1(Command::AutoFillers { floor });
+                    }
+                    if item(ui, "Auto End Panels", "", true)
+                        && let Some(out) = self.run1(Command::AutoEndPanels { floor: Some(self.plan.floor) })
+                    {
+                        self.info(format!("End panels set on {} cabinet(s)", out.modified.len()));
                     }
                 });
                 ui.menu_button("Appliances & Fixtures", |ui| {
