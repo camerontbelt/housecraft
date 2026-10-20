@@ -1,0 +1,434 @@
+{
+  "tutorial": "Room Moldings",
+  "source": "Chief Architect X18 Tutorial Guide, Interior Design Tutorials, pages 211-221",
+  "include": "11-finish-materials.json",
+  "steps": [
+    {
+      "step": "Floor 1 default moldings: BM08 base, and CM02 crown 3\" high",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:room_type:Living",
+          "set": {
+            "moldings": [
+              {
+                "place": "base",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "flat"
+                  },
+                  "height": "4 1/2\"",
+                  "depth": "1/2\""
+                },
+                "offset": "0\""
+              },
+              {
+                "place": "crown",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "crown"
+                  },
+                  "height": "3\"",
+                  "depth": "3\""
+                },
+                "offset": "0\""
+              }
+            ]
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:room_type:Kitchen",
+          "set": {
+            "moldings": [
+              {
+                "place": "base",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "flat"
+                  },
+                  "height": "4 1/2\"",
+                  "depth": "1/2\""
+                },
+                "offset": "0\""
+              },
+              {
+                "place": "crown",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "crown"
+                  },
+                  "height": "3\"",
+                  "depth": "3\""
+                },
+                "offset": "0\""
+              }
+            ]
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:room_type:Dining",
+          "set": {
+            "moldings": [
+              {
+                "place": "base",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "flat"
+                  },
+                  "height": "4 1/2\"",
+                  "depth": "1/2\""
+                },
+                "offset": "0\""
+              },
+              {
+                "place": "crown",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "crown"
+                  },
+                  "height": "3\"",
+                  "depth": "3\""
+                },
+                "offset": "0\""
+              }
+            ]
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:room_type:Bedroom",
+          "set": {
+            "moldings": [
+              {
+                "place": "base",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "flat"
+                  },
+                  "height": "4 1/2\"",
+                  "depth": "1/2\""
+                },
+                "offset": "0\""
+              },
+              {
+                "place": "crown",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "crown"
+                  },
+                  "height": "3\"",
+                  "depth": "3\""
+                },
+                "offset": "0\""
+              }
+            ]
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:room_type:Bath",
+          "set": {
+            "moldings": [
+              {
+                "place": "base",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "flat"
+                  },
+                  "height": "4 1/2\"",
+                  "depth": "1/2\""
+                },
+                "offset": "0\""
+              },
+              {
+                "place": "crown",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "crown"
+                  },
+                  "height": "3\"",
+                  "depth": "3\""
+                },
+                "offset": "0\""
+              }
+            ]
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:room_type:Closet",
+          "set": {
+            "moldings": [
+              {
+                "place": "base",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "flat"
+                  },
+                  "height": "4 1/2\"",
+                  "depth": "1/2\""
+                },
+                "offset": "0\""
+              },
+              {
+                "place": "crown",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "crown"
+                  },
+                  "height": "3\"",
+                  "depth": "3\""
+                },
+                "offset": "0\""
+              }
+            ]
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:room_type:Entry",
+          "set": {
+            "moldings": [
+              {
+                "place": "base",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "flat"
+                  },
+                  "height": "4 1/2\"",
+                  "depth": "1/2\""
+                },
+                "offset": "0\""
+              },
+              {
+                "place": "crown",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "crown"
+                  },
+                  "height": "3\"",
+                  "depth": "3\""
+                },
+                "offset": "0\""
+              }
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:room_type:Living",
+          "path": "/moldings/1/place",
+          "is": "crown"
+        }
+      ]
+    },
+    {
+      "step": "(Moldings by floor, and library profiles BM08 / CM02 / CR01)",
+      "gap": "Default moldings are set per room type, not per floor, and use built-in profile shapes rather than a molding library. Rows: RM-05, MAT-27"
+    },
+    {
+      "step": "Dining room: its own moldings with a CR01 chair rail added",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:2032.0,-6604.0",
+          "set": {
+            "moldings": [
+              {
+                "place": "base",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "flat"
+                  },
+                  "height": "4 1/2\"",
+                  "depth": "1/2\""
+                },
+                "offset": "0\""
+              },
+              {
+                "place": "crown",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "crown"
+                  },
+                  "height": "3\"",
+                  "depth": "3\""
+                },
+                "offset": "0\""
+              },
+              {
+                "place": "chair",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "bead"
+                  },
+                  "height": "2 1/2\"",
+                  "depth": "3/4\""
+                },
+                "offset": "32\""
+              }
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:2032.0,-6604.0",
+          "path": "/moldings/2/place",
+          "is": "chair"
+        }
+      ]
+    },
+    {
+      "step": "Kitchen (or another room): its own moldings without the crown",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:2032.0,-2540.0",
+          "set": {
+            "moldings": [
+              {
+                "place": "base",
+                "spec": {
+                  "profile": {
+                    "type": "shape",
+                    "shape": "flat"
+                  },
+                  "height": "4 1/2\"",
+                  "depth": "1/2\""
+                },
+                "offset": "0\""
+              }
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:2032.0,-2540.0",
+          "path": "/moldings/0/place",
+          "is": "base"
+        }
+      ]
+    },
+    {
+      "step": "A 1 1/2\" x 11 1/4\" rectangular profile from a CAD box, added to the library as '2x12 Profile'",
+      "commands": [
+        {
+          "op": "add_molding_profile",
+          "name": "2x12 Profile",
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              38.1,
+              0
+            ],
+            [
+              38.1,
+              285.75
+            ],
+            [
+              0,
+              285.75
+            ]
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:molding_profile:2x12 Profile",
+          "path": "/name",
+          "is": "2x12 Profile"
+        }
+      ]
+    },
+    {
+      "step": "Exterior Room > Make Room Molding Polyline at 96\" with the 2x12 profile outside: a band round the house",
+      "commands": [
+        {
+          "op": "add_molding_polyline",
+          "floor": "$floor1",
+          "closed": true,
+          "elevation": "96\"",
+          "points": [
+            [
+              -30.48,
+              30.48
+            ],
+            [
+              12832.08,
+              30.48
+            ],
+            [
+              12832.08,
+              -11714.48
+            ],
+            [
+              8707.12,
+              -11714.48
+            ],
+            [
+              8707.12,
+              -8564.88
+            ],
+            [
+              -30.48,
+              -8564.88
+            ]
+          ],
+          "stack": [
+            {
+              "profile": {
+                "type": "custom",
+                "profile": "$named:molding_profile:2x12 Profile"
+              },
+              "height": "11 1/4\"",
+              "depth": "1 1/2\""
+            }
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "count": "molding_polyline",
+          "is": 1
+        }
+      ]
+    },
+    {
+      "step": "(Exterior Room; Make Room Molding Polyline; Remove/Add Molding on a selected edge; moving an edge onto the deck)",
+      "gap": "No Exterior Room to make the polyline from, and molding can't be turned off edge by edge. Row: RM-20"
+    },
+    {
+      "step": "Room moldings schedule",
+      "gap": "No moldings schedule. Row: EST-29"
+    },
+    {
+      "step": "Save a copy as Chic Cottage-Moldings",
+      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+    }
+  ]
+}

@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 523 items: 29 P0, about 132 P1, about 250 P2, about 104 P3, and 5 out of scope. Each item should eventually map to
+There are 525 items: 29 P0, about 132 P1, about 250 P2, about 106 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -186,6 +186,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-17 | Outdoor room types (Porch, Deck) are left out of the foundation | P1 | M9 ✓ RoomType.exterior; walls that only enclose outdoor rooms don't shape the foundation |
 | RM-18 | Attic room type (unfinished space under the roof) | P3 | M9 |
 | RM-19 | Ceiling finish definitions (layers, materials) for the plan, each floor, room types and rooms; lowered ceilings by finish | P2 | M9 |
+| RM-20 | Exterior Room (the band round each floor's outside) with Make Room Molding Polyline; molding on/off per polyline edge | P3 | M9 |
 
 ## 6. Walls
 
@@ -603,6 +604,7 @@ These come from reading the whole list and change the architecture, not just the
 | EST-26 | Schedules placed in CAD details (legends) | P2 | M9 |
 | EST-27 | Door/window schedules: show objects' own labels instead of schedule-number callouts | P3 | M9 |
 | EST-28 | Reorder schedule rows (drag rows; Move Up/Down in Schedule) | P3 | M9 |
+| EST-29 | Room moldings schedule (profiles and lengths by room) | P3 | M9 |
 
 ## 21. Text, annotation & scripting
 

@@ -29,7 +29,8 @@ has two files:
 | 9 | Dormers (159) | 8 | 9 | [09-dormers.md](09-dormers.md) |
 | 10 | Custom Ceilings (177) | 5 | 7 | [10-custom-ceilings.md](10-custom-ceilings.md) |
 | 11 | Finish Materials (191) | 9 | 6 | [11-finish-materials.md](11-finish-materials.md) |
-| 12–19 | Room Moldings, Furnishings and Kitchen & Bath tutorials (211–330) | — | — | |
+| 12 | Room Moldings (211) | 5 | 4 | [12-room-moldings.md](12-room-moldings.md) |
+| 13–19 | Interior Furnishings and Kitchen & Bath tutorials (222–330) | — | — | |
 | 20–22 | Framing tutorials (331–381) | — | — | |
 | 23–26 | Landscaping tutorials (382–450) | — | — | |
 | 27–29 | Layout tutorials (451–500) | — | — | |
