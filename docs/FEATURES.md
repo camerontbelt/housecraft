@@ -114,9 +114,9 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-05 | Rotate and mirror (flip) entire plan | P1 | M1 ✓ Edit > Entire Plan: Reverse Plan, rotate 90° either way (all floors) |
 | PRJ-06 | Zoom to selection | P0 | M1 ✓ |
 | PRJ-07 | Free viewer app for clients (read-only) | P1 | web build |
-| PRJ-08 | Managed projects (auto-organized storage, no broken links) | P2 | M8 |
+| PRJ-08 | Managed projects (auto-organized storage, no broken links) | P2 | M8 ✓ File > Project Files > Gather Files copies every picture/texture into "<plan> files/" with relative paths; the working folder follows the open plan |
 | PRJ-09 | Project Browser: tree of layouts, floors, views, cameras, schedules, details; multi-select; folders; thumbnails | P1 | M4 ◐ floors, plan views, cameras, layouts and pages, elevations, rooms; folders, thumbnails, multi-select later |
-| PRJ-10 | Pin items in Project Browser (X18+) | P3 | M8 |
+| PRJ-10 | Pin items in Project Browser (X18+) | P3 | M8 ✓ Edit > Pin Selected; Pinned section at the top of the Project Browser (right-click to unpin); `pin_objects` command |
 | PRJ-11 | Saved Plan Views (layer set + default set + active defaults; zoom/floor optional); tabs/windows | P0 | M1 ✓ (multiple view tabs: later) |
 | PRJ-12 | Duplicate saved view copies its active layer set (X18+) | P2 | M1 |
 | PRJ-13 | Default Sets per drawing type (kitchen, framing, electrical…) | P1 | M1 ✓ View > Add Standard Plan Views: Electrical, Framing, Kitchen & Bath, Construction and Site, each with its own default set and layer set |
@@ -126,7 +126,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-17 | Fill style by layer (X18+) | P2 | M1 ✓ each layer can carry a fill style used by its walls and closed shapes |
 | PRJ-18 | Select all on layer | P1 | M1 ✓ Edit > Select All on Layer |
 | PRJ-19 | Time tracker per project/client/task with export | P3 | M8 |
-| PRJ-20 | Plan database / portfolio | P3 | M8 |
+| PRJ-20 | Plan database / portfolio | P3 | M8 ✓ File > Project Files > Plan Portfolio: plans in a folder with client, floors, living area, rooms, age; search and open |
 | PRJ-21 | R-values for walls, roofs, ceilings, platforms | P2 | M3 ◐ R-values per wall-type layer (total shown on walls) and for the roof in Default Settings; no energy totals |
 | PRJ-22 | Client & designer info with macros and custom fields | P2 | M4 ✓ File > Project Information: client/designer fields and custom fields, each a text macro; shown in the title block |
 | PRJ-23 | Layout files: sheets with scaled, live-linked views; title-block templates; reorder pages | P1 | M4 ◐ sheets in the plan file with live scaled views, title block, several pages; separate .layout files, title-block templates, page reordering later |
@@ -473,7 +473,7 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | LIB-01 | Library browser of objects; create, import, download | P1 | M5 ◐ built-in catalogue (cabinet sizes, appliances, fixtures, materials, wall types) and a user library: add selected objects, import/export .hclib bundles; downloading from an online catalogue later |
-| LIB-02 | Catalog migration between versions | P3 | M8 |
+| LIB-02 | Catalog migration between versions | P3 | M8 ◐ Import From Another HouseCraft Folder copies the library and templates; no format upgrades needed yet |
 | LIB-03 | Catalog update service | ✗ | — (own content feed later) |
 | LIB-04 | Update catalogs on demand | ✗ | — |
 | LIB-05 | Search with AND/OR/NOT/grouping; search attributes | P1 | M5 ✓ |
@@ -569,7 +569,7 @@ These come from reading the whole list and change the architecture, not just the
 | IO-08 | 3D mass import → library objects | P2 | M5 ✓ Library Browser > Import 3D Models… adds every OBJ/STL in a folder as library symbols |
 | IO-09 | Textures → materials in bulk | P2 | M5 ✓ Import Textures… makes a material per image in a folder |
 | IO-10 | Terrain survey import | P2 | M6 ✓ Terrain > Import Survey Points… (x,y,z text or GPX) |
-| IO-11 | Settings migration between versions | P3 | M8 |
+| IO-11 | Settings migration between versions | P3 | M8 ◐ Same import brings over master prices; preferences and plan settings files already load across versions |
 | IO-12 | **Open Chief Architect `.plan` / `.layout`** (ours) | P1/P2 | M2/M8 |
 | IO-13 | **Open Home Designer plans** (same family) | P2 | M8 |
 | IO-14 | RESCheck energy export | P3 | M8 |
@@ -593,7 +593,7 @@ These come from reading the whole list and change the architecture, not just the
 | UI-13 | Dark mode | P0 | GUI ✓ |
 | UI-14 | Virtual graph paper grid | P1 | M1 ✓ graph-paper reference grid: lavender minor lines with a stronger line every fourth |
 | UI-15 | Auto-archive backups on schedule | P1 | M1 ✓ changed plans are copied every N minutes (Preferences) into a "<plan> Archive" folder, keeping the newest few; File > Show Auto-Archive Folder |
-| UI-16 | Single-file project archive (`.CAPROJ` equivalent) | P2 | M8 |
+| UI-16 | Single-file project archive (`.CAPROJ` equivalent) | P2 | M8 ✓ `.hcproj` zip (plan + assets/); Save as Project Archive, and Open unpacks it into a folder beside it |
 | UI-17 | Crosshair thickness | P3 | GUI |
 | UI-18 | UI themes | P3 | GUI |
 | UI-19 | Customizable toolbars and toolbar sets | P2 | GUI |

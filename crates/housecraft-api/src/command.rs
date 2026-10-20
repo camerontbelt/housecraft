@@ -272,6 +272,8 @@ pub enum Command {
     },
     /// Client, designer and custom project fields.
     SetProjectInfo { info: ProjectInfo },
+    /// Pin (or with `pinned: false`, unpin) objects in the Project Browser.
+    PinObjects { ids: Vec<Id>, pinned: bool },
     /// Add (`index` null) or replace one of the plan's hatch patterns.
     SetHatchPattern { index: Option<u32>, pattern: HatchPattern },
     /// Delete hatch pattern `index`; fills using it become plain hatching.
@@ -1278,6 +1280,7 @@ impl Command {
             Command::ConvertBoxToLines { .. } => "convert_box_to_lines",
             Command::DeleteLayoutBoxes { .. } => "delete_layout_boxes",
             Command::SetProjectInfo { .. } => "set_project_info",
+            Command::PinObjects { .. } => "pin_objects",
             Command::SetHatchPattern { .. } => "set_hatch_pattern",
             Command::DeleteHatchPattern { .. } => "delete_hatch_pattern",
             Command::ConvertCad { .. } => "convert_cad",
@@ -1980,6 +1983,17 @@ impl Command {
             }
             Command::Scatter { source, region, count, seed, size_variation, rotate } => {
                 crate::convert::scatter(doc, *source, *region, *count, *seed, *size_variation, *rotate, &mut out)?
+            }
+            Command::PinObjects { ids, pinned } => {
+                for id in ids {
+                    if doc.object(*id).is_none() {
+                        return Err(ApiError::NotFound(*id));
+                    }
+                    doc.settings.pins.retain(|p| p != id);
+                    if *pinned {
+                        doc.settings.pins.push(*id);
+                    }
+                }
             }
             Command::SetProjectInfo { info } => {
                 doc.settings.project = info.clone();

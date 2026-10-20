@@ -3010,3 +3010,18 @@ fn stair_sections_split_landings_widths_auto_connect_wrap_and_sip_roofs() {
     let list = housecraft_api::materials::materials(s.document(), &Default::default());
     assert!(list.lines.iter().any(|l| l.item.starts_with("EPS foam core")), "{:?}", list.lines.iter().map(|l| &l.item).collect::<Vec<_>>());
 }
+
+#[test]
+fn pins_toggle_and_survive_save() {
+    let mut s = boxed();
+    let w = walls(&s)[0].id;
+    s.apply(&[Command::PinObjects { ids: vec![w], pinned: true }]).unwrap();
+    s.apply(&[Command::PinObjects { ids: vec![w], pinned: true }]).unwrap();
+    assert_eq!(s.document().settings.pins, vec![w], "pinning twice keeps one pin");
+    let json = serde_json::to_string(s.document()).unwrap();
+    let back: Document = serde_json::from_str(&json).unwrap();
+    assert_eq!(back.settings.pins, vec![w]);
+    s.apply(&[Command::PinObjects { ids: vec![w], pinned: false }]).unwrap();
+    assert!(s.document().settings.pins.is_empty());
+    assert!(s.apply(&[Command::PinObjects { ids: vec![Id(999_999)], pinned: true }]).is_err());
+}

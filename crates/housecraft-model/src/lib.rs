@@ -309,6 +309,9 @@ pub struct Settings {
     /// The plan's own hatch patterns (`FillPattern::UserPattern(index)`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub hatch_patterns: Vec<HatchPattern>,
+    /// Objects pinned at the top of the Project Browser.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pins: Vec<Id>,
 }
 
 /// An object's own materials list lines.
@@ -514,6 +517,7 @@ impl Document {
                 auto_dims: BTreeMap::new(),
                 auto_dim_presets: Vec::new(),
                 hatch_patterns: Vec::new(),
+                pins: Vec::new(),
             },
             next_id: 1,
             objects: BTreeMap::new(),

@@ -198,6 +198,7 @@ pub struct Dialogs {
     pub layers: bool,
     pub text_styles: bool,
     pub line_styles: bool,
+    pub portfolio: Portfolio,
     /// Scatter: count, size variation, seed.
     pub scatter: Option<(u32, f64, u64)>,
     pub plan_check: bool,
@@ -281,6 +282,7 @@ pub fn show(app: &mut App, ctx: &Context) {
     );
     save_view_dialog(app, ctx);
     line_styles_dialog(app, ctx);
+    portfolio_dialog(app, ctx);
     scatter_dialog(app, ctx);
     plan_check_dialog(app, ctx);
     hatch_dialog(app, ctx);
@@ -2229,6 +2231,128 @@ fn scatter_dialog(app: &mut App, ctx: &Context) {
     {
         app.info(format!("{} copies scattered", out.created.len()));
         app.selection = out.created;
+    }
+}
+
+/// One plan in the portfolio.
+#[derive(Clone)]
+pub struct PortfolioEntry {
+    pub path: std::path::PathBuf,
+    pub name: String,
+    pub floors: usize,
+    pub living: String,
+    pub rooms: usize,
+    pub client: String,
+    pub modified: String,
+}
+
+#[derive(Default)]
+pub struct Portfolio {
+    pub open: bool,
+    pub entries: Option<Vec<PortfolioEntry>>,
+    pub filter: String,
+}
+
+/// The plans in a folder (and its subfolders, one level) with what is in them.
+fn scan_portfolio(folder: &std::path::Path) -> Vec<PortfolioEntry> {
+    let mut files = Vec::new();
+    let push_dir = |d: &std::path::Path, files: &mut Vec<std::path::PathBuf>| {
+        for e in std::fs::read_dir(d).into_iter().flatten().flatten() {
+            let p = e.path();
+            if p.extension().is_some_and(|x| x == housecraft_io_native::EXTENSION) {
+                files.push(p);
+            }
+        }
+    };
+    push_dir(folder, &mut files);
+    for e in std::fs::read_dir(folder).into_iter().flatten().flatten() {
+        if e.path().is_dir() {
+            push_dir(&e.path(), &mut files);
+        }
+    }
+    files
+        .into_iter()
+        .filter_map(|path| {
+            let doc = housecraft_io_native::load_path(&path).ok()?;
+            let summary = housecraft_api::query::summary(&doc);
+            let modified = std::fs::metadata(&path)
+                .and_then(|m| m.modified())
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| {
+                    let days = d.as_secs() / 86_400;
+                    format!("{} days ago", (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |n| n.as_secs() / 86_400)).saturating_sub(days))
+                })
+                .unwrap_or_default();
+            Some(PortfolioEntry {
+                name: doc.name.clone(),
+                floors: doc.floors_by_elevation().iter().filter(|f| f.foundation.is_none()).count(),
+                living: summary.living_area,
+                rooms: doc.iter::<Room>().count(),
+                client: doc.settings.project.client.clone(),
+                modified,
+                path,
+            })
+        })
+        .collect()
+}
+
+/// File > Project Files > Plan Portfolio: every plan in a folder with its
+/// size and client, searchable, to open.
+fn portfolio_dialog(app: &mut App, ctx: &Context) {
+    if !app.dialogs.portfolio.open {
+        return;
+    }
+    let mut open = true;
+    let mut to_open = None;
+    egui::Window::new("Plan Portfolio").open(&mut open).resizable(true).default_width(640.0).show(ctx, |ui| {
+        ui.horizontal(|ui| {
+            ui.label(app.prefs.portfolio_folder.clone().unwrap_or_else(|| "No folder chosen".into()));
+            if ui.button("Choose Folder…").clicked()
+                && let Some(f) = rfd::FileDialog::new().pick_folder()
+            {
+                app.prefs.portfolio_folder = Some(f.display().to_string());
+                app.dialogs.portfolio.entries = None;
+            }
+            if ui.button("Refresh").clicked() {
+                app.dialogs.portfolio.entries = None;
+            }
+        });
+        let Some(folder) = app.prefs.portfolio_folder.clone() else {
+            ui.weak("Choose the folder your plans are kept in.");
+            return;
+        };
+        let entries = app.dialogs.portfolio.entries.get_or_insert_with(|| scan_portfolio(std::path::Path::new(&folder))).clone();
+        ui.horizontal(|ui| {
+            ui.label("Search");
+            ui.text_edit_singleline(&mut app.dialogs.portfolio.filter);
+        });
+        let f = app.dialogs.portfolio.filter.to_lowercase();
+        egui::ScrollArea::vertical().max_height(420.0).show(ui, |ui| {
+            egui::Grid::new("portfolio").striped(true).num_columns(7).show(ui, |ui| {
+                for h in ["Plan", "Client", "Floors", "Living area", "Rooms", "Changed", ""] {
+                    ui.strong(h);
+                }
+                ui.end_row();
+                for e in entries.iter().filter(|e| f.is_empty() || e.name.to_lowercase().contains(&f) || e.client.to_lowercase().contains(&f)) {
+                    ui.label(&e.name).on_hover_text(e.path.display().to_string());
+                    ui.label(&e.client);
+                    ui.label(e.floors.to_string());
+                    ui.label(&e.living);
+                    ui.label(e.rooms.to_string());
+                    ui.label(&e.modified);
+                    if ui.small_button("Open").clicked() {
+                        to_open = Some(e.path.clone());
+                    }
+                    ui.end_row();
+                }
+            });
+        });
+        ui.weak(format!("{} plan(s)", entries.len()));
+    });
+    app.dialogs.portfolio.open = open;
+    if let Some(p) = to_open {
+        app.guarded(crate::app::Pending::OpenPath(p));
     }
 }
 

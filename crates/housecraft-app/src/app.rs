@@ -50,6 +50,8 @@ pub struct Prefs {
     pub archive_minutes: u32,
     /// How many archive copies to keep per plan.
     pub archive_keep: u32,
+    /// The folder the Plan Portfolio lists.
+    pub portfolio_folder: Option<String>,
 }
 
 /// A user-assigned shortcut: `keys` is one stroke ("G", "Ctrl+Shift+L") or
@@ -104,6 +106,7 @@ impl Default for Prefs {
             default_template: None,
             archive_minutes: 15,
             archive_keep: 5,
+            portfolio_folder: None,
         }
     }
 }
@@ -1883,6 +1886,23 @@ impl App {
     }
 
     pub fn open_path(&mut self, path: PathBuf) {
+        // A project archive unpacks into a folder beside it, then opens.
+        let path = if path.extension().is_some_and(|e| e.eq_ignore_ascii_case(housecraft_io_native::project::ARCHIVE_EXTENSION)) {
+            let dest = path.parent().map(std::path::Path::to_path_buf).unwrap_or_default();
+            match housecraft_io_native::project::unpack(&path, &dest) {
+                Ok(plan) => plan,
+                Err(e) => {
+                    self.error(format!("Could not unpack {}: {e}", path.display()));
+                    return;
+                }
+            }
+        } else {
+            path
+        };
+        // Pictures and textures named relative to the plan are found from its folder.
+        if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
+            let _ = std::env::set_current_dir(dir);
+        }
         match housecraft_io_native::load_path(&path) {
             Ok(doc) => {
                 let shown = path.display().to_string();
@@ -1909,6 +1929,9 @@ impl App {
             Ok(()) => {
                 self.session.mark_saved();
                 self.info(format!("Saved {}", path.display()));
+                if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
+                    let _ = std::env::set_current_dir(dir);
+                }
                 self.path = Some(path);
                 true
             }
@@ -2056,6 +2079,20 @@ impl App {
                 if item(ui, "Project Information…", "", true) {
                     self.dialogs.project = Some(self.doc().settings.project.clone());
                 }
+                ui.menu_button("Project Files", |ui| {
+                    if item(ui, "Gather Files into Project Folder", "", self.path.is_some()) {
+                        self.gather_files();
+                    }
+                    if item(ui, "Save as Project Archive (.hcproj)…", "", true) {
+                        self.save_archive();
+                    }
+                    if item(ui, "Plan Portfolio…", "", true) {
+                        self.dialogs.portfolio.open = true;
+                    }
+                    if item(ui, "Import From Another HouseCraft Folder…", "", true) {
+                        self.migrate_folder();
+                    }
+                });
                 if item(ui, "Show Auto-Archive Folder", "", true)
                     && let Some(dir) = self.archive_dir()
                 {
@@ -2309,6 +2346,10 @@ impl App {
                         self.run1(Command::ExtendTo { id, boundary });
                     }
                     ui.separator();
+                    if item(ui, "Pin Selected in Project Browser", "", !self.selection.is_empty()) {
+                        let ids = self.selection.clone();
+                        self.run1(Command::PinObjects { ids, pinned: true });
+                    }
                     if item(ui, "Scatter Copies…", "", true) {
                         self.dialogs.scatter = Some((20, 0.25, 1));
                     }
@@ -3849,6 +3890,30 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
 
     fn project_browser(&mut self, ui: &mut Ui) {
         ui.strong(self.doc().name.clone());
+        // Pinned objects first.
+        let pins: Vec<(Id, String)> = self
+            .doc()
+            .settings
+            .pins
+            .iter()
+            .filter_map(|id| self.doc().object(*id).map(|o| (*id, housecraft_api::query::describe(self.doc(), o).label)))
+            .collect();
+        if !pins.is_empty() {
+            egui::CollapsingHeader::new("Pinned").default_open(true).show(ui, |ui| {
+                for (id, name) in pins {
+                    let r = ui.selectable_label(self.selection.contains(&id), name);
+                    if r.clicked() {
+                        crate::schedules::select(self, &[id]);
+                    }
+                    r.context_menu(|ui| {
+                        if ui.button("Unpin").clicked() {
+                            self.run1(Command::PinObjects { ids: vec![id], pinned: false });
+                            ui.close();
+                        }
+                    });
+                }
+            });
+        }
         egui::CollapsingHeader::new("Floors")
             .default_open(true)
             .show(ui, |ui| {
@@ -4380,6 +4445,69 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
         }
     }
 
+    /// Managed project: copy the pictures and textures the plan uses into a
+    /// folder beside it and point the plan at the copies, then save.
+    fn gather_files(&mut self) {
+        let Some(path) = self.path.clone() else { return };
+        match housecraft_io_native::project::gather(self.doc(), &path) {
+            Ok((doc, report)) => {
+                let name = self.doc().name.clone();
+                if report.copied > 0 {
+                    // Through the session so it can be undone.
+                    let objects: Vec<serde_json::Value> = doc.objects.values().filter_map(|o| {
+                        let v = serde_json::to_value(o).ok()?;
+                        let old = serde_json::to_value(self.doc().object(o.id())?).ok()?;
+                        (v != old).then_some(v)
+                    }).collect();
+                    let cmds: Vec<Command> = objects
+                        .into_iter()
+                        .filter_map(|v| {
+                            let id = Id(v.get("id")?.as_u64()?);
+                            let mut set = v.as_object()?.clone();
+                            set.remove("id");
+                            set.remove("kind");
+                            Some(Command::Update { id, set })
+                        })
+                        .collect();
+                    self.run(cmds);
+                    self.save(false);
+                }
+                let missing = if report.missing.is_empty() { String::new() } else { format!("; {} file(s) not found", report.missing.len()) };
+                self.info(format!("{name}: {} file(s) gathered into the project folder{missing}", report.copied));
+            }
+            Err(e) => self.error(format!("Could not gather files: {e}")),
+        }
+    }
+
+    /// The plan and every file it uses in one archive.
+    fn save_archive(&mut self) {
+        let Some(out) = pick_save_path(&self.doc().name, housecraft_io_native::project::ARCHIVE_EXTENSION) else { return };
+        let dir = self.path.as_ref().and_then(|p| p.parent()).map(std::path::Path::to_path_buf);
+        match housecraft_io_native::project::pack(self.doc(), dir.as_deref(), &out) {
+            Ok(r) => {
+                let missing = if r.missing.is_empty() { String::new() } else { format!("; {} file(s) not found", r.missing.len()) };
+                self.info(format!("Saved {} with {} file(s){missing}", out.display(), r.copied));
+            }
+            Err(e) => self.error(format!("Could not save the archive: {e}")),
+        }
+    }
+
+    /// Bring the library, templates and prices over from an older install.
+    fn migrate_folder(&mut self) {
+        let Some(from) = rfd::FileDialog::new().set_title("The other HouseCraft data folder").pick_folder() else { return };
+        let Some(to) = housecraft_io_native::library::app_data_dir() else {
+            self.error("No HouseCraft data folder here");
+            return;
+        };
+        match housecraft_io_native::project::migrate_data_folder(&from, &to) {
+            Ok(n) => {
+                self.library.refresh();
+                self.info(format!("Copied {n} library, template and price file(s)"));
+            }
+            Err(e) => self.error(format!("Import failed: {e}")),
+        }
+    }
+
     /// Open what a callout links to: a view or detail, a plan view or a layout.
     pub fn open_link(&mut self, id: Id) {
         match self.doc().object(id).cloned() {
@@ -4793,7 +4921,7 @@ fn pick_open_path() -> Option<PathBuf> {
     rfd::FileDialog::new()
         .add_filter(
             "HouseCraft plan",
-            &[housecraft_io_native::EXTENSION, "hcraft"],
+            &[housecraft_io_native::EXTENSION, "hcraft", housecraft_io_native::project::ARCHIVE_EXTENSION],
         )
         .pick_file()
 }

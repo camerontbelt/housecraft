@@ -1414,6 +1414,7 @@ dependencies = [
 name = "housecraft-io-native"
 version = "0.1.0"
 dependencies = [
+ "flate2",
  "housecraft-model",
  "housecraft-units",
  "serde",
