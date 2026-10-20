@@ -972,7 +972,7 @@ pub fn symbol_item(def: &SymbolDef, category: &str) -> LibraryItem {
     }
 }
 
-/// Library items for every OBJ and STL model in a folder (not its
+/// Library items for every OBJ, STL and glTF model in a folder (not its
 /// subfolders), under `category`; files that can't be read are listed
 /// with their error.
 pub fn import_models(
@@ -986,7 +986,7 @@ pub fn import_models(
         .map(|e| e.path())
         .filter(|p| {
             p.extension()
-                .is_some_and(|e| matches!(e.to_string_lossy().to_lowercase().as_str(), "obj" | "stl"))
+                .is_some_and(|e| matches!(e.to_string_lossy().to_lowercase().as_str(), "obj" | "stl" | "gltf" | "glb"))
         })
         .collect();
     files.sort();

@@ -2159,7 +2159,7 @@ impl App {
                     }
                     if item(ui, "3D Symbol (OBJ, STL)…", "", true)
                         && let Some(path) = rfd::FileDialog::new()
-                            .add_filter("3D models", &["obj", "stl"])
+                            .add_filter("3D models", &["obj", "stl", "gltf", "glb"])
                             .pick_file()
                     {
                         self.symbol_import = Some((path, Default::default()));

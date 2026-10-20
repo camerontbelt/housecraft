@@ -763,3 +763,14 @@ fn cad_conversions_roof_outlines_wall_hatches_and_user_patterns() {
     let w = s.document().get::<Wall>(wall).unwrap();
     assert_eq!(w.shape.hatch.unwrap().pattern, FillPattern::Hatch);
 }
+
+#[test]
+fn plants_can_show_their_own_picture() {
+    let mut s = house();
+    let out = s.apply(&serde_json::from_str::<Vec<Command>>(r#"[{"op": "add_plant", "at": ["50'","10'"], "name": "Maple"}]"#).unwrap()).unwrap();
+    let plant = out.created[0];
+    s.apply(&[Command::Update { id: plant, set: serde_json::json!({"image": "maple-top.png"}).as_object().unwrap().clone() }]).unwrap();
+    let doc = s.document();
+    let d = plan(doc, &PlanOptions::first(doc).unwrap());
+    assert!(d.items.iter().any(|i| i.object == Some(plant) && matches!(&i.prim, Prim::Image { path, .. } if path == "maple-top.png")));
+}

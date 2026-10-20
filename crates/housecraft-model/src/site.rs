@@ -358,6 +358,10 @@ pub struct Plant {
     pub age: f64,
     #[serde(default = "leaf")]
     pub color: Color,
+    /// A picture of the plant seen from above, shown in plan in place of
+    /// the drawn symbol (absolute, or relative to the plan file).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 fn leaf() -> Color {

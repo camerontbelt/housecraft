@@ -250,6 +250,19 @@ pub(crate) fn plant(p: &Plant, stroke: Stroke, ink: Ink, out: &mut Drawing) {
     let c = v2(p.at);
     let (_, spread) = p.size_now();
     let r = spread.mm().max(100.0) / 2.0;
+    // The plant's own picture, sized to its spread (growing with age).
+    if let Some(path) = &p.image {
+        out.push(
+            Some(p.id),
+            Prim::Image {
+                corners: [c + DVec2::new(-r, -r), c + DVec2::new(r, -r), c + DVec2::new(r, r), c + DVec2::new(-r, r)],
+                path: path.clone(),
+                opacity: 1.0,
+                transparent: Some(housecraft_model::Color::rgb(255, 255, 255)),
+            },
+        );
+        return;
+    }
     let lobes = match p.form {
         PlantForm::Conifer => 16,
         PlantForm::Grass => 20,

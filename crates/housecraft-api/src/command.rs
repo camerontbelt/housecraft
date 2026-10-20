@@ -2687,6 +2687,7 @@ impl Command {
                     years_to_mature: 0.0,
                     age: 0.0,
                     color: Color::rgb(80, 130, 60),
+                    image: None,
                 }));
             }
             Command::SubdivideLot { lot, count, angle } => crate::site::subdivide(doc, *lot, *count, *angle, &mut out)?,

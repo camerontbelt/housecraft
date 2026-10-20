@@ -427,7 +427,7 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-16 | Fences that follow terrain; gates | P2 | M6 ✓ picket, privacy and split-rail fences with posts following the ground; gates |
 | SITE-17 | Sprinkler designer (zones, runs) | P3 | M8 |
 | SITE-18 | Plant images/symbols in 2D/3D | P2 | M6 ✓ trees, conifers, shrubs and grasses as plan canopies and 3D shapes |
-| SITE-19 | Import own plant images with growth data | P3 | M6 ◐ growth data (years to mature, show at age); no imported plant images |
+| SITE-19 | Import own plant images with growth data | P3 | M6 ✓ growth data (years to mature, show at age) and a plan image per plant, sized to its spread |
 | SITE-20 | Plant chooser with hardiness zone maps | P3 | M8 |
 | SITE-21 | Plant encyclopedia data | P3 | M8 (own data) |
 | SITE-22 | Landscaping plans and plant schedules | P3 | M6 ✓ plant schedule; plants and site work in the materials list |
@@ -461,7 +461,7 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-21 | Style palettes (save and apply finish sets) | P2 | M5 ✓ save and apply styles (materials, door style, hardware) |
 | MAT-22 | Center object between two objects | P1 | M1 ✓ Center Object button: then click a wall or line to centre along it, or an object to centre on it |
 | MAT-23 | Match / apply properties across same-type items | P1 | M1 ✓ Match Properties works for any kind of object; placement and facing are kept |
-| MAT-24 | Import custom 3D symbols | P1 | M5 ◐ OBJ (with MTL colours) and STL models stored in the plan, placed and stretched like cabinets, paintable; glTF, DAE and SKP later |
+| MAT-24 | Import custom 3D symbols | P1 | M5 ◐ OBJ (with MTL colours), STL and glTF/GLB models stored in the plan, placed and stretched like cabinets, paintable; DAE and SKP later |
 | MAT-25 | Smart symbols (sinks cut counters, wall-hung items, light fixtures emit) | P2 | M5 ✓ symbols can behave as sinks (cut countertops), wall-hung (hang at a set height) or light fixtures (light the 3D view) |
 | MAT-26 | Convert selection to symbol object | P2 | M5 ✓ Library > Convert Selection to Symbol keeps the 3D look in one symbol |
 | MAT-27 | Custom molding profiles; stacked, flipped, rotated, centered | P2 | M5 ✓ |

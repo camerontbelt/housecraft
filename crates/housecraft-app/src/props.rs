@@ -1493,6 +1493,19 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
         }
         Object::Plant(p) => {
             ed.text(ui, "Name", "name", &p.name);
+            Ed::label(ui, "Plan Image");
+            ui.horizontal(|ui| {
+                ui.label(p.image.as_deref().map_or("(drawn symbol)".to_string(), |f| std::path::Path::new(f).file_name().map_or(f.to_string(), |n| n.to_string_lossy().into_owned())));
+                if ui.button("Browse…").on_hover_text("A picture seen from above; white is see-through").clicked()
+                    && let Some(f) = pick_image()
+                {
+                    ed.out.push(patch(id, json!({ "image": f })));
+                }
+                if p.image.is_some() && ui.button("Clear").clicked() {
+                    ed.out.push(patch(id, json!({ "image": null })));
+                }
+            });
+            ui.end_row();
             Ed::label(ui, "Form");
             let mut form = p.form;
             ui.horizontal(|ui| {

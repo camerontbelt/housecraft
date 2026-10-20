@@ -572,7 +572,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
         }
         if ui
             .button("Import 3D Models…")
-            .on_hover_text("Add every OBJ and STL model in a folder to your library as symbols")
+            .on_hover_text("Add every OBJ, STL and glTF model in a folder to your library as symbols")
             .clicked()
             && let Some(folder) = rfd::FileDialog::new().pick_folder()
             && let Some(dir) = library::library_dir()
