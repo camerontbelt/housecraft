@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 525 items: 29 P0, about 132 P1, about 250 P2, about 106 P3, and 5 out of scope. Each item should eventually map to
+There are 530 items: 29 P0, about 133 P1, about 252 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -252,6 +252,7 @@ These come from reading the whole list and change the architecture, not just the
 | CB-24 | NKBA-standard display options | P2 | M5 ✓ |
 | CB-25 | Manufacturer cabinet catalogs | P3 | M8 |
 | CB-26 | Soffit tool and defaults (boxes against walls/ceilings for trays, coffers, bulkheads) | P2 | M9 |
+| CB-27 | Architectural blocks in the plan: group objects to move/edit/schedule as one; explode | P2 | M9 |
 
 ## 8. Doors & windows
 
@@ -416,6 +417,7 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-27 | Paste Special: choose which attributes to paste | P3 | M9 |
 | CAD-28 | Bumping/pushing: objects push neighbours instead of overlapping | P3 | M9 |
 | CAD-29 | Reflect About Object (mirror a copy across a door, window or wall centre) | P3 | M9 |
+| CAD-30 | Drawing groups / draw order (Move Forward/Backward) | P2 | M9 |
 
 ## 14. Layers
 
@@ -548,6 +550,7 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-30 | Replace Moldings: swap one molding profile for another plan-wide | P3 | M9 |
 | MAT-31 | Wall surfaces painted per room they face (a wall spanning rooms takes each room's finish) | P2 | M9 |
 | MAT-32 | Wall coverings (wainscot, beadboard): a finish band at a height on a room's walls | P2 | M9 |
+| MAT-33 | Accent upholstery as its own material default | P3 | M9 |
 
 ## 19. Library / catalog
 
@@ -571,6 +574,7 @@ These come from reading the whole list and change the architecture, not just the
 | LIB-16 | Find a selected object in the library | P3 | M5 ✓ Find Selected searches the library for the selected object |
 | LIB-17 | Save components (doors, hardware, moldings) to library | P2 | M5 ◐ doors, windows (with grilles, shutters, curtains) and molding profiles; no separate hardware items |
 | LIB-18 | Read user CA libraries (`.calib`/`.calibz`) | P2 | M8 |
+| LIB-19 | Built-in furniture and accessories (bed, end table, dresser, sofa, arm chair, coffee and dining tables, dining chair, vase, picture frame) with Furniture and Upholstery material defaults | P1 | M9 ✓ Library › Furniture; simple 3D shapes and plan symbols |
 
 ## 20. Materials list & cost estimating
 
@@ -605,6 +609,7 @@ These come from reading the whole list and change the architecture, not just the
 | EST-27 | Door/window schedules: show objects' own labels instead of schedule-number callouts | P3 | M9 |
 | EST-28 | Reorder schedule rows (drag rows; Move Up/Down in Schedule) | P3 | M9 |
 | EST-29 | Room moldings schedule (profiles and lengths by room) | P3 | M9 |
+| EST-30 | Furniture schedule (pictures, dimensions; blocks as one line; leave accessories out) | P3 | M9 |
 
 ## 21. Text, annotation & scripting
 
@@ -625,7 +630,7 @@ These come from reading the whole list and change the architecture, not just the
 | TXT-13 | Text styles per layer/default/object | P0 | M1 ✓ |
 | TXT-14 | Default sets for annotation | P1 | M1 ✓ default sets carry the text style, dimension defaults or style, label templates and layers for annotation; plan views and camera default sets pick them |
 | TXT-15 | Annotations on 3D views | P2 | M7 ✓ 3D > Notes and Dimensions: notes pinned to the model, shown for one camera or all |
-| TXT-16 | Numbered notes with schedule; note markers in 3D | P2 | M4 ◐ numbered note callouts and a Note Schedule; 3D markers later |
+| TXT-16 | Numbered notes with schedule; note markers in 3D | P2 | M4 ◐ numbered note callouts and a Note Schedule; 3D markers later; notes with the same text should share one number (they get separate ones) |
 | TXT-17 | Spell check | P3 | GUI |
 | TXT-18 | Hyperlinks | P2 | M1 ◐ [label](url) links in notes, Alt+click opens them; not yet clickable in exported PDFs |
 | TXT-19 | Text macros incl. user-defined (contact, file, plan info, dates) | P1 | M4 ◐ {project}, {date}, {year}, {living_area}, {floors}, {rooms} in plan text and layout notes; user-defined macros later |

@@ -177,6 +177,26 @@ pub(crate) fn appliance(a: &Appliance, stroke: Stroke, text: f64, ink: Ink, out:
         K::WaterHeater => {
             line(out, id, circle(centroid(&outline), w / 2.0 * 0.9), true, stroke);
         }
+        K::QueenBed => {
+            // Headboard, pillows and the turned-down sheet.
+            line(out, id, vec![f.world(DVec2::new(-w / 2.0, 3.0 * IN)), f.world(DVec2::new(w / 2.0, 3.0 * IN))], false, stroke);
+            for u in [-w / 4.0, w / 4.0] {
+                let r = [DVec2::new(u - 11.0 * IN, 5.0 * IN), DVec2::new(u + 11.0 * IN, 5.0 * IN), DVec2::new(u + 11.0 * IN, 20.0 * IN), DVec2::new(u - 11.0 * IN, 20.0 * IN)];
+                line(out, id, r.iter().map(|p| f.world(*p)).collect(), true, stroke);
+            }
+            line(out, id, vec![f.world(DVec2::new(-w / 2.0, 28.0 * IN)), f.world(DVec2::new(w / 2.0, 28.0 * IN))], false, stroke);
+        }
+        K::Sofa | K::ArmChair => {
+            let arm = 6.0 * IN;
+            let inner = [DVec2::new(-w / 2.0 + arm, d), DVec2::new(-w / 2.0 + arm, 9.0 * IN), DVec2::new(w / 2.0 - arm, 9.0 * IN), DVec2::new(w / 2.0 - arm, d)];
+            line(out, id, inner.iter().map(|p| f.world(*p)).collect(), false, stroke);
+        }
+        K::DiningChair => {
+            line(out, id, vec![f.world(DVec2::new(-w / 2.0, 1.5 * IN)), f.world(DVec2::new(w / 2.0, 1.5 * IN))], false, stroke);
+        }
+        K::Vase => {
+            line(out, id, circle(centroid(&outline), w / 2.0), true, stroke);
+        }
         _ => {}
     }
     let label = a.appliance_kind.short();

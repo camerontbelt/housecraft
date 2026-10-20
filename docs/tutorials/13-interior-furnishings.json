@@ -1,0 +1,355 @@
+{
+  "tutorial": "Interior Furnishings",
+  "source": "Chief Architect X18 Tutorial Guide, Interior Design Tutorials, pages 222-236",
+  "include": "12-room-moldings.json",
+  "steps": [
+    {
+      "step": "Material Defaults: furniture upholstery Chenille - Pebble; accent upholstery Twill Cornflower",
+      "commands": [
+        {
+          "op": "add_material",
+          "name": "Twill Cornflower",
+          "color": "#6F8FC9"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/materials/upholstery",
+          "is": "$named:material:Chenille - Pebble"
+        }
+      ]
+    },
+    {
+      "step": "(Accent upholstery as its own default)",
+      "gap": "One upholstery default for all furniture fabric; no separate accent upholstery. Row: MAT-33"
+    },
+    {
+      "step": "Library: a queen bed under the Bedroom windows, its back to the wall",
+      "commands": [
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "queen_bed",
+          "at": [
+            10414.0,
+            -213.519
+          ]
+        }
+      ],
+      "save": {
+        "bed": "appliance"
+      },
+      "expect": [
+        {
+          "get": "$bed",
+          "path": "/appliance_kind",
+          "is": "queen_bed"
+        },
+        {
+          "get": "$bed",
+          "path": "/facing",
+          "is": -90.0
+        }
+      ]
+    },
+    {
+      "step": "End tables with drawers either side of the bed; a dresser in the Foyer against the Dining wall",
+      "commands": [
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "end_table",
+          "at": [
+            9271.0,
+            -213.519
+          ]
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "end_table",
+          "at": [
+            11557.0,
+            -213.519
+          ]
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "dresser",
+          "at": [
+            4298.95,
+            -7620.0
+          ]
+        }
+      ],
+      "save": {
+        "ends": "appliance"
+      },
+      "expect": [
+        {
+          "count": "appliance",
+          "is": 4
+        }
+      ]
+    },
+    {
+      "step": "Living room: a sofa against the back wall, an arm chair by the Bedroom wall, a coffee table in front of the sofa",
+      "commands": [
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "sofa",
+          "at": [
+            6096.0,
+            -213.519
+          ]
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "arm_chair",
+          "at": [
+            7981.95,
+            -2794.0
+          ]
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "coffee_table",
+          "at": [
+            6096.0,
+            -1778.0
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "count": "appliance",
+          "is": 7
+        }
+      ]
+    },
+    {
+      "step": "Dining room: a dining table and six chairs, slid partly under it with Ctrl held",
+      "commands": [
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "dining_table",
+          "at": [
+            2032.0,
+            -7112.0
+          ]
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "dining_chair",
+          "at": [
+            1422.4,
+            -7162.8
+          ],
+          "facing": 90
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "dining_chair",
+          "at": [
+            2641.6,
+            -7162.8
+          ],
+          "facing": 90
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "dining_chair",
+          "at": [
+            1422.4,
+            -6045.2
+          ],
+          "facing": 270
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "dining_chair",
+          "at": [
+            2641.6,
+            -6045.2
+          ],
+          "facing": 270
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "dining_chair",
+          "at": [
+            863.6,
+            -6604.0
+          ],
+          "facing": 0
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "dining_chair",
+          "at": [
+            3200.4,
+            -6604.0
+          ],
+          "facing": 180
+        }
+      ],
+      "expect": [
+        {
+          "count": "appliance",
+          "is": 14
+        }
+      ]
+    },
+    {
+      "step": "Draw order: the table in front of the chairs in plan (Move Forward / drawing groups)",
+      "gap": "No drawing groups or draw order controls. Row: CAD-30"
+    },
+    {
+      "step": "Accessories: a vase on the dresser and a picture frame on the wall above it",
+      "commands": [
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "vase",
+          "at": [
+            4552.95,
+            -7620.0
+          ],
+          "facing": 0
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "picture_frame",
+          "at": [
+            4248.15,
+            -7620.0
+          ]
+        }
+      ],
+      "save": {
+        "acc": "appliance"
+      },
+      "expect": [
+        {
+          "get": "$acc.0",
+          "path": "/elevation",
+          "is": "34\""
+        }
+      ]
+    },
+    {
+      "step": "Full camera in the Foyer looking at the dresser",
+      "commands": [
+        {
+          "op": "add_camera",
+          "name": "Foyer",
+          "projection": {
+            "type": "perspective",
+            "fov": 60
+          },
+          "eye": [
+            7620.0,
+            -7620.0,
+            1676.4
+          ],
+          "target": [
+            4146.55,
+            -7620.0,
+            1300
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "count": "camera",
+          "is": 2
+        }
+      ]
+    },
+    {
+      "step": "Resize the frame: top at 80\", wider; make its picture a mirror (Material Painter in component mode)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$acc.1",
+          "set": {
+            "width": "30\"",
+            "height": "36\"",
+            "elevation": "44\""
+          }
+        },
+        {
+          "op": "paint_material",
+          "material": "$named:material:Mirror",
+          "scope": "object",
+          "ids": [
+            "$acc.1"
+          ],
+          "surface": "glass"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$acc.1",
+          "path": "/elevation",
+          "is": "44\""
+        }
+      ]
+    },
+    {
+      "step": "Wall Elevation in the Bedroom; Replace From Library: both end tables for another style",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$ends.0",
+          "set": {
+            "width": "24\""
+          }
+        },
+        {
+          "op": "update",
+          "id": "$ends.1",
+          "set": {
+            "width": "24\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$ends.1",
+          "path": "/width",
+          "is": "24\""
+        }
+      ]
+    },
+    {
+      "step": "(Replace From Library for identical objects; furniture styles)",
+      "gap": "Built-in furniture comes in one style per piece, so there's nothing to swap to; edit sizes instead (or import your own models). Rows: LIB-12, MAT-24"
+    },
+    {
+      "step": "Architectural Blocks: the dresser, vase and frame; the dining set; edit a piece inside; add a block to the library",
+      "gap": "No architectural blocks in the plan (grouped objects that move as one); groups are saved to and placed from the library only. Row: CB-27"
+    },
+    {
+      "step": "Library folders for plan content and a linked Beach Palette folder",
+      "gap": "No user library folders or links. Row: LIB-01"
+    },
+    {
+      "step": "Furniture schedule with 3D pictures and rounded dimensions; the dining set as one line; leave accessories out",
+      "gap": "No furniture schedule. Row: EST-30"
+    }
+  ]
+}

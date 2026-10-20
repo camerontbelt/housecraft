@@ -1183,6 +1183,77 @@ pub fn appliance_mesh(doc: &Document, a: &Appliance, mesh: &mut Mesh) {
             b.prism(&rect(-2.5 * IN, d * 0.3, 2.5 * IN, d * 0.6), 0.0, h - 6.0 * IN, Surface::Device);
             b.prism(&rect(-hw, 0.0, hw, d), h - 6.0 * IN, h, Surface::Device);
         }
+        K::QueenBed => {
+            let (wood, fabric) = (Surface::Furniture, Surface::Upholstery);
+            b.prism(&rect(-hw, 0.0, hw, 3.0 * IN), 0.0, 44.0 * IN, wood); // headboard
+            b.prism(&rect(-hw, 3.0 * IN, hw, d), 6.0 * IN, 14.0 * IN, wood); // frame
+            b.prism(&rect(-hw + IN, 3.0 * IN, hw - IN, d - IN), 14.0 * IN, h, fabric); // mattress
+            for u in [-hw / 2.0, hw / 2.0] {
+                b.prism(&rect(u - 11.0 * IN, 5.0 * IN, u + 11.0 * IN, 20.0 * IN), h, h + 5.0 * IN, fabric); // pillows
+            }
+            for (u, v) in [(-hw, 3.0 * IN), (hw - 2.0 * IN, 3.0 * IN), (-hw, d - 2.0 * IN), (hw - 2.0 * IN, d - 2.0 * IN)] {
+                b.prism(&rect(u, v, u + 2.0 * IN, v + 2.0 * IN), 0.0, 6.0 * IN, wood);
+            }
+        }
+        K::EndTable | K::Dresser | K::CoffeeTable | K::DiningTable => {
+            let wood = Surface::Furniture;
+            let top = IN.min(h * 0.1);
+            b.prism(&rect(-hw, 0.0, hw, d), h - top, h, wood);
+            let leg = 2.0 * IN;
+            if matches!(a.appliance_kind, K::Dresser | K::EndTable) {
+                // A case of drawers.
+                b.prism(&rect(-hw + IN, IN, hw - IN, d - IN), 3.0 * IN, h - top, wood);
+                let front = vec![DVec2::new(-hw, d), DVec2::new(hw, d)];
+                let rows = if a.appliance_kind == K::Dresser { 3 } else { 1 };
+                let zh = (h - top - 4.0 * IN) / rows as f64;
+                for r in 0..rows {
+                    let z = 3.5 * IN + zh * r as f64;
+                    b.slab(&front, 1.5 * IN, w - 1.5 * IN, z, z + zh - 0.5 * IN, -IN, 0.75 * IN, wood);
+                    b.knob(&front, w / 2.0, z + zh / 2.0, 0.6 * IN, 0.6 * IN, -0.25 * IN, 0.75 * IN);
+                }
+            }
+            for (u, v) in [(-hw, 0.0), (hw - leg, 0.0), (-hw, d - leg), (hw - leg, d - leg)] {
+                b.prism(&rect(u, v, u + leg, v + leg), 0.0, h - top, wood);
+            }
+        }
+        K::Sofa | K::ArmChair => {
+            let (wood, fabric) = (Surface::Furniture, Surface::Upholstery);
+            let arm = 6.0 * IN;
+            let seat = 18.0 * IN;
+            b.prism(&rect(-hw, 0.0, hw, d), 3.0 * IN, 10.0 * IN, fabric); // base
+            b.prism(&rect(-hw, 0.0, hw, 9.0 * IN), 10.0 * IN, h, fabric); // back
+            b.prism(&rect(-hw, 9.0 * IN, -hw + arm, d), 10.0 * IN, 25.0 * IN, fabric); // arms
+            b.prism(&rect(hw - arm, 9.0 * IN, hw, d), 10.0 * IN, 25.0 * IN, fabric);
+            b.prism(&rect(-hw + arm, 9.0 * IN, hw - arm, d), 10.0 * IN, seat, fabric); // cushions
+            for (u, v) in [(-hw, 0.0), (hw - 2.0 * IN, 0.0), (-hw, d - 2.0 * IN), (hw - 2.0 * IN, d - 2.0 * IN)] {
+                b.prism(&rect(u, v, u + 2.0 * IN, v + 2.0 * IN), 0.0, 3.0 * IN, wood);
+            }
+        }
+        K::DiningChair => {
+            let (wood, fabric) = (Surface::Furniture, Surface::Upholstery);
+            let leg = 1.5 * IN;
+            for (u, v) in [(-hw, 0.0), (hw - leg, 0.0), (-hw, d - leg), (hw - leg, d - leg)] {
+                b.prism(&rect(u, v, u + leg, v + leg), 0.0, 17.0 * IN, wood);
+            }
+            b.prism(&rect(-hw, 0.0, hw, d), 17.0 * IN, 19.0 * IN, fabric); // seat
+            b.prism(&rect(-hw, 0.0, hw, leg), 19.0 * IN, h, wood); // back
+        }
+        K::Vase => {
+            let c = DVec2::new(0.0, d / 2.0);
+            let disc = |r: f64| -> Vec<DVec2> { (0..16).map(|i| c + DVec2::from_angle(i as f64 / 16.0 * std::f64::consts::TAU) * r).collect() };
+            b.prism(&disc(w / 2.0), 0.0, h * 0.7, Surface::Device);
+            b.prism(&disc(w / 3.0), h * 0.7, h, Surface::Device);
+        }
+        K::PictureFrame => {
+            let front = vec![DVec2::new(-hw, d), DVec2::new(hw, d)];
+            let frame = 2.0 * IN;
+            b.prism(&rect(-hw, 0.0, hw, d * 0.5), 0.0, h, Surface::Furniture); // backing
+            b.slab(&front, 0.0, w, 0.0, frame, 0.0, d * 0.5, Surface::Furniture);
+            b.slab(&front, 0.0, w, h - frame, h, 0.0, d * 0.5, Surface::Furniture);
+            b.slab(&front, 0.0, frame, frame, h - frame, 0.0, d * 0.5, Surface::Furniture);
+            b.slab(&front, w - frame, w, frame, h - frame, 0.0, d * 0.5, Surface::Furniture);
+            b.slab(&front, frame, w - frame, frame, h - frame, 0.0, 0.1 * IN, Surface::Glass);
+        }
         K::WaterHeater => {
             let c = DVec2::new(0.0, d / 2.0);
             let disc: Vec<DVec2> = (0..20)

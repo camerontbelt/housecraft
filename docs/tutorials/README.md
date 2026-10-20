@@ -30,10 +30,11 @@ has two files:
 | 10 | Custom Ceilings (177) | 5 | 7 | [10-custom-ceilings.md](10-custom-ceilings.md) |
 | 11 | Finish Materials (191) | 9 | 6 | [11-finish-materials.md](11-finish-materials.md) |
 | 12 | Room Moldings (211) | 5 | 4 | [12-room-moldings.md](12-room-moldings.md) |
-| 13–19 | Interior Furnishings and Kitchen & Bath tutorials (222–330) | — | — | |
-| 20–22 | Framing tutorials (331–381) | — | — | |
-| 23–26 | Landscaping tutorials (382–450) | — | — | |
-| 27–29 | Layout tutorials (451–500) | — | — | |
+| 13 | Interior Furnishings (222) | 9 | 6 | [13-interior-furnishings.md](13-interior-furnishings.md) |
+| 14–18 | Kitchen & Bath tutorials (237–330) | — | — | |
+| 19–21 | Framing tutorials (331–381) | — | — | |
+| 22–25 | Landscaping tutorials (382–450) | — | — | |
+| 26–28 | Layout tutorials (451–500) | — | — | |
 
 The tutorials build on each other. A JSON file can name the one before it in `include`; its steps run first and
 the new file carries on from that plan (tutorial 2 starts a fresh plan with tutorial 1's shell in a few commands).

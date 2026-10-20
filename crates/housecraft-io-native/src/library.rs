@@ -564,6 +564,8 @@ pub fn builtin() -> Vec<LibraryItem> {
             | ApplianceKind::VanitySink
             | ApplianceKind::Pedestal => "Bath",
             ApplianceKind::Washer | ApplianceKind::Dryer | ApplianceKind::WaterHeater => "Utility",
+            ApplianceKind::Vase | ApplianceKind::PictureFrame => "Furniture/Accessories",
+            k if k.is_furniture() => "Furniture",
             _ => "Kitchen Appliances",
         };
         out.push(item(

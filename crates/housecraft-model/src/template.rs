@@ -46,6 +46,8 @@ pub(crate) fn standard_materials(doc: &mut Document) -> SurfaceMaterials {
     let nickel = add("Brushed Nickel", "Metal", C::Metal, (196, 194, 188));
     add("Stainless Steel", "Metal", C::Metal, (206, 208, 210));
     add("Matte Black Metal", "Metal", C::Metal, (38, 38, 40));
+    let furniture = add("Cherry Furniture", "Wood", C::Plastic, (122, 72, 46));
+    let fabric = add("Chenille - Pebble", "Fabric", C::Generic, (178, 170, 158));
     use Surface as S;
     SurfaceMaterials::from([
         (S::Wall, paint),
@@ -69,6 +71,8 @@ pub(crate) fn standard_materials(doc: &mut Document) -> SurfaceMaterials {
         (S::Backsplash, subway),
         (S::Hardware, nickel),
         (S::Trim, trim),
+        (S::Furniture, furniture),
+        (S::Upholstery, fabric),
     ])
 }
 

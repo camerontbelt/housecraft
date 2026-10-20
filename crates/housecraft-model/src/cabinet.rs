@@ -507,10 +507,20 @@ pub enum ApplianceKind {
     VanitySink,
     Pedestal,
     WaterHeater,
+    QueenBed,
+    EndTable,
+    Dresser,
+    Sofa,
+    ArmChair,
+    CoffeeTable,
+    DiningTable,
+    DiningChair,
+    Vase,
+    PictureFrame,
 }
 
 impl ApplianceKind {
-    pub const ALL: [ApplianceKind; 15] = [
+    pub const ALL: [ApplianceKind; 25] = [
         ApplianceKind::Refrigerator,
         ApplianceKind::Range,
         ApplianceKind::Cooktop,
@@ -526,7 +536,22 @@ impl ApplianceKind {
         ApplianceKind::VanitySink,
         ApplianceKind::Pedestal,
         ApplianceKind::WaterHeater,
+        ApplianceKind::QueenBed,
+        ApplianceKind::EndTable,
+        ApplianceKind::Dresser,
+        ApplianceKind::Sofa,
+        ApplianceKind::ArmChair,
+        ApplianceKind::CoffeeTable,
+        ApplianceKind::DiningTable,
+        ApplianceKind::DiningChair,
+        ApplianceKind::Vase,
+        ApplianceKind::PictureFrame,
     ];
+
+    /// Furniture and accessories (rather than appliances and fixtures).
+    pub fn is_furniture(self) -> bool {
+        matches!(self, ApplianceKind::QueenBed | ApplianceKind::EndTable | ApplianceKind::Dresser | ApplianceKind::Sofa | ApplianceKind::ArmChair | ApplianceKind::CoffeeTable | ApplianceKind::DiningTable | ApplianceKind::DiningChair | ApplianceKind::Vase | ApplianceKind::PictureFrame)
+    }
 
     pub fn name(self) -> &'static str {
         match self {
@@ -545,6 +570,16 @@ impl ApplianceKind {
             ApplianceKind::VanitySink => "Vanity Sink",
             ApplianceKind::Pedestal => "Pedestal Sink",
             ApplianceKind::WaterHeater => "Water Heater",
+            ApplianceKind::QueenBed => "Queen Bed",
+            ApplianceKind::EndTable => "End Table",
+            ApplianceKind::Dresser => "Dresser",
+            ApplianceKind::Sofa => "Sofa",
+            ApplianceKind::ArmChair => "Arm Chair",
+            ApplianceKind::CoffeeTable => "Coffee Table",
+            ApplianceKind::DiningTable => "Dining Table",
+            ApplianceKind::DiningChair => "Dining Chair",
+            ApplianceKind::Vase => "Vase",
+            ApplianceKind::PictureFrame => "Picture Frame",
         }
     }
 
@@ -566,6 +601,7 @@ impl ApplianceKind {
             ApplianceKind::VanitySink => "",
             ApplianceKind::Pedestal => "",
             ApplianceKind::WaterHeater => "WH",
+            _ => "",
         }
     }
 
@@ -587,12 +623,22 @@ impl ApplianceKind {
             ApplianceKind::VanitySink => (20.0, 16.0, 6.0, 30.0),
             ApplianceKind::Pedestal => (22.0, 18.0, 34.0, 0.0),
             ApplianceKind::WaterHeater => (22.0, 22.0, 60.0, 0.0),
+            ApplianceKind::QueenBed => (60.0, 80.0, 24.0, 0.0),
+            ApplianceKind::EndTable => (20.0, 18.0, 26.0, 0.0),
+            ApplianceKind::Dresser => (60.0, 20.0, 34.0, 0.0),
+            ApplianceKind::Sofa => (84.0, 36.0, 34.0, 0.0),
+            ApplianceKind::ArmChair => (34.0, 34.0, 34.0, 0.0),
+            ApplianceKind::CoffeeTable => (48.0, 24.0, 18.0, 0.0),
+            ApplianceKind::DiningTable => (72.0, 40.0, 30.0, 0.0),
+            ApplianceKind::DiningChair => (18.0, 20.0, 38.0, 0.0),
+            ApplianceKind::Vase => (6.0, 6.0, 18.0, 34.0),
+            ApplianceKind::PictureFrame => (24.0, 1.5, 30.0, 50.0),
         }
     }
 
     /// Stands against a wall with its back to it.
     pub fn against_wall(self) -> bool {
-        !matches!(self, ApplianceKind::Cooktop)
+        !matches!(self, ApplianceKind::Cooktop | ApplianceKind::CoffeeTable | ApplianceKind::DiningTable | ApplianceKind::DiningChair | ApplianceKind::Vase )
     }
 }
 

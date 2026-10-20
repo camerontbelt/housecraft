@@ -241,6 +241,8 @@ pub fn builtin_look(surface: Surface) -> Look {
         Surface::Backsplash => ([0.94, 0.94, 0.92, 1.0], [0.3, 0.0, 0.0, 1.0]),
         Surface::Hardware => ([0.77, 0.76, 0.74, 1.0], [0.3, 1.0, 0.0, 1.0]),
         Surface::Trim => ([0.97, 0.97, 0.97, 1.0], [0.4, 0.0, 0.0, 1.0]),
+        Surface::Furniture => ([0.48, 0.28, 0.18, 1.0], [0.4, 0.0, 0.0, 1.0]),
+        Surface::Upholstery => ([0.7, 0.67, 0.62, 1.0], [0.9, 0.0, 0.0, 1.0]),
     };
     Look {
         color,
