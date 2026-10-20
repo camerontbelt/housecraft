@@ -1,0 +1,224 @@
+{
+  "tutorial": "Plot Plans",
+  "source": "Chief Architect X18 Tutorial Guide, Landscaping Tutorials, pages 382-402",
+  "include": "21-roof-and-ceiling-framing.json",
+  "steps": [
+    {
+      "step": "A separate plan file for the plot plan (File > New Plan, Save As Chic Cottage-Plot Plan)",
+      "gap": "Done in the house plan here; a separate file works the same and is copied in later. North for the site and for the house is one setting. Row: SITE-28"
+    },
+    {
+      "step": "Plot Plan View",
+      "commands": [],
+      "expect": [
+        {
+          "get": "$named:plan_view:Site Plan",
+          "path": "/name",
+          "is": "Site Plan"
+        }
+      ]
+    },
+    {
+      "step": "CAD defaults: line lengths in decimal feet (2 places), angles as quadrant bearings",
+      "gap": "Lengths show in the plan's display unit; angles in degrees. No per-view decimal-feet or bearing display for CAD lines. Row: SITE-29"
+    },
+    {
+      "step": "Input Point at (0,0); Input Line with three sides from the lot description (one entered reversed: S 49 59 11 W)",
+      "commands": [
+        {
+          "op": "add_plot_lines",
+          "floor": "$floor1",
+          "start": [
+            0,
+            0
+          ],
+          "setback": "10'",
+          "legs": [
+            {
+              "bearing": "N 61 25 10 E",
+              "distance": "155.69'"
+            },
+            {
+              "bearing": "S 28 29 35 E",
+              "distance": "118.65'"
+            },
+            {
+              "bearing": "S 49 59 11 W",
+              "distance": "154.37'"
+            },
+            {
+              "bearing": "N 30 11 36 W",
+              "distance": "149.31'"
+            }
+          ]
+        }
+      ],
+      "save": {
+        "lot": "cad"
+      },
+      "expect": [
+        {
+          "get": "$lot.0",
+          "path": "/shape/closed",
+          "is": true
+        },
+        {
+          "get": "$lot.1",
+          "path": "/shape/closed",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "(The fourth side: an arc of 450' radius, 150' long)",
+      "gap": "Lot sides are straight; the curved side is entered as its chord (N 30 11 36 W, 149.31'). Row: SITE-29"
+    },
+    {
+      "step": "Show Length and Show Angle on the lot lines",
+      "expect": [
+        {
+          "text_exists": "N 61 25 10 E  155'-8 1/4\""
+        }
+      ]
+    },
+    {
+      "step": "Setback lines: Concentric edit 10', copy inward; dashed line style on its own layer 'CAD, Setback Lines'",
+      "commands": [
+        {
+          "op": "add_layer",
+          "name": "CAD, Setback Lines"
+        }
+      ],
+      "save": {
+        "sblayer": "layer"
+      }
+    },
+    {
+      "step": "(setback on its layer, dashed)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$lot.1",
+          "set": {
+            "layer": "$sblayer"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$lot.1",
+          "path": "/layer",
+          "is": "$sblayer"
+        }
+      ]
+    },
+    {
+      "step": "(Concentric Edit Behavior)",
+      "gap": "No Concentric edit behaviour; Offset (CAD) or the plot lines' setback makes the inner line. Row: CAD-32"
+    },
+    {
+      "step": "Copy the lot and setback into the house plan; Convert Polyline > Terrain Perimeter (replacing the Decks and Porches one)",
+      "commands": [
+        {
+          "op": "convert_cad",
+          "ids": [
+            "$lot.0"
+          ],
+          "to": {
+            "type": "terrain_perimeter"
+          }
+        }
+      ],
+      "save": {
+        "terrain": "terrain"
+      },
+      "expect": [
+        {
+          "count": "terrain",
+          "is": 1
+        },
+        {
+          "get": "$terrain",
+          "path": "/perimeter/3/1",
+          "is": "-129.05'"
+        }
+      ]
+    },
+    {
+      "step": "North Pointer drawn straight up",
+      "commands": [
+        {
+          "op": "set_north",
+          "angle": 90.0,
+          "pointer": [
+            -6096.0,
+            6096.0
+          ]
+        }
+      ]
+    },
+    {
+      "step": "Rotate the lot, setback and North Pointer 1 30 25 so the back lot line is parallel to the house",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$terrain",
+            "$lot.1"
+          ],
+          "transform": {
+            "type": "rotate",
+            "center": [
+              0,
+              0
+            ],
+            "angle": 1.506944
+          }
+        },
+        {
+          "op": "set_north",
+          "angle": 91.506944,
+          "pointer": [
+            -6096.0,
+            6096.0
+          ]
+        }
+      ]
+    },
+    {
+      "step": "(Rotate the north pointer with the lot; bearings measured from it)",
+      "gap": "The north pointer isn't an object you rotate with the lot; set North's angle. Lot labels keep the bearings typed. Row: SITE-28"
+    },
+    {
+      "step": "Position the lot: the back right corner of the main roof 50' from the back setback and 30' from the right one",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$terrain",
+            "$lot.1"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": "-60'",
+            "dy": "40'"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "count": "terrain",
+          "is": 1
+        }
+      ]
+    },
+    {
+      "step": "(Moving a selection by typing on a dimension; point markers; Point to Point Move)",
+      "gap": "Move the lot with Transform/Replicate distances. Rows: DIM-03, CAD-31"
+    },
+    {
+      "step": "Save and close the plot plan file; Make a Copy of CURRENT as Chic Cottage-Plot Plan",
+      "gap": "No Make a Copy. Row: PRJ-45"
+    }
+  ]
+}

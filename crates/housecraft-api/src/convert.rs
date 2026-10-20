@@ -29,6 +29,9 @@ pub enum CadTarget {
     SiteFeature { feature: SiteKind },
     /// A baseboard-like molding along the shape.
     Molding,
+    /// The terrain's outline (the lot): replaces the existing perimeter and
+    /// keeps the terrain's settings.
+    TerrainPerimeter,
     /// A solid extruded up from the shape.
     Solid {
         #[serde(default)]
@@ -70,6 +73,7 @@ pub(crate) fn convert_cad(doc: &mut Document, ids: &[Id], to: &CadTarget, out: &
                         CadTarget::Walls { interior } => Command::AddWalls { floor, points, closed, wall_type: None, interior: *interior, height: None },
                         CadTarget::Countertop if closed => Command::AddCountertop { floor, points, height: None, thickness: None, edge: None, holes: Vec::new() },
                         CadTarget::Deck if closed => Command::AddDeck { floor, points, height: None, platform: false, curved: false },
+                        CadTarget::TerrainPerimeter if closed => Command::AddTerrain { floor: None, points },
                         CadTarget::SiteFeature { feature } => Command::AddSiteFeature { floor, points, feature: feature.clone() },
                         CadTarget::Molding => Command::AddMoldingPolyline {
                             floor,
@@ -85,7 +89,7 @@ pub(crate) fn convert_cad(doc: &mut Document, ids: &[Id], to: &CadTarget, out: &
                                 center: false,
                             }],
                         },
-                        _ => return Err(ApiError::Invalid("countertops and decks need closed shapes".into())),
+                        _ => return Err(ApiError::Invalid("countertops, decks and terrain perimeters need closed shapes".into())),
                     };
                     run(doc, cmd)?;
                 }

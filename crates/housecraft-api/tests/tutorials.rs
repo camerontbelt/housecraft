@@ -328,7 +328,12 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
         return Ok(());
     }
     if let Some(text) = e.get("text_exists").and_then(Value::as_str) {
-        return if doc.iter::<Text>().any(|t| t.text == text) { Ok(()) } else { Err(format!("no text \"{text}\"")) };
+        if doc.iter::<Text>().any(|t| t.text == text) {
+            return Ok(());
+        }
+        let head: String = text.chars().take(6).collect();
+        let near: Vec<&str> = doc.iter::<Text>().map(|t| t.text.as_str()).filter(|t| t.starts_with(&head)).collect();
+        return Err(format!("no text \"{text}\" (similar: {near:?})"));
     }
     panic!("{step}: unknown expectation {e}");
 }

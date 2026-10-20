@@ -39,7 +39,8 @@ has two files:
 | 19 | Floor Framing (331) | 16 | 11 | [19-floor-framing.md](19-floor-framing.md) |
 | 20 | Wall Framing (349) | 10 | 10 | [20-wall-framing.md](20-wall-framing.md) |
 | 21 | Roof and Ceiling Framing (364) | 10 | 8 | [21-roof-and-ceiling-framing.md](21-roof-and-ceiling-framing.md) |
-| 22–25 | Landscaping tutorials (382–450) | — | — | |
+| 22 | Plot Plans (382) | 9 | 7 | [22-plot-plans.md](22-plot-plans.md) |
+| 23–25 | Terrain Elevation, Driveways/Sidewalks/Roads, Landscaping Design (403–450) | — | — | |
 | 26–28 | Layout tutorials (451–500) | — | — | |
 
 The tutorials build on each other. A JSON file can name the one before it in `include`; its steps run first and

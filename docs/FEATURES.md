@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 554 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
+There are 557 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -432,6 +432,7 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-29 | Reflect About Object (mirror a copy across a door, window or wall centre) | P3 | M9 |
 | CAD-30 | Drawing groups / draw order (Move Forward/Backward) | P2 | M9 |
 | CAD-31 | Point to Point Move: move an object by one of its points onto another point | P2 | M9 |
+| CAD-32 | Concentric edit behaviour: resize a closed shape in or out by a set jump (setbacks) | P3 | M9 |
 
 ## 14. Layers
 
@@ -534,6 +535,8 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-24 | 3D plants with shadows | P2 | M7 ✓ plants cast sun shadows in 3D |
 | SITE-26 | Decks as rooms enclosed by Deck Railings (Deck room type defaults: planking, framing, post footing depth and layer) | P2 | M9 |
 | SITE-27 | Terrain elevation reference point (surface height set at a chosen point) | P3 | M9 |
+| SITE-28 | North Pointer object that rotates with the lot; a separate site north for plot plans vs the house | P3 | M9 |
+| SITE-29 | Plot plan lines: decimal-feet lengths and quadrant-bearing angles on CAD lines; curved lot sides by radius and arc length | P2 | M9 |
 
 ## 18. 3D design & materials
 
