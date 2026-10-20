@@ -119,6 +119,8 @@ fn scale_labels() {
     assert_eq!(scale_label(48.0, true), "1/4\" = 1'-0\"");
     assert_eq!(scale_label(96.0, true), "1/8\" = 1'-0\"");
     assert_eq!(scale_label(12.0, true), "1\" = 1'-0\"");
+    assert_eq!(scale_label(1200.0, true), "1\" = 100'-0\"");
+    assert_eq!(scale_label(240.0, true), "1\" = 20'-0\"");
     assert_eq!(scale_label(100.0, false), "1:100");
 }
 

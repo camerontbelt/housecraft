@@ -1,0 +1,244 @@
+{
+  "tutorial": "Sending Views to Layout",
+  "source": "Chief Architect X18 Tutorial Guide, Layout Tutorials, pages 483-500",
+  "include": "27-title-blocks-and-borders.json",
+  "steps": [
+    {
+      "step": "Default drawing scale for plan views: 1/4 in = 1 ft",
+      "gap": "Each box picks its scale when sent (or fits a standard one); there's no plan-wide default drawing scale. Row: PRJ-48"
+    },
+    {
+      "step": "Send the dimensioned Floor 1 plan to page 6 (A1.3 Floor 1 Plan) at 1/4\" = 1'",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 6,
+          "source": {
+            "type": "plan",
+            "floor": "$floor1"
+          },
+          "scale": 48.0
+        }
+      ],
+      "save": {
+        "fp": "layout_box"
+      },
+      "expect": [
+        {
+          "get": "$fp",
+          "path": "/page",
+          "is": 6
+        },
+        {
+          "get": "$fp",
+          "path": "/scale",
+          "is": 48.0
+        }
+      ]
+    },
+    {
+      "step": "Send the Electrical Plan View to page 9 (E1.1)",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 9,
+          "source": {
+            "type": "plan",
+            "floor": "$floor1",
+            "layer_set": "$named:layer_set:Electrical Plan"
+          },
+          "scale": 48.0
+        }
+      ],
+      "save": {
+        "ep": "layout_box"
+      }
+    },
+    {
+      "step": "(Link Saved Plan View: the box shows the plan view's layer set)",
+      "gap": "A plan box takes a layer set, not a saved plan view; pick the electrical layer set. Row: PRJ-25"
+    },
+    {
+      "step": "Send the Plot Plan View to page 4 (A1.1 Site Plan) at 1\" = 100'",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 4,
+          "source": {
+            "type": "plan",
+            "floor": "$floor1"
+          },
+          "scale": 1200.0
+        }
+      ],
+      "save": {
+        "site": "layout_box"
+      },
+      "expect": [
+        {
+          "get": "$site",
+          "path": "/scale",
+          "is": 1200.0
+        }
+      ]
+    },
+    {
+      "step": "Rotate the site plan 90 degrees, crop it, centre it in the border, move its label",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$site",
+          "set": {
+            "width": "20\"",
+            "height": "18\"",
+            "x": "4\"",
+            "y": "3\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$site",
+          "path": "/width",
+          "is": "20\""
+        }
+      ]
+    },
+    {
+      "step": "(Rotate a layout box; Center Object; move the label)",
+      "gap": "Layout boxes can't rotate, centre on the border, or move their caption. Rows: PRJ-24, PRJ-47"
+    },
+    {
+      "step": "Send the saved Stair Section to page 8 (A2.2 Sections) at 1/2\" = 1'",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 8,
+          "source": {
+            "type": "view",
+            "view": "$named:section_view:Stair Section"
+          },
+          "scale": 24.0
+        }
+      ],
+      "save": {
+        "ss": "layout_box"
+      },
+      "expect": [
+        {
+          "get": "$ss",
+          "path": "/scale",
+          "is": 24.0
+        }
+      ]
+    },
+    {
+      "step": "Back Clipped elevation of the right side, saved as 'Exterior Elevation - Right', sent to page 7 (A2.1) as plot lines with colour fill at 1/4\" = 1'",
+      "commands": [
+        {
+          "op": "add_section_view",
+          "floor": "$floor1",
+          "name": "Exterior Elevation - Right",
+          "a": [
+            21336.0,
+            -6096.0
+          ],
+          "b": [
+            9144.0,
+            -6096.0
+          ],
+          "section_kind": "elevation"
+        }
+      ],
+      "save": {
+        "rel": "section_view"
+      }
+    },
+    {
+      "step": "(send it)",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 7,
+          "source": {
+            "type": "view",
+            "view": "$rel"
+          },
+          "scale": 48.0
+        }
+      ],
+      "save": {
+        "elbox": "layout_box"
+      },
+      "expect": [
+        {
+          "get": "$elbox",
+          "path": "/page",
+          "is": 7
+        }
+      ]
+    },
+    {
+      "step": "(Plot Lines vs Live View; colour fill)",
+      "gap": "Section and elevation boxes are live line drawings; no colour-fill option. Row: PRJ-48"
+    },
+    {
+      "step": "Crop and move the elevation into a corner",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$elbox",
+          "set": {
+            "width": "16\"",
+            "height": "8\"",
+            "x": "1\"",
+            "y": "14\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$elbox",
+          "path": "/height",
+          "is": "8\""
+        }
+      ]
+    },
+    {
+      "step": "Callout label on the Stair Section box: S1, view name above, scale below, linked to page A1.3, one large filled arrow",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$ss",
+          "set": {
+            "label": "S1 STAIR SECTION  1/2\" = 1'-0\"  (A1.3)"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$ss",
+          "path": "/label",
+          "is": "S1 STAIR SECTION  1/2\" = 1'-0\"  (A1.3)"
+        }
+      ]
+    },
+    {
+      "step": "(Callout-style labels with macros and links)",
+      "gap": "Box captions are plain text (or a marker shape); no callout labels with linked page macros. Row: PRJ-25"
+    },
+    {
+      "step": "Full Camera 'Cover Sheet View', sent to page 2 (Cover Sheet) as an image; resize and crop it",
+      "gap": "3D camera views can't be placed on layout pages. Row: PRJ-48"
+    },
+    {
+      "step": "Print the layout to PDF (ARCH D, 24\" x 36\")",
+      "gap": "Done with File > Layout > Export Layout as PDF while the layout is open; not part of the scripted test."
+    }
+  ]
+}

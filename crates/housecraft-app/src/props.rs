@@ -1165,7 +1165,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 let imperial =
                     crate::util::input_unit(doc) == housecraft_api::units::LengthUnit::Inches;
                 let scales: &[f64] = if imperial {
-                    &[12.0, 16.0, 24.0, 32.0, 48.0, 64.0, 96.0, 128.0, 192.0]
+                    &[12.0, 16.0, 24.0, 32.0, 48.0, 64.0, 96.0, 128.0, 192.0, 120.0, 240.0, 600.0, 1200.0]
                 } else {
                     &[10.0, 20.0, 25.0, 50.0, 75.0, 100.0, 200.0, 250.0, 500.0]
                 };

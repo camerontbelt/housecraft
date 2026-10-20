@@ -45,7 +45,9 @@ has two files:
 | 25 | Landscaping Design (433) | 12 | 10 | [25-landscaping-design.md](25-landscaping-design.md) |
 | 26 | Layout Page Templates (451) | 6 | 5 | [26-layout-page-templates.md](26-layout-page-templates.md) |
 | 27 | Title Blocks and Borders (460) | 9 | 7 | [27-title-blocks-and-borders.md](27-title-blocks-and-borders.md) |
-| 28 | Sending Views to Layout (483–500) | — | — | |
+| 28 | Sending Views to Layout (483) | 9 | 7 | [28-sending-views-to-layout.md](28-sending-views-to-layout.md) |
+
+All 28 tutorials in the guide are covered: 287 steps replayed and 225 gaps, each gap with its FEATURES.md row.
 
 The tutorials build on each other. A JSON file can name the one before it in `include`; its steps run first and
 the new file carries on from that plan (tutorial 2 starts a fresh plan with tutorial 1's shell in a few commands).

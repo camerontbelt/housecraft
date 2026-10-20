@@ -76,7 +76,7 @@ pub struct PdfOptions {
 }
 
 const IMPERIAL_SCALES: &[f64] = &[
-    12.0, 16.0, 24.0, 32.0, 48.0, 64.0, 96.0, 128.0, 192.0, 384.0,
+    12.0, 16.0, 24.0, 32.0, 48.0, 64.0, 96.0, 128.0, 192.0, 384.0, 480.0, 600.0, 1200.0, 2400.0,
 ];
 const METRIC_SCALES: &[f64] = &[
     10.0, 20.0, 25.0, 50.0, 75.0, 100.0, 200.0, 250.0, 500.0, 1000.0,
@@ -98,6 +98,11 @@ pub fn scale_label(scale: f64, imperial: bool) -> String {
                     format!("{n}/{d}\" = 1'-0\"")
                 };
             }
+        }
+        // Engineering (site) scales: 1" = 10', 20', 50', 100'…
+        let feet_per_inch = scale / 12.0;
+        if feet_per_inch >= 10.0 && (feet_per_inch - feet_per_inch.round()).abs() < 1e-6 {
+            return format!("1\" = {}'-0\"", feet_per_inch.round());
         }
     }
     format!("1:{}", scale.round())
