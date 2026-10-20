@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 535 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
+There are 541 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -162,6 +162,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-42 | Referenced Files dialog: list and relink a layout's plans | P2 | M9 |
 | PRJ-43 | Missing Files check with relink | P2 | M9 |
 | PRJ-44 | Build New Floor: derive the new floor's exterior walls from the floor below (pony walls take the upper type) | P1 | M9 |
+| PRJ-45 | File > Make a Copy: save a revision copy under a new name and stay in the original | P3 | M9 |
 
 ## 5. Rooms
 
@@ -472,6 +473,7 @@ These come from reading the whole list and change the architecture, not just the
 | DIM-26 | Auto Room Dimension: dimension every wall of a selected room | P2 | M9 |
 | DIM-27 | Moving or editing automatic dimensions keeps them (they become manual) | P2 | M9 |
 | DIM-28 | Dimension extension-line and add-segment handles | P2 | M9 |
+| DIM-29 | Dimension defaults choosing what manual dimensions locate (cabinet sides, fixture corners, electrical, blocks) | P3 | M9 |
 
 ## 16. Lighting, electrical & HVAC
 
@@ -487,6 +489,8 @@ These come from reading the whole list and change the architecture, not just the
 | EL-08 | Lighting sets per view/camera | P2 | M7 ✓ each camera can turn individual lights off (a lighting set) |
 | EL-09 | Ganged electrical blocks (outlets/switches combined in one box) | P3 | M9 |
 | EL-10 | Plumbing trim fixtures: faucets, tub spouts, shower heads | P2 | M9 |
+| EL-11 | Light fixture library: chandeliers, pendants, flush mounts, lanterns, sconce styles, table and floor lamps, bollards; fixture size; Electrical Defaults choosing each tool's symbol | P2 | M9 |
+| EL-12 | One Light tool: sconce on a wall, ceiling fixture in a room, path light outside | P3 | M9 |
 
 ## 17. Terrain, site & landscape
 
@@ -615,6 +619,7 @@ These come from reading the whole list and change the architecture, not just the
 | EST-28 | Reorder schedule rows (drag rows; Move Up/Down in Schedule) | P3 | M9 |
 | EST-29 | Room moldings schedule (profiles and lengths by room) | P3 | M9 |
 | EST-30 | Furniture schedule (pictures, dimensions; blocks as one line; leave accessories out) | P3 | M9 |
+| EST-31 | Schedule from a room; category filter (lighting only); custom schedule title | P2 | M9 |
 
 ## 21. Text, annotation & scripting
 
@@ -643,6 +648,7 @@ These come from reading the whole list and change the architecture, not just the
 | TXT-21 | Scripting console (CA: Ruby → ours: Rhai/Lua over the command API) | P2 | M8 |
 | TXT-22 | Revision clouds with defaults | P1 | M4 ✓ |
 | TXT-23 | Referenced-object macros: text with an arrow shows the comment/size of what it points at | P3 | M9 |
+| TXT-24 | Uppercase option in text defaults | P3 | M9 |
 
 ## 22. Printing
 

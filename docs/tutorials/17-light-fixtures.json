@@ -1,0 +1,492 @@
+{
+  "tutorial": "Light Fixtures",
+  "source": "Chief Architect X18 Tutorial Guide, Kitchen and Bath Tutorials, pages 298-316",
+  "include": "16-appliances-and-fixtures.json",
+  "steps": [
+    {
+      "step": "Electrical defaults: recessed can for ceiling lights, a sconce for wall lights",
+      "gap": "Each light tool places its own fixture; no Electrical Defaults choosing which library symbol a tool places. Row: EL-11"
+    },
+    {
+      "step": "Switch to the Electrical Plan View",
+      "commands": [
+        {
+          "op": "add_standard_plan_views"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:plan_view:Electrical Plan",
+          "path": "/name",
+          "is": "Electrical Plan"
+        }
+      ]
+    },
+    {
+      "step": "Light tool: a recessed can light in the Kitchen between the island and the dishwasher",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "recessed_light",
+          "at": [
+            1270.0,
+            -3810.0
+          ]
+        }
+      ],
+      "save": {
+        "can": "electrical"
+      },
+      "expect": [
+        {
+          "get": "$can",
+          "path": "/electrical_kind",
+          "is": "recessed_light"
+        }
+      ]
+    },
+    {
+      "step": "(One Light tool that places a sconce on a wall, a ceiling light in a room, a path light outside)",
+      "gap": "Separate tools for ceiling, recessed and wall lights; no context-sensitive Light tool or path lights. Row: EL-12"
+    },
+    {
+      "step": "Library lights: a bowl chandelier in the Dining room, a half-dome flush mount and an eyeball recessed light in the Foyer, a caged lantern pendant on the Deck",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "ceiling_light",
+          "at": [
+            2032.0,
+            -7112.0
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "ceiling_light",
+          "at": [
+            6096.0,
+            -7874.0
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "recessed_light",
+          "at": [
+            6096.0,
+            -5842.0
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "ceiling_light",
+          "at": [
+            6350.0,
+            1219.2
+          ]
+        }
+      ],
+      "save": {
+        "lib": "electrical"
+      },
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 5
+        }
+      ]
+    },
+    {
+      "step": "(Chandeliers, pendants, flush mounts and lanterns as distinct fixtures)",
+      "gap": "One ceiling-light and one recessed-light symbol; no library of light fixture styles (chandeliers, pendants, lanterns, lamps). Row: EL-11"
+    },
+    {
+      "step": "Dimension defaults: Locate Manual for cabinet sides, fixture corners, electrical and blocks",
+      "gap": "Manual dimensions snap to any object edge; there are no per-category locate settings. Row: DIM-29"
+    },
+    {
+      "step": "Position the can light 21\" from the refrigerator and 21\" from the dishwasher by typing on dimension lines",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$can",
+          "set": {
+            "position": [
+              1295.4,
+              -3810.0
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$can",
+          "path": "/position/0",
+          "is": 1295.4
+        }
+      ]
+    },
+    {
+      "step": "(Select a light, click a dimension's text and type to move it; add an extension line)",
+      "gap": "Typing on a dimension moves walls only; for other objects type the position in the object's dialog. Rows: DIM-03, DIM-28"
+    },
+    {
+      "step": "Copy/Paste the can light 40\" up (Tab for Enter Coordinates)",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$can"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": 0,
+            "dy": "40\""
+          },
+          "copies": 1
+        }
+      ],
+      "save": {
+        "can2": "electrical"
+      },
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 6
+        }
+      ]
+    },
+    {
+      "step": "Reflect both lights about the island",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$can",
+            "$can2"
+          ],
+          "transform": {
+            "type": "mirror",
+            "a": [
+              2032.0,
+              0.0
+            ],
+            "b": [
+              2032.0,
+              -5080.0
+            ]
+          },
+          "copies": 1
+        }
+      ],
+      "save": {
+        "refl": "electrical"
+      },
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 8
+        }
+      ]
+    },
+    {
+      "step": "Transform/Replicate: copy all four 6'6\" to the right; then copy the top and bottom ones back 3'3\"",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$can",
+            "$can2",
+            "$refl.0",
+            "$refl.1"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": "6'6\"",
+            "dy": 0
+          },
+          "copies": 1
+        }
+      ],
+      "save": {
+        "rep": "electrical"
+      },
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 12
+        }
+      ]
+    },
+    {
+      "step": "(second replicate)",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$rep.0",
+            "$rep.1"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": "-3'3\"",
+            "dy": 0
+          },
+          "copies": 1
+        }
+      ],
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 14
+        }
+      ]
+    },
+    {
+      "step": "Basement: a can light 5' from the two nearest walls",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$named:floor:Foundation",
+          "electrical_kind": "recessed_light",
+          "at": [
+            1788.319,
+            -6858.0
+          ]
+        }
+      ],
+      "save": {
+        "bcan": "electrical"
+      }
+    },
+    {
+      "step": "Multiple Copy with interval 50\" x 52\": a column of lights, then across the basement",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$bcan"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": 0,
+            "dy": "50\""
+          },
+          "copies": 4
+        }
+      ],
+      "save": {
+        "col": "electrical"
+      },
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 19
+        }
+      ]
+    },
+    {
+      "step": "(and across)",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$bcan",
+            "$col.0",
+            "$col.1",
+            "$col.2",
+            "$col.3"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": "52\"",
+            "dy": 0
+          },
+          "copies": 4
+        }
+      ],
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 39
+        }
+      ]
+    },
+    {
+      "step": "(Multiple Copy Interval with a 2D right-drag array)",
+      "gap": "Multiple Copy makes a row; make an array by copying the row. No interval dialog or right-drag 2D array. Row: CAD-08"
+    },
+    {
+      "step": "Wall lights: a sconce over the Kitchen sink; one on the outside wall at the Deck; two Prism sconces either side of the Bath vanity",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "wall_light",
+          "at": [
+            86.519,
+            -3251.2
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "wall_light",
+          "at": [
+            7620.0,
+            50.8
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "wall_light",
+          "at": [
+            11068.05,
+            -3759.2
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "wall_light",
+          "at": [
+            11068.05,
+            -4368.8
+          ]
+        }
+      ],
+      "save": {
+        "wall": "electrical"
+      },
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 43
+        },
+        {
+          "get": "$wall.1",
+          "path": "/rotation",
+          "is": 90.0
+        },
+        {
+          "get": "$wall.0",
+          "path": "/rotation",
+          "is": 0.0
+        }
+      ]
+    },
+    {
+      "step": "Wall Elevation: the sconce 12\" wide, centre 86\" off the floor, centred over the left window; copies over the other two windows",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$wall.0",
+          "set": {
+            "height": "86\""
+          }
+        },
+        {
+          "op": "transform",
+          "ids": [
+            "$wall.0"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": 0,
+            "dy": "36\""
+          },
+          "copies": 2
+        }
+      ],
+      "expect": [
+        {
+          "get": "$wall.0",
+          "path": "/height",
+          "is": "86\""
+        },
+        {
+          "count": "electrical",
+          "is": 45
+        }
+      ]
+    },
+    {
+      "step": "(Light fixture width with Retain Aspect Ratio)",
+      "gap": "Light fixtures have no size. Row: EL-11"
+    },
+    {
+      "step": "Table lamps on the Bedroom end tables; a floor lamp in the Living room corner",
+      "gap": "No table or floor lamps. Row: EL-11"
+    },
+    {
+      "step": "Kitchen lighting schedule (Create Schedule from Room, lighting only, titled)",
+      "commands": [
+        {
+          "op": "add_schedule",
+          "floor": "$floor1",
+          "schedule_kind": "fixtures",
+          "position": [
+            -5080.0,
+            0.0
+          ]
+        }
+      ],
+      "save": {
+        "sched": "schedule"
+      },
+      "expect": [
+        {
+          "get": "$sched",
+          "path": "/schedule_kind",
+          "is": "fixtures"
+        }
+      ]
+    },
+    {
+      "step": "(Schedule from a room; only lighting; own title; moved to a CAD detail)",
+      "gap": "Schedules cover a floor, not one room; no category filter or custom title. Row: EST-31"
+    },
+    {
+      "step": "Electrical rich text defaults: uppercase",
+      "gap": "No uppercase setting in text defaults. Row: TXT-24"
+    },
+    {
+      "step": "Leader to the Deck light with the %description% macro",
+      "commands": [
+        {
+          "op": "add_text",
+          "floor": "$floor1",
+          "position": [
+            5588.0,
+            1524.0
+          ],
+          "text": "CEILING LIGHT",
+          "leaders": [
+            [
+              6350.0,
+              1219.2
+            ]
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "text_exists": "CEILING LIGHT"
+        }
+      ]
+    },
+    {
+      "step": "(the macro reads the light it points at)",
+      "gap": "Text doesn't read the object its arrow points at. Row: TXT-23"
+    },
+    {
+      "step": "File > Make a Copy as Chic Cottage-Lighting",
+      "gap": "Save As makes the copy and switches to it; no Make a Copy that leaves you in the original. Row: PRJ-45"
+    }
+  ]
+}
