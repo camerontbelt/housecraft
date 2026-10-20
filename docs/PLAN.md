@@ -243,6 +243,7 @@ housecraft mcp --stdio                          # run as MCP server
 | **M6 — framing & site** | Stick/truss framing, decks, terrain | Builder workflows |
 | **M7 — visualization** | Path tracer, NPR styles, walkthroughs, 360° | Presentation parity |
 | **M8+** | `.layout`/`.calib` read, IFC, DWG, collaboration, scripting | Parity and beyond |
+| **M9** | Everyday tools the X18 manual documents but the feature list skips: curved walls, room dividers, Break Wall, typed CAD input, Edit Area, Tape Measure, layout page tools ([parity audit](parity/coverage.md)) | Day-to-day parity |
 
 ---
 

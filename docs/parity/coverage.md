@@ -109,7 +109,7 @@ is where most of the gaps below come from.
 ## Proposed new FEATURES rows
 
 Gaps that no existing row covers. IDs continue each area's numbering; milestone **M9** would be a new
-"everyday tools" milestone after M8. Nothing here has been added to FEATURES.md yet.
+"everyday tools" milestone after M8. These rows are now in FEATURES.md (2026-10-19).
 
 | ID | Feature | Pri | M | From (manual chapter) |
 |---|---|---|---|---|

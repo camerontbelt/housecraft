@@ -5,6 +5,8 @@ paraphrased into short engineering items, and it supersedes the rougher inventor
 Source: https://cloud.chiefarchitect.com/1/pdf/marketing/x18-detailed-feature-list.pdf
 
 **Parity audit (2026-10-19):** [parity/coverage.md](parity/coverage.md) checks this list against the X18 Reference Manual's menus and tools.
+**M9 (everyday tools):** the 46 rows marked M9 or GUI that the audit added: commands the manual documents but the
+marketing list skipped (curved walls, room dividers, Break Wall, typed CAD input, Edit Area, Tape Measure, layout page tools…).
 
 **Pri:** P0 MVP · P1 credible v1 · P2 parity · P3 later/optional · ✗ out of scope (vendor-specific service).
 **P0 status (2026-10-17):** all 29 P0 items are implemented; five are partial (◐) as noted in their rows.
@@ -22,7 +24,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 434 items: 29 P0, about 120 P1, about 205 P2, about 72 P3, and 5 out of scope. Each item should eventually map to
+There are 480 items: 29 P0, about 125 P1, about 226 P2, about 92 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -87,6 +89,10 @@ These come from reading the whole list and change the architecture, not just the
 | VIS-26 | Eight standard isometric angles | P1 | M1 ✓ 3D view Iso menu: each corner from above and from below, orthographic |
 | VIS-27 | Shadow intensity control for vector/technical views | P2 | M7 ✓ shadow strength slider per view |
 | VIS-28 | Depth cueing (distance fog) | P3 | M7 ✓ distance fog per view |
+| VIS-29 | Delete Surface: hide one face in a 3D view | P3 | M9 |
+| VIS-30 | Floor overview (one floor in 3D) in perspective and orthographic | P2 | M9 |
+| VIS-31 | Create Image: save the current 3D view as a placeable image object/library item | P3 | M9 |
+| VIS-32 | Stationary walkthroughs (look-around from one spot) | P3 | M9 |
 
 ## 3. Cross sections & elevations
 
@@ -104,6 +110,7 @@ These come from reading the whole list and change the architecture, not just the
 | SEC-10 | Callouts auto-filled with layout page/label info | P2 | M4 ✓ plan callout markers show the layout page (sheet number) the view is on |
 | SEC-11 | Automatic schedule labels in camera views | P2 | M4 ◐ door/window schedule numbers in elevations and sections; 3D camera views later |
 | SEC-12 | Auto-generate exterior and interior room elevations | P1 | M4 ✓ |
+| SEC-13 | Auto Detail: fill a drawn area with a section detail pattern (insulation, blocking) | P3 | M9 |
 
 ## 4. Plans, layouts & project management
 
@@ -143,6 +150,15 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-32 | Page macros (label, auto-numbering, title) | P2 | M4 ✓ {sheet} {page} {page_count} {page_title} {layout}; page titles; Number Pages |
 | PRJ-33 | Bulk delete by object type in layouts | P3 | M4 ✓ Delete Boxes by kind, this page or every page |
 | PRJ-34 | Home Designer plan share | ✗ | — |
+| PRJ-35 | Delete Current Floor command | P2 | M9 |
+| PRJ-36 | Plan thumbnail saved in the file (used by portfolio and open dialog) | P3 | M9 |
+| PRJ-37 | File Information: created/saved dates, program version, object counts | P3 | M9 |
+| PRJ-38 | File locking: warn when a plan is open elsewhere | P2 | M9 |
+| PRJ-39 | Send: email the plan (archive) from the File menu | P3 | M9 |
+| PRJ-40 | Loan calculator | P3 | M9 |
+| PRJ-41 | Layout pages: duplicate, exchange, insert before/after | P2 | M9 |
+| PRJ-42 | Referenced Files dialog: list and relink a layout's plans | P2 | M9 |
+| PRJ-43 | Missing Files check with relink | P2 | M9 |
 
 ## 5. Rooms
 
@@ -166,7 +182,7 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| WL-01 | Draw/edit walls in 2D and 3D: interior, exterior, railing, pony, half, curved, angled, raked, stepped | P0 | M1 ✓ straight walls / M3 (rest) |
+| WL-01 | Draw/edit walls in 2D and 3D: interior, exterior, railing, pony, half, curved, angled, raked, stepped | P0 | M1 ✓ straight walls / M3 ◐ pony, raked, stepped and railing walls; curved walls not started (WL-20) |
 | WL-02 | Layered wall types: wood, stucco, ICF, SIPS, glass, railings, partitions | P0 | M0 ✓ (layers) |
 | WL-03 | Pony walls (upper/lower types, caps, framing, edge line) | P2 | M3 ◐ Wall specification > Pony Wall: a lower wall type below a split height, flush outside, with an edge line in plan; no cap or framing split yet |
 | WL-04 | Railings: newels, balusters, panels, handrails, shoe, offsets | P1 | M3 ◐ railing walls with rail, balusters, height, spacing; newels, panels, shoe later |
@@ -185,6 +201,11 @@ These come from reading the whole list and change the architecture, not just the
 | WL-17 | Double walls (marriage/multi-family) incl. openings | P3 | M3 ◐ walls built back to back (up to 1' apart) act as a double wall: openings cut through both; no single double-wall type |
 | WL-18 | Control which layer intersecting walls snap to | P1 | M1 ◐ Default Settings > Walls > Draw walls along: centre, exterior or interior surface, or main (framing) layer, with mitred corners; walls still join at centrelines |
 | WL-19 | Continuous wall draw mode | P0 | M1 ✓ |
+| WL-20 | Curved walls (arc walls) with curved openings, railings and foundations | P1 | M9 |
+| WL-21 | Room dividers / invisible walls that split rooms without 3D | P1 | M9 |
+| WL-22 | Fix Wall Connections: close small gaps and join overlapping walls | P2 | M9 |
+| WL-23 | Glass wall and glass pony wall tools | P2 | M9 |
+| WL-24 | Break Wall tool: split a wall at a clicked point | P1 | M9 |
 
 ## 7. Cabinets
 
@@ -257,6 +278,8 @@ These come from reading the whole list and change the architecture, not just the
 | RF-12 | Gutters & frieze moldings with custom profiles | P2 | M3 ◐ gutters along the eaves and a frieze board under them (Default Settings > Roofs); fixed profiles |
 | RF-13 | Shadow boards on fascia | P3 | M5 ✓ |
 | RF-14 | Convert roof/ceiling planes to polylines | P3 | M4 ◐ Convert CAD To > Roof Planes to Polylines; there are no separate ceiling planes yet |
+| RF-15 | Manual ceiling plane tool and Edit All Roof Planes dialog | P2 | M9 |
+| RF-16 | Roof hole tool (cut a roof plane without a skylight) | P2 | M9 |
 
 ## 10. Stairs & ramps
 
@@ -289,6 +312,7 @@ These come from reading the whole list and change the architecture, not just the
 | FD-03 | Round piers / square pads | P2 | M3 ✓ pier foundations with round or square piers on square pads |
 | FD-04 | Monolithic slabs with ledges and garage curbs | P2 | M3 ◐ slab foundations can put a 4" curb round garages (broken at doors); no brick ledges |
 | FD-05 | Footings under bearing walls; stepped footings | P2 | M3 ◐ walls marked Bearing get a footing (plan and 3D); no stepped footings |
+| FD-06 | Slab and slab-hole drawing tools (with footing option) | P2 | M9 |
 
 ## 12. Framing
 
@@ -351,6 +375,14 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-18 | CAD detail from any view | P1 | M4 ✓ |
 | CAD-19 | Copy CAD details between plans | P2 | M4 ✓ CAD Details > Copy This CAD Detail / Paste CAD Detail (works across files) |
 | CAD-20 | Line style manager (create, merge, find usages) | P1 | M1 ✓ Tools > Line Styles…: your own dash patterns, usage counts, delete and merge into another style |
+| CAD-21 | Edit Area: select a region and move/copy/delete everything in it (this floor, all floors) | P2 | M9 |
+| CAD-22 | Stretch CAD: drag a fence to stretch lines and polylines | P3 | M9 |
+| CAD-23 | Typed CAD input (Input Point/Line/Arc dialogs with distance and angle) | P1 | M9 |
+| CAD-24 | Construction lines (infinite guide lines) with order management | P3 | M9 |
+| CAD-25 | Edit behaviours: rotate/resize about a chosen current point; connect CAD segments | P3 | M9 |
+| CAD-26 | Delete Objects dialog in plans (by type, floor, room) | P2 | M9 |
+| CAD-27 | Paste Special: choose which attributes to paste | P3 | M9 |
+| CAD-28 | Bumping/pushing: objects push neighbours instead of overlapping | P3 | M9 |
 
 ## 14. Layers
 
@@ -365,6 +397,9 @@ These come from reading the whole list and change the architecture, not just the
 | LY-07 | Reference display from other plan files (2D and 3D ghosting) | P2 | M8 ✓ View > Reference Plan File: another plan's matching floor drawn faint blue in plan views and see-through in 3D (not pickable); reload/remove; not saved with the plan |
 | LY-08 | 3D reference display styles | P3 | M7 ✓ 3D view Display menu: show, ghost (faint, see-through, not clickable) or hide each kind of object; Framing Overview ghosts walls and roofs |
 | LY-09 | Dockable layer display options panel | P1 | GUI ✓ Layer Display tab in the right dock, or Pop Out into a floating window and Dock It Here again |
+| LY-10 | Current CAD Layer setting for new CAD objects | P2 | M9 |
+| LY-11 | Fill Style Painter tool | P3 | M9 |
+| LY-12 | Offset (move) a reference plan file relative to this one | P3 | M9 |
 
 ## 15. Dimensions
 
@@ -393,6 +428,8 @@ These come from reading the whole list and change the architecture, not just the
 | DIM-21 | NKBA automatic dimensions | P2 | M5 ✓ |
 | DIM-22 | Angled dimension behaviour | P2 | M1 |
 | DIM-23 | Story pole dimensions | P3 | M4 ✓ Story Pole in a view: marked staff with each level's height |
+| DIM-24 | Tape Measure tool (measure without placing a dimension) | P2 | M9 |
+| DIM-25 | Delete Dimensions (automatic, manual or all, by floor) | P2 | M9 |
 
 ## 16. Lighting, electrical & HVAC
 
@@ -406,6 +443,7 @@ These come from reading the whole list and change the architecture, not just the
 | EL-06 | Lighting manager table | P2 | M7 ✓ 3D > Lighting Manager: every light in one table: on/off, dimmer, brightness, colour temperature and shadows |
 | EL-07 | Kelvin color temperature (X18+) | P2 | M5 ✓ |
 | EL-08 | Lighting sets per view/camera | P2 | M7 ✓ each camera can turn individual lights off (a lighting set) |
+| EL-09 | Ganged electrical blocks (outlets/switches combined in one box) | P3 | M9 |
 
 ## 17. Terrain, site & landscape
 
@@ -469,6 +507,7 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-27 | Custom molding profiles; stacked, flipped, rotated, centered | P2 | M5 ✓ |
 | MAT-28 | Edit molding polylines from library (X18+) | P3 | M5 ◐ custom profiles made from CAD shapes and edited per molding; library storage later |
 | MAT-29 | Distributed regions/paths with randomized variation | P3 | M6 ✓ Edit > Scatter Copies: plants, symbols or blocks strewn in a region or along a path, turned and sized at random (repeatable seed) |
+| MAT-30 | Replace Moldings: swap one molding profile for another plan-wide | P3 | M9 |
 
 ## 19. Library / catalog
 
@@ -520,6 +559,7 @@ These come from reading the whole list and change the architecture, not just the
 | EST-21 | BuilderTREND export with NAHB accounting codes | P3 | M8 |
 | EST-22 | Cut list and buy list (structural lumber) | P2 | M6 ✓ Framing Cut List schedule; buy list (stock lengths) in the materials list |
 | EST-23 | Pricing in framing buy lists | P3 | M6 ✓ framing buy-list lines take prices like any materials-list line |
+| EST-24 | Materials List Polyline: take-off for a drawn area | P2 | M9 |
 
 ## 21. Text, annotation & scripting
 
@@ -609,3 +649,11 @@ These come from reading the whole list and change the architecture, not just the
 | UI-27 | Right dock order Library, Project Browser, Active Layer Display; Project Browser with filter box, Project Folders / Projects tree, Details and Preview panes | P1 | GUI ◐ right dock order Library, Project Browser, Layer Display; browser filter box and Details pane; no Project Folders tree or preview |
 | UI-28 | Status bar: hint, current tool [hotkey], floor, layer, drawing group, live X/Y/Z, view size in pixels | P1 | GUI ◐ status bar shows hint, tool [hotkey], floor, layer, X/Y/Z and view size in pixels; no drawing groups yet |
 | UI-29 | Account menu before Help; left dock titled "Tool Palette" | P2 | GUI |
+| UI-30 | Dashboard start page (recent and pinned plans, templates, new plan) | P2 | GUI |
+| UI-31 | Close All Views / Close All 3D Views | P3 | GUI |
+| UI-32 | Tile views side by side; swap views; next/previous tab | P2 | GUI |
+| UI-33 | View toggles: crosshairs, arc centres, line weights on screen, drawing sheet | P2 | GUI |
+| UI-34 | Rotate Plan View (rotate the screen, not the model) | P2 | GUI |
+| UI-35 | Get Last Symbol: place another of the last library item | P3 | GUI |
+| UI-36 | Edit toolbar: context buttons for the current selection | P1 | GUI |
+| UI-37 | Help menu: open manual, report a problem (logs, system information) | P3 | GUI |
