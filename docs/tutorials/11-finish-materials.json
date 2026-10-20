@@ -1,0 +1,197 @@
+{
+  "tutorial": "Finish Materials",
+  "source": "Chief Architect X18 Tutorial Guide, Interior Design Tutorials, pages 191-210",
+  "include": "10-custom-ceilings.json",
+  "steps": [
+    {
+      "step": "Library: a 'Beach Palette' folder in the User Catalog with five paint colours copied in",
+      "commands": [
+        {
+          "op": "add_material",
+          "name": "Color - Butter",
+          "color": "#F3E5AB"
+        },
+        {
+          "op": "add_material",
+          "name": "Color - Dew",
+          "color": "#CFE3E8"
+        },
+        {
+          "op": "add_material",
+          "name": "Color - Fresh",
+          "color": "#A9D6E5"
+        },
+        {
+          "op": "add_material",
+          "name": "Color - Robin's Egg",
+          "color": "#96DED1"
+        },
+        {
+          "op": "add_material",
+          "name": "Color - Maya Gold",
+          "color": "#E6B85C"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:material:Color - Butter",
+          "path": "/name",
+          "is": "Color - Butter"
+        }
+      ]
+    },
+    {
+      "step": "(User Catalog folders; copy from the core catalog)",
+      "gap": "Paint colours are made as plan materials; there's no shipped colour catalog to copy from, and library folders hold objects, not plan materials. Row: LIB-01"
+    },
+    {
+      "step": "Wall finish for every room: Color - Butter",
+      "commands": [
+        {
+          "op": "paint_material",
+          "material": "$named:material:Color - Butter",
+          "scope": "plan",
+          "surface": "wall"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/materials/wall",
+          "is": "$named:material:Color - Butter"
+        }
+      ]
+    },
+    {
+      "step": "Material Eyedropper on a Butter wall; the Garage's walls Color - Fresh (Room Specification > Materials)",
+      "commands": [
+        {
+          "op": "paint_material",
+          "material": "$named:material:Color - Fresh",
+          "scope": "object",
+          "ids": [
+            "$room_at:10668.0,-8128.0"
+          ],
+          "surface": "wall"
+        }
+      ]
+    },
+    {
+      "step": "Material Painter in Room mode: the Bedroom walls Color - Dew",
+      "commands": [
+        {
+          "op": "paint_material",
+          "material": "$named:material:Color - Dew",
+          "scope": "object",
+          "ids": [
+            "$room_at:10414.0,-1524.0"
+          ],
+          "surface": "wall"
+        }
+      ]
+    },
+    {
+      "step": "Object mode: one wall (Dining/Bedroom... here the Living/Bedroom wall) Color - Maya Gold",
+      "commands": [
+        {
+          "op": "paint_material",
+          "material": "$named:material:Color - Maya Gold",
+          "scope": "object",
+          "ids": [
+            "$wall_at:8134.3,-1524.0"
+          ],
+          "surface": "wall"
+        }
+      ],
+      "expect": [
+        {
+          "count": "material_assignment",
+          "is": 3
+        }
+      ]
+    },
+    {
+      "step": "Select a wall in 3D with Select Next Object (Tab); its interior surfaces show No Change across three rooms",
+      "gap": "Walls have one material per side, not one per room they face. Row: MAT-31"
+    },
+    {
+      "step": "Wall covering: white beadboard wainscot 48\" high in the Dining room",
+      "gap": "No wall coverings (a finish layer over part of a room's walls); use a wall material region. Row: MAT-32"
+    },
+    {
+      "step": "Wall material region defaults: tile on backerboard, cutting the wall's finish",
+      "gap": "Material regions are a material on the surface, not layers that cut the wall's finish. Row: WL-16"
+    },
+    {
+      "step": "Wall Elevation of the Bath's left wall; a tile region on it, 18\" up from the floor, 12\" below the ceiling",
+      "commands": [
+        {
+          "op": "add_material",
+          "name": "Shower Tile",
+          "color": "#E8E8E0"
+        }
+      ]
+    },
+    {
+      "step": "(the region)",
+      "commands": [
+        {
+          "op": "add_material_region",
+          "floor": "$floor1",
+          "material": "$named:material:Shower Tile",
+          "target": {
+            "type": "wall",
+            "wall": "$wall_at:8134.3,-4064.0",
+            "exterior": false,
+            "u0": "0\"",
+            "u1": "60\"",
+            "z0": "18\"",
+            "z1": "85 1/8\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "count": "material_region",
+          "is": 1
+        }
+      ]
+    },
+    {
+      "step": "(Wall Elevation view of one room's wall; Simplify Polyline; Reflect About Object for the opposite wall)",
+      "gap": "No single-wall elevation view; regions are edited in their specification, not drawn in an elevation. Rows: SEC-14, CAD-29"
+    },
+    {
+      "step": "Flooring: red oak plank everywhere (Floor/Ceiling Platform floor finish); room types keep their own",
+      "commands": [
+        {
+          "op": "add_material",
+          "name": "Red Oak 3-4-5\" Plank - Natural",
+          "color": "#B5835A"
+        }
+      ]
+    },
+    {
+      "step": "(paint the floors)",
+      "commands": [
+        {
+          "op": "paint_material",
+          "material": "$named:material:Red Oak 3-4-5\" Plank - Natural",
+          "scope": "plan",
+          "surface": "floor"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/materials/floor",
+          "is": "$named:material:Red Oak 3-4-5\" Plank - Natural"
+        }
+      ]
+    },
+    {
+      "step": "Save a copy as Chic Cottage-Materials",
+      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+    }
+  ]
+}

@@ -28,7 +28,8 @@ has two files:
 | 8 | Chic Cottage Roof (136) | 11 | 8 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
 | 9 | Dormers (159) | 8 | 9 | [09-dormers.md](09-dormers.md) |
 | 10 | Custom Ceilings (177) | 5 | 7 | [10-custom-ceilings.md](10-custom-ceilings.md) |
-| 11–19 | Finish Materials, Room Moldings, Furnishings and Kitchen & Bath tutorials (191–330) | — | — | |
+| 11 | Finish Materials (191) | 9 | 6 | [11-finish-materials.md](11-finish-materials.md) |
+| 12–19 | Room Moldings, Furnishings and Kitchen & Bath tutorials (211–330) | — | — | |
 | 20–22 | Framing tutorials (331–381) | — | — | |
 | 23–26 | Landscaping tutorials (382–450) | — | — | |
 | 27–29 | Layout tutorials (451–500) | — | — | |

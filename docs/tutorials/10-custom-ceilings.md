@@ -14,7 +14,7 @@ ceiling), **Tray**, **Coffered**, **Barrel** or **None**. The room's **Ceiling H
 *Not in HouseCraft yet:* ceiling finish definitions (drywall layers, insulation, fire-rated drywall) for the plan,
 floors, room types or rooms, and custom framing types such as hat channel. What you can do:
 
-1. **3D › Plan Materials…**: make a new material `Hat Channel`, grey.
+1. **Tools › Plan Materials…**: make a new material `Hat Channel`, grey.
 2. **Lowered basement ceiling:** open the basement room on the Foundation floor and lower its **Ceiling Height**
    by 1" (`112 1/8"`), instead of adding a 1" hat channel layer.
 

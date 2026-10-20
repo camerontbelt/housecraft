@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 520 items: 29 P0, about 132 P1, about 247 P2, about 104 P3, and 5 out of scope. Each item should eventually map to
+There are 523 items: 29 P0, about 132 P1, about 250 P2, about 104 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -112,6 +112,7 @@ These come from reading the whole list and change the architecture, not just the
 | SEC-11 | Automatic schedule labels in camera views | P2 | M4 ◐ door/window schedule numbers in elevations and sections; 3D camera views later |
 | SEC-12 | Auto-generate exterior and interior room elevations | P1 | M4 ✓ |
 | SEC-13 | Auto Detail: fill a drawn area with a section detail pattern (insulation, blocking) | P3 | M9 |
+| SEC-14 | Wall Elevation view: one room's wall, for drawing regions and cabinets on it | P2 | M9 |
 
 ## 4. Plans, layouts & project management
 
@@ -544,6 +545,8 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-28 | Edit molding polylines from library (X18+) | P3 | M5 ◐ custom profiles made from CAD shapes and edited per molding; library storage later |
 | MAT-29 | Distributed regions/paths with randomized variation | P3 | M6 ✓ Edit > Scatter Copies: plants, symbols or blocks strewn in a region or along a path, turned and sized at random (repeatable seed) |
 | MAT-30 | Replace Moldings: swap one molding profile for another plan-wide | P3 | M9 |
+| MAT-31 | Wall surfaces painted per room they face (a wall spanning rooms takes each room's finish) | P2 | M9 |
+| MAT-32 | Wall coverings (wainscot, beadboard): a finish band at a height on a room's walls | P2 | M9 |
 
 ## 19. Library / catalog
 
