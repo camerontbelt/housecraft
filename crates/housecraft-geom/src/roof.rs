@@ -343,6 +343,7 @@ mod tests {
                 },
                 renovation: Default::default(),
                 shape: Default::default(),
+                invisible: false,
             });
         }
         (doc, floor)

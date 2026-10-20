@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 480 items: 29 P0, about 125 P1, about 226 P2, about 92 P3, and 5 out of scope. Each item should eventually map to
+There are 486 items: 29 P0, about 126 P1, about 229 P2, about 94 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -178,6 +178,8 @@ These come from reading the whole list and change the architecture, not just the
 | RM-11 | Multi-select edit rooms (type, vaulted, heights, platform) | P1 | M3 ✓ |
 | RM-12 | Object Information Panel (custom fields) for rooms | P1 | M1 ✓ Object Information in every placed object's and room's specification: code, description, manufacturer, comment and your own fields |
 | RM-13 | Room label dimension formats | P1 | M1 ✓ Default Settings > Rooms: labels show area, size (rounded or exact) and ceiling height |
+| RM-14 | Per-room label control: hide/show, rotate, move; size line on its own layer | P2 | M9 |
+| RM-15 | Split rooms inherit the parent room's settings; merged rooms keep the larger room's | P1 | M9 ✓ rooms::sync compares with the plan before the change |
 
 ## 6. Walls
 
@@ -203,10 +205,13 @@ These come from reading the whole list and change the architecture, not just the
 | WL-18 | Control which layer intersecting walls snap to | P1 | M1 ◐ Default Settings > Walls > Draw walls along: centre, exterior or interior surface, or main (framing) layer, with mitred corners; walls still join at centrelines |
 | WL-19 | Continuous wall draw mode | P0 | M1 ✓ |
 | WL-20 | Curved walls (arc walls) with curved openings, railings and foundations | P1 | M9 |
-| WL-21 | Room dividers / invisible walls that split rooms without 3D | P1 | M9 |
+| WL-21 | Room dividers / invisible walls that split rooms without 3D | P1 | M9 ✓ Room Divider tool; wall Invisible checkbox; dashed in plan, not built, not located by exterior dimensions |
 | WL-22 | Fix Wall Connections: close small gaps and join overlapping walls | P2 | M9 |
 | WL-23 | Glass wall and glass pony wall tools | P2 | M9 |
 | WL-24 | Break Wall tool: split a wall at a clicked point | P1 | M9 |
+| WL-25 | Reverse Layers: flip a wall's layers to the other side | P2 | M9 |
+| WL-26 | Edit Wall Layer Intersection handles (where layers of meeting walls stop) | P3 | M9 |
+| WL-27 | Split walls automatically where another wall crosses or meets them | P2 | M9 |
 
 ## 7. Cabinets
 
@@ -431,6 +436,7 @@ These come from reading the whole list and change the architecture, not just the
 | DIM-23 | Story pole dimensions | P3 | M4 ✓ Story Pole in a view: marked staff with each level's height |
 | DIM-24 | Tape Measure tool (measure without placing a dimension) | P2 | M9 |
 | DIM-25 | Delete Dimensions (automatic, manual or all, by floor) | P2 | M9 |
+| DIM-26 | Auto Room Dimension: dimension every wall of a selected room | P2 | M9 |
 
 ## 16. Lighting, electrical & HVAC
 

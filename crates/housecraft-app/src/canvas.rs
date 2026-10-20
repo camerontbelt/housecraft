@@ -1084,7 +1084,7 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
     // Typed length while drawing walls and lines (DIM-05).
     let length_tools = matches!(
         tool,
-        Tool::ExteriorWall | Tool::InteriorWall | Tool::Line | Tool::Arrow | Tool::Polyline
+        Tool::ExteriorWall | Tool::InteriorWall | Tool::RoomDivider | Tool::Line | Tool::Arrow | Tool::Polyline
     );
     if length_tools && !app.plan.pending.is_empty() && app.plan.text_prompt.is_none() {
         let typed: String = ui.input(|i| {
@@ -1143,6 +1143,24 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
     let pending = &mut app.plan.pending;
     if let Some(p) = click {
         match tool {
+            Tool::RoomDivider => {
+                if let Some(last) = pending.last().copied() {
+                    if last.distance(p) >= 1.0 {
+                        commands.push(Command::AddWall {
+                            floor,
+                            start: pt(last),
+                            end: pt(p),
+                            wall_type: None,
+                            interior: true,
+                            height: None,
+                            invisible: true,
+                        });
+                        pending.push(p);
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
             Tool::ExteriorWall | Tool::InteriorWall => {
                 if let Some(last) = pending.last().copied() {
                     if last.distance(p) >= 1.0 {
@@ -1157,6 +1175,7 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                                 wall_type: None,
                                 interior: tool == Tool::InteriorWall,
                                 height: None,
+                                invisible: false,
                             });
                         } else {
                             // Drawn along a surface: offset to the centreline and
@@ -1181,6 +1200,7 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                                 wall_type: None,
                                 interior: tool == Tool::InteriorWall,
                                 height: None,
+                                invisible: false,
                             });
                             if closes && pending.len() > 2
                                 && let Some(first) = app.plan.first_wall

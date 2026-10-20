@@ -1,0 +1,646 @@
+{
+  "tutorial": "Interior Walls",
+  "source": "Chief Architect X18 Tutorial Guide, Floor Plan Tutorials, pages 28-44",
+  "steps": [
+    {
+      "step": "Chief splits a wall where another wall crosses it",
+      "gap": "Walls aren't split where others cross; click at each junction while drawing. Row: WL-27"
+    },
+    {
+      "step": "Open CHIC COTTAGE-CURRENT from the Dashboard's recent documents and pin it",
+      "gap": "No Dashboard; File > Recent Files lists plans but can't pin them. Rows: UI-30, PRJ-02"
+    },
+    {
+      "step": "(From tutorial 1) the 42' x 38'4\" shell, measured to the framing",
+      "commands": [
+        {
+          "op": "add_walls",
+          "points": [
+            [
+              61.119,
+              -61.119
+            ],
+            [
+              12740.481,
+              -61.119
+            ],
+            [
+              12740.481,
+              -11622.881
+            ],
+            [
+              8798.719,
+              -11622.881
+            ],
+            [
+              8798.719,
+              -8473.281
+            ],
+            [
+              61.119,
+              -8473.281
+            ]
+          ],
+          "closed": true
+        },
+        {
+          "op": "add_exterior_dimensions"
+        }
+      ],
+      "expect": [
+        {
+          "rooms": 1
+        },
+        {
+          "auto_dimensions_include": [
+            "42'",
+            "28'",
+            "38'4\"",
+            "28'8\"",
+            "13'4\""
+          ]
+        }
+      ]
+    },
+    {
+      "step": "The default interior wall type is 2x4 framing with drywall both sides (Chief: Interior-4)",
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/interior_wall_type",
+          "is": "$named:Interior 2x4"
+        }
+      ]
+    },
+    {
+      "step": "Draw two vertical interior walls from the front wall to the back wall, then one across the middle: six rooms (in HouseCraft, click at each wall you cross so each stretch is its own wall)",
+      "commands": [
+        {
+          "op": "add_walls",
+          "interior": true,
+          "points": [
+            [
+              4146.55,
+              -8473.281
+            ],
+            [
+              4146.55,
+              -4959.35
+            ],
+            [
+              4146.55,
+              -61.119
+            ]
+          ]
+        },
+        {
+          "op": "add_walls",
+          "interior": true,
+          "points": [
+            [
+              8134.35,
+              -8473.281
+            ],
+            [
+              8134.35,
+              -6521.45
+            ],
+            [
+              8134.35,
+              -4959.35
+            ],
+            [
+              8134.35,
+              -3282.95
+            ],
+            [
+              8134.35,
+              -61.119
+            ]
+          ]
+        },
+        {
+          "op": "add_walls",
+          "interior": true,
+          "points": [
+            [
+              61.119,
+              -4959.35
+            ],
+            [
+              4146.55,
+              -4959.35
+            ],
+            [
+              8134.35,
+              -4959.35
+            ],
+            [
+              8798.719,
+              -4959.35
+            ],
+            [
+              11093.45,
+              -4959.35
+            ],
+            [
+              12740.481,
+              -4959.35
+            ]
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "rooms": 6
+        },
+        {
+          "count": "room",
+          "is": 6
+        }
+      ]
+    },
+    {
+      "step": "Give the rooms types: Kitchen, Living, Bedroom across the back; Dining, Entry, Garage across the front",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:2032.0,-2540.0",
+          "set": {
+            "room_type": "$named:room_type:Kitchen"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$room_at:6096.0,-2540.0",
+          "set": {
+            "room_type": "$named:room_type:Living"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$room_at:10414.0,-1524.0",
+          "set": {
+            "room_type": "$named:room_type:Bedroom"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$room_at:2032.0,-6604.0",
+          "set": {
+            "room_type": "$named:room_type:Dining"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$room_at:6096.0,-6604.0",
+          "set": {
+            "room_type": "$named:room_type:Entry"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$room_at:10668.0,-8128.0",
+          "set": {
+            "room_type": "$named:room_type:Garage"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:2032.0,-2540.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Kitchen"
+        },
+        {
+          "get": "$room_at:10668.0,-8128.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Garage"
+        }
+      ]
+    },
+    {
+      "step": "Back-clipped cross section in the Entry; Perspective Floor Overview to compare the rooms",
+      "commands": [
+        {
+          "op": "add_section_view",
+          "a": [
+            6096.0,
+            -5842.0
+          ],
+          "b": [
+            6096.0,
+            -6350.0
+          ],
+          "section_kind": "section",
+          "depth": "2'"
+        }
+      ],
+      "expect": [
+        {
+          "count": "section_view",
+          "is": 1
+        }
+      ]
+    },
+    {
+      "step": "Perspective Floor Overview (one floor in 3D)",
+      "gap": "No floor overview; the 3D overview shows the whole model. Row: VIS-30"
+    },
+    {
+      "step": "Split the Bedroom with a wall across it: the new room is a Bedroom too (it inherits)",
+      "commands": [
+        {
+          "op": "add_walls",
+          "interior": true,
+          "points": [
+            [
+              12740.481,
+              -3282.95
+            ],
+            [
+              11093.45,
+              -3282.95
+            ],
+            [
+              8134.35,
+              -3282.95
+            ]
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "rooms": 7
+        },
+        {
+          "get": "$room_at:10414.0,-1524.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Bedroom"
+        },
+        {
+          "get": "$room_at:10414.0,-4064.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Bedroom"
+        }
+      ]
+    },
+    {
+      "step": "Split the new room in two, and draw the Garage's left wall up from the bump-out's corner",
+      "commands": [
+        {
+          "op": "add_walls",
+          "interior": true,
+          "points": [
+            [
+              11093.45,
+              -3282.95
+            ],
+            [
+              11093.45,
+              -4959.35
+            ]
+          ]
+        },
+        {
+          "op": "add_walls",
+          "interior": true,
+          "points": [
+            [
+              8798.719,
+              -8473.281
+            ],
+            [
+              8798.719,
+              -4959.35
+            ]
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "rooms": 9
+        }
+      ]
+    },
+    {
+      "step": "Name the new rooms: Bath, Closet, and the narrow one beside the Garage a Closet; rename Entry to Foyer",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:9652.0,-4064.0",
+          "set": {
+            "room_type": "$named:room_type:Bath"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$room_at:11938.0,-4064.0",
+          "set": {
+            "room_type": "$named:room_type:Closet"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$room_at:8458.2,-7620.0",
+          "set": {
+            "room_type": "$named:room_type:Closet"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$room_at:6096.0,-6604.0",
+          "set": {
+            "name": "Foyer"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:9652.0,-4064.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Bath"
+        },
+        {
+          "get": "$room_at:8458.2,-7620.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Closet"
+        },
+        {
+          "get": "$room_at:6096.0,-6604.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Entry"
+        },
+        {
+          "get": "$room_at:6096.0,-6604.0",
+          "path": "/name",
+          "is": "Foyer"
+        }
+      ]
+    },
+    {
+      "step": "Delete a room label, restore it (Show Room Label), and rotate the closet's label",
+      "gap": "Room labels can't be hidden per room or rotated; they follow the Room Labels layer. Row: RM-14"
+    },
+    {
+      "step": "Turn off the room size line under the labels in Active Layer Display Options",
+      "gap": "The size line under room labels has no layer of its own; set it in Default Settings > Rooms. Row: RM-14"
+    },
+    {
+      "step": "Divide the closet beside the Foyer with a wall across it",
+      "commands": [
+        {
+          "op": "add_walls",
+          "interior": true,
+          "points": [
+            [
+              8134.35,
+              -6521.45
+            ],
+            [
+              8798.719,
+              -6521.45
+            ]
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "rooms": 10
+        },
+        {
+          "get": "$room_at:8458.2,-7620.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Closet"
+        },
+        {
+          "get": "$room_at:8458.2,-5588.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Closet"
+        }
+      ]
+    },
+    {
+      "step": "Merge the upper closet into the Foyer: break the Foyer's wall at the new wall and take away the upper piece; the Foyer (larger) keeps its name and type",
+      "commands": [
+        {
+          "op": "delete",
+          "ids": [
+            "$wall_at:8134.3,-5715.0"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "rooms": 9
+        },
+        {
+          "get": "$room_at:8458.2,-5588.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Entry"
+        },
+        {
+          "get": "$room_at:8458.2,-5588.0",
+          "path": "/name",
+          "is": "Foyer"
+        },
+        {
+          "get": "$room_at:8458.2,-7620.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Closet"
+        }
+      ]
+    },
+    {
+      "step": "(Chief: Add Break, then drag the wall end)",
+      "gap": "No Break Wall tool; draw walls with a click at each junction and delete the piece. Row: WL-24"
+    },
+    {
+      "step": "Fire-6: a 2x6 wall with 5/8\" fire-rated drywall, used between the Garage and the Bath",
+      "commands": [
+        {
+          "op": "add_wall_type",
+          "name": "Fire-6",
+          "layers": [
+            {
+              "name": "Fire-rated drywall",
+              "thickness": "5/8\"",
+              "material": "Type X gypsum"
+            },
+            {
+              "name": "Framing",
+              "thickness": "5 1/2\"",
+              "material": "2x6 stud",
+              "main": true
+            },
+            {
+              "name": "Drywall",
+              "thickness": "1/2\"",
+              "material": "Gypsum board"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": "Use Fire-6 for the Garage's walls to the Bath and the Foyer closet",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$wall_at:10160.0,-4959.3",
+          "set": {
+            "wall_type": "$named:Fire-6"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$wall_at:8798.7,-7620.0",
+          "set": {
+            "wall_type": "$named:Fire-6"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$wall_at:10160.0,-4959.3",
+          "path": "/wall_type",
+          "is": "$named:Fire-6"
+        },
+        {
+          "rooms": 9
+        }
+      ]
+    },
+    {
+      "step": "Reverse the Fire-6 wall's layers so the fire-rated side faces the Garage",
+      "gap": "No Reverse Layers button; swap the wall's start and end in its specification. Row: WL-25"
+    },
+    {
+      "step": "Replace the Living/Entry wall with a Room Divider: the rooms stay separate, nothing is built",
+      "commands": [
+        {
+          "op": "delete",
+          "ids": [
+            "$wall_at:6096.0,-4959.3"
+          ]
+        },
+        {
+          "op": "add_wall",
+          "start": [
+            4146.55,
+            -4959.35
+          ],
+          "end": [
+            8134.35,
+            -4959.35
+          ],
+          "invisible": true
+        }
+      ],
+      "expect": [
+        {
+          "rooms": 9
+        },
+        {
+          "get": "$room_at:6096.0,-2540.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Living"
+        },
+        {
+          "get": "$room_at:6096.0,-6604.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Entry"
+        },
+        {
+          "get": "$room_at:6096.0,-6604.0",
+          "path": "/name",
+          "is": "Foyer"
+        },
+        {
+          "not_built": "$wall_at:6096.0,-4959.3"
+        }
+      ]
+    },
+    {
+      "step": "Make the Kitchen/Living wall invisible (Make Wall(s) Invisible)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$wall_at:4146.6,-2540.0",
+          "set": {
+            "invisible": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "rooms": 9
+        },
+        {
+          "get": "$room_at:2032.0,-2540.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Kitchen"
+        },
+        {
+          "get": "$room_at:6096.0,-2540.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Living"
+        },
+        {
+          "not_built": "$wall_at:4146.6,-2540.0"
+        },
+        {
+          "built": "$wall_at:4146.6,-6604.0"
+        }
+      ]
+    },
+    {
+      "step": "Room dividers aren't located by the exterior dimensions",
+      "expect": [
+        {
+          "auto_dimensions_include": [
+            "42'",
+            "28'",
+            "38'4\"",
+            "28'8\"",
+            "13'4\""
+          ]
+        }
+      ]
+    },
+    {
+      "step": "Interior Dimension tool (locates the inside of the framing) and Auto Room Dimension",
+      "gap": "No Interior Dimension or Auto Room Dimension; use Manual Dimension. Rows: DIM-01, DIM-26"
+    },
+    {
+      "step": "Delete Dimensions / Edit > Delete Objects",
+      "gap": "No Delete Dimensions or Delete Objects; select and delete. Rows: DIM-25, CAD-26"
+    },
+    {
+      "step": "Align collinear walls with the Move handle; Edit Wall Layer Intersection handles",
+      "gap": "No wall layer intersection handles. Row: WL-26"
+    },
+    {
+      "step": "Add the note '2x4 interior walls 16\" OC U.N.O.' in the Dining room",
+      "commands": [
+        {
+          "op": "add_text",
+          "position": [
+            762.0,
+            -5334.0
+          ],
+          "text": "2X4 INTERIOR WALLS 16\" OC U.N.O."
+        }
+      ],
+      "expect": [
+        {
+          "text_exists": "2X4 INTERIOR WALLS 16\" OC U.N.O."
+        }
+      ]
+    },
+    {
+      "step": "Save a copy as Chic Cottage-Rooms",
+      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+    }
+  ]
+}

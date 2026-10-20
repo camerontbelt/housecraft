@@ -9,7 +9,8 @@
 //! In a step's commands, `"$name"` stands for an id saved by an earlier
 //! step, `"$name.2"` for the third of a saved list, `"$named:Floor 1"` for
 //! the object with that name (`"$named:default_set:Default"` to give its
-//! kind too) and `"$floor1"` for the first floor.
+//! kind too), `"$room_at:x,y"` / `"$wall_at:x,y"` (mm) for the room or wall
+//! there and `"$floor1"` for the first floor.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -95,6 +96,31 @@ impl Run {
         let rest = s.strip_prefix('$')?;
         if rest == "floor1" {
             return Some(self.doc().floors_by_elevation().iter().find(|f| f.foundation.is_none())?.id);
+        }
+        // "$room_at:x,y" / "$wall_at:x,y" (mm): the room or wall there.
+        let at = |spec: &str| -> Option<housecraft_api::geom::DVec2> {
+            let (x, y) = spec.split_once(',')?;
+            Some(housecraft_api::geom::DVec2::new(x.trim().parse().ok()?, y.trim().parse().ok()?))
+        };
+        if let Some(spec) = rest.strip_prefix("room_at:") {
+            let p = at(spec)?;
+            let floor = self.resolve("$floor1")?;
+            let regions = housecraft_api::geom::rooms::detect(self.doc(), floor);
+            let i = regions.room_at(p)?;
+            return self.doc().rooms_on(floor).find(|r| regions.room_at(housecraft_api::geom::v2(r.anchor)) == Some(i)).map(|r| r.id);
+        }
+        if let Some(spec) = rest.strip_prefix("wall_at:") {
+            let p = at(spec)?;
+            return self
+                .doc()
+                .iter::<Wall>()
+                .map(|w| {
+                    let (c, _) = housecraft_api::geom::math::closest_on_segment(p, housecraft_api::geom::v2(w.start), housecraft_api::geom::v2(w.end));
+                    (c.distance(p), w.id)
+                })
+                .filter(|(d, _)| *d < 300.0)
+                .min_by(|a, b| a.0.total_cmp(&b.0))
+                .map(|(_, id)| id);
         }
         if let Some(name) = rest.strip_prefix("named:") {
             // "$named:kind:Name" when the name alone is ambiguous.
@@ -205,6 +231,16 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
         let floor = run.resolve("$floor1").unwrap();
         let sqft: f64 = query::room_areas(doc, floor).iter().map(|(_, a)| a / 92_903.04).sum();
         return if sqft >= min { Ok(()) } else { Err(format!("room area {sqft:.0} sq ft, expected at least {min}")) };
+    }
+    if let Some(target) = e.get("not_built") {
+        let id = target.as_u64().map(Id).ok_or(format!("unknown {target}"))?;
+        let mesh = housecraft_api::geom::mesh::build(doc, None);
+        return if mesh.parts.iter().any(|p| p.object == id) { Err(format!("#{} is built in 3D", id.0)) } else { Ok(()) };
+    }
+    if let Some(target) = e.get("built") {
+        let id = target.as_u64().map(Id).ok_or(format!("unknown {target}"))?;
+        let mesh = housecraft_api::geom::mesh::build(doc, None);
+        return if mesh.parts.iter().any(|p| p.object == id) { Ok(()) } else { Err(format!("#{} is not built in 3D", id.0)) };
     }
     if let Some(text) = e.get("text_exists").and_then(Value::as_str) {
         return if doc.iter::<Text>().any(|t| t.text == text) { Ok(()) } else { Err(format!("no text \"{text}\"")) };

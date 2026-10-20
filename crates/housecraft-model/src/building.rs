@@ -629,6 +629,10 @@ pub struct Wall {
     /// Pony wall, sloped or stepped top, niches and newels.
     #[serde(default, skip_serializing_if = "WallShape::is_plain")]
     pub shape: WallShape,
+    /// A room divider: it separates rooms but has no thickness and isn't
+    /// built (dashed in plan, nothing in 3D, framing or materials).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub invisible: bool,
 }
 
 /// A wall's shape beyond a straight, full-height run.

@@ -823,6 +823,9 @@ pub enum Command {
         interior: bool,
         /// Defaults to the floor's ceiling height.
         height: Option<Length>,
+        /// A room divider (separates rooms, isn't built).
+        #[serde(default)]
+        invisible: bool,
     },
     /// Add a connected run of walls through `points`; `closed` adds the closing wall.
     AddWalls {
@@ -3128,18 +3131,15 @@ impl Command {
                 wall_type,
                 interior,
                 height,
+                invisible,
             } => {
                 let floor = ops::resolve_floor(doc, *floor)?;
-                let wt = ops::resolve_wall_type(doc, &d, *wall_type, *interior)?;
-                out.created.push(ops::add_wall(
-                    doc,
-                    floor,
-                    *start,
-                    *end,
-                    wt,
-                    *height,
-                    d.layers.walls,
-                )?);
+                let wt = ops::resolve_wall_type(doc, &d, *wall_type, *interior || *invisible)?;
+                let id = ops::add_wall(doc, floor, *start, *end, wt, *height, d.layers.walls)?;
+                if *invisible && let Some(w) = doc.get_mut::<Wall>(id) {
+                    w.invisible = true;
+                }
+                out.created.push(id);
             }
             Command::AddWalls {
                 floor,

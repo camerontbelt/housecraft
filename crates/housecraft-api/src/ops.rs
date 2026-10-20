@@ -100,6 +100,7 @@ pub(crate) fn add_wall(
         roof: Default::default(),
         renovation: Default::default(),
         shape: Default::default(),
+        invisible: false,
     }))
 }
 
@@ -2025,7 +2026,7 @@ pub(crate) fn convert_space_plan(doc: &mut Document, ids: &[Id], out: &mut Outco
         }
     }
     // Make the rooms now, then type them.
-    crate::rooms::sync(doc, out);
+    crate::rooms::sync(doc, None, out);
     for (c, t) in typed {
         let found = doc.iter::<Room>().find(|r| {
             let regions = housecraft_geom::rooms::detect(doc, r.floor);

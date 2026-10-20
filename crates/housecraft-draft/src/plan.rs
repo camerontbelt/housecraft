@@ -184,6 +184,14 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         }
     }
 
+    // Room dividers: a dashed line where they run.
+    for w in doc.walls_and_dividers_on(opts.floor).filter(|w| w.invisible) {
+        let look = ctx.look(w.layer);
+        if look.visible && opts.phase.shows(w.renovation) {
+            let stroke = Stroke { dash: &[2.0, 1.2], ..look.stroke };
+            out.push(Some(w.id), Prim::Polyline { points: vec![v2(w.start), v2(w.end)], closed: false, stroke });
+        }
+    }
     let geoms = wall_geoms(doc, opts.floor);
     for g in &geoms {
         let Some(wall) = doc.get::<Wall>(g.id) else {

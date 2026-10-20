@@ -51,12 +51,14 @@ pub fn detect(doc: &Document, floor: Id) -> FloorRegions {
     // Rooms, footprints, roofs and foundations follow the finished design,
     // so walls marked for demolition don't divide them.
     let segs: Vec<(DVec2, DVec2, Id, f64)> = doc
-        .walls_on(floor)
+        .walls_and_dividers_on(floor)
         .filter(|w| w.renovation != housecraft_model::Renovation::Demolish)
         .map(|w| {
-            let half = doc
-                .get::<WallType>(w.wall_type)
-                .map_or(50.0, |t| t.thickness().mm() / 2.0);
+            let half = if w.invisible {
+                0.0
+            } else {
+                doc.get::<WallType>(w.wall_type).map_or(50.0, |t| t.thickness().mm() / 2.0)
+            };
             (v2(w.start), v2(w.end), w.id, half)
         })
         .collect();
@@ -250,6 +252,7 @@ mod tests {
             roof: Default::default(),
             renovation: Default::default(),
             shape: Default::default(),
+            invisible: false,
         });
     }
 

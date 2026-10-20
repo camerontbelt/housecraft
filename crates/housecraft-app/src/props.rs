@@ -300,6 +300,13 @@ fn wall_shape_rows(ui: &mut Ui, ed: &mut Ed<'_>, w: &Wall) {
         ui.label(format!("R-{:.1}", t.r_value()));
         ui.end_row();
     }
+    // Room divider.
+    Ed::label(ui, "Invisible");
+    let mut inv = w.invisible;
+    if ui.checkbox(&mut inv, "Room divider (separates rooms, isn't built)").changed() {
+        ed.out.push(patch(ed.id, json!({ "invisible": inv })));
+    }
+    ui.end_row();
     // Pony wall.
     Ed::label(ui, "Pony Wall");
     ui.vertical(|ui| {

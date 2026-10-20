@@ -62,7 +62,7 @@ impl Session {
         crate::ops::sync_platforms(&mut scratch, &mut outcome);
         crate::foundation::sync(&mut scratch, &mut outcome)?;
         crate::roofs::sync(&mut scratch, &mut outcome);
-        crate::rooms::sync(&mut scratch, &mut outcome);
+        crate::rooms::sync(&mut scratch, Some(&self.doc), &mut outcome);
         crate::ops::refresh_auto_dimensions(&mut scratch, &self.doc, &mut outcome);
         crate::grids::refresh(&mut scratch, &mut outcome);
         let issues = scratch.validate();

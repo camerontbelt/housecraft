@@ -621,7 +621,13 @@ impl Document {
         i.checked_sub(1).map(|j| floors[j])
     }
 
+    /// The built walls on `floor` (not room dividers).
     pub fn walls_on(&self, floor: Id) -> impl Iterator<Item = &Wall> {
+        self.iter::<Wall>().filter(move |w| w.floor == floor && !w.invisible)
+    }
+
+    /// Walls and room dividers on `floor`: everything that separates rooms.
+    pub fn walls_and_dividers_on(&self, floor: Id) -> impl Iterator<Item = &Wall> {
         self.iter::<Wall>().filter(move |w| w.floor == floor)
     }
 
@@ -900,6 +906,7 @@ mod tests {
             roof: Default::default(),
             renovation: Default::default(),
             shape: Default::default(),
+            invisible: false,
         });
         assert_eq!(doc.validate().len(), 2, "{:?}", doc.validate());
     }
@@ -921,6 +928,7 @@ mod tests {
             roof: Default::default(),
             renovation: Default::default(),
             shape: Default::default(),
+            invisible: false,
         });
         doc.insert(Opening {
             id: Id(0),

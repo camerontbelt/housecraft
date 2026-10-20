@@ -16,7 +16,7 @@ has two files:
 | # | Tutorial (Chief page) | Steps replayed | Gaps | Guide |
 |---|---|---|---|---|
 | 1 | Exterior Walls (3) | 14 | 7 | [01-exterior-walls.md](01-exterior-walls.md) |
-| 2 | Interior Walls (28) | — | — | next |
+| 2 | Interior Walls (28) | 16 | 11 | [02-interior-walls.md](02-interior-walls.md) |
 | 3 | Multiple Floors (45) | — | — | |
 | 4 | Interior Stairs (60) | — | — | |
 | 5 | Doors and Windows (82) | — | — | |

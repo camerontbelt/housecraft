@@ -348,6 +348,7 @@ mod tests {
             roof: Default::default(),
             renovation: Default::default(),
             shape: Default::default(),
+            invisible: false,
         })
     }
 
