@@ -1357,7 +1357,8 @@ mod settings_tests {
         let path = dir.join("x.hcsettings");
         let n = export_settings(&doc, &path).unwrap();
         let back = read_settings(&path).unwrap();
-        assert_eq!(back.len(), n);
+        // The count also takes in plan-wide settings (layer sets and the like).
+        assert_eq!(n, back.len() + PlanSettings::of(&doc).count());
         assert!(back.iter().any(|o| o.kind() == ObjectKind::WallType));
         assert!(back.iter().all(|o| !matches!(o, Object::Layer(l) if l.text_style.is_some())));
         // Built-in notes are valid objects.
