@@ -73,7 +73,7 @@ pub(crate) fn convert_cad(doc: &mut Document, ids: &[Id], to: &CadTarget, out: &
                         CadTarget::Walls { interior } => Command::AddWalls { floor, points, closed, wall_type: None, interior: *interior, height: None },
                         CadTarget::Countertop if closed => Command::AddCountertop { floor, points, height: None, thickness: None, edge: None, holes: Vec::new() },
                         CadTarget::Deck if closed => Command::AddDeck { floor, points, height: None, platform: false, curved: false },
-                        CadTarget::TerrainPerimeter if closed => Command::AddTerrain { floor: None, points },
+                        CadTarget::TerrainPerimeter if closed => Command::AddTerrain { floor, points },
                         CadTarget::SiteFeature { feature } => Command::AddSiteFeature { floor, points, feature: feature.clone() },
                         CadTarget::Molding => Command::AddMoldingPolyline {
                             floor,

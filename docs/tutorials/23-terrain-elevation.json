@@ -1,0 +1,367 @@
+{
+  "tutorial": "Terrain Elevation",
+  "source": "Chief Architect X18 Tutorial Guide, Landscaping Tutorials, pages 403-419",
+  "include": "22-plot-plans.json",
+  "steps": [
+    {
+      "step": "Allowed Angles: an additional angle of S 49 59 11 W (-78 28 46) for the lot's angled side",
+      "gap": "Angle snaps are every 7.5 degrees, no additional allowed angles. Row: CAD-33"
+    },
+    {
+      "step": "Duplicate the Plot Plan View as 'Landscaping Plan View' with a copied layer set; contours on, plot plan dimensions off",
+      "commands": [
+        {
+          "op": "add_layer_set",
+          "name": "Landscaping Layer Set"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:layer_set:Landscaping Layer Set",
+          "path": "/name",
+          "is": "Landscaping Layer Set"
+        }
+      ]
+    },
+    {
+      "step": "(Duplicate a saved plan view; Save Active View)",
+      "gap": "No Duplicate for saved plan views. Row: PRJ-12"
+    },
+    {
+      "step": "Building pad: surface -28\" at the reference point, moved to the centre of the Garage door",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$terrain",
+          "set": {
+            "base_elevation": "-28\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$terrain",
+          "path": "/base_elevation",
+          "is": "-28\""
+        }
+      ]
+    },
+    {
+      "step": "(Reference point)",
+      "gap": "No terrain reference point; the terrain's base elevation is the height where there's no data. Row: SITE-27"
+    },
+    {
+      "step": "Elevation Line across the whole terrain at the front of the Garage, 1\" off the wall, at 0\"",
+      "commands": [
+        {
+          "op": "add_elevation_data",
+          "floor": "$floor1",
+          "shape": {
+            "type": "line",
+            "points": [
+              [
+                -21336.0,
+                -11704.32
+              ],
+              [
+                45720.0,
+                -11704.32
+              ]
+            ],
+            "elevation": "0\""
+          }
+        }
+      ],
+      "save": {
+        "e0": "elevation_data"
+      }
+    },
+    {
+      "step": "A copy near the front of the lot at -8': the terrain slopes from front to back",
+      "commands": [
+        {
+          "op": "add_elevation_data",
+          "floor": "$floor1",
+          "shape": {
+            "type": "line",
+            "points": [
+              [
+                -21336.0,
+                -24384.0
+              ],
+              [
+                45720.0,
+                -24384.0
+              ]
+            ],
+            "elevation": "-8'"
+          }
+        }
+      ],
+      "save": {
+        "front": "elevation_data"
+      },
+      "expect": [
+        {
+          "ground_at": [
+            18288.0,
+            -18288.0
+          ],
+          "is": "-4'",
+          "within": "2'"
+        }
+      ]
+    },
+    {
+      "step": "A copy at the back of the Deck at 0\": flat round the house",
+      "commands": [
+        {
+          "op": "add_elevation_data",
+          "floor": "$floor1",
+          "shape": {
+            "type": "line",
+            "points": [
+              [
+                -21336.0,
+                2468.88
+              ],
+              [
+                45720.0,
+                2468.88
+              ]
+            ],
+            "elevation": "0\""
+          }
+        }
+      ],
+      "save": {
+        "deck": "elevation_data"
+      },
+      "expect": [
+        {
+          "ground_at": [
+            6400.8,
+            -4572.0
+          ],
+          "is": "0\"",
+          "within": "6\""
+        }
+      ]
+    },
+    {
+      "step": "One more near the back at 6'; then about 2' inside the back setback, and a 5' line 3' in front of it",
+      "commands": [
+        {
+          "op": "add_elevation_data",
+          "floor": "$floor1",
+          "shape": {
+            "type": "line",
+            "points": [
+              [
+                -21336.0,
+                17678.4
+              ],
+              [
+                45720.0,
+                17678.4
+              ]
+            ],
+            "elevation": "6'"
+          }
+        },
+        {
+          "op": "add_elevation_data",
+          "floor": "$floor1",
+          "shape": {
+            "type": "line",
+            "points": [
+              [
+                -21336.0,
+                16764.0
+              ],
+              [
+                45720.0,
+                16764.0
+              ]
+            ],
+            "elevation": "5'"
+          }
+        }
+      ],
+      "save": {
+        "back": "elevation_data"
+      },
+      "expect": [
+        {
+          "ground_at": [
+            9144.0,
+            17373.6
+          ],
+          "is": "5'6\"",
+          "within": "1'"
+        }
+      ]
+    },
+    {
+      "step": "Slope direction: rotate the back two lines 15 degrees; the top one to -13 degrees",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$back.0",
+            "$back.1"
+          ],
+          "transform": {
+            "type": "rotate",
+            "center": [
+              12192.0,
+              17068.8
+            ],
+            "angle": -15.0
+          }
+        }
+      ],
+      "expect": [
+        {
+          "count": "elevation_data",
+          "is": 5
+        }
+      ]
+    },
+    {
+      "step": "(Lock the start point and type the line's angle)",
+      "gap": "Elevation lines have no angle field; rotate them or move their ends. Row: SITE-30"
+    },
+    {
+      "step": "The front line parallel to the curved lot edge's chord (Make Parallel), then an arc of 450' radius",
+      "gap": "No Make Parallel and no curved elevation lines. Rows: CAD-33, SITE-29"
+    },
+    {
+      "step": "Elevation polyline: a line from the right side into the middle, then a second segment up and left at 165 degrees, at 0\"",
+      "commands": [
+        {
+          "op": "add_elevation_data",
+          "floor": "$floor1",
+          "shape": {
+            "type": "line",
+            "points": [
+              [
+                42672.0,
+                6096.0
+              ],
+              [
+                24384.0,
+                6096.0
+              ],
+              [
+                12192.0,
+                9448.8
+              ]
+            ],
+            "elevation": "0\""
+          }
+        }
+      ],
+      "save": {
+        "poly": "elevation_data"
+      },
+      "expect": [
+        {
+          "get": "$poly",
+          "path": "/shape/points/2/0",
+          "is": "40'"
+        }
+      ]
+    },
+    {
+      "step": "Add Break in the Deck line and drag the new corner down to the middle of the house",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$deck",
+          "set": {
+            "shape": {
+              "type": "line",
+              "points": [
+                [
+                  -21336.0,
+                  2468.88
+                ],
+                [
+                  30480.0,
+                  2468.88
+                ],
+                [
+                  39624.0,
+                  -4572.0
+                ]
+              ],
+              "elevation": "0\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$deck",
+          "path": "/shape/points/2/1",
+          "is": "-15'"
+        }
+      ]
+    },
+    {
+      "step": "(Add Break on an elevation line; Same Line Type handle to continue drawing)",
+      "gap": "Elevation lines take new corners by editing their points, not Add Break or a continue-drawing handle. Row: SITE-30"
+    },
+    {
+      "step": "Straight Retaining Wall down the right setback line, then an angled one at 15 degrees up to the back setback",
+      "commands": [
+        {
+          "op": "add_site_feature",
+          "floor": "$floor1",
+          "points": [
+            [
+              36576.0,
+              3048.0
+            ],
+            [
+              38404.8,
+              10668.0
+            ],
+            [
+              30480.0,
+              18288.0
+            ]
+          ],
+          "feature": {
+            "type": "retaining_wall",
+            "top": "5'",
+            "thickness": "8\""
+          }
+        }
+      ],
+      "save": {
+        "rw": "site_feature"
+      },
+      "expect": [
+        {
+          "get": "$rw",
+          "path": "/feature/type",
+          "is": "retaining_wall"
+        }
+      ]
+    },
+    {
+      "step": "(The terrain either side of a retaining wall is independent; its height comes from that terrain)",
+      "gap": "A retaining wall holds the ground at its own top height; the two sides aren't modelled separately. Row: SITE-31"
+    },
+    {
+      "step": "Elevation lines 8\" from the retaining walls (Temporary Dimensions)",
+      "gap": "No temporary dimensions to elevation data. Row: DIM-03"
+    },
+    {
+      "step": "Make a Copy as Chic Cottage-Terrain",
+      "gap": "No Make a Copy. Row: PRJ-45"
+    }
+  ]
+}

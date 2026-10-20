@@ -234,6 +234,21 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
         let found = doc.iter::<RoofPlane>().filter(|r| !r.gable).count();
         return if found == n as usize { Ok(()) } else { Err(format!("{found} roof planes, expected {n}")) };
     }
+    if let Some(at) = e.get("ground_at") {
+        // {"ground_at": [x, y] (mm), "is": length, "within": length}: the
+        // terrain surface height there.
+        let p = housecraft_api::geom::DVec2::new(at[0].as_f64().ok_or("ground_at x")?, at[1].as_f64().ok_or("ground_at y")?);
+        let t = doc.iter::<Terrain>().next().ok_or("no terrain")?;
+        let s = housecraft_api::geom::terrain::surface(doc, t).ok_or("no terrain surface")?;
+        let h = s.height_at(p);
+        let want = length(&e["is"]).ok_or("bad length")?;
+        let within = e.get("within").and_then(length).unwrap_or(25.4);
+        return if (h - want).abs() <= within {
+            Ok(())
+        } else {
+            Err(format!("ground at {:.1}\" , expected {:.1}\" ± {:.1}\"", h / 25.4, want / 25.4, within / 25.4))
+        };
+    }
     if let Some(role) = e.get("joists") {
         // {"joists": role, "floor": ref, "run": "x" | "y"}: that floor has
         // members of the role, most of them running along that axis.
