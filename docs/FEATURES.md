@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 532 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
+There are 535 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -255,6 +255,8 @@ These come from reading the whole list and change the architecture, not just the
 | CB-27 | Architectural blocks in the plan: group objects to move/edit/schedule as one; explode | P2 | M9 |
 | CB-28 | Cabinet door panels and handles from the library; handle position; cabinet elevation measured from the ceiling | P2 | M9 |
 | CB-29 | Automatic diagonal corner cabinets; countertop overhang set per side (island backs) | P2 | M9 |
+| CB-30 | Cabinet partitions (finished end panels between cabinets and appliances, with crown) | P2 | M9 |
+| CB-31 | Reverse Symbol: mirror a fixture or appliance (tub drain end, fridge hinge side) | P3 | M9 |
 
 ## 8. Doors & windows
 
@@ -484,6 +486,7 @@ These come from reading the whole list and change the architecture, not just the
 | EL-07 | Kelvin color temperature (X18+) | P2 | M5 ✓ |
 | EL-08 | Lighting sets per view/camera | P2 | M7 ✓ each camera can turn individual lights off (a lighting set) |
 | EL-09 | Ganged electrical blocks (outlets/switches combined in one box) | P3 | M9 |
+| EL-10 | Plumbing trim fixtures: faucets, tub spouts, shower heads | P2 | M9 |
 
 ## 17. Terrain, site & landscape
 

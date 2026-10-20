@@ -1,0 +1,304 @@
+{
+  "tutorial": "Appliances and Fixtures",
+  "source": "Chief Architect X18 Tutorial Guide, Kitchen and Bath Tutorials, pages 277-297",
+  "include": "15-cabinet-layout.json",
+  "steps": [
+    {
+      "step": "A bottom-mount refrigerator against the Kitchen/Dining wall; settle the Dining doorway's position",
+      "commands": [
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "refrigerator",
+          "at": [
+            2921.0,
+            -4857.75
+          ]
+        }
+      ],
+      "save": {
+        "fridge": "appliance"
+      },
+      "expect": [
+        {
+          "get": "$fridge",
+          "path": "/appliance_kind",
+          "is": "refrigerator"
+        }
+      ]
+    },
+    {
+      "step": "A wall cabinet over the refrigerator, 24\" deep and down to its top",
+      "commands": [
+        {
+          "op": "add_cabinet",
+          "floor": "$floor1",
+          "cabinet_kind": "wall",
+          "at": [
+            2921.0,
+            -4857.75
+          ],
+          "width": "36\"",
+          "depth": "24\"",
+          "height": "15\""
+        }
+      ],
+      "save": {
+        "over": "cabinet"
+      },
+      "expect": [
+        {
+          "get": "$over",
+          "path": "/depth",
+          "is": "24\""
+        }
+      ]
+    },
+    {
+      "step": "(height off the floor: the refrigerator's top)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$over",
+          "set": {
+            "elevation": "70\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$over",
+          "path": "/elevation",
+          "is": "70\""
+        }
+      ]
+    },
+    {
+      "step": "A partition beside the refrigerator with crown molding",
+      "gap": "No cabinet Partition tool. Row: CB-30"
+    },
+    {
+      "step": "A dishwasher in the 24\" gap beside the sink base; nudge it forward with the arrow keys",
+      "commands": [
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "dishwasher",
+          "at": [
+            162.719,
+            -2387.6
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "count": "appliance",
+          "is": 18
+        }
+      ]
+    },
+    {
+      "step": "Rebuild the island: explode the block, move a cabinet, delete the middle one, put an induction range and a hood in its place",
+      "commands": [
+        {
+          "op": "delete",
+          "ids": [
+            "$run.1"
+          ]
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "range",
+          "at": [
+            2032.0,
+            -2540.0
+          ],
+          "facing": 180.0
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "range_hood",
+          "at": [
+            2032.0,
+            -2540.0
+          ],
+          "facing": 180.0
+        }
+      ],
+      "save": {
+        "cooking": "appliance"
+      },
+      "expect": [
+        {
+          "get": "$cooking.0",
+          "path": "/appliance_kind",
+          "is": "range"
+        },
+        {
+          "count": "cabinet",
+          "is": 11
+        }
+      ]
+    },
+    {
+      "step": "(Explode / Make Architectural Block; resize the bar to match)",
+      "gap": "No architectural blocks in the plan. Row: CB-27"
+    },
+    {
+      "step": "Built-in microwave in the top-left wall cabinet, under its door (cabinet 18\" deep)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$more.0",
+          "set": {
+            "depth": "18\"",
+            "face": [
+              {
+                "items": [
+                  "double_door"
+                ]
+              },
+              {
+                "height": "17\"",
+                "items": [
+                  "appliance"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$more.0",
+          "path": "/face/1/items/0",
+          "is": "appliance"
+        }
+      ]
+    },
+    {
+      "step": "Bath: a base cabinet with a rectangular vanity sink",
+      "commands": [
+        {
+          "op": "add_cabinet",
+          "floor": "$floor1",
+          "cabinet_kind": "base",
+          "at": [
+            11042.65,
+            -4064.0
+          ],
+          "width": "30\"",
+          "sink": true
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "vanity_sink",
+          "at": [
+            10737.85,
+            -4064.0
+          ]
+        }
+      ],
+      "save": {
+        "vanity": "cabinet"
+      },
+      "expect": [
+        {
+          "get": "$vanity",
+          "path": "/sink",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "A deck-mounted faucet on the sink",
+      "gap": "No faucet, tub spout or shower head fixtures. Row: EL-10"
+    },
+    {
+      "step": "A 60\" x 30\" bathtub centred along the Bath's left wall; a standard toilet between the tub and the cabinet",
+      "commands": [
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "bathtub",
+          "at": [
+            8210.55,
+            -4064.0
+          ]
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "toilet",
+          "at": [
+            10033.0,
+            -3359.15
+          ]
+        }
+      ],
+      "save": {
+        "bath": "appliance"
+      },
+      "expect": [
+        {
+          "get": "$bath.0",
+          "path": "/appliance_kind",
+          "is": "bathtub"
+        }
+      ]
+    },
+    {
+      "step": "Tub spout and shower head over the tub, blocked together and centred",
+      "gap": "No tub/shower trim fixtures or architectural blocks. Rows: EL-10, CB-27"
+    },
+    {
+      "step": "Reverse the bathtub symbol so the drain is at the other end",
+      "gap": "Fixtures can't be reversed (mirrored). Row: CB-31"
+    },
+    {
+      "step": "Wall Elevation of the Kitchen's left wall with automatic elevation dimensions",
+      "commands": [
+        {
+          "op": "add_section_view",
+          "floor": "$floor1",
+          "name": "Kitchen Elevation",
+          "a": [
+            1524.0,
+            -508.0
+          ],
+          "b": [
+            1524.0,
+            -4572.0
+          ],
+          "section_kind": "elevation"
+        }
+      ],
+      "save": {
+        "elev": "section_view"
+      }
+    },
+    {
+      "step": "(Auto Elevation Dimensions)",
+      "commands": [
+        {
+          "op": "elevation_dimensions",
+          "view": "$elev"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$elev",
+          "path": "/name",
+          "is": "Kitchen Elevation"
+        }
+      ]
+    },
+    {
+      "step": "(Wall Elevation dimension defaults; move extension lines; handle fill colour)",
+      "gap": "No extension-line handles or handle colour preference. Row: DIM-28"
+    }
+  ]
+}
