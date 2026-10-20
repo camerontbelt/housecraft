@@ -312,6 +312,9 @@ pub struct Settings {
     /// Objects pinned at the top of the Project Browser.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pins: Vec<Id>,
+    /// Time spent on the plan, by task.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub time_log: Vec<TimeEntry>,
 }
 
 /// An object's own materials list lines.
@@ -380,6 +383,17 @@ impl ProjectInfo {
     pub fn get(&self, name: &str) -> Option<&String> {
         self.fields().into_iter().find(|f| f.0 == name).map(|f| f.2).or_else(|| self.custom.get(name))
     }
+}
+
+/// Time spent working on the plan.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct TimeEntry {
+    /// YYYY-MM-DD.
+    pub date: String,
+    pub task: String,
+    pub minutes: f64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub note: String,
 }
 
 /// One issued revision.
@@ -518,6 +532,7 @@ impl Document {
                 auto_dim_presets: Vec::new(),
                 hatch_patterns: Vec::new(),
                 pins: Vec::new(),
+                time_log: Vec::new(),
             },
             next_id: 1,
             objects: BTreeMap::new(),

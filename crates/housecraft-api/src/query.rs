@@ -133,6 +133,41 @@ pub fn get_object(doc: &Document, id: Id) -> Option<serde_json::Value> {
         .map(|o| serde_json::to_value(o).expect("model serializes"))
 }
 
+/// Hours by task, most first.
+pub fn time_by_task(doc: &Document) -> Vec<(String, f64)> {
+    let mut by: std::collections::BTreeMap<String, f64> = std::collections::BTreeMap::new();
+    for e in &doc.settings.time_log {
+        *by.entry(e.task.clone()).or_default() += e.minutes / 60.0;
+    }
+    let mut v: Vec<(String, f64)> = by.into_iter().collect();
+    v.sort_by(|a, b| b.1.total_cmp(&a.1));
+    v
+}
+
+/// The time log as CSV: date, client, plan, task, hours, note.
+pub fn time_log_csv(doc: &Document) -> String {
+    let q = |s: &str| {
+        if s.contains([',', '"', '\n']) {
+            format!("\"{}\"", s.replace('"', "\"\""))
+        } else {
+            s.to_string()
+        }
+    };
+    let mut out = String::from("Date,Client,Plan,Task,Hours,Note\n");
+    for e in &doc.settings.time_log {
+        out += &format!(
+            "{},{},{},{},{:.2},{}\n",
+            e.date,
+            q(&doc.settings.project.client),
+            q(&doc.name),
+            q(&e.task),
+            e.minutes / 60.0,
+            q(&e.note)
+        );
+    }
+    out
+}
+
 /// A one-line human description of an object.
 pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
     let unit = doc.settings.display_unit;

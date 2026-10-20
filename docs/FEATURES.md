@@ -125,7 +125,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-16 | Layers: create, assign, style, group into Layer Sets | P0 | M1 ✓ |
 | PRJ-17 | Fill style by layer (X18+) | P2 | M1 ✓ each layer can carry a fill style used by its walls and closed shapes |
 | PRJ-18 | Select all on layer | P1 | M1 ✓ Edit > Select All on Layer |
-| PRJ-19 | Time tracker per project/client/task with export | P3 | M8 |
+| PRJ-19 | Time tracker per project/client/task with export | P3 | M8 ✓ Tools > Time Tracker: timer by task (pauses after 5 min idle, logged on stop/save), hand entries, totals by task, CSV export with client; `log_time`/`delete_time` |
 | PRJ-20 | Plan database / portfolio | P3 | M8 ✓ File > Project Files > Plan Portfolio: plans in a folder with client, floors, living area, rooms, age; search and open |
 | PRJ-21 | R-values for walls, roofs, ceilings, platforms | P2 | M3 ◐ R-values per wall-type layer (total shown on walls) and for the roof in Default Settings; no energy totals |
 | PRJ-22 | Client & designer info with macros and custom fields | P2 | M4 ✓ File > Project Information: client/designer fields and custom fields, each a text macro; shown in the title block |
@@ -360,7 +360,7 @@ These come from reading the whole list and change the architecture, not just the
 | LY-04 | Layer hider (click to hide) | P1 | M1 ✓ CAD Tools > Layer Hider: click objects to hide their layers |
 | LY-05 | Edit an object's layer properties from the toolbar | P2 | M1 |
 | LY-06 | Reference displays: multiple reference floors/layer sets, draw order | P1 | M3 ◐ several reference floors; reference layer sets and draw order later |
-| LY-07 | Reference display from other plan files (2D and 3D ghosting) | P2 | M8 |
+| LY-07 | Reference display from other plan files (2D and 3D ghosting) | P2 | M8 ✓ View > Reference Plan File: another plan's matching floor drawn faint blue in plan views and see-through in 3D (not pickable); reload/remove; not saved with the plan |
 | LY-08 | 3D reference display styles | P3 | M7 ✓ 3D view Display menu: show, ghost (faint, see-through, not clickable) or hide each kind of object; Framing Overview ghosts walls and roofs |
 | LY-09 | Dockable layer display options panel | P1 | GUI ✓ Layer Display tab in the right dock, or Pop Out into a floating window and Dock It Here again |
 

@@ -302,6 +302,10 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     let (resp, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
     let rect = resp.rect;
     app.plan.ensure_cache(app.session.document(), app.rev);
+    if let Some(r) = app.reference.as_mut().filter(|r| r.show_2d) {
+        let index = app.session.document().floors_by_elevation().iter().position(|f| f.id == app.plan.floor).unwrap_or(0);
+        r.drawing(index);
+    }
 
     if std::mem::take(&mut app.plan.fit_requested) {
         let bounds = app
@@ -2101,6 +2105,14 @@ fn paint(app: &App, ui: &Ui, painter: &Painter, view: &View) {
     } else {
         for (points, tris, fill) in &cache.fills {
             paint_fill(painter, view, points, tris, fill_color(ui, *fill));
+        }
+        // Another plan file shown for reference, faint under this one.
+        let index = app.doc().floors_by_elevation().iter().position(|f| f.id == app.plan.floor).unwrap_or(0);
+        if let Some(d) = app.reference.as_ref().filter(|r| r.show_2d).and_then(|r| r.drawn(index)) {
+            let ghost = Color32::from_rgb(70, 130, 210).gamma_multiply(0.55);
+            for item in &d.items {
+                paint_prim(ui, painter, view, &item.prim, Some(ghost), 0.0);
+            }
         }
         for item in &cache.drawing.items {
             paint_prim(ui, painter, view, &item.prim, None, 0.0);

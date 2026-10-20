@@ -3025,3 +3025,21 @@ fn pins_toggle_and_survive_save() {
     assert!(s.document().settings.pins.is_empty());
     assert!(s.apply(&[Command::PinObjects { ids: vec![Id(999_999)], pinned: true }]).is_err());
 }
+
+#[test]
+fn time_log_merges_totals_and_exports() {
+    let mut s = boxed();
+    let log = |task: &str, minutes: f64, date: &str| Command::LogTime { task: task.into(), minutes, note: String::new(), date: Some(date.into()) };
+    s.apply(&[log("Design", 30.0, "2026-10-19"), log("Design", 15.0, "2026-10-19"), log("Drafting, CDs", 90.0, "2026-10-19")]).unwrap();
+    assert_eq!(s.document().settings.time_log.len(), 2, "same task, same day adds up");
+    assert_eq!(s.document().settings.time_log[0].minutes, 45.0);
+    let totals = query::time_by_task(s.document());
+    assert_eq!(totals[0], ("Drafting, CDs".to_string(), 1.5));
+    let csv = query::time_log_csv(s.document());
+    assert!(csv.lines().nth(2).unwrap().contains("\"Drafting, CDs\",1.50"), "{csv}");
+    assert!(s.apply(&[log("x", 0.0, "2026-10-19")]).is_err());
+    s.apply(&[Command::DeleteTime { index: Some(0) }]).unwrap();
+    assert_eq!(s.document().settings.time_log.len(), 1);
+    s.apply(&[Command::DeleteTime { index: None }]).unwrap();
+    assert!(s.document().settings.time_log.is_empty());
+}

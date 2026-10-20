@@ -277,6 +277,29 @@ pub enum Category {
 
 
 impl Mesh {
+    /// Add `other`'s triangles as parts of `object`, untextured (another
+    /// plan shown for reference).
+    pub fn append_untextured(&mut self, other: &Mesh, object: Id) {
+        let base = self.positions.len() as u32;
+        self.positions.extend_from_slice(&other.positions);
+        self.normals.extend_from_slice(&other.normals);
+        self.colors.extend_from_slice(&other.colors);
+        self.pbr.extend_from_slice(&other.pbr);
+        self.uvs.extend_from_slice(&other.uvs);
+        self.surfaces.extend(other.surfaces.iter().map(|_| None));
+        self.tex.extend(other.tex.iter().map(|_| -1.0));
+        let first = self.indices.len() as u32;
+        self.indices.extend(other.indices.iter().map(|i| i + base));
+        for p in &other.parts {
+            self.parts.push(MeshPart {
+                object,
+                category: p.category,
+                first_index: p.first_index + first,
+                index_count: p.index_count,
+            });
+        }
+    }
+
     /// A mesh whose surfaces take their materials from `doc`.
     pub fn for_document(doc: &Document) -> Self {
         let mut textures = Vec::new();

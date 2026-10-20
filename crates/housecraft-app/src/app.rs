@@ -150,6 +150,9 @@ pub struct App {
     pub side_tab: SideTab,
     pub plan: PlanState,
     pub view3d: View3d,
+    /// Another plan file shown for reference.
+    pub reference: Option<crate::project_tools::RefPlan>,
+    pub time: crate::project_tools::TimeTracker,
     pub prefs: Prefs,
     pub dialogs: Dialogs,
     pub materials: crate::materials::MaterialsDialog,
@@ -232,6 +235,8 @@ impl App {
             palette: Family::Walls,
             side_tab: SideTab::ProjectBrowser,
             view3d: View3d::default(),
+            reference: None,
+            time: Default::default(),
             prefs,
             dialogs: Dialogs::default(),
             materials: Default::default(),
@@ -1475,6 +1480,7 @@ impl App {
         self.selection.clear();
         self.spec.clear();
         self.view3d = View3d::default();
+        self.time.reset();
         self.tabs = vec![Mode::Plan];
         self.mode = Mode::Plan;
         self.changed();
@@ -1925,6 +1931,10 @@ impl App {
         let Some(path) = path else {
             return false;
         };
+        // Time counted so far goes into the plan's log.
+        if let Some(c) = self.time.flush() {
+            self.run1(c);
+        }
         match housecraft_io_native::save_path(self.doc(), &path) {
             Ok(()) => {
                 self.session.mark_saved();
@@ -3198,6 +3208,9 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                 if item(ui, "Plan Check…", "", true) {
                     self.dialogs.plan_check = true;
                 }
+                if item(ui, "Time Tracker…", "", true) {
+                    self.time.open = true;
+                }
                 if item(ui, "Text Macros…", "", true) {
                     self.dialogs.macros.open = true;
                 }
@@ -3255,6 +3268,7 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                         }
                     }
                 });
+                ui.menu_button("Reference Plan File", |ui| crate::project_tools::reference_menu(self, ui));
                 ui.checkbox(&mut self.plan.sun_shadows, "Sun Shadows in Plan");
                 ui.menu_button("Renovation Phase", |ui| {
                     for p in Phase::ALL {

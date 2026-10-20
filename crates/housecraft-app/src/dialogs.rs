@@ -283,6 +283,7 @@ pub fn show(app: &mut App, ctx: &Context) {
     save_view_dialog(app, ctx);
     line_styles_dialog(app, ctx);
     portfolio_dialog(app, ctx);
+    crate::project_tools::time_tracker_window(app, ctx);
     scatter_dialog(app, ctx);
     plan_check_dialog(app, ctx);
     hatch_dialog(app, ctx);

@@ -272,6 +272,16 @@ pub enum Command {
     },
     /// Client, designer and custom project fields.
     SetProjectInfo { info: ProjectInfo },
+    /// Record time spent on the plan (dated today unless given).
+    LogTime {
+        task: String,
+        minutes: f64,
+        #[serde(default)]
+        note: String,
+        date: Option<String>,
+    },
+    /// Remove time log entry `index` (every entry when `None`).
+    DeleteTime { index: Option<usize> },
     /// Pin (or with `pinned: false`, unpin) objects in the Project Browser.
     PinObjects { ids: Vec<Id>, pinned: bool },
     /// Add (`index` null) or replace one of the plan's hatch patterns.
@@ -1281,6 +1291,8 @@ impl Command {
             Command::DeleteLayoutBoxes { .. } => "delete_layout_boxes",
             Command::SetProjectInfo { .. } => "set_project_info",
             Command::PinObjects { .. } => "pin_objects",
+            Command::LogTime { .. } => "log_time",
+            Command::DeleteTime { .. } => "delete_time",
             Command::SetHatchPattern { .. } => "set_hatch_pattern",
             Command::DeleteHatchPattern { .. } => "delete_hatch_pattern",
             Command::ConvertCad { .. } => "convert_cad",
@@ -1984,6 +1996,31 @@ impl Command {
             Command::Scatter { source, region, count, seed, size_variation, rotate } => {
                 crate::convert::scatter(doc, *source, *region, *count, *seed, *size_variation, *rotate, &mut out)?
             }
+            Command::LogTime { task, minutes, note, date } => {
+                if !(minutes.is_finite() && *minutes > 0.0) {
+                    return invalid("minutes must be positive");
+                }
+                let entry = TimeEntry {
+                    date: date.clone().unwrap_or_else(crate::layouts::today),
+                    task: if task.trim().is_empty() { "General".into() } else { task.trim().into() },
+                    minutes: *minutes,
+                    note: note.clone(),
+                };
+                // More time on the same task the same day adds to its entry.
+                match doc.settings.time_log.last_mut() {
+                    Some(last) if last.date == entry.date && last.task == entry.task && last.note == entry.note => {
+                        last.minutes += entry.minutes;
+                    }
+                    _ => doc.settings.time_log.push(entry),
+                }
+            }
+            Command::DeleteTime { index } => match index {
+                None => doc.settings.time_log.clear(),
+                Some(i) if *i < doc.settings.time_log.len() => {
+                    doc.settings.time_log.remove(*i);
+                }
+                Some(i) => return Err(ApiError::Invalid(format!("no time entry {i}"))),
+            },
             Command::PinObjects { ids, pinned } => {
                 for id in ids {
                     if doc.object(*id).is_none() {

@@ -907,6 +907,12 @@ impl Default for View3d {
 }
 
 impl View3d {
+    /// Rebuild the model on the next frame (the reference plan changed).
+    pub fn invalidate(&mut self) {
+        self.mesh = None;
+        self.gpu = None;
+    }
+
     fn forward(&self) -> Vec3 {
         Vec3::new(
             self.pitch.cos() * self.yaw.cos(),
@@ -1130,7 +1136,7 @@ fn to_gpu(
                 }
             }
         }
-        if ghosted.contains(&part.category) {
+        if ghosted.contains(&part.category) || part.object == crate::project_tools::REFERENCE_PLAN {
             // Reference display: pale, untextured and see-through.
             let range = part.first_index as usize..(part.first_index + part.index_count) as usize;
             for &i in &mesh.indices[range] {
@@ -1264,7 +1270,7 @@ fn pick_hit(
 ) -> Option<(Id, Option<housecraft_api::model::Surface>, f32)> {
     let mut best: Option<(f32, Id, u32)> = None;
     for part in &mesh.parts {
-        if part.object == Id(0) || hidden.contains(&part.category) {
+        if part.object == Id(0) || part.object == crate::project_tools::REFERENCE_PLAN || hidden.contains(&part.category) {
             continue;
         }
         let range = part.first_index as usize..(part.first_index + part.index_count) as usize;
@@ -1311,7 +1317,13 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     let mesh_rev = app.rev;
     let mesh = match v.mesh.take() {
         Some((rev, mesh)) if rev == app.rev => mesh,
-        _ => build(app.session.document(), None),
+        _ => {
+            let mut mesh = build(app.session.document(), None);
+            if let Some(r) = app.reference.as_mut().filter(|r| r.show_3d) {
+                mesh.append_untextured(r.mesh(), crate::project_tools::REFERENCE_PLAN);
+            }
+            mesh
+        }
     };
     if std::mem::take(&mut v.fit_requested) {
         v.fit(&mesh);
