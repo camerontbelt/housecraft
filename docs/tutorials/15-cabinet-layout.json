@@ -1,0 +1,255 @@
+{
+  "tutorial": "Cabinet Layout",
+  "source": "Chief Architect X18 Tutorial Guide, Kitchen and Bath Tutorials, pages 260-276",
+  "include": "14-cabinet-styles.json",
+  "steps": [
+    {
+      "step": "Bump and push: drag a cabinet into the wall and into another cabinet; it stops, then pushes",
+      "gap": "Cabinets don't bump or push; they snap to walls and other cabinets as you drag. Row: CAD-28"
+    },
+    {
+      "step": "Cabinet defaults: diagonal door on corner cabinets",
+      "gap": "No automatic corner cabinets; set a corner cabinet's Shape to Angled. Row: CB-29"
+    },
+    {
+      "step": "Base cabinets: one more along the left wall, one in the middle of the room, one in the bottom-left corner (diagonal front), one along the Dining wall",
+      "commands": [
+        {
+          "op": "add_cabinet",
+          "floor": "$floor1",
+          "cabinet_kind": "base",
+          "at": [
+            162.719,
+            -1524.0
+          ],
+          "width": "30\""
+        },
+        {
+          "op": "add_cabinet",
+          "floor": "$floor1",
+          "cabinet_kind": "base",
+          "at": [
+            2032.0,
+            -2540.0
+          ],
+          "width": "30\""
+        },
+        {
+          "op": "add_cabinet",
+          "floor": "$floor1",
+          "cabinet_kind": "base",
+          "at": [
+            162.719,
+            -4400.55
+          ],
+          "width": "36\"",
+          "shape": {
+            "type": "angled",
+            "left": "0\"",
+            "right": "12\""
+          }
+        },
+        {
+          "op": "add_cabinet",
+          "floor": "$floor1",
+          "cabinet_kind": "base",
+          "at": [
+            1371.6,
+            -4857.75
+          ],
+          "width": "18\""
+        }
+      ],
+      "save": {
+        "run": "cabinet"
+      },
+      "expect": [
+        {
+          "count": "cabinet",
+          "is": 7
+        },
+        {
+          "get": "$run.2",
+          "path": "/shape/type",
+          "is": "angled"
+        }
+      ]
+    },
+    {
+      "step": "Resize: the cabinet under the window 36\", the other wall cabinet 30\", the one beside the corner 18\" (they resize in 3\" steps)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$run.0",
+          "set": {
+            "width": "30\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$run.3",
+          "path": "/width",
+          "is": "18\""
+        }
+      ]
+    },
+    {
+      "step": "Center the sink base on the middle window (Center Object)",
+      "expect": [
+        {
+          "get": "$run.0",
+          "path": "/cabinet_kind",
+          "is": "base"
+        }
+      ]
+    },
+    {
+      "step": "Wall Elevation; copy a drawer base with Sticky Mode and Reflect About Object either side of the sink base",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$run.3"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": "18\"",
+            "dy": 0
+          },
+          "copies": 1
+        }
+      ],
+      "expect": [
+        {
+          "count": "cabinet",
+          "is": 8
+        }
+      ]
+    },
+    {
+      "step": "(Sticky Mode; Reflect About Object; module lines and where the fillers go)",
+      "gap": "No Sticky Mode or Reflect About Object; Auto Fillers places fillers at the ends of runs. Rows: CAD-29, CB-09"
+    },
+    {
+      "step": "Island: the middle cabinet 30\" wide turned to face left, 18\" drawer bases either side",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$run.1",
+          "set": {
+            "facing": 180.0,
+            "width": "30\""
+          }
+        },
+        {
+          "op": "add_cabinet",
+          "floor": "$floor1",
+          "cabinet_kind": "base",
+          "at": [
+            2032.0,
+            -3149.6
+          ],
+          "width": "18\"",
+          "facing": 180.0
+        },
+        {
+          "op": "add_cabinet",
+          "floor": "$floor1",
+          "cabinet_kind": "base",
+          "at": [
+            2032.0,
+            -1930.4
+          ],
+          "width": "18\"",
+          "facing": 180.0
+        }
+      ],
+      "save": {
+        "island": "cabinet"
+      },
+      "expect": [
+        {
+          "get": "$run.1",
+          "path": "/facing",
+          "is": 180.0
+        },
+        {
+          "count": "cabinet",
+          "is": 10
+        }
+      ]
+    },
+    {
+      "step": "Island countertop: no overhang at the back, no backsplash",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$run.1",
+          "set": {
+            "countertop": {
+              "backsplash": "0\""
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$island.0",
+          "set": {
+            "countertop": {
+              "backsplash": "0\""
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$island.1",
+          "set": {
+            "countertop": {
+              "backsplash": "0\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$island.0",
+          "path": "/countertop/backsplash",
+          "is": "0\""
+        }
+      ]
+    },
+    {
+      "step": "(Overhang per side: Uniform off, Back 0\")",
+      "gap": "A cabinet's countertop overhang is the same on every side. Row: CB-29"
+    },
+    {
+      "step": "Breakfast bar: a base cabinet behind the island, 42\" high and 7\" deep",
+      "commands": [
+        {
+          "op": "add_cabinet",
+          "floor": "$floor1",
+          "cabinet_kind": "base",
+          "at": [
+            2387.6,
+            -2540.0
+          ],
+          "width": "66\"",
+          "depth": "7\"",
+          "height": "42\"",
+          "facing": 0.0
+        }
+      ],
+      "save": {
+        "bar": "cabinet"
+      },
+      "expect": [
+        {
+          "get": "$bar",
+          "path": "/height",
+          "is": "42\""
+        }
+      ]
+    }
+  ]
+}

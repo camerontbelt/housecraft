@@ -32,7 +32,8 @@ has two files:
 | 12 | Room Moldings (211) | 5 | 4 | [12-room-moldings.md](12-room-moldings.md) |
 | 13 | Interior Furnishings (222) | 9 | 6 | [13-interior-furnishings.md](13-interior-furnishings.md) |
 | 14 | Cabinet Styles (237) | 8 | 4 | [14-cabinet-styles.md](14-cabinet-styles.md) |
-| 15–18 | Cabinet Layout, Appliances, Light Fixtures, Electrical (260–330) | — | — | |
+| 15 | Cabinet Layout (260) | 7 | 4 | [15-cabinet-layout.md](15-cabinet-layout.md) |
+| 16–18 | Appliances and Fixtures, Light Fixtures, Electrical (277–330) | — | — | |
 | 19–21 | Framing tutorials (331–381) | — | — | |
 | 22–25 | Landscaping tutorials (382–450) | — | — | |
 | 26–28 | Layout tutorials (451–500) | — | — | |
