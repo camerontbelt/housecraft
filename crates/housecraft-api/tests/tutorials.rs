@@ -266,6 +266,24 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
         let mesh = housecraft_api::geom::mesh::build(doc, None);
         return if mesh.parts.iter().any(|p| p.object == id) { Ok(()) } else { Err(format!("#{} is not built in 3D", id.0)) };
     }
+    if let Some(target) = e.get("stair_reaches") {
+        // {"stair_reaches": id, "floor": id, "max_riser": length}: the stair climbs
+        // exactly to that floor with no riser taller than allowed.
+        let id = target.as_u64().map(Id).ok_or(format!("unknown {target}"))?;
+        let st = doc.get::<Stair>(id).ok_or("no such stair")?;
+        let g = housecraft_api::geom::stairs::geometry(doc, st);
+        let top = g.base_z + g.risers as f64 * g.riser_height;
+        let floor = e["floor"].as_u64().map(Id).and_then(|f| doc.get::<Floor>(f)).ok_or("no such floor")?;
+        if (top - floor.elevation.mm()).abs() > 1.0 {
+            return Err(format!("stair tops out at {:.0} mm, the floor is at {:.0} mm", top, floor.elevation.mm()));
+        }
+        if let Some(max) = e.get("max_riser").and_then(length)
+            && g.riser_height > max + 0.1
+        {
+            return Err(format!("{} risers of {:.1} mm, more than {:.1}", g.risers, g.riser_height, max));
+        }
+        return Ok(());
+    }
     if let Some(text) = e.get("text_exists").and_then(Value::as_str) {
         return if doc.iter::<Text>().any(|t| t.text == text) { Ok(()) } else { Err(format!("no text \"{text}\"")) };
     }

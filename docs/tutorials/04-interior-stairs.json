@@ -1,0 +1,295 @@
+{
+  "tutorial": "Interior Stairs",
+  "source": "Chief Architect X18 Tutorial Guide, Floor Plan Tutorials, pages 60-81",
+  "include": "03-multiple-floors.json",
+  "steps": [
+    {
+      "step": "Interior stair defaults: 44\" wide; 4\" BX-02 newels 44\" high; white balusters, red oak rails and treads",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "stair": {
+              "width": "44\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/stair/width",
+          "is": "44\""
+        }
+      ]
+    },
+    {
+      "step": "(Newel and baluster styles and materials from the library)",
+      "gap": "Stair defaults have no newel/baluster style or per-part materials; set them on each stair (baluster/newel symbols). Row: ST-12"
+    },
+    {
+      "step": "A few steps from the Garage up to the Foyer",
+      "gap": "The Garage floor isn't lower than the Foyer (no separate garage slab), so there's nothing to step up. Row: FD-07"
+    },
+    {
+      "step": "Draw Stairs beside the Dining/Foyer wall, upward: they reach Floor 2 by themselves",
+      "commands": [
+        {
+          "op": "add_stair",
+          "floor": "$floor1",
+          "start": [
+            4762.5,
+            -7023.1
+          ],
+          "direction": 90
+        }
+      ],
+      "save": {
+        "stair": "stair"
+      },
+      "expect": [
+        {
+          "get": "$stair",
+          "path": "/width",
+          "is": "44\""
+        },
+        {
+          "stair_reaches": "$stair",
+          "floor": "$named:floor:Floor 2",
+          "max_riser": "7 3/4\""
+        }
+      ]
+    },
+    {
+      "step": "Position the stair 4'6\" from the front wall by typing on a dimension",
+      "gap": "Only walls move by typing on a dimension; open the stair and set its start. Row: DIM-03"
+    },
+    {
+      "step": "Lock the bottom, Make Best Fit, lock the number of treads and make treads 10 1/2\" deep",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$stair",
+          "set": {
+            "tread_depth": "10 1/2\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$stair",
+          "path": "/tread_depth",
+          "is": "10 1/2\""
+        },
+        {
+          "stair_reaches": "$stair",
+          "floor": "$named:floor:Floor 2",
+          "max_riser": "7 3/4\""
+        }
+      ]
+    },
+    {
+      "step": "(Lock Bottom / Lock Top / Lock Number of Treads / Make Best Fit)",
+      "gap": "Stairs always fit the floor above from their start; no lock options or best-fit button. Row: ST-19"
+    },
+    {
+      "step": "Back-clipped cross section along the stair, saved as 'Stair Section'",
+      "commands": [
+        {
+          "op": "add_section_view",
+          "floor": "$floor1",
+          "name": "Stair Section",
+          "a": [
+            4762.5,
+            -3048.0
+          ],
+          "b": [
+            4000.5,
+            -3048.0
+          ],
+          "section_kind": "section",
+          "depth": "4'"
+        }
+      ],
+      "save": {
+        "section": "section_view"
+      },
+      "expect": [
+        {
+          "get": "$section",
+          "path": "/name",
+          "is": "Stair Section"
+        }
+      ]
+    },
+    {
+      "step": "(Tile the plan and section views)",
+      "gap": "No tiled views. Row: UI-32"
+    },
+    {
+      "step": "Auto Stairwell: open the floor above the stair",
+      "expect": [
+        {
+          "get": "$stair",
+          "path": "/stairwell",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "(Auto Stairwell makes an Open Below room on Floor 2 enclosed by railings, with a doorway at the top)",
+      "gap": "Stairwells cut the floor above but make no Open Below room or railings; draw railings round the opening. Row: ST-18"
+    },
+    {
+      "step": "Headroom: an end-to-end dimension in the section from the nosing to the ceiling; move its point marker",
+      "gap": "Point markers on dimension ends in section views can't be moved; use a manual dimension. Row: SEC-06"
+    },
+    {
+      "step": "Stack the stairs: copy, go to Floor 0, Paste Hold Position. They reach Floor 1",
+      "copy_to_floor": {
+        "ids": [
+          "$stair"
+        ],
+        "floor": "$named:floor:Foundation"
+      },
+      "save": {
+        "lower": "stair"
+      },
+      "expect": [
+        {
+          "stair_reaches": "$lower",
+          "floor": "$floor1",
+          "max_riser": "7 3/4\""
+        },
+        {
+          "get": "$lower",
+          "path": "/floor",
+          "is": "$named:floor:Foundation"
+        }
+      ]
+    },
+    {
+      "step": "Tape Measure the clearance at the bottom of the basement stair",
+      "gap": "No Tape Measure. Row: DIM-24"
+    },
+    {
+      "step": "Turn off the Stairs & Ramps layer while editing the stairwell",
+      "commands": [
+        {
+          "op": "set_layer_display",
+          "layer_set": "$named:layer_set:Working",
+          "layer": "$named:layer:Stairs",
+          "visible": false
+        }
+      ],
+      "expect": []
+    },
+    {
+      "step": "(Turn railings into walls; Same Wall Type handle)",
+      "gap": "No railings are made round stairwells (see above), and there's no Same Wall Type handle. Row: ST-18"
+    },
+    {
+      "step": "Section view clip planes: Clip Sides and Clip Elevation, moved to frame the stairs",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$section",
+          "set": {
+            "clip_sides": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$section",
+          "path": "/clip_sides",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "(Top/bottom clip elevations and clip lines you can drag)",
+      "gap": "Section views clip at the sides only; no top/bottom clip elevations or draggable clip lines. Row: SEC-01"
+    },
+    {
+      "step": "Note schedule (General notes, capsule shape) and a numbered note 'HEADROOM 6' 8\" MIN.' at the foot of the stairs",
+      "commands": [
+        {
+          "op": "add_schedule",
+          "floor": "$floor1",
+          "schedule_kind": "notes",
+          "position": [
+            14224.0,
+            -5080.0
+          ]
+        },
+        {
+          "op": "add_callout",
+          "floor": "$floor1",
+          "text": "HEADROOM 6' 8\" MIN.",
+          "at": [
+            4762.5,
+            -7785.1
+          ],
+          "marker": "circle"
+        }
+      ],
+      "save": {
+        "note": "callout"
+      },
+      "expect": [
+        {
+          "count": "schedule",
+          "is": 2
+        }
+      ]
+    },
+    {
+      "step": "(Make it a numbered note)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$note",
+          "set": {
+            "note": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$note",
+          "path": "/note",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "Copy the note to Floor 0 with Paste Hold Position; the schedule lists it once",
+      "copy_to_floor": {
+        "ids": [
+          "$note"
+        ],
+        "floor": "$named:floor:Foundation"
+      },
+      "save": {
+        "note0": "callout"
+      },
+      "expect": [
+        {
+          "get": "$note0",
+          "path": "/floor",
+          "is": "$named:floor:Foundation"
+        }
+      ]
+    },
+    {
+      "step": "(Note types, Generate Shape from Schedule, capsule markers; CAD Detail Management; align schedules)",
+      "gap": "No note types or capsule marker; schedules can't go in CAD details. Rows: TXT-16, EST-26"
+    },
+    {
+      "step": "Save a copy as Chic Cottage-Stairs",
+      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+    }
+  ]
+}

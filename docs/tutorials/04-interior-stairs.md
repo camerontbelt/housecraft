@@ -1,0 +1,94 @@
+# Tutorial 4, Interior Stairs: following it in HouseCraft
+
+Keep this open beside **Chief Architect Tutorial Guide › Floor Plan Tutorials › Interior Stairs** (pages 60–81).
+It carries on from [Tutorial 3](03-multiple-floors.md). The steps also run as the automatic test
+[04-interior-stairs.json](04-interior-stairs.json).
+
+## Names that differ
+
+| Chief says | In HouseCraft |
+|---|---|
+| Build › Stairs › Draw Stairs / Straight Stairs | **Stair Tools › Straight Stair** (Build › Stairs) |
+| Staircase Specification | Double-click the stair |
+| Auto Stairwell button | The stair's **Stairwell** box (on by default) |
+| Back Clipped Cross Section | **3D › Elevations and Sections › Cross Section / Elevation Tool** |
+| Note (CAD › Text › Note) | The **Callout** tool, then tick **Numbered Note** |
+| Tools › Schedules › Note Schedule | **Tools › Schedules › Place in Plan › Note Schedule** |
+
+## Stair defaults (pages 62–64)
+
+1. **Edit › Default Settings… › Stairs**: set the width to `44"`.
+2. *Not in HouseCraft yet:* choosing the newel style (BX-02) and materials per part (balusters, rails, treads) in
+   the defaults. You can give a stair its own baluster and newel shapes in its specification.
+
+## Stairs (pages 64–66)
+
+1. **Garage steps:** *skip this one.* In HouseCraft the Garage floor isn't lower than the Foyer yet (no separate
+   garage slab), so there's nothing to step up.
+2. Go to Floor 1. Choose **Straight Stair**, click in the Foyer just right of the Dining wall (the bottom of the
+   stair), then click further up the screen (the direction it climbs). HouseCraft works out the risers to reach
+   Floor 2 with no riser taller than the maximum.
+3. **Position:** *not in HouseCraft yet:* typing on a dimension to move a stair (that works for walls only). Open the
+   stair and adjust its start point so the bottom riser is 4'6" from the inside of the front wall's framing.
+4. Open the stair and set **Tread depth** to `10 1/2"`. It still reaches Floor 2. *Not in HouseCraft yet:* the
+   Lock Bottom / Lock Top / Lock Number of Treads options and the Make Best Fit button. HouseCraft stairs always
+   start where you put them and fit the floor above.
+
+## Cross section (pages 66–68)
+
+1. **3D › Elevations and Sections › Cross Section / Elevation Tool**: click beside the stair, then click across it.
+2. Rename it: in the Project Browser under **Elevations and Sections**, open it and set the name to `Stair Section`.
+3. *Not in HouseCraft yet:* tiling it beside the plan.
+
+## Stairwell (pages 68–69)
+
+1. The stair's **Stairwell** box is ticked by default, so the floor above is already cut open over the stair.
+   Look at Floor 2 in 3D or in the section to see the opening.
+2. *Not in HouseCraft yet:* the automatic Open Below room and the railings round it. Draw railings round the
+   opening yourself.
+
+## Headroom (pages 69–71)
+
+Draw a dimension in the section view from the top of a tread to the ceiling. *Not in HouseCraft yet:* moving
+the point markers at the dimension's ends.
+
+## Stacked stairs (pages 71–75)
+
+1. Select the stair, **Ctrl+C**, go down to the Foundation, and **Edit › Paste Hold Position**. The copy climbs
+   from the basement to Floor 1, with its own stairwell cut in Floor 1.
+2. *Not in HouseCraft yet:* the **Tape Measure**.
+3. Hide stairs while you work round them: **Layer Display** tab (right side), untick **Stairs**.
+4. The railing-to-wall steps don't apply (HouseCraft made no railings). Draw the walls you want round the
+   stairwell with the **Straight Interior Wall** tool.
+
+## Clipping the section (pages 75–77)
+
+Open **Stair Section** and tick **Clip sides**. *Not in HouseCraft yet:* top and bottom clip elevations and clip
+lines you can drag.
+
+## Plan notes (pages 77–80)
+
+1. **Tools › Schedules › Place in Plan › Note Schedule**.
+2. **Callout** tool (Text Tools): click near the bottom of the stairs, type `HEADROOM 6' 8" MIN.`, then open it and
+   tick **Numbered Note**. It shows a number, and the Note Schedule lists the text.
+3. Copy it to the Foundation with **Ctrl+C**, then **Paste Hold Position**.
+4. *Not in HouseCraft yet:* note types, the capsule shape, the schedule in a CAD detail, and lining schedules up
+   with Align/Distribute.
+
+## Revisions (page 80)
+
+**File › Save As…** `Chic Cottage-Stairs`, then reopen `Chic Cottage-Current`.
+
+## What this tutorial showed HouseCraft still needs
+
+| Missing | FEATURES row |
+|---|---|
+| Newel/baluster styles and materials in stair defaults | ST-12 |
+| Lower garage floor (garage steps) | FD-07 |
+| Move a stair by typing on a dimension | DIM-03 |
+| Lock top/bottom/treads; Make Best Fit | ST-19 |
+| Auto Stairwell room and railings | ST-18 |
+| Movable dimension point markers in sections | SEC-06 |
+| Top/bottom clip planes in sections | SEC-01 |
+| Note types, capsule markers, schedules in CAD details | TXT-16, EST-26 |
+| Tiled views; Tape Measure | UI-32, DIM-24 |

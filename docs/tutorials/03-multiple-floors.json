@@ -325,6 +325,7 @@
       "commands": [
         {
           "op": "add_schedule",
+          "floor": "$floor1",
           "schedule_kind": "walls",
           "position": [
             14224.0,

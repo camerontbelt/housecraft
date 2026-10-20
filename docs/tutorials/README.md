@@ -18,7 +18,7 @@ has two files:
 | 1 | Exterior Walls (3) | 14 | 7 | [01-exterior-walls.md](01-exterior-walls.md) |
 | 2 | Interior Walls (28) | 16 | 11 | [02-interior-walls.md](02-interior-walls.md) |
 | 3 | Multiple Floors (45) | 10 | 8 | [03-multiple-floors.md](03-multiple-floors.md) |
-| 4 | Interior Stairs (60) | — | — | |
+| 4 | Interior Stairs (60) | 11 | 12 | [04-interior-stairs.md](04-interior-stairs.md) |
 | 5 | Doors and Windows (82) | — | — | |
 | 6 | Decks and Porches (105) | — | — | |
 | 7–19 | Roof, Interior Design and Kitchen & Bath tutorials (127–330) | — | — | |

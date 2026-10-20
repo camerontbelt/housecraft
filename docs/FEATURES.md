@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 493 items: 29 P0, about 127 P1, about 233 P2, about 96 P3, and 5 out of scope. Each item should eventually map to
+There are 495 items: 29 P0, about 127 P1, about 235 P2, about 96 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -311,6 +311,8 @@ These come from reading the whole list and change the architecture, not just the
 | ST-15 | Stairs/ramps saved to library | P2 | M5 ✓ Add Selected saves stairs (and solids, symbols) to the library; groups carry their symbols |
 | ST-16 | Plan display: overhang dashes, stringers, cut/break line, floors above/below | P1 | M3 ◐ break line, dashed treads above the cut, overhang dashes, UP/DN, floor above; stringer lines later |
 | ST-17 | Handrail returns & extensions | P2 | M3 ✓ handrail extensions past the top and bottom, and returns turning the rail ends down |
+| ST-18 | Auto Stairwell makes an Open Below room on the floor above, enclosed by railings with a doorway at the top | P2 | M9 |
+| ST-19 | Stair Lock Top / Lock Bottom / Lock Number of Treads and a Make Best Fit button | P2 | M9 |
 
 ## 11. Foundations
 
