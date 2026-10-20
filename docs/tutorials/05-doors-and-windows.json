@@ -1,0 +1,674 @@
+{
+  "tutorial": "Doors and Windows",
+  "source": "Chief Architect X18 Tutorial Guide, Floor Plan Tutorials, pages 82-104",
+  "include": "04-interior-stairs.json",
+  "steps": [
+    {
+      "step": "Door defaults: interior hinged door P04 panel, white jambs and casing",
+      "gap": "Door styles from the library, casing profiles and per-part materials aren't in the door defaults. Row: DW-20"
+    },
+    {
+      "step": "Hinged Door in the Foyer's front wall: it becomes an exterior door with glass; one between Bedroom and Bath is interior",
+      "commands": [
+        {
+          "op": "add_door",
+          "wall": "$wall_at:6140.4,-8473.3",
+          "at": [
+            6140.45,
+            -8473.281
+          ],
+          "style": "hinged",
+          "hinge": "right",
+          "swing_in": true
+        },
+        {
+          "op": "add_door",
+          "wall": "$wall_at:10439.4,-3282.9",
+          "at": [
+            10439.4,
+            -3282.95
+          ],
+          "style": "hinged"
+        }
+      ],
+      "save": {
+        "front": "opening"
+      },
+      "expect": [
+        {
+          "count": "opening",
+          "is": 2
+        }
+      ]
+    },
+    {
+      "step": "Two more hinged doors: Living to Bedroom, Foyer to Garage",
+      "commands": [
+        {
+          "op": "add_door",
+          "wall": "$wall_at:8134.3,-2159.0",
+          "at": [
+            8134.35,
+            -2159.0
+          ],
+          "style": "hinged"
+        },
+        {
+          "op": "add_door",
+          "wall": "$wall_at:8798.7,-5715.0",
+          "at": [
+            8798.719,
+            -5715.0
+          ],
+          "style": "hinged"
+        }
+      ],
+      "save": {
+        "more": "opening"
+      },
+      "expect": [
+        {
+          "count": "opening",
+          "is": 4
+        }
+      ]
+    },
+    {
+      "step": "Sliding door in the Kitchen's back wall",
+      "commands": [
+        {
+          "op": "add_door",
+          "wall": "$wall_at:2032.0,-61.1",
+          "at": [
+            2032.0,
+            -61.119
+          ],
+          "style": "sliding"
+        }
+      ],
+      "save": {
+        "slider": "opening"
+      },
+      "expect": [
+        {
+          "get": "$slider",
+          "path": "/opening_kind/style",
+          "is": "sliding"
+        }
+      ]
+    },
+    {
+      "step": "Doorways Foyer/Dining and Kitchen/Dining, a bifold to the Foyer closet, a pocket door to the Bedroom closet, a garage door",
+      "commands": [
+        {
+          "op": "add_door",
+          "wall": "$wall_at:4146.6,-6858.0",
+          "at": [
+            4146.55,
+            -6858.0
+          ],
+          "style": "doorway"
+        },
+        {
+          "op": "add_door",
+          "wall": "$wall_at:2032.0,-4959.3",
+          "at": [
+            2032.0,
+            -4959.35
+          ],
+          "style": "doorway"
+        },
+        {
+          "op": "add_door",
+          "wall": "$wall_at:8134.3,-7493.0",
+          "at": [
+            8134.35,
+            -7493.0
+          ],
+          "style": "bifold"
+        },
+        {
+          "op": "add_door",
+          "wall": "$wall_at:11938.0,-3282.9",
+          "at": [
+            11938.0,
+            -3282.95
+          ],
+          "style": "pocket"
+        },
+        {
+          "op": "add_door",
+          "wall": "$wall_at:10744.2,-11622.9",
+          "at": [
+            10744.2,
+            -11622.881
+          ],
+          "style": "garage"
+        }
+      ],
+      "save": {
+        "others": "opening"
+      },
+      "expect": [
+        {
+          "count": "opening",
+          "is": 10
+        },
+        {
+          "get": "$others.4",
+          "path": "/opening_kind/style",
+          "is": "garage"
+        }
+      ]
+    },
+    {
+      "step": "Change Opening/Hinge Side and Change Swing Side on the Living/Bedroom door; drag the swing to show it partly open",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$more.0",
+          "set": {
+            "hinge": "right",
+            "swing_in": false,
+            "open_percent": 45
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$more.0",
+          "path": "/hinge",
+          "is": "right"
+        },
+        {
+          "get": "$more.0",
+          "path": "/swing_in",
+          "is": false
+        }
+      ]
+    },
+    {
+      "step": "Make the bifold closet door 60\" wide",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$others.2",
+          "set": {
+            "width": "60\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$others.2",
+          "path": "/width",
+          "is": "60\""
+        }
+      ]
+    },
+    {
+      "step": "Sliding door lites: 3 across, 5 high",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$slider",
+          "set": {
+            "details": {
+              "muntins": {
+                "across": 3,
+                "up": 5
+              }
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$slider",
+          "path": "/details/muntins/across",
+          "is": 3
+        }
+      ]
+    },
+    {
+      "step": "Front door hardware from the library: Exterior Handle 2, dead bolts",
+      "gap": "Doors have no handle/lock hardware choices. Row: DW-19"
+    },
+    {
+      "step": "Door style from the library for the Garage door; interior door and molding materials set to white in Material Defaults; casing like the interior side",
+      "gap": "No door styles from the library or casing profiles per side. Row: DW-20"
+    },
+    {
+      "step": "Window defaults: single casement, 30\" x 54\"",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "window": {
+              "style": "casement",
+              "width": "30\"",
+              "height": "54\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/window/style",
+          "is": "casement"
+        }
+      ]
+    },
+    {
+      "step": "(Lites 3 across, 4 high in the window defaults)",
+      "gap": "Window defaults have no lites; set them per window. Row: DW-21"
+    },
+    {
+      "step": "Place 11 windows round the house",
+      "commands": [
+        {
+          "op": "add_window",
+          "wall": "$wall_at:61.1,-2362.2",
+          "at": [
+            61.119,
+            -2362.2
+          ]
+        },
+        {
+          "op": "add_window",
+          "wall": "$wall_at:5740.4,-61.1",
+          "at": [
+            5740.4,
+            -61.119
+          ]
+        },
+        {
+          "op": "add_window",
+          "wall": "$wall_at:9927.4,-61.1",
+          "at": [
+            9927.431,
+            -61.119
+          ]
+        },
+        {
+          "op": "add_window",
+          "wall": "$wall_at:10803.7,-61.1",
+          "at": [
+            10803.731,
+            -61.119
+          ]
+        },
+        {
+          "op": "add_window",
+          "wall": "$wall_at:61.1,-6731.0",
+          "at": [
+            61.119,
+            -6731.0
+          ]
+        },
+        {
+          "op": "add_window",
+          "wall": "$wall_at:12740.5,-1625.6",
+          "at": [
+            12740.481,
+            -1625.6
+          ]
+        },
+        {
+          "op": "add_window",
+          "wall": "$wall_at:12740.5,-4114.8",
+          "at": [
+            12740.481,
+            -4114.8
+          ]
+        },
+        {
+          "op": "add_window",
+          "wall": "$wall_at:12740.5,-8382.0",
+          "at": [
+            12740.481,
+            -8382.0
+          ]
+        },
+        {
+          "op": "add_window",
+          "wall": "$wall_at:1230.7,-8473.3",
+          "at": [
+            1230.709,
+            -8473.281
+          ]
+        },
+        {
+          "op": "add_window",
+          "wall": "$wall_at:3059.5,-8473.3",
+          "at": [
+            3059.509,
+            -8473.281
+          ]
+        },
+        {
+          "op": "add_window",
+          "wall": "$wall_at:5715.0,-8473.3",
+          "at": [
+            5715.0,
+            -8473.281
+          ]
+        }
+      ],
+      "save": {
+        "win": "opening"
+      },
+      "expect": [
+        {
+          "count": "opening",
+          "is": 21
+        },
+        {
+          "get": "$win.0",
+          "path": "/width",
+          "is": "30\""
+        },
+        {
+          "get": "$win.0",
+          "path": "/sill",
+          "is": "26\""
+        }
+      ]
+    },
+    {
+      "step": "Foyer window: fixed glass, 12\" x 77\", top at 80\"; 1 x 5 lites",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$win.10",
+          "set": {
+            "opening_kind": {
+              "type": "window",
+              "style": "fixed"
+            },
+            "width": "12\"",
+            "height": "77\"",
+            "sill": "3\"",
+            "details": {
+              "muntins": {
+                "across": 1,
+                "up": 5
+              }
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$win.10",
+          "path": "/opening_kind/style",
+          "is": "fixed"
+        },
+        {
+          "get": "$win.10",
+          "path": "/sill",
+          "is": "3\""
+        }
+      ]
+    },
+    {
+      "step": "Kitchen window 36\" high (its bottom rises to 44\"); garage window fixed, 48\" high, top at 80\"",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$win.0",
+          "set": {
+            "height": "36\"",
+            "sill": "44\""
+          }
+        },
+        {
+          "op": "update",
+          "id": "$win.7",
+          "set": {
+            "opening_kind": {
+              "type": "window",
+              "style": "fixed"
+            },
+            "height": "48\"",
+            "sill": "32\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$win.0",
+          "path": "/sill",
+          "is": "44\""
+        },
+        {
+          "get": "$win.7",
+          "path": "/height",
+          "is": "48\""
+        }
+      ]
+    },
+    {
+      "step": "(Changing a window's height keeps its top: Floor to Top stays 80\")",
+      "gap": "Changing the height in the window's specification keeps the bottom, not the top; set the sill too. Row: DW-22"
+    },
+    {
+      "step": "Center Object: the front door on the Living/Foyer room divider (placed there above), the Garage door, windows in their rooms",
+      "expect": [
+        {
+          "get": "$front",
+          "path": "/opening_kind/style",
+          "is": "hinged"
+        }
+      ]
+    },
+    {
+      "step": "Space the Bedroom windows 4 1/2\" apart by typing on the dimension between them",
+      "gap": "Only walls move by typing on a dimension; set the windows' positions (they're placed 4 1/2\" apart above). Row: DIM-03"
+    },
+    {
+      "step": "Reflect the Foyer window about the front door (Copy/Paste, Reflect About Object)",
+      "gap": "No 'reflect about object'; use Edit > Move / Copy / Rotate / Reflect with a mirror line through the door's centre. Row: CAD-29"
+    },
+    {
+      "step": "Kitchen window: Transform/Replicate, 2 copies 35 1/2\" apart along the wall",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$win.0"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": 0,
+            "dy": "-35 1/2\""
+          },
+          "copies": 2
+        }
+      ],
+      "save": {
+        "kcopies": "opening"
+      },
+      "expect": [
+        {
+          "count": "opening",
+          "is": 23
+        },
+        {
+          "get": "$kcopies.1",
+          "path": "/height",
+          "is": "36\""
+        }
+      ]
+    },
+    {
+      "step": "Living room: three windows 35 1/2\" apart",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$win.1"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": "-35 1/2\"",
+            "dy": 0
+          },
+          "copies": 2
+        }
+      ],
+      "save": {
+        "lcopies": "opening"
+      },
+      "expect": [
+        {
+          "count": "opening",
+          "is": 25
+        }
+      ]
+    },
+    {
+      "step": "Mulled unit: middle window fixed glass, left one hinged on the right, then Make Mulled Unit",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$lcopies.0",
+          "set": {
+            "opening_kind": {
+              "type": "window",
+              "style": "fixed"
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$lcopies.1",
+          "set": {
+            "hinge": "right"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$lcopies.0",
+          "path": "/opening_kind/style",
+          "is": "fixed"
+        }
+      ]
+    },
+    {
+      "step": "(Make Mulled Unit from three windows)",
+      "gap": "Separate windows can't be joined into one mulled unit (a window can be mulled within itself). Row: DW-11"
+    },
+    {
+      "step": "Door and window schedules (Dimensions and Top columns; no size, code or manufacturer)",
+      "commands": [
+        {
+          "op": "add_schedule",
+          "floor": "$floor1",
+          "schedule_kind": "doors",
+          "position": [
+            14224.0,
+            -7620.0
+          ]
+        },
+        {
+          "op": "add_schedule",
+          "floor": "$floor1",
+          "schedule_kind": "windows",
+          "position": [
+            14224.0,
+            -10160.0
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "count": "schedule",
+          "is": 4
+        }
+      ]
+    },
+    {
+      "step": "(Schedules in the 'Schedules Detail' CAD detail; schedule numbers off, objects keep their own labels)",
+      "gap": "Schedules can't go in CAD details, and the schedule-number callouts can't be swapped for labels. Rows: EST-26, EST-27"
+    },
+    {
+      "step": "Comment on the Garage door: '20 minute self-closing'",
+      "commands": [
+        {
+          "op": "set_object_info",
+          "id": "$more.1",
+          "info": {
+            "comment": "20 minute\nself-closing"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$more.1",
+          "path": "/id",
+          "is": "$more.1"
+        }
+      ]
+    },
+    {
+      "step": "Leader line with the Referenced Object > Comment macro, pointing at the Garage door",
+      "gap": "Text doesn't pick up the comment of the object its arrow points at. Row: TXT-23"
+    },
+    {
+      "step": "Note 'TEMPERED GLASS' by the sliding door; copy it beside the front door's side lite",
+      "commands": [
+        {
+          "op": "add_callout",
+          "floor": "$floor1",
+          "text": "TEMPERED GLASS",
+          "at": [
+            2032.0,
+            -762.0
+          ],
+          "marker": "circle"
+        }
+      ],
+      "save": {
+        "tg": "callout"
+      }
+    },
+    {
+      "step": "(Numbered note, and its copy)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$tg",
+          "set": {
+            "note": true
+          }
+        },
+        {
+          "op": "transform",
+          "ids": [
+            "$tg"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": "160\"",
+            "dy": "-290\""
+          },
+          "copies": 1
+        }
+      ],
+      "expect": [
+        {
+          "count": "callout",
+          "is": 4
+        }
+      ]
+    },
+    {
+      "step": "Save a copy as Chic Cottage-Openings",
+      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+    }
+  ]
+}

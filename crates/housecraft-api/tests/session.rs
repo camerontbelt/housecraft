@@ -731,7 +731,7 @@ fn garage_doors_get_their_own_size_and_doors_open_in_3d() {
     );
     let (garage, door) = (out.created[0], out.created[1]);
     let g = s.document().get::<Opening>(garage).unwrap();
-    assert_eq!(g.width, Length::from_feet(16.0));
+    assert_eq!(g.width, Length::from_feet(9.0), "a single-car door, as in Chief");
     assert_eq!(g.height, Length::from_feet(7.0));
     let d = s.document().get::<Opening>(door).unwrap().clone();
 

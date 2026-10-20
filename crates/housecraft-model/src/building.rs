@@ -875,7 +875,8 @@ impl DoorStyle {
     pub fn typical_size(self) -> Option<(Length, Length)> {
         match self {
             DoorStyle::Double => Some((Length::from_inches(60.0), Length::from_inches(80.0))),
-            DoorStyle::Garage => Some((Length::from_feet(16.0), Length::from_feet(7.0))),
+            // A single-car door (as Chief's default); a double is 16'.
+            DoorStyle::Garage => Some((Length::from_feet(9.0), Length::from_feet(7.0))),
             DoorStyle::Atrium => Some((Length::from_inches(60.0), Length::from_inches(80.0))),
             DoorStyle::Shower => Some((Length::from_inches(24.0), Length::from_inches(72.0))),
             _ => None,

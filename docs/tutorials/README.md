@@ -19,7 +19,7 @@ has two files:
 | 2 | Interior Walls (28) | 16 | 11 | [02-interior-walls.md](02-interior-walls.md) |
 | 3 | Multiple Floors (45) | 10 | 8 | [03-multiple-floors.md](03-multiple-floors.md) |
 | 4 | Interior Stairs (60) | 11 | 12 | [04-interior-stairs.md](04-interior-stairs.md) |
-| 5 | Doors and Windows (82) | — | — | |
+| 5 | Doors and Windows (82) | 19 | 11 | [05-doors-and-windows.md](05-doors-and-windows.md) |
 | 6 | Decks and Porches (105) | — | — | |
 | 7–19 | Roof, Interior Design and Kitchen & Bath tutorials (127–330) | — | — | |
 | 20–22 | Framing tutorials (331–381) | — | — | |

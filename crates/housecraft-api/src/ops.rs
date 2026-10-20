@@ -947,8 +947,20 @@ pub(crate) fn transform(
         return Ok(());
     }
 
-    if !lone_openings.is_empty() {
-        return invalid("copy doors and windows together with their wall");
+    // Doors and windows copied on their own repeat along their wall.
+    if !lone_openings.is_empty() && t.m != housecraft_geom::DMat2::IDENTITY {
+        return invalid("doors and windows can only be copied along their wall");
+    }
+    for o in &lone_openings {
+        let wall = expect::<Wall>(doc, o.wall)?;
+        let along = t.t.dot((v2(wall.end) - v2(wall.start)).normalize_or_zero());
+        if along.abs() < 1.0 {
+            return invalid("copies of a door or window must move along its wall");
+        }
+        for k in 1..=copies {
+            let copy = Opening { id: Id(0), position: Length::from_mm(o.position.mm() + along * k as f64), ..o.clone() };
+            out.created.push(doc.insert(copy));
+        }
     }
     let mut step = t;
     for _ in 0..copies {

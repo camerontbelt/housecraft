@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 495 items: 29 P0, about 127 P1, about 235 P2, about 96 P3, and 5 out of scope. Each item should eventually map to
+There are 502 items: 29 P0, about 127 P1, about 237 P2, about 101 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -268,6 +268,10 @@ These come from reading the whole list and change the architecture, not just the
 | DW-16 | Shutters (parametric or symbol, own layer) | P2 | M5 ✓ louvered, raised-panel and board shutters in plan and 3D, on the window's layer or one of their own |
 | DW-17 | Lintels, sills, aprons | P2 | M3 ✓ opening Trim: exterior lintel and sill, interior apron (3D) |
 | DW-18 | Glazing area and U-factor | P2 | M4 ✓ U-factor and SHGC per door/window; Glass Area, U-Factor, SHGC schedule columns |
+| DW-19 | Door hardware from the library (handles, locks, dead bolts per side) | P3 | M9 |
+| DW-20 | Door styles from the library; casing profile and size per side; interior/exterior door material defaults | P2 | M9 |
+| DW-21 | Lites (muntins) in the window and door defaults | P3 | M9 |
+| DW-22 | Changing a window's height in its specification keeps its top (Floor to Top) | P2 | M9 |
 
 ## 9. Roofs & ceilings
 
@@ -396,6 +400,7 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-26 | Delete Objects dialog in plans (by type, floor, room) | P2 | M9 |
 | CAD-27 | Paste Special: choose which attributes to paste | P3 | M9 |
 | CAD-28 | Bumping/pushing: objects push neighbours instead of overlapping | P3 | M9 |
+| CAD-29 | Reflect About Object (mirror a copy across a door, window or wall centre) | P3 | M9 |
 
 ## 14. Layers
 
@@ -576,6 +581,7 @@ These come from reading the whole list and change the architecture, not just the
 | EST-24 | Materials List Polyline: take-off for a drawn area | P2 | M9 |
 | EST-25 | Wall schedule construction columns (layers of the upper and lower wall) | P3 | M9 |
 | EST-26 | Schedules placed in CAD details (legends) | P2 | M9 |
+| EST-27 | Door/window schedules: show objects' own labels instead of schedule-number callouts | P3 | M9 |
 
 ## 21. Text, annotation & scripting
 
@@ -603,6 +609,7 @@ These come from reading the whole list and change the architecture, not just the
 | TXT-20 | Macro management (create, test) | P2 | M4 ✓ Tools > Text Macros: your own macros, built-in list with values, a try-it box |
 | TXT-21 | Scripting console (CA: Ruby → ours: Rhai/Lua over the command API) | P2 | M8 |
 | TXT-22 | Revision clouds with defaults | P1 | M4 ✓ |
+| TXT-23 | Referenced-object macros: text with an arrow shows the comment/size of what it points at | P3 | M9 |
 
 ## 22. Printing
 

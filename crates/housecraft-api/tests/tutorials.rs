@@ -339,6 +339,9 @@ fn run_steps(run: &mut Run, t: &Tutorial) -> (usize, Vec<String>, Vec<String>) {
                     }
                 }
                 Err(e) => {
+                    // Shown now too: a later step referring to what this one
+                    // should have made stops the run.
+                    eprintln!("{label}: {e}");
                     failures.push(format!("{label}: {e}"));
                     continue;
                 }
