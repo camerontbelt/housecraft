@@ -1170,6 +1170,16 @@ pub struct RoomType {
     /// Base, chair and crown moldings around rooms of this type.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub moldings: Vec<RoomMolding>,
+    /// An outdoor room (porch, deck): the foundation isn't built under it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub exterior: bool,
+}
+
+impl RoomType {
+    /// Outdoor: flagged, or (plans made before the flag) named Porch or Deck.
+    pub fn is_exterior(&self) -> bool {
+        self.exterior || matches!(self.name.as_str(), "Porch" | "Deck")
+    }
 }
 
 /// A room is an enclosed region of walls. Rooms are created and removed

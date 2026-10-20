@@ -3122,6 +3122,7 @@ impl Command {
                     wall_finish: String::new(),
                     living_area: *living_area,
                     moldings: vec![RoomMolding::base()],
+                    exterior: false,
                 }));
             }
             Command::AddWall {

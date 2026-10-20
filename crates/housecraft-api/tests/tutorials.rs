@@ -386,6 +386,13 @@ fn run_steps(run: &mut Run, t: &Tutorial) -> (usize, Vec<String>, Vec<String>) {
             continue;
         }
         for e in &s.expect {
+            // {"missing": "$wall_at:…"}: nothing is there.
+            if let Some(r) = e.get("missing").and_then(Value::as_str) {
+                if let Some(id) = run.resolve(r) {
+                    failures.push(format!("{label}: expected nothing at {r}, found #{}", id.0));
+                }
+                continue;
+            }
             let e = run.substitute(e, &label);
             if let Err(why) = check(run, &e, &label) {
                 failures.push(format!("{label}: {why}"));

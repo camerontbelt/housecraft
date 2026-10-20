@@ -1,0 +1,320 @@
+{
+  "tutorial": "Decks and Porches",
+  "source": "Chief Architect X18 Tutorial Guide, Floor Plan Tutorials, pages 105-126",
+  "include": "05-doors-and-windows.json",
+  "steps": [
+    {
+      "step": "Pin CHIC COTTAGE-CURRENT in the Dashboard's recent documents",
+      "gap": "No Dashboard or pinning. Rows: UI-30, PRJ-02"
+    },
+    {
+      "step": "Deck Railing, Railing and Half Wall defaults (5 1/2\" capped posts, 1 1/4\" square balusters 5\" OC, white; half wall Siding-6 over Stone-6 at 20\", 16\" upper)",
+      "gap": "No separate Deck Railing / Railing / Half Wall defaults or a Half Wall tool; draw walls and set each one's height (and pony) in its specification. Row: WL-29"
+    },
+    {
+      "step": "Porch: two half walls enclosing the area outside the front door, the front one 8' from the entry wall, the left one in line with the Dining/Foyer wall",
+      "commands": [
+        {
+          "op": "add_walls",
+          "floor": "$floor1",
+          "height": "36\"",
+          "points": [
+            [
+              4146.55,
+              -8473.281
+            ],
+            [
+              4146.55,
+              -10911.681
+            ],
+            [
+              8798.719,
+              -10911.681
+            ]
+          ]
+        }
+      ],
+      "save": {
+        "half": "wall"
+      },
+      "expect": [
+        {
+          "get": "$half.1",
+          "path": "/height",
+          "is": "36\""
+        }
+      ]
+    },
+    {
+      "step": "Make the new room a Porch",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:6350.0,-9652.0",
+          "set": {
+            "room_type": "$named:room_type:Porch"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:6350.0,-9652.0",
+          "path": "/room_type",
+          "is": "$named:room_type:Porch"
+        },
+        {
+          "missing": "$wall_at:6350.0,-10810.1@Foundation"
+        },
+        {
+          "get": "$wall_at:3810.0,-8473.3@Foundation",
+          "path": "/wall_type",
+          "is": "$named:8\" Concrete with Furring"
+        }
+      ]
+    },
+    {
+      "step": "(The basement doesn't extend under the porch)",
+      "expect": [
+        {
+          "missing": "$wall_at:4044.9,-9652.0@Foundation"
+        }
+      ]
+    },
+    {
+      "step": "Deck room defaults: 1\" planks with 1/4\" gaps; deck post footings 30\" deep",
+      "gap": "Deck defaults live on each deck (set below), and post footings have no depth setting. Row: SITE-26"
+    },
+    {
+      "step": "Deck at the back: three deck railings enclosing a deck room, 36\" in from each side wall and 8' deep",
+      "commands": [
+        {
+          "op": "add_deck",
+          "floor": "$floor1",
+          "points": [
+            [
+              914.4,
+              30.162
+            ],
+            [
+              11887.2,
+              30.162
+            ],
+            [
+              11887.2,
+              2468.562
+            ],
+            [
+              914.4,
+              2468.562
+            ]
+          ]
+        }
+      ],
+      "save": {
+        "deck": "deck"
+      },
+      "expect": [
+        {
+          "count": "deck",
+          "is": 1
+        },
+        {
+          "get": "$deck",
+          "path": "/railing",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "(Plank thickness 1\", gap 1/4\")",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$deck",
+          "set": {
+            "plank_thickness": "1\"",
+            "plank_gap": "1/4\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$deck",
+          "path": "/plank_gap",
+          "is": "1/4\""
+        }
+      ]
+    },
+    {
+      "step": "(In Chief the deck is a room drawn with Deck Railings)",
+      "gap": "Decks are drawn with the Deck tool as one object, not as a room enclosed by deck railings. Row: SITE-26"
+    },
+    {
+      "step": "Move the three automatic dimensions out of the deck (Transform/Replicate, 8' up); they stop refreshing",
+      "gap": "Automatic dimensions can't be moved or edited without being rebuilt. Row: DIM-27"
+    },
+    {
+      "step": "Add and remove extension lines; extend a dimension with Add Segments",
+      "gap": "No extension-line or add-segment handles on dimensions. Row: DIM-28"
+    },
+    {
+      "step": "Terrain perimeter, 60' deep, centred on the house's right side; surface 28\" below the subfloor at the Garage's front corner",
+      "commands": [
+        {
+          "op": "add_terrain",
+          "floor": "$floor1",
+          "points": [
+            [
+              -6096.0,
+              6096.0
+            ],
+            [
+              18897.6,
+              6096.0
+            ],
+            [
+              18897.6,
+              -12192.0
+            ],
+            [
+              -6096.0,
+              -12192.0
+            ]
+          ]
+        }
+      ],
+      "save": {
+        "terrain": "terrain"
+      },
+      "expect": [
+        {
+          "count": "terrain",
+          "is": 1
+        }
+      ]
+    },
+    {
+      "step": "(Surface at the reference point: -28\")",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$terrain",
+          "set": {
+            "base_elevation": "-28\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$terrain",
+          "path": "/base_elevation",
+          "is": "-28\""
+        }
+      ]
+    },
+    {
+      "step": "(Terrain elevation reference point dragged to the Garage corner)",
+      "gap": "No terrain reference point; the base elevation is the terrain's height everywhere without elevation data. Row: SITE-27"
+    },
+    {
+      "step": "Turn on the Footings, Deck Post layer",
+      "gap": "Deck post footings have no layer of their own. Row: SITE-26"
+    },
+    {
+      "step": "Porch stem walls on Floor 0 under the porch walls, 37 1/2\" high, no floor under the porch room",
+      "gap": "No Straight Foundation Wall tool or room stem-wall height; draw walls on the Foundation floor and set their height. Row: FD-09"
+    },
+    {
+      "step": "Exterior stair defaults (capped newels 5 1/2\" x 44\", white rails, redwood treads, treated stringers)",
+      "gap": "Stair defaults have no newel style or per-part materials. Row: ST-12"
+    },
+    {
+      "step": "Deck stairs: click outside the left deck railing; they go down to the terrain (DN) and open the railing; 5' wide with railings both sides",
+      "gap": "Stairs only climb to the floor above; exterior stairs down to the terrain, and the doorway they cut in the railing, aren't there. Row: ST-20"
+    },
+    {
+      "step": "Concrete porch stairs, 6' wide, centred on the front door, solid concrete",
+      "gap": "Same: no stairs down to the terrain; no solid (concrete) stair style. Row: ST-20"
+    },
+    {
+      "step": "Notes: 'CONCRETE STEPS TO GRADE', 'FRAMED STEPS TO GRADE', and numbered note 'EXTERIOR LANDING 36\" MINIMUM IN DIRECTION OF TRAVEL' (copied to both stairs)",
+      "commands": [
+        {
+          "op": "add_text",
+          "floor": "$floor1",
+          "position": [
+            6096.0,
+            -12435.681
+          ],
+          "text": "CONCRETE STEPS TO GRADE"
+        },
+        {
+          "op": "add_text",
+          "floor": "$floor1",
+          "position": [
+            -762.0,
+            1524.0
+          ],
+          "text": "FRAMED STEPS TO GRADE"
+        },
+        {
+          "op": "add_callout",
+          "floor": "$floor1",
+          "text": "EXTERIOR LANDING 36\" MINIMUM IN DIRECTION OF TRAVEL",
+          "at": [
+            -508.0,
+            1016.0
+          ],
+          "marker": "circle"
+        }
+      ],
+      "save": {
+        "landing": "callout"
+      },
+      "expect": [
+        {
+          "text_exists": "CONCRETE STEPS TO GRADE"
+        }
+      ]
+    },
+    {
+      "step": "(Numbered note and its copy)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$landing",
+          "set": {
+            "note": true
+          }
+        },
+        {
+          "op": "transform",
+          "ids": [
+            "$landing"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": "260\"",
+            "dy": "-560\""
+          },
+          "copies": 1
+        }
+      ],
+      "expect": [
+        {
+          "get": "$landing",
+          "path": "/note",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "Reorder the Note Schedule by dragging rows; Move Up/Down in Schedule buttons",
+      "gap": "Schedule rows can't be reordered. Row: EST-28"
+    },
+    {
+      "step": "Save a copy; organise the archive plans in a Project Browser folder",
+      "gap": "No Make a Copy or document folders (plans are separate files). Row: PRJ-09"
+    }
+  ]
+}

@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 502 items: 29 P0, about 127 P1, about 237 P2, about 101 P3, and 5 out of scope. Each item should eventually map to
+There are 511 items: 29 P0, about 130 P1, about 241 P2, about 103 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -182,6 +182,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-14 | Per-room label control: hide/show, rotate, move; size line on its own layer | P2 | M9 |
 | RM-15 | Split rooms inherit the parent room's settings; merged rooms keep the larger room's | P1 | M9 ✓ rooms::sync compares with the plan before the change |
 | RM-16 | Floor/Ceiling Platform defaults shared by new floors (structure, finishes) | P2 | M9 |
+| RM-17 | Outdoor room types (Porch, Deck) are left out of the foundation | P1 | M9 ✓ RoomType.exterior; walls that only enclose outdoor rooms don't shape the foundation |
 
 ## 6. Walls
 
@@ -215,6 +216,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-26 | Edit Wall Layer Intersection handles (where layers of meeting walls stop) | P3 | M9 |
 | WL-27 | Split walls automatically where another wall crosses or meets them | P2 | M9 |
 | WL-28 | Align With Wall Above / Below edit buttons | P2 | M9 |
+| WL-29 | Half Wall, Railing and Deck Railing tools with their own defaults (height, posts, balusters, materials, no-locate) | P1 | M9 |
 
 ## 7. Cabinets
 
@@ -317,19 +319,21 @@ These come from reading the whole list and change the architecture, not just the
 | ST-17 | Handrail returns & extensions | P2 | M3 ✓ handrail extensions past the top and bottom, and returns turning the rail ends down |
 | ST-18 | Auto Stairwell makes an Open Below room on the floor above, enclosed by railings with a doorway at the top | P2 | M9 |
 | ST-19 | Stair Lock Top / Lock Bottom / Lock Number of Treads and a Make Best Fit button | P2 | M9 |
+| ST-20 | Exterior stairs that go down to the terrain (DN), cutting a doorway in the railing; solid concrete stair style | P1 | M9 |
 
 ## 11. Foundations
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | FD-01 | Slab, pier, crawlspace, full basement, stem walls, footings, post & beam, grade beam | P1 | M3 ◐ slab, crawlspace/stem wall, basement, footings, piers with beams; post & beam framing, grade beam (M6) later |
-| FD-02 | Auto-rebuild foundation from floor 1 | P1 | M3 ✓ rebuilding keeps walls you've edited or added on the foundation floor (only outside walls that no longer fit are replaced) |
+| FD-02 | Auto-rebuild foundation from floor 1 | P1 | M3 ✓ rebuilding keeps walls you've edited or added on the foundation floor (only outside walls that no longer fit are replaced); walls rebuilt along the same line keep their type, footing and height |
 | FD-03 | Round piers / square pads | P2 | M3 ✓ pier foundations with round or square piers on square pads |
 | FD-04 | Monolithic slabs with ledges and garage curbs | P2 | M3 ◐ slab foundations can put a 4" curb round garages (broken at doors); no brick ledges |
 | FD-05 | Footings under bearing walls; stepped footings | P2 | M3 ◐ walls marked Bearing get a footing (plan and 3D); no stepped footings |
 | FD-06 | Slab and slab-hole drawing tools (with footing option) | P2 | M9 |
 | FD-07 | Garage areas over a basement: separate shallow stem walls with a curb; garage slab supplied from below | P2 | M9 |
 | FD-08 | Center footing on main layer (footing offset for furred walls) | P3 | M9 |
+| FD-09 | Straight Foundation Wall tool; per-room stem wall height and 'no floor under this room' | P2 | M9 |
 
 ## 12. Framing
 
@@ -449,6 +453,8 @@ These come from reading the whole list and change the architecture, not just the
 | DIM-24 | Tape Measure tool (measure without placing a dimension) | P2 | M9 |
 | DIM-25 | Delete Dimensions (automatic, manual or all, by floor) | P2 | M9 |
 | DIM-26 | Auto Room Dimension: dimension every wall of a selected room | P2 | M9 |
+| DIM-27 | Moving or editing automatic dimensions keeps them (they become manual) | P2 | M9 |
+| DIM-28 | Dimension extension-line and add-segment handles | P2 | M9 |
 
 ## 16. Lighting, electrical & HVAC
 
@@ -492,6 +498,8 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-22 | Landscaping plans and plant schedules | P3 | M6 ✓ plant schedule; plants and site work in the materials list |
 | SITE-23 | Plant growth over time | P3 | M8 |
 | SITE-24 | 3D plants with shadows | P2 | M7 ✓ plants cast sun shadows in 3D |
+| SITE-26 | Decks as rooms enclosed by Deck Railings (Deck room type defaults: planking, framing, post footing depth and layer) | P2 | M9 |
+| SITE-27 | Terrain elevation reference point (surface height set at a chosen point) | P3 | M9 |
 
 ## 18. 3D design & materials
 
@@ -582,6 +590,7 @@ These come from reading the whole list and change the architecture, not just the
 | EST-25 | Wall schedule construction columns (layers of the upper and lower wall) | P3 | M9 |
 | EST-26 | Schedules placed in CAD details (legends) | P2 | M9 |
 | EST-27 | Door/window schedules: show objects' own labels instead of schedule-number callouts | P3 | M9 |
+| EST-28 | Reorder schedule rows (drag rows; Move Up/Down in Schedule) | P3 | M9 |
 
 ## 21. Text, annotation & scripting
 

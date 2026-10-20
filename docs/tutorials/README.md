@@ -20,7 +20,7 @@ has two files:
 | 3 | Multiple Floors (45) | 10 | 8 | [03-multiple-floors.md](03-multiple-floors.md) |
 | 4 | Interior Stairs (60) | 11 | 12 | [04-interior-stairs.md](04-interior-stairs.md) |
 | 5 | Doors and Windows (82) | 19 | 11 | [05-doors-and-windows.md](05-doors-and-windows.md) |
-| 6 | Decks and Porches (105) | — | — | |
+| 6 | Decks and Porches (105) | 9 | 14 | [06-decks-and-porches.md](06-decks-and-porches.md) |
 | 7–19 | Roof, Interior Design and Kitchen & Bath tutorials (127–330) | — | — | |
 | 20–22 | Framing tutorials (331–381) | — | — | |
 | 23–26 | Landscaping tutorials (382–450) | — | — | |

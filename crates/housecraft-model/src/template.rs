@@ -226,6 +226,7 @@ pub(crate) fn new_document(name: String) -> Document {
             },
             living_area: living,
             moldings: if living { vec![RoomMolding::base()] } else { Vec::new() },
+            exterior: matches!(name, "Porch" | "Deck"),
         });
         if name == "Unspecified" {
             unspecified = id;

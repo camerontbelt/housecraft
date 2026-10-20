@@ -3043,3 +3043,23 @@ fn time_log_merges_totals_and_exports() {
     s.apply(&[Command::DeleteTime { index: None }]).unwrap();
     assert!(s.document().settings.time_log.is_empty());
 }
+
+#[test]
+fn foundations_leave_out_porches() {
+    let mut s = Session::new(Document::new("Porch"));
+    apply(&mut s, r#"[{"op": "add_walls", "points": [[0,0],[9000,0],[9000,6000],[0,6000]], "closed": true},
+        {"op": "build_foundation", "kind": "basement"}]"#);
+    let foundation = s.document().floors_by_elevation()[0].id;
+    let count = |s: &Session| s.document().walls_on(foundation).count();
+    assert_eq!(count(&s), 4);
+    // Half walls in front enclose a porch.
+    let floor1 = s.document().floors_by_elevation()[1].id;
+    apply(&mut s, &format!(r#"[{{"op": "add_walls", "floor": {}, "height": "36\"", "points": [[2000,0],[2000,-2400],[7000,-2400],[7000,0]]}}]"#, floor1.0));
+    let rooms: Vec<_> = s.document().rooms_on(floor1).map(|r| (r.anchor.x().mm(), r.anchor.y().mm())).collect();
+    let porch_room = s.document().rooms_on(floor1).find(|r| r.anchor.y().mm() < 0.0).unwrap_or_else(|| panic!("{rooms:?} {:?}", housecraft_api::geom::rooms::detect(s.document(), floor1).rooms.len())).id;
+    let porch_type = s.document().find_named::<RoomType>("Porch").unwrap().id;
+    s.apply(&[Command::Update { id: porch_room, set: patch(serde_json::json!({"room_type": porch_type})) }]).unwrap();
+    let ys: Vec<f64> = s.document().walls_on(foundation).flat_map(|w| [w.start.y().mm(), w.end.y().mm()]).collect();
+    assert!(ys.iter().all(|y| *y > -100.0), "the basement stays under the house: {ys:?}");
+    assert_eq!(count(&s), 4);
+}

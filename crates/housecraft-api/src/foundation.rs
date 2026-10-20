@@ -25,9 +25,34 @@ fn foundation_floor(doc: &Document) -> Option<Floor> {
 
 /// Wall centrelines (start, end) for the foundation under `above`, drawn
 /// clockwise so the exterior face is on the left.
+/// The outlines of the building on `floor`, leaving out outdoor rooms
+/// (porches, decks): walls that only enclose them don't count.
+fn building_footprints(doc: &Document, floor: Id) -> Vec<Vec<housecraft_geom::DVec2>> {
+    let regions = rooms::detect(doc, floor);
+    let outdoor = |i: usize| {
+        doc.rooms_on(floor)
+            .find(|r| regions.room_at(housecraft_geom::v2(r.anchor)) == Some(i))
+            .and_then(|r| doc.get::<RoomType>(r.room_type))
+            .is_some_and(RoomType::is_exterior)
+    };
+    let (mut outside, mut inside) = (Vec::new(), Vec::new());
+    for (i, region) in regions.rooms.iter().enumerate() {
+        if outdoor(i) { &mut outside } else { &mut inside }.extend(region.walls.iter().copied());
+    }
+    let only_outdoor: Vec<Id> = outside.into_iter().filter(|w| !inside.contains(w)).collect();
+    if only_outdoor.is_empty() {
+        return regions.footprints;
+    }
+    let mut without = doc.clone();
+    for w in only_outdoor {
+        without.remove(w);
+    }
+    rooms::detect(&without, floor).footprints
+}
+
 fn desired_walls(doc: &Document, above: Id, spec: &Foundation) -> Vec<(Point2, Point2)> {
     let mut out = Vec::new();
-    for footprint in rooms::detect(doc, above).footprints {
+    for footprint in building_footprints(doc, above) {
         let outline = simplify_collinear(&footprint);
         if outline.len() < 3 {
             continue;
@@ -120,13 +145,15 @@ fn rebuild_walls(
             let near = |p: housecraft_geom::DVec2| {
                 (0..fp.len()).any(|i| (housecraft_geom::math::distance_to_segment(p, fp[i], fp[(i + 1) % fp.len()]) - half).abs() < 2.0)
             };
-            near(a) && near(b) && near((a + b) / 2.0)
+            // Along its length (its ends can sit at an inside corner).
+            [0.25, 0.5, 0.75].iter().all(|t| near(a + (b - a) * *t))
         })
     };
     let want: Vec<_> = desired.iter().map(|(a, b)| pair(*a, *b)).collect();
     let existing: Vec<Wall> = doc.walls_on(floor).cloned().collect();
     let outside: Vec<Id> = existing.iter().filter(|w| outside(w)).map(|w| w.id).collect();
     let mut kept = Vec::new();
+    let mut removed: Vec<Wall> = Vec::new();
     let mut changed = false;
     for w in &existing {
         let k = pair(w.start, w.end);
@@ -152,6 +179,7 @@ fn rebuild_walls(
         }
         doc.remove(w.id);
         out.deleted.push(w.id);
+        removed.push(w.clone());
         changed = true;
     }
     let layer = doc.active_defaults().layers.walls;
@@ -159,15 +187,25 @@ fn rebuild_walls(
         if kept.contains(&pair(start, end)) {
             continue;
         }
+        // A wall replaced along the same line passes on its type, footing and height.
+        let (a, b) = (housecraft_geom::v2(start), housecraft_geom::v2(end));
+        let dir = (b - a).normalize_or_zero();
+        let along_line = |w: &&Wall| {
+            let (p, q) = (housecraft_geom::v2(w.start), housecraft_geom::v2(w.end));
+            let off = |x: housecraft_geom::DVec2| (x - a).perp_dot(dir).abs();
+            let (lo, hi) = ((p - a).dot(dir).min((q - a).dot(dir)), (p - a).dot(dir).max((q - a).dot(dir)));
+            off(p) < 1.0 && off(q) < 1.0 && hi > 1.0 && lo < (b - a).length() - 1.0
+        };
+        let was = (!reset).then(|| removed.iter().find(along_line)).flatten();
         out.created.push(doc.insert(Wall {
             id: Id(0),
             floor,
             start,
             end,
-            wall_type,
-            height: None,
+            wall_type: was.map_or(wall_type, |w| w.wall_type),
+            height: was.and_then(|w| w.height),
             layer,
-            footing,
+            footing: was.map_or(footing, |w| w.footing),
             roof: Default::default(),
             renovation: Default::default(),
             shape: Default::default(),
