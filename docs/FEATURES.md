@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 541 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
+There are 543 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -491,6 +491,8 @@ These come from reading the whole list and change the architecture, not just the
 | EL-10 | Plumbing trim fixtures: faucets, tub spouts, shower heads | P2 | M9 |
 | EL-11 | Light fixture library: chandeliers, pendants, flush mounts, lanterns, sconce styles, table and floor lamps, bollards; fixture size; Electrical Defaults choosing each tool's symbol | P2 | M9 |
 | EL-12 | One Light tool: sconce on a wall, ceiling fixture in a room, path light outside | P3 | M9 |
+| EL-13 | Electrical library: data jacks, alarms and security symbols, air switches, appliance (disposal) and floor-mounted outlets | P2 | M9 |
+| EL-14 | Electrical placement: WP outlets outside, floor outlet symbol in the open, counter-height outlets over countertops, distance from wall / wall cut, portrait or landscape on the wall | P2 | M9 |
 
 ## 17. Terrain, site & landscape
 

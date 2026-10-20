@@ -35,7 +35,7 @@ has two files:
 | 15 | Cabinet Layout (260) | 7 | 4 | [15-cabinet-layout.md](15-cabinet-layout.md) |
 | 16 | Appliances and Fixtures (277) | 10 | 6 | [16-appliances-and-fixtures.md](16-appliances-and-fixtures.md) |
 | 17 | Light Fixtures (298) | 15 | 12 | [17-light-fixtures.md](17-light-fixtures.md) |
-| 18 | Electrical Objects (317–330) | — | — | |
+| 18 | Electrical Objects (317) | 13 | 11 | [18-electrical-objects.md](18-electrical-objects.md) |
 | 19–21 | Framing tutorials (331–381) | — | — | |
 | 22–25 | Landscaping tutorials (382–450) | — | — | |
 | 26–28 | Layout tutorials (451–500) | — | — | |

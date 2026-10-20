@@ -1,0 +1,389 @@
+{
+  "tutorial": "Electrical Objects",
+  "source": "Chief Architect X18 Tutorial Guide, Kitchen and Bath Tutorials, pages 317-330",
+  "include": "17-light-fixtures.json",
+  "steps": [
+    {
+      "step": "Outlets: behind the refrigerator; left of the sliding door to the Deck, inside and out",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "outlet",
+          "at": [
+            2921.0,
+            -4908.55
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "outlet",
+          "at": [
+            6858.0,
+            -203.2
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "outlet",
+          "at": [
+            6858.0,
+            50.8
+          ]
+        }
+      ],
+      "save": {
+        "out": "electrical"
+      },
+      "expect": [
+        {
+          "get": "$out.0",
+          "path": "/electrical_kind",
+          "is": "outlet"
+        },
+        {
+          "get": "$out.2",
+          "path": "/rotation",
+          "is": 90.0
+        },
+        {
+          "get": "$out.1",
+          "path": "/rotation",
+          "is": -90.0
+        }
+      ]
+    },
+    {
+      "step": "(Weatherproof WP symbol outside; floor outlet when you click in the open; Height to Center 11 1/2\")",
+      "gap": "Outlets outside aren't marked WP, and an outlet clicked in the open keeps the wall symbol; outlets default to 12\" high. Row: EL-14"
+    },
+    {
+      "step": "Recess the Deck outlet into the wall (distance from wall -4\", cuts the wall 4\")",
+      "gap": "Electrical objects sit on the wall face; no distance from wall or wall cut. Row: EL-14"
+    },
+    {
+      "step": "GFCI outlet under the left Kitchen window: placed over the counter it starts at 43\"; set 39\"",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "gfci_outlet",
+          "at": [
+            86.519,
+            -3251.2
+          ]
+        }
+      ],
+      "save": {
+        "gfci": "electrical"
+      }
+    },
+    {
+      "step": "(height)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$gfci",
+          "set": {
+            "height": "39\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$gfci",
+          "path": "/height",
+          "is": "39\""
+        }
+      ]
+    },
+    {
+      "step": "(Outlets over a countertop start at counter height)",
+      "gap": "New outlets don't notice the countertop; set the height yourself. Row: EL-14"
+    },
+    {
+      "step": "Wall Elevation: turn the outlet horizontal (don't regenerate its plan symbol)",
+      "gap": "Electrical objects have no rotation about the wall's face (portrait/landscape). Row: EL-14"
+    },
+    {
+      "step": "Counter outlets: centre on the sink base, then move 72\" and Transform/Replicate three copies 48\" apart",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$gfci",
+          "set": {
+            "position": [
+              86.519,
+              -1422.4
+            ]
+          }
+        },
+        {
+          "op": "transform",
+          "ids": [
+            "$gfci"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": 0,
+            "dy": "-48\""
+          },
+          "copies": 3
+        }
+      ],
+      "save": {
+        "counter": "electrical"
+      },
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 52
+        }
+      ]
+    },
+    {
+      "step": "Copy/Paste one more GFCI outlet on the Dining wall, left of the refrigerator",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "gfci_outlet",
+          "at": [
+            2159.0,
+            -4908.55
+          ],
+          "height": "39\""
+        }
+      ],
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 53
+        }
+      ]
+    },
+    {
+      "step": "Library: a 220V floor receptacle at the island range; a garbage disposal outlet behind the sink base",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "outlet240",
+          "at": [
+            2032.0,
+            -2540.0
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 54
+        }
+      ]
+    },
+    {
+      "step": "(Floor 220V symbol; disposal outlet)",
+      "gap": "One 240V outlet symbol; no floor-mounted or appliance (disposal) outlets. Row: EL-13"
+    },
+    {
+      "step": "Switches: right of the sliding door to the Deck, right of the doorway into the Dining room",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "switch",
+          "at": [
+            7366.0,
+            -203.2
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "switch",
+          "at": [
+            3810.0,
+            -4908.55
+          ]
+        }
+      ],
+      "save": {
+        "sw": "electrical"
+      },
+      "expect": [
+        {
+          "get": "$sw.0",
+          "path": "/height",
+          "is": null
+        }
+      ]
+    },
+    {
+      "step": "(Air switch on the countertop for the disposal)",
+      "gap": "No air switch. Row: EL-13"
+    },
+    {
+      "step": "Two more switches beside the Deck one, then Make Ganged Electrical Block; a gang by the Dining doorway too",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "switch",
+          "at": [
+            7467.6,
+            -203.2
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "switch",
+          "at": [
+            7569.2,
+            -203.2
+          ]
+        }
+      ],
+      "save": {
+        "gang": "electrical"
+      },
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 58
+        }
+      ]
+    },
+    {
+      "step": "(Make Ganged Electrical Block)",
+      "gap": "No ganged electrical blocks. Row: EL-09"
+    },
+    {
+      "step": "Electrical Connection: the Deck switch to the Deck wall light and on to the Deck ceiling light",
+      "commands": [
+        {
+          "op": "connect_switch",
+          "switch": "$sw.0",
+          "fixtures": [
+            "$wall.1",
+            "$lib.3"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$sw.0",
+          "path": "/controls/1",
+          "is": "$lib.3"
+        }
+      ]
+    },
+    {
+      "step": "Three-way: the middle Deck switch through the four right-hand Kitchen can lights to the Dining doorway switch",
+      "commands": [
+        {
+          "op": "connect_switch",
+          "switch": "$gang.0",
+          "fixtures": [
+            "$rep.0",
+            "$rep.1",
+            "$rep.2",
+            "$rep.3"
+          ]
+        },
+        {
+          "op": "connect_switch",
+          "switch": "$sw.1",
+          "fixtures": [
+            "$rep.0",
+            "$rep.1",
+            "$rep.2",
+            "$rep.3"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$sw.1",
+          "path": "/controls/3",
+          "is": "$rep.3"
+        }
+      ]
+    },
+    {
+      "step": "(Connections drawn as splines from fixture to fixture)",
+      "gap": "Wiring is drawn switch to each fixture; there are no editable connection splines chaining fixtures. Row: EL-01"
+    },
+    {
+      "step": "Data and security: detectors, alarms and jacks from the library",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "smoke_detector",
+          "at": [
+            10414.0,
+            -1524.0
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "count": "electrical",
+          "is": 59
+        }
+      ]
+    },
+    {
+      "step": "(Jacks, alarms and other special symbols)",
+      "gap": "Smoke detectors and junction boxes only; no data jacks, alarms or security symbols. Row: EL-13"
+    },
+    {
+      "step": "Electrical legend: an Electrical Schedule in the Legends and Notes CAD detail, titled Electrical Legend, with scaled pictures",
+      "commands": [
+        {
+          "op": "add_schedule",
+          "floor": "$floor1",
+          "schedule_kind": "fixtures",
+          "position": [
+            -5080.0,
+            -3810.0
+          ]
+        }
+      ],
+      "save": {
+        "legend": "schedule"
+      }
+    },
+    {
+      "step": "(pictures)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$legend",
+          "set": {
+            "thumbnails": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$legend",
+          "path": "/thumbnails",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "(Title; schedules in a CAD detail)",
+      "gap": "Schedules have the kind's title and sit in the plan. Row: EST-31"
+    },
+    {
+      "step": "Make a Copy as Chic Cottage-Electrical; Project Browser folder Kitchen and Bath Tutorials holding the revisions",
+      "gap": "No Make a Copy; Project Browser has no user folders. Rows: PRJ-45, PRJ-09"
+    }
+  ]
+}
