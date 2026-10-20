@@ -243,7 +243,14 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
             .filter(|m| m.floor == floor && serde_json::to_value(m.role).unwrap() == *role)
             .collect();
         if members.is_empty() {
-            return Err(format!("no {role} members"));
+            let elsewhere: Vec<String> = doc
+                .iter::<FramingMember>()
+                .filter(|m| serde_json::to_value(m.role).unwrap() == *role)
+                .filter_map(|m| doc.get::<Floor>(m.floor).map(|f| f.name.clone()))
+                .collect::<std::collections::BTreeSet<_>>()
+                .into_iter()
+                .collect();
+            return Err(format!("no {role} members (found on: {elsewhere:?})"));
         }
         let along_x = members.iter().filter(|m| (m.b.0.mm() - m.a.0.mm()).abs() > (m.b.1.mm() - m.a.1.mm()).abs()).count();
         let found = if along_x * 2 > members.len() { "x" } else { "y" };

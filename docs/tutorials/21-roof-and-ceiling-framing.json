@@ -1,0 +1,304 @@
+{
+  "tutorial": "Roof and Ceiling Framing",
+  "source": "Chief Architect X18 Tutorial Guide, Framing Tutorials, pages 364-381",
+  "include": "20-wall-framing.json",
+  "steps": [
+    {
+      "step": "Framing, Roof Plan View, set to open on the 2nd floor",
+      "expect": [
+        {
+          "get": "$named:plan_view:Framing Plan",
+          "path": "/name",
+          "is": "Framing Plan"
+        }
+      ]
+    },
+    {
+      "step": "Roof framing defaults: rafters 16\" OC, 11 1/4\" deep (Use Framing Reference)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "framing": {
+              "rafter_spacing": "16\"",
+              "rafter_depth": "11 1/4\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/framing/rafter_depth",
+          "is": "11 1/4\""
+        }
+      ]
+    },
+    {
+      "step": "(Ridge board 3 1/2\" x 15 1/4\")",
+      "gap": "The ridge is lumber-width and 2\" deeper than the rafters; no ridge size setting. Row: FR-40"
+    },
+    {
+      "step": "Build Framing once: roofs",
+      "commands": [
+        {
+          "op": "build_framing",
+          "parts": {
+            "walls": false,
+            "floors": false,
+            "ceilings": false,
+            "roofs": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "joists": "rafter",
+          "floor": "$floor1"
+        },
+        {
+          "joists": "ridge",
+          "floor": "$floor1"
+        }
+      ]
+    },
+    {
+      "step": "Examine a rafter and the ridge: Chief keeps the old depths until the roof planes are edited",
+      "gap": "Not needed: HouseCraft frames every roof plane with the current defaults (and the plane's own rafter spacing, if set). Row: FR-40"
+    },
+    {
+      "step": "Edit All Roof Planes: rafter spacing 16\", ridge width 3 1/2\"; rebuild roofs",
+      "commands": [
+        {
+          "op": "build_framing",
+          "parts": {
+            "walls": false,
+            "floors": false,
+            "ceilings": false,
+            "roofs": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "joists": "rafter",
+          "floor": "$floor1"
+        }
+      ]
+    },
+    {
+      "step": "The roof plane over the Deck: rafters 24\" OC and 11 1/4\" deep; Build Framing for Selected Objects",
+      "gap": "Spacing can be set on one roof plane but not its rafter depth; no locked height reference. Row: FR-40"
+    },
+    {
+      "step": "Post in the wall right of the stairwell on Floor 2, under the ridge",
+      "commands": [
+        {
+          "op": "add_framing_member",
+          "floor": "$named:floor:Floor 2",
+          "role": "post",
+          "a": [
+            5918.2,
+            -5842.0,
+            2771.775
+          ],
+          "b": [
+            5918.2,
+            -5842.0,
+            5238.75
+          ],
+          "width": "3 1/2\"",
+          "depth": "3 1/2\""
+        }
+      ],
+      "save": {
+        "p2": "framing_member"
+      },
+      "expect": [
+        {
+          "get": "$p2",
+          "path": "/role",
+          "is": "post"
+        }
+      ]
+    },
+    {
+      "step": "Add Break: break the ridge board over the post",
+      "gap": "Framing members can't be broken in two. Row: FR-36"
+    },
+    {
+      "step": "Stack posts: Paste Hold Position on Floor 1 (top lowered 97 7/8\" to the joists) and Floor 0 (top at -3/4\")",
+      "commands": [
+        {
+          "op": "add_framing_member",
+          "floor": "$floor1",
+          "role": "post",
+          "a": [
+            5918.2,
+            -5842.0,
+            0.0
+          ],
+          "b": [
+            5918.2,
+            -5842.0,
+            2752.725
+          ],
+          "width": "3 1/2\"",
+          "depth": "3 1/2\""
+        },
+        {
+          "op": "add_framing_member",
+          "floor": "$named:floor:Foundation",
+          "role": "post",
+          "a": [
+            5918.2,
+            -5842.0,
+            -2873.375
+          ],
+          "b": [
+            5918.2,
+            -5842.0,
+            -19.05
+          ],
+          "width": "3 1/2\"",
+          "depth": "3 1/2\""
+        }
+      ],
+      "save": {
+        "stack": "framing_member"
+      },
+      "expect": [
+        {
+          "get": "$stack.1",
+          "path": "/b/2",
+          "is": "-3/4\""
+        }
+      ]
+    },
+    {
+      "step": "(Back Clipped Cross Section with the 3D Framing Set; tile; move the wall with footings to Walls, Normal)",
+      "commands": [
+        {
+          "op": "add_section_view",
+          "floor": "$floor1",
+          "name": "Post Section",
+          "a": [
+            3810.0,
+            -5842.0
+          ],
+          "b": [
+            7620.0,
+            -5842.0
+          ]
+        }
+      ],
+      "save": {
+        "psec": "section_view"
+      },
+      "expect": [
+        {
+          "get": "$psec",
+          "path": "/name",
+          "is": "Post Section"
+        }
+      ]
+    },
+    {
+      "step": "Ceiling framing on Floor 2: a Bearing Line across the joists, Joist Direction lines either side",
+      "commands": [
+        {
+          "op": "add_joist_direction",
+          "floor": "$named:floor:Floor 2",
+          "at": [
+            2540.0,
+            -1524.0
+          ],
+          "angle": 0.0,
+          "ceiling": true
+        },
+        {
+          "op": "add_joist_direction",
+          "floor": "$named:floor:Floor 2",
+          "at": [
+            2540.0,
+            -7620.0
+          ],
+          "angle": 90.0,
+          "ceiling": true
+        }
+      ],
+      "expect": [
+        {
+          "count": "joist_direction",
+          "is": 2
+        }
+      ]
+    },
+    {
+      "step": "(Bearing Line)",
+      "gap": "No Bearing Line; ceiling joists bear on walls marked Bearing. Row: FR-33"
+    },
+    {
+      "step": "Build Framing once: ceilings, Floor 2 (16\" OC)",
+      "commands": [
+        {
+          "op": "build_framing",
+          "floor": "$named:floor:Floor 2",
+          "parts": {
+            "walls": false,
+            "floors": false,
+            "ceilings": true,
+            "roofs": false
+          }
+        }
+      ],
+      "save": {
+        "cj": "framing_member"
+      },
+      "expect": [
+        {
+          "joists": "ceiling_joist",
+          "floor": "$named:floor:Floor 2"
+        }
+      ]
+    },
+    {
+      "step": "Reference Display of Floor 2's rafters; shift the ceiling joists 3/4\" so they sit beside the rafters",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$cj.0",
+            "$cj.1",
+            "$cj.2"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": "-3/4\"",
+            "dy": 0
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$cj.0",
+          "path": "/manual",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "(Joist tool marquee selects only ceiling joists; reference display layer set)",
+      "gap": "No select-by-type with the Joist tool; the reference display uses one layer set. Rows: UI-38, LY-07"
+    },
+    {
+      "step": "Valley rafters filled grey, labelled '%nominal_size% VALLEY RAFTER'",
+      "gap": "Framing members have no fill or labels. Row: FR-38"
+    },
+    {
+      "step": "Make a Copy as Chic Cottage-Roof Framing; a Framing Tutorials folder",
+      "gap": "No Make a Copy or Project Browser folders. Rows: PRJ-45, PRJ-09"
+    }
+  ]
+}

@@ -38,7 +38,7 @@ has two files:
 | 18 | Electrical Objects (317) | 13 | 11 | [18-electrical-objects.md](18-electrical-objects.md) |
 | 19 | Floor Framing (331) | 16 | 11 | [19-floor-framing.md](19-floor-framing.md) |
 | 20 | Wall Framing (349) | 10 | 10 | [20-wall-framing.md](20-wall-framing.md) |
-| 21 | Roof and Ceiling Framing (364–381) | — | — | |
+| 21 | Roof and Ceiling Framing (364) | 10 | 8 | [21-roof-and-ceiling-framing.md](21-roof-and-ceiling-framing.md) |
 | 22–25 | Landscaping tutorials (382–450) | — | — | |
 | 26–28 | Layout tutorials (451–500) | — | — | |
 

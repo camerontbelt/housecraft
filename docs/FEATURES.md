@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 552 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
+There are 554 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -391,10 +391,11 @@ These come from reading the whole list and change the architecture, not just the
 | FR-33 | Joist layout by structure: shortest span between bearing walls and beams, joists butting flush beams and bearing on dropped ones; Framing Reference Marker as the layout origin | P2 | M9 |
 | FR-34 | Framing defaults: joist spacing per floor, rim joist construction (LVL), Manual Framing defaults for beams/posts, Post with Footing | P3 | M9 |
 | FR-35 | Automatically rebuild framing when the model changes (per category) | P2 | M9 |
-| FR-36 | Trim/extend framing members to another member (with Sticky Mode) | P3 | M9 |
+| FR-36 | Trim/extend framing members to another member (with Sticky Mode); Add Break to split a member | P3 | M9 |
 | FR-37 | Live Wall Detail views: named from the wall's label, listed per floor in the Project Browser, framing edited and blocking drawn there | P2 | M9 |
 | FR-38 | Framing member defaults (stud/plate construction, fill style); header labels with size and count in plan | P3 | M9 |
 | FR-39 | Stud spacing per wall type framing layer | P3 | M9 |
+| FR-40 | Roof framing per plane: ridge board size, rafter depth per roof plane, locked height reference when depth changes | P3 | M9 |
 
 ## 13. CAD tools
 
@@ -730,3 +731,4 @@ These come from reading the whole list and change the architecture, not just the
 | UI-35 | Get Last Symbol: place another of the last library item | P3 | GUI |
 | UI-36 | Edit toolbar: context buttons for the current selection | P1 | GUI |
 | UI-37 | Help menu: open manual, report a problem (logs, system information) | P3 | GUI |
+| UI-38 | Select by type: a drawing tool's marquee selects only its own kind of object | P3 | GUI |
