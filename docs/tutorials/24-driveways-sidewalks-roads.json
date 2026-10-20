@@ -1,0 +1,193 @@
+{
+  "tutorial": "Driveways, Sidewalks, and Roads",
+  "source": "Chief Architect X18 Tutorial Guide, Landscaping Tutorials, pages 420-432",
+  "include": "23-terrain-elevation.json",
+  "steps": [
+    {
+      "step": "Road defaults: 28' wide; curbs that can cut driveways and sidewalks",
+      "gap": "Roads, driveways and sidewalks start at typical sizes (road 24'); set the width on each. No curb cuts. Row: SITE-32"
+    },
+    {
+      "step": "Straight Road across the bottom of the terrain, corner to corner",
+      "commands": [
+        {
+          "op": "add_site_feature",
+          "floor": "$floor1",
+          "points": [
+            [
+              40538.4,
+              3048.0
+            ],
+            [
+              4572.0,
+              -27127.2
+            ]
+          ],
+          "feature": {
+            "type": "road",
+            "style": "road",
+            "width": "28'",
+            "thickness": "6\"",
+            "curbs": true
+          }
+        }
+      ],
+      "save": {
+        "road": "site_feature"
+      },
+      "expect": [
+        {
+          "get": "$road",
+          "path": "/feature/width",
+          "is": "28'"
+        }
+      ]
+    },
+    {
+      "step": "(Change Line/Arc to curve it along the lot's curved edge; Point to Point Move onto the edge)",
+      "gap": "Roads are straight-segment paths; no arcs. Rows: SITE-32, CAD-31"
+    },
+    {
+      "step": "Road Stripe for a bike lane, 6' from the road's edge",
+      "gap": "No road stripes. Row: SITE-32"
+    },
+    {
+      "step": "Pull the terrain edge out to the road's far edge so the road shows in 3D (copy of the perimeter kept as a plot plan polyline)",
+      "commands": [
+        {
+          "op": "add_elevation_data",
+          "floor": "$floor1",
+          "shape": {
+            "type": "line",
+            "points": [
+              [
+                42672.0,
+                609.6
+              ],
+              [
+                3048.0,
+                -29260.8
+              ]
+            ],
+            "elevation": "-8'"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "count": "site_feature",
+          "is": 2
+        }
+      ]
+    },
+    {
+      "step": "(Roads follow the terrain along their centre line; an elevation line down the road's middle evens the slope)",
+      "expect": [
+        {
+          "ground_at": [
+            22860.0,
+            -14325.6
+          ],
+          "is": "-8'",
+          "within": "2'"
+        }
+      ]
+    },
+    {
+      "step": "Driveway defaults: 13' wide, end flared 3', Blacktop 1",
+      "gap": "Driveways have no flared ends. Row: SITE-32"
+    },
+    {
+      "step": "Straight Driveway from the middle of the Garage door straight down to the road",
+      "commands": [
+        {
+          "op": "add_site_feature",
+          "floor": "$floor1",
+          "points": [
+            [
+              10820.4,
+              -11734.8
+            ],
+            [
+              10820.4,
+              -21336.0
+            ]
+          ],
+          "feature": {
+            "type": "road",
+            "style": "driveway",
+            "width": "13'",
+            "thickness": "4\"",
+            "curbs": false
+          }
+        }
+      ],
+      "save": {
+        "drive": "site_feature"
+      },
+      "expect": [
+        {
+          "get": "$drive",
+          "path": "/feature/style",
+          "is": "driveway"
+        }
+      ]
+    },
+    {
+      "step": "Sidewalk defaults: 5' wide; Auto Generate Sidewalks 60\" from the road",
+      "gap": "No automatic sidewalks along a road. Row: SITE-32"
+    },
+    {
+      "step": "Straight Sidewalk down from the porch stairs, then a second segment over to the driveway",
+      "commands": [
+        {
+          "op": "add_site_feature",
+          "floor": "$floor1",
+          "points": [
+            [
+              6096.0,
+              -11277.6
+            ],
+            [
+              6096.0,
+              -15240.0
+            ],
+            [
+              8839.2,
+              -15240.0
+            ]
+          ],
+          "feature": {
+            "type": "road",
+            "style": "sidewalk",
+            "width": "5'",
+            "thickness": "4\"",
+            "curbs": false
+          }
+        }
+      ],
+      "save": {
+        "walk": "site_feature"
+      },
+      "expect": [
+        {
+          "get": "$walk",
+          "path": "/points/2/0",
+          "is": "29'"
+        }
+      ]
+    },
+    {
+      "step": "Curved sidewalk instead: one segment at 315 degrees, made into an arc",
+      "gap": "No curved sidewalks; add more corners to round it off. Row: SITE-32"
+    },
+    {
+      "step": "Annotations: street name label on the road; a hardscaping schedule",
+      "gap": "Roads have no label, and there's no hardscaping schedule. Row: SITE-32"
+    },
+    {
+      "step": "Make a Copy as Chic Cottage-Hardscape",
+      "gap": "No Make a Copy. Row: PRJ-45"
+    }
+  ]
+}

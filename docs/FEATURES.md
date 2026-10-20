@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 560 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
+There are 562 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -540,6 +540,8 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-29 | Plot plan lines: decimal-feet lengths and quadrant-bearing angles on CAD lines; curved lot sides by radius and arc length | P2 | M9 |
 | SITE-30 | Elevation line editing: angle with a locked start point, Add Break, continue drawing from an end | P3 | M9 |
 | SITE-31 | Retaining walls that separate the terrain on each side (heights from the terrain either side) | P2 | M9 |
+| SITE-32 | Roads: per-style defaults, curved (arc) roads and sidewalks, road stripes, flared driveway ends, curb cuts, Auto Generate Sidewalks, street-name labels, hardscape schedule | P2 | M9 |
+| SITE-33 | Terrain surface passes exactly through elevation data (smoothing pulls a line ~1.5' off where data is steep) | P2 | M9 |
 
 ## 18. 3D design & materials
 

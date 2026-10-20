@@ -41,7 +41,8 @@ has two files:
 | 21 | Roof and Ceiling Framing (364) | 10 | 8 | [21-roof-and-ceiling-framing.md](21-roof-and-ceiling-framing.md) |
 | 22 | Plot Plans (382) | 9 | 7 | [22-plot-plans.md](22-plot-plans.md) |
 | 23 | Terrain Elevation (403) | 10 | 9 | [23-terrain-elevation.md](23-terrain-elevation.md) |
-| 24–25 | Driveways/Sidewalks/Roads, Landscaping Design (420–450) | — | — | |
+| 24 | Driveways, Sidewalks, and Roads (420) | 5 | 8 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
+| 25 | Landscaping Design (433–450) | — | — | |
 | 26–28 | Layout tutorials (451–500) | — | — | |
 
 The tutorials build on each other. A JSON file can name the one before it in `include`; its steps run first and
