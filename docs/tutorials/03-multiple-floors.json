@@ -1,0 +1,360 @@
+{
+  "tutorial": "Multiple Floors",
+  "source": "Chief Architect X18 Tutorial Guide, Floor Plan Tutorials, pages 45-59",
+  "include": "02-interior-walls.json",
+  "steps": [
+    {
+      "step": "Build > Floor > Build New Floor, deriving the 2nd floor from the 1st: a shell of the same exterior walls",
+      "commands": [
+        {
+          "op": "add_floor",
+          "floor_structure": "12\""
+        }
+      ],
+      "expect": [
+        {
+          "count": "floor",
+          "is": 2
+        },
+        {
+          "get": "$named:floor:Floor 2",
+          "path": "/ceiling_height",
+          "is": "97 1/8\""
+        },
+        {
+          "get": "$named:floor:Floor 2",
+          "path": "/elevation",
+          "is": "109 1/8\""
+        }
+      ]
+    },
+    {
+      "step": "(Derive from the 1st floor, and the new floor's structure from the Floor/Ceiling Platform defaults)",
+      "gap": "Build New Floor makes an empty floor and doesn't take the 1st floor's structure; type 12\" and draw (or copy and Paste Hold Position) the exterior walls. Rows: PRJ-44, RM-16"
+    },
+    {
+      "step": "Draw the 2nd floor's exterior walls over the 1st floor's",
+      "commands": [
+        {
+          "op": "add_walls",
+          "floor": "$named:floor:Floor 2",
+          "points": [
+            [
+              61.119,
+              -61.119
+            ],
+            [
+              12740.481,
+              -61.119
+            ],
+            [
+              12740.481,
+              -11622.881
+            ],
+            [
+              8798.719,
+              -11622.881
+            ],
+            [
+              8798.719,
+              -8473.281
+            ],
+            [
+              61.119,
+              -8473.281
+            ]
+          ],
+          "closed": true
+        }
+      ],
+      "save": {
+        "upper": "wall"
+      },
+      "expect": [
+        {
+          "get": "$upper.5",
+          "path": "/floor",
+          "is": "$named:floor:Floor 2"
+        }
+      ]
+    },
+    {
+      "step": "Shingle-6: a copy of the siding wall with 3/4\" natural shakes outside",
+      "commands": [
+        {
+          "op": "add_wall_type",
+          "name": "Shingle-6",
+          "layers": [
+            {
+              "name": "Shakes",
+              "thickness": "3/4\"",
+              "material": "Shake - Natural"
+            },
+            {
+              "name": "Sheathing",
+              "thickness": "7/16\"",
+              "material": "OSB"
+            },
+            {
+              "name": "Framing",
+              "thickness": "5 1/2\"",
+              "material": "2x6 stud",
+              "main": true
+            },
+            {
+              "name": "Interior finish",
+              "thickness": "1/2\"",
+              "material": "Gypsum board"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": "Give the 2nd floor's walls the Shingle-6 type",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$upper.0",
+          "set": {
+            "wall_type": "$named:Shingle-6"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$upper.1",
+          "set": {
+            "wall_type": "$named:Shingle-6"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$upper.2",
+          "set": {
+            "wall_type": "$named:Shingle-6"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$upper.3",
+          "set": {
+            "wall_type": "$named:Shingle-6"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$upper.4",
+          "set": {
+            "wall_type": "$named:Shingle-6"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$upper.5",
+          "set": {
+            "wall_type": "$named:Shingle-6"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$upper.3",
+          "path": "/wall_type",
+          "is": "$named:Shingle-6"
+        }
+      ]
+    },
+    {
+      "step": "Basement foundation: walls with footings, 113 1/8\" stem walls (room for 109 1/8\" studs and a 4\" slab)",
+      "commands": [
+        {
+          "op": "build_foundation",
+          "kind": "basement",
+          "wall_height": "113 1/8\""
+        }
+      ],
+      "expect": [
+        {
+          "count": "floor",
+          "is": 3
+        },
+        {
+          "get": "$named:floor:Foundation",
+          "path": "/elevation",
+          "is": "-125 1/8\""
+        }
+      ]
+    },
+    {
+      "step": "Garage on a separate, shallow foundation with a 12\" curb; the garage room gets its slab from below",
+      "gap": "A basement foundation runs under the garage too; no separate garage stem walls or curb. Row: FD-07"
+    },
+    {
+      "step": "8\" Concrete with Furring: concrete, 1\" air gap, 2x4 furring at 16\" OC, 1/2\" drywall",
+      "commands": [
+        {
+          "op": "add_wall_type",
+          "name": "8\" Concrete with Furring",
+          "layers": [
+            {
+              "name": "Concrete",
+              "thickness": "8\"",
+              "material": "Concrete",
+              "main": true
+            },
+            {
+              "name": "Air gap",
+              "thickness": "1\"",
+              "material": "Insulation Air Gap"
+            },
+            {
+              "name": "Furring",
+              "thickness": "3 1/2\"",
+              "material": "Fir Framing 2"
+            },
+            {
+              "name": "Drywall",
+              "thickness": "1/2\"",
+              "material": "Drywall"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": "Use it for the basement walls (not the garage's)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$wall_at:61.1,-3810.0@Foundation",
+          "set": {
+            "wall_type": "$named:8\" Concrete with Furring"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$wall_at:6350.0,-61.1@Foundation",
+          "set": {
+            "wall_type": "$named:8\" Concrete with Furring"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$wall_at:3810.0,-8473.3@Foundation",
+          "set": {
+            "wall_type": "$named:8\" Concrete with Furring"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$wall_at:61.1,-3810.0@Foundation",
+          "path": "/wall_type",
+          "is": "$named:8\" Concrete with Furring"
+        }
+      ]
+    },
+    {
+      "step": "Center the footing on the concrete (Center Footing on Main Layer)",
+      "gap": "No 'center footing on main layer' option; footings centre on the whole wall. Row: FD-08"
+    },
+    {
+      "step": "Turn on the Reference Display and draw a basement wall under the 1st floor's Dining/Foyer wall",
+      "commands": [
+        {
+          "op": "add_walls",
+          "floor": "$named:floor:Foundation",
+          "interior": true,
+          "points": [
+            [
+              4146.55,
+              -8473.281
+            ],
+            [
+              4146.55,
+              -4959.35
+            ]
+          ]
+        }
+      ],
+      "save": {
+        "stairwall": "wall"
+      },
+      "expect": [
+        {
+          "get": "$stairwall",
+          "path": "/start/0",
+          "is": 4146.55
+        }
+      ]
+    },
+    {
+      "step": "Nudge it 1\" with the arrow key, then Align With Wall Above",
+      "gap": "No arrow-key nudge or Align With Wall Above/Below button. Rows: DIM-03, WL-28"
+    },
+    {
+      "step": "Copy the wall, open a second plan view, tile the views, and Paste Hold Position on Floor 2",
+      "copy_to_floor": {
+        "ids": [
+          "$stairwall"
+        ],
+        "floor": "$named:floor:Floor 2"
+      },
+      "save": {
+        "copied": "wall"
+      },
+      "expect": [
+        {
+          "get": "$copied",
+          "path": "/start/0",
+          "is": 4146.55
+        },
+        {
+          "get": "$copied",
+          "path": "/floor",
+          "is": "$named:floor:Floor 2"
+        }
+      ]
+    },
+    {
+      "step": "(New Plan View; Window > Tile Vertically)",
+      "gap": "No tiled plan views; switch floors in one view. Row: UI-32"
+    },
+    {
+      "step": "Wall schedule: total width and the upper/lower construction, without room dividers",
+      "commands": [
+        {
+          "op": "add_schedule",
+          "schedule_kind": "walls",
+          "position": [
+            14224.0,
+            -2540.0
+          ],
+          "columns": [
+            "Type",
+            "Thickness",
+            "Qty"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "count": "schedule",
+          "is": 1
+        }
+      ]
+    },
+    {
+      "step": "(Schedule columns: Wall Construction Upper/Lower; rename and resize columns)",
+      "gap": "Wall schedules have no construction (layer) columns; columns can't be renamed or resized by handle. Rows: EST-25, EST-10"
+    },
+    {
+      "step": "Put the schedule in a 'Legends' CAD detail",
+      "gap": "Schedules can only go on floor plans, not in CAD details. Row: EST-26"
+    },
+    {
+      "step": "Save a copy as Chic Cottage-Floors",
+      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+    }
+  ]
+}

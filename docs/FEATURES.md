@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 486 items: 29 P0, about 126 P1, about 229 P2, about 94 P3, and 5 out of scope. Each item should eventually map to
+There are 493 items: 29 P0, about 127 P1, about 233 P2, about 96 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -160,6 +160,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-41 | Layout pages: duplicate, exchange, insert before/after | P2 | M9 |
 | PRJ-42 | Referenced Files dialog: list and relink a layout's plans | P2 | M9 |
 | PRJ-43 | Missing Files check with relink | P2 | M9 |
+| PRJ-44 | Build New Floor: derive the new floor's exterior walls from the floor below (pony walls take the upper type) | P1 | M9 |
 
 ## 5. Rooms
 
@@ -180,6 +181,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-13 | Room label dimension formats | P1 | M1 ✓ Default Settings > Rooms: labels show area, size (rounded or exact) and ceiling height |
 | RM-14 | Per-room label control: hide/show, rotate, move; size line on its own layer | P2 | M9 |
 | RM-15 | Split rooms inherit the parent room's settings; merged rooms keep the larger room's | P1 | M9 ✓ rooms::sync compares with the plan before the change |
+| RM-16 | Floor/Ceiling Platform defaults shared by new floors (structure, finishes) | P2 | M9 |
 
 ## 6. Walls
 
@@ -212,6 +214,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-25 | Reverse Layers: flip a wall's layers to the other side | P2 | M9 |
 | WL-26 | Edit Wall Layer Intersection handles (where layers of meeting walls stop) | P3 | M9 |
 | WL-27 | Split walls automatically where another wall crosses or meets them | P2 | M9 |
+| WL-28 | Align With Wall Above / Below edit buttons | P2 | M9 |
 
 ## 7. Cabinets
 
@@ -314,11 +317,13 @@ These come from reading the whole list and change the architecture, not just the
 | ID | Feature | Pri | M |
 |---|---|---|---|
 | FD-01 | Slab, pier, crawlspace, full basement, stem walls, footings, post & beam, grade beam | P1 | M3 ◐ slab, crawlspace/stem wall, basement, footings, piers with beams; post & beam framing, grade beam (M6) later |
-| FD-02 | Auto-rebuild foundation from floor 1 | P1 | M3 ✓ |
+| FD-02 | Auto-rebuild foundation from floor 1 | P1 | M3 ✓ rebuilding keeps walls you've edited or added on the foundation floor (only outside walls that no longer fit are replaced) |
 | FD-03 | Round piers / square pads | P2 | M3 ✓ pier foundations with round or square piers on square pads |
 | FD-04 | Monolithic slabs with ledges and garage curbs | P2 | M3 ◐ slab foundations can put a 4" curb round garages (broken at doors); no brick ledges |
 | FD-05 | Footings under bearing walls; stepped footings | P2 | M3 ◐ walls marked Bearing get a footing (plan and 3D); no stepped footings |
 | FD-06 | Slab and slab-hole drawing tools (with footing option) | P2 | M9 |
+| FD-07 | Garage areas over a basement: separate shallow stem walls with a curb; garage slab supplied from below | P2 | M9 |
+| FD-08 | Center footing on main layer (footing offset for furred walls) | P3 | M9 |
 
 ## 12. Framing
 
@@ -567,6 +572,8 @@ These come from reading the whole list and change the architecture, not just the
 | EST-22 | Cut list and buy list (structural lumber) | P2 | M6 ✓ Framing Cut List schedule; buy list (stock lengths) in the materials list |
 | EST-23 | Pricing in framing buy lists | P3 | M6 ✓ framing buy-list lines take prices like any materials-list line |
 | EST-24 | Materials List Polyline: take-off for a drawn area | P2 | M9 |
+| EST-25 | Wall schedule construction columns (layers of the upper and lower wall) | P3 | M9 |
+| EST-26 | Schedules placed in CAD details (legends) | P2 | M9 |
 
 ## 21. Text, annotation & scripting
 

@@ -17,7 +17,7 @@ has two files:
 |---|---|---|---|---|
 | 1 | Exterior Walls (3) | 14 | 7 | [01-exterior-walls.md](01-exterior-walls.md) |
 | 2 | Interior Walls (28) | 16 | 11 | [02-interior-walls.md](02-interior-walls.md) |
-| 3 | Multiple Floors (45) | — | — | |
+| 3 | Multiple Floors (45) | 10 | 8 | [03-multiple-floors.md](03-multiple-floors.md) |
 | 4 | Interior Stairs (60) | — | — | |
 | 5 | Doors and Windows (82) | — | — | |
 | 6 | Decks and Porches (105) | — | — | |
@@ -26,5 +26,5 @@ has two files:
 | 23–26 | Landscaping tutorials (382–450) | — | — | |
 | 27–29 | Layout tutorials (451–500) | — | — | |
 
-The tutorials build on each other: each JSON file starts a fresh plan, so later files repeat the earlier steps they
-need (in a few commands) before their own.
+The tutorials build on each other. A JSON file can name the one before it in `include`; its steps run first and
+the new file carries on from that plan (tutorial 2 starts a fresh plan with tutorial 1's shell in a few commands).

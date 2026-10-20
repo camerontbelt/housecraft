@@ -11,8 +11,16 @@
       "gap": "No Dashboard; File > Recent Files lists plans but can't pin them. Rows: UI-30, PRJ-02"
     },
     {
-      "step": "(From tutorial 1) the 42' x 38'4\" shell, measured to the framing",
+      "step": "(From tutorial 1) the 42' x 38'4\" shell, measured to the framing; 97 1/8\" ceilings on a 12\" floor",
       "commands": [
+        {
+          "op": "update",
+          "id": "$floor1",
+          "set": {
+            "ceiling_height": "97 1/8\"",
+            "floor_structure": "12\""
+          }
+        },
         {
           "op": "add_walls",
           "points": [

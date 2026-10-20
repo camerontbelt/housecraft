@@ -24,6 +24,9 @@ use serde_json::Value;
 #[derive(Deserialize)]
 struct Tutorial {
     tutorial: String,
+    /// An earlier tutorial whose steps run first (the plan carries on).
+    #[serde(default)]
+    include: Option<String>,
     steps: Vec<Step>,
 }
 
@@ -42,8 +45,16 @@ struct Step {
     /// and type `length` (run after the commands).
     #[serde(default)]
     dimension_moves: Vec<DimMove>,
+    /// Copy objects and Paste Hold Position on another floor.
+    copy_to_floor: Option<CopyToFloor>,
     /// Something the tutorial does that HouseCraft cannot yet.
     gap: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct CopyToFloor {
+    ids: Vec<String>,
+    floor: String,
 }
 
 #[derive(Deserialize)]
@@ -102,18 +113,31 @@ impl Run {
             let (x, y) = spec.split_once(',')?;
             Some(housecraft_api::geom::DVec2::new(x.trim().parse().ok()?, y.trim().parse().ok()?))
         };
+        // "…@Floor name" picks the floor (default: the first floor).
+        let (rest, on) = match rest.split_once('@') {
+            Some((r, f)) => (r, Some(self.resolve(&format!("$named:floor:{f}"))?)),
+            None => (rest, None),
+        };
         if let Some(spec) = rest.strip_prefix("room_at:") {
             let p = at(spec)?;
-            let floor = self.resolve("$floor1")?;
+            let floor = match on {
+                Some(f) => f,
+                None => self.resolve("$floor1")?,
+            };
             let regions = housecraft_api::geom::rooms::detect(self.doc(), floor);
             let i = regions.room_at(p)?;
             return self.doc().rooms_on(floor).find(|r| regions.room_at(housecraft_api::geom::v2(r.anchor)) == Some(i)).map(|r| r.id);
         }
         if let Some(spec) = rest.strip_prefix("wall_at:") {
             let p = at(spec)?;
+            let floor = match on {
+                Some(f) => f,
+                None => self.resolve("$floor1")?,
+            };
             return self
                 .doc()
                 .iter::<Wall>()
+                .filter(|w| w.floor == floor)
                 .map(|w| {
                     let (c, _) = housecraft_api::geom::math::closest_on_segment(p, housecraft_api::geom::v2(w.start), housecraft_api::geom::v2(w.end));
                     (c.distance(p), w.id)
@@ -248,9 +272,29 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
     panic!("{step}: unknown expectation {e}");
 }
 
+fn load(path: &std::path::Path) -> Tutorial {
+    serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
 fn run_tutorial(path: &std::path::Path) -> (usize, Vec<String>, Vec<String>) {
-    let t: Tutorial = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let t = load(path);
     let mut run = Run { session: Session::new(Document::new(&t.tutorial)), vars: BTreeMap::new() };
+    // Earlier tutorials first: this one carries on from their plan.
+    let mut chain = Vec::new();
+    let mut inc = t.include.clone();
+    while let Some(name) = inc {
+        let earlier = load(&path.with_file_name(&name));
+        inc = earlier.include.clone();
+        chain.push(earlier);
+    }
+    for earlier in chain.iter().rev() {
+        let (_, _, failures) = run_steps(&mut run, earlier);
+        assert!(failures.is_empty(), "{} (included) failed: {failures:?}", earlier.tutorial);
+    }
+    run_steps(&mut run, &t)
+}
+
+fn run_steps(run: &mut Run, t: &Tutorial) -> (usize, Vec<String>, Vec<String>) {
     let (mut done, mut gaps, mut failures) = (0, Vec::new(), Vec::new());
     for (i, s) in t.steps.iter().enumerate() {
         let label = format!("{} step {}: {}", t.tutorial, i + 1, s.step);
@@ -282,6 +326,26 @@ fn run_tutorial(path: &std::path::Path) -> (usize, Vec<String>, Vec<String>) {
                 }
             }
         }
+        if let Some(c) = &s.copy_to_floor {
+            let floor = run.resolve(&c.floor).expect("floor");
+            let objects: Vec<Value> = c
+                .ids
+                .iter()
+                .map(|r| query::get_object(run.doc(), run.resolve(r).unwrap_or_else(|| panic!("{label}: unknown {r}"))).expect("object"))
+                .collect();
+            match run.session.apply(&[Command::InsertObjects { objects, floor: Some(floor), dx: Length::ZERO, dy: Length::ZERO }]) {
+                Ok(out) => {
+                    for (name, kind) in &s.save {
+                        let ids: Vec<Id> = out.created.iter().copied().filter(|id| query::get_object(run.doc(), *id).is_some_and(|o| o["kind"] == kind.as_str())).collect();
+                        run.vars.insert(name.clone(), ids);
+                    }
+                }
+                Err(e) => {
+                    failures.push(format!("{label}: {e}"));
+                    continue;
+                }
+            }
+        }
         let mut moved = true;
         for m in &s.dimension_moves {
             let (wall, from) = (run.resolve(&m.wall).expect("wall"), run.resolve(&m.from).expect("from"));
@@ -302,7 +366,7 @@ fn run_tutorial(path: &std::path::Path) -> (usize, Vec<String>, Vec<String>) {
         }
         for e in &s.expect {
             let e = run.substitute(e, &label);
-            if let Err(why) = check(&run, &e, &label) {
+            if let Err(why) = check(run, &e, &label) {
                 failures.push(format!("{label}: {why}"));
             }
         }

@@ -78,12 +78,18 @@ fn key(p: Point2) -> (i64, i64) {
     )
 }
 
-/// Make the foundation floor's walls match `desired`. Returns whether anything changed.
+/// Make the foundation floor's outside walls follow the floor above.
+/// Walls already where they should be are kept as they are (their type,
+/// footing and openings); outside walls no longer wanted are removed and
+/// missing ones added. Walls drawn inside the foundation are never touched.
+/// `reset` (Build Foundation) also resets the kept walls' type and footing.
+/// Returns whether anything changed.
 fn rebuild_walls(
     doc: &mut Document,
     floor: Id,
     above: Id,
     spec: &Foundation,
+    reset: bool,
     out: &mut Outcome,
 ) -> bool {
     // Piers carry beams, not walls: the foundation floor has no walls.
@@ -101,22 +107,44 @@ fn rebuild_walls(
             depth: spec.footing_depth,
         });
     let wall_type = foundation_wall_type(doc, spec.wall_thickness, out);
+    let pair = |a: Point2, b: Point2| {
+        let (ka, kb) = (key(a), key(b));
+        if ka <= kb { (ka, kb) } else { (kb, ka) }
+    };
+    // Outside walls: their centreline runs along the foundation's outline.
+    let regions = housecraft_geom::rooms::detect(doc, floor);
+    let outside = |w: &Wall| {
+        let half = doc.get::<WallType>(w.wall_type).map_or(100.0, |t| t.thickness().mm() / 2.0);
+        let (a, b) = (housecraft_geom::v2(w.start), housecraft_geom::v2(w.end));
+        regions.footprints.iter().any(|fp| {
+            let near = |p: housecraft_geom::DVec2| {
+                (0..fp.len()).any(|i| (housecraft_geom::math::distance_to_segment(p, fp[i], fp[(i + 1) % fp.len()]) - half).abs() < 2.0)
+            };
+            near(a) && near(b) && near((a + b) / 2.0)
+        })
+    };
+    let want: Vec<_> = desired.iter().map(|(a, b)| pair(*a, *b)).collect();
     let existing: Vec<Wall> = doc.walls_on(floor).cloned().collect();
-    let mut want: Vec<_> = desired.iter().map(|(a, b)| (key(*a), key(*b))).collect();
-    let mut have: Vec<_> = existing
-        .iter()
-        .map(|w| (key(w.start), key(w.end)))
-        .collect();
-    want.sort();
-    have.sort();
-    let same = want == have
-        && existing
-            .iter()
-            .all(|w| w.wall_type == wall_type && w.footing == footing && w.height.is_none());
-    if same {
-        return false;
-    }
+    let outside: Vec<Id> = existing.iter().filter(|w| outside(w)).map(|w| w.id).collect();
+    let mut kept = Vec::new();
+    let mut changed = false;
     for w in &existing {
+        let k = pair(w.start, w.end);
+        if want.contains(&k) && !kept.contains(&k) {
+            kept.push(k);
+            if reset && (w.wall_type != wall_type || w.footing != footing || w.height.is_some()) {
+                let wm = doc.get_mut::<Wall>(w.id).expect("exists");
+                wm.wall_type = wall_type;
+                wm.footing = footing;
+                wm.height = None;
+                out.modified.push(w.id);
+                changed = true;
+            }
+            continue;
+        }
+        if !outside.contains(&w.id) {
+            continue;
+        }
         let openings: Vec<Id> = doc.openings_in(w.id).map(|o| o.id).collect();
         for o in openings {
             doc.remove(o);
@@ -124,9 +152,13 @@ fn rebuild_walls(
         }
         doc.remove(w.id);
         out.deleted.push(w.id);
+        changed = true;
     }
     let layer = doc.active_defaults().layers.walls;
     for (start, end) in desired {
+        if kept.contains(&pair(start, end)) {
+            continue;
+        }
         out.created.push(doc.insert(Wall {
             id: Id(0),
             floor,
@@ -139,10 +171,11 @@ fn rebuild_walls(
             roof: Default::default(),
             renovation: Default::default(),
             shape: Default::default(),
-        invisible: false,
+            invisible: false,
         }));
+        changed = true;
     }
-    true
+    changed
 }
 
 /// Elevation of the foundation floor so its walls meet the bottom of the platform above.
@@ -199,7 +232,7 @@ pub(crate) fn build(
             id
         }
     };
-    rebuild_walls(doc, floor, above.id, &spec, out);
+    rebuild_walls(doc, floor, above.id, &spec, true, out);
     Ok(())
 }
 
@@ -224,6 +257,6 @@ pub(crate) fn sync(doc: &mut Document, out: &mut Outcome) -> Result<(), ApiError
         fm.ceiling_height = spec.wall_height;
         out.modified.push(f.id);
     }
-    rebuild_walls(doc, f.id, above.id, &spec, out);
+    rebuild_walls(doc, f.id, above.id, &spec, false, out);
     Ok(())
 }
