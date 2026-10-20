@@ -1143,6 +1143,17 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
     let pending = &mut app.plan.pending;
     if let Some(p) = click {
         match tool {
+            Tool::BreakWall => {
+                let near = app
+                    .doc()
+                    .walls_and_dividers_on(app.plan.floor)
+                    .map(|w| (housecraft_api::geom::math::closest_on_segment(p, v2(w.start), v2(w.end)).0.distance(p), w.id))
+                    .min_by(|a, b| a.0.total_cmp(&b.0));
+                match near {
+                    Some((d, id)) if d < 300.0 => commands.push(Command::BreakWall { id, at: pt(p) }),
+                    _ => app.status = Some(("Click on a wall.".into(), true)),
+                }
+            }
             Tool::RoomDivider => {
                 if let Some(last) = pending.last().copied() {
                     if last.distance(p) >= 1.0 {

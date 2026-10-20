@@ -460,8 +460,7 @@
       ]
     },
     {
-      "step": "(Chief: Add Break, then drag the wall end)",
-      "gap": "No Break Wall tool; draw walls with a click at each junction and delete the piece. Row: WL-24"
+      "step": "(Chief: Add Break, then drag the wall end. HouseCraft: Break Wall, then delete the piece)"
     },
     {
       "step": "Fire-6: a 2x6 wall with 5/8\" fire-rated drywall, used between the Garage and the Bath",

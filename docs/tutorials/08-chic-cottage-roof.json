@@ -1,0 +1,347 @@
+{
+  "tutorial": "Chic Cottage Roof",
+  "source": "Chief Architect X18 Tutorial Guide, Roof Tutorials, pages 136-158",
+  "include": "06-decks-and-porches.json",
+  "steps": [
+    {
+      "step": "Open the Roof Plan View and tile it with a 3D overview",
+      "gap": "No separate Roof Plan View with its own layer set out of the box, and no tiled views. Rows: PRJ-13, UI-32"
+    },
+    {
+      "step": "Roof defaults: 12 in 12, rafters, Auto Rebuild Roofs",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "roof": {
+              "pitch": 45.0
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/roof/pitch",
+          "is": 45.0
+        }
+      ]
+    },
+    {
+      "step": "Gable walls on Floor 2: the left side and the Garage front; build the roof over Floor 2",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$wall_at:61.1,-3810.0@Floor 2",
+          "set": {
+            "roof": {
+              "gable": true
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$wall_at:10744.2,-11622.9@Floor 2",
+          "set": {
+            "roof": {
+              "gable": true
+            }
+          }
+        },
+        {
+          "op": "build_roof",
+          "floor": "$named:floor:Floor 2"
+        }
+      ],
+      "expect": [
+        {
+          "roof_plate": "$named:floor:Floor 2",
+          "is": "206 1/4\""
+        }
+      ]
+    },
+    {
+      "step": "Nested gable: Floor 2 walls over the porch half walls (Shingle-6), the front one a gable",
+      "commands": [
+        {
+          "op": "add_walls",
+          "floor": "$named:floor:Floor 2",
+          "wall_type": "$named:Shingle-6",
+          "points": [
+            [
+              4146.55,
+              -8473.281
+            ],
+            [
+              4146.55,
+              -10911.681
+            ],
+            [
+              8798.719,
+              -10911.681
+            ]
+          ]
+        }
+      ],
+      "save": {
+        "nest": "wall"
+      }
+    },
+    {
+      "step": "(front nested wall: Full Gable Wall)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$nest.1",
+          "set": {
+            "roof": {
+              "gable": true
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$nest.1",
+          "path": "/roof/gable",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "Reverse gable: Add Break in the right wall at the back of the Garage, the back part a gable 28' long",
+      "commands": [
+        {
+          "op": "break_wall",
+          "id": "$wall_at:12740.5,-3810.0@Floor 2",
+          "at": [
+            12740.481,
+            -8473.281
+          ]
+        }
+      ],
+      "save": {
+        "rightpart": "wall"
+      },
+      "expect": [
+        {
+          "get": "$wall_at:12740.5,-3810.0@Floor 2",
+          "path": "/end/1",
+          "is": -8473.281
+        }
+      ]
+    },
+    {
+      "step": "(back part: Full Gable Wall)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$wall_at:12740.5,-3810.0@Floor 2",
+          "set": {
+            "roof": {
+              "gable": true
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$wall_at:12740.5,-3810.0@Floor 2",
+          "path": "/roof/gable",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "Roof over the deck: Roof Over This Room, sides gables, 2 in 12",
+      "gap": "A deck's roof comes from its Covered box (a roof on corner posts), not from room settings and railing pitches. Row: SITE-26"
+    },
+    {
+      "step": "Story and a half: build the roof over Floor 1 (Ignore Top Floor) raised 18 1/8\"",
+      "commands": [
+        {
+          "op": "remove_roof",
+          "floor": "$named:floor:Floor 2"
+        },
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "roof": {
+              "heel": "18 1/8\""
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$wall_at:61.1,-3810.0@Floor 1",
+          "set": {
+            "roof": {
+              "gable": true
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$wall_at:10744.2,-11622.9@Floor 1",
+          "set": {
+            "roof": {
+              "gable": true
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$wall_at:6350.0,-10911.7@Floor 1",
+          "set": {
+            "roof": {
+              "gable": true
+            }
+          }
+        },
+        {
+          "op": "break_wall",
+          "id": "$wall_at:12740.5,-3810.0@Floor 1",
+          "at": [
+            12740.481,
+            -8473.281
+          ]
+        }
+      ]
+    },
+    {
+      "step": "(Floor 1's right wall, back part, a gable; then Build Roof on Floor 1)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$wall_at:12740.5,-3810.0@Floor 1",
+          "set": {
+            "roof": {
+              "gable": true
+            }
+          }
+        },
+        {
+          "op": "build_roof",
+          "floor": "$floor1"
+        }
+      ],
+      "expect": [
+        {
+          "roof_plate": "$floor1",
+          "is": "115 1/4\""
+        },
+        {
+          "get": "$wall_at:12740.5,-10109.2@Floor 1",
+          "path": "/start/1",
+          "is": -8473.281
+        }
+      ]
+    },
+    {
+      "step": "(Raise/Lower All Roof Planes and Ignore Top Floor in the Build Roof dialog)",
+      "gap": "Raise the roof with Default Settings > Roofs > Raised plate (heel); choose the floor by building the roof from Floor 1. Rows: RF-03, RF-19"
+    },
+    {
+      "step": "Close the gap behind the garage gable: stretch the Floor 2 porch-front wall to the right wall; the little room over the Garage is an Attic",
+      "commands": [
+        {
+          "op": "move_wall",
+          "id": "$nest.1",
+          "end": [
+            12740.481,
+            -10911.681
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$nest.1",
+          "path": "/end/0",
+          "is": 12740.481
+        }
+      ]
+    },
+    {
+      "step": "(Attic room type)",
+      "gap": "No Attic room type. Row: RM-18"
+    },
+    {
+      "step": "Gull wing over the porch: half wall pitch 4 in 12, upper 12 in 12 from 7' in from the baseline",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$wall_at:4146.6,-9652.0@Floor 1",
+          "set": {
+            "roof": {
+              "pitch": 18.4349,
+              "upper": {
+                "break_height": "28\"",
+                "pitch": 45.0
+              }
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$wall_at:4146.6,-9652.0@Floor 1",
+          "path": "/roof/upper/break_height",
+          "is": "28\""
+        }
+      ]
+    },
+    {
+      "step": "Edit roof overhangs by dimension; Add Break on a roof edge and drag the corner; curved roof plane; Join Roof Planes",
+      "gap": "Roof planes can't yet be edited edge by edge (breaks, corner handles, join, curved planes). Row: RF-18"
+    },
+    {
+      "step": "Auto roof returns (hip) with frieze on the gable over the Garage door; frieze under all eaves",
+      "gap": "No automatic roof returns; frieze is a roof default, not added per plane from the library. Rows: RF-03, RF-12"
+    },
+    {
+      "step": "Display the roof planes on the floor above (Display On Floor Above); Roof Plan View opens on Floor 2",
+      "gap": "Roof planes show on the floor they're built on. Row: RF-19"
+    },
+    {
+      "step": "O.H. dimension: a manual dimension from the eave to the wall framing, with leading text 'O.H.' in inches",
+      "commands": [
+        {
+          "op": "add_dimension",
+          "floor": "$floor1",
+          "text_override": "O.H. {}",
+          "geometry": {
+            "type": "linear",
+            "points": [
+              [
+                13197.681,
+                -3810.0
+              ],
+              [
+                12679.521,
+                -3810.0
+              ]
+            ],
+            "orientation": "horizontal",
+            "offset": "24\""
+          }
+        }
+      ],
+      "save": {
+        "oh": "dimension"
+      },
+      "expect": [
+        {
+          "get": "$oh",
+          "path": "/text_override",
+          "is": "O.H. {}"
+        }
+      ]
+    },
+    {
+      "step": "Save a copy as Chic Cottage-Roof",
+      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+    }
+  ]
+}

@@ -218,6 +218,17 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
         let n = v["objects"].as_object().unwrap().values().filter(|o| o["kind"] == kind).count();
         return if n == want { Ok(()) } else { Err(format!("{n} {kind} objects, expected {want}")) };
     }
+    if let Some(target) = e.get("roof_plate") {
+        // {"roof_plate": floor, "is": length}: where that floor's roof sits.
+        let floor = target.as_u64().map(Id).and_then(|f| doc.get::<Floor>(f)).ok_or("no such floor")?;
+        let plate = housecraft_api::geom::roof::plate_height(doc, floor);
+        let want = length(&e["is"]).ok_or("bad length")?;
+        let planes = doc.iter::<RoofPlane>().filter(|r| r.floor == floor.id && !r.gable).count();
+        if planes == 0 {
+            return Err(format!("no roof planes on {}", floor.name));
+        }
+        return if (plate - want).abs() < tol { Ok(()) } else { Err(format!("roof plate at {plate:.1} mm, expected {want:.1}")) };
+    }
     if let Some(n) = e.get("roof_planes").and_then(Value::as_u64) {
         // Sloped roof planes (not the gable-end infills).
         let found = doc.iter::<RoofPlane>().filter(|r| !r.gable).count();
@@ -314,7 +325,13 @@ fn run_tutorial(path: &std::path::Path) -> (usize, Vec<String>, Vec<String>) {
         let (_, _, failures) = run_steps(&mut run, earlier);
         assert!(failures.is_empty(), "{} (included) failed: {failures:?}", earlier.tutorial);
     }
-    run_steps(&mut run, &t)
+    let result = run_steps(&mut run, &t);
+    // HC_TUTORIAL_OUT=<folder> saves each tutorial's finished plan there.
+    if let Ok(dir) = std::env::var("HC_TUTORIAL_OUT") {
+        let out = PathBuf::from(dir).join(path.file_stem().unwrap()).with_extension("housecraft");
+        housecraft_io_native::save_path(run.doc(), &out).unwrap_or_else(|e| panic!("{}: {e}", out.display()));
+    }
+    result
 }
 
 fn run_steps(run: &mut Run, t: &Tutorial) -> (usize, Vec<String>, Vec<String>) {

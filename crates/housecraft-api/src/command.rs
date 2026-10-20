@@ -272,6 +272,9 @@ pub enum Command {
     },
     /// Client, designer and custom project fields.
     SetProjectInfo { info: ProjectInfo },
+    /// Break a wall in two at the point on it nearest `at` (Add Break):
+    /// doors and windows go with the piece they are in.
+    BreakWall { id: Id, at: Point2 },
     /// Move `wall` along a dimension so that segment `segment` (0 = the
     /// first pair of points) measures `length`, as when you click a
     /// dimension next to a selected wall and type a new value. Walls joined
@@ -1301,6 +1304,7 @@ impl Command {
             Command::PinObjects { .. } => "pin_objects",
             Command::LogTime { .. } => "log_time",
             Command::MoveWallByDimension { .. } => "move_wall_by_dimension",
+            Command::BreakWall { .. } => "break_wall",
             Command::DeleteTime { .. } => "delete_time",
             Command::SetHatchPattern { .. } => "set_hatch_pattern",
             Command::DeleteHatchPattern { .. } => "delete_hatch_pattern",
@@ -2004,6 +2008,34 @@ impl Command {
             }
             Command::Scatter { source, region, count, seed, size_variation, rotate } => {
                 crate::convert::scatter(doc, *source, *region, *count, *seed, *size_variation, *rotate, &mut out)?
+            }
+            Command::BreakWall { id, at } => {
+                let w = expect::<Wall>(doc, *id)?.clone();
+                let (a, b) = (housecraft_geom::v2(w.start), housecraft_geom::v2(w.end));
+                let (p, t) = housecraft_geom::math::closest_on_segment(housecraft_geom::v2(*at), a, b);
+                let split = (p - a).length();
+                if split < 1.0 || (b - p).length() < 1.0 {
+                    return invalid("break the wall away from its ends");
+                }
+                let openings: Vec<Opening> = doc.openings_in(w.id).cloned().collect();
+                if openings.iter().any(|o| (o.position.mm() - split).abs() < o.width.mm() / 2.0) {
+                    return invalid("a door or window is in the way of the break");
+                }
+                let _ = t;
+                let pt = housecraft_geom::math::pt(p);
+                let second = doc.insert(Wall { id: Id(0), start: pt, ..w.clone() });
+                if let Some(first) = doc.get_mut::<Wall>(w.id) {
+                    first.end = pt;
+                }
+                for o in openings.into_iter().filter(|o| o.position.mm() > split) {
+                    if let Some(om) = doc.get_mut::<Opening>(o.id) {
+                        om.wall = second;
+                        om.position = Length::from_mm(o.position.mm() - split);
+                    }
+                    out.modified.push(o.id);
+                }
+                out.modified.push(w.id);
+                out.created.push(second);
             }
             Command::MoveWallByDimension { dimension, segment, wall, length } => {
                 let (a, b) = ops::dimension_segment(doc, *dimension, *segment)?;

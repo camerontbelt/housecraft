@@ -58,10 +58,10 @@ Chief splits a wall automatically where another wall crosses it. **HouseCraft do
 ## Merging rooms (page 36)
 
 1. Draw a wall across the closet beside the Foyer, about 6' from the front: two closets.
-2. Chief breaks the closet's wall and drags its end. In HouseCraft, *there's no Break Wall tool yet*, but if you
-   clicked where the walls meet when drawing (see "One habit to learn first"), the piece of wall between the upper
-   closet and the Foyer is its own wall. Click it and press **Delete**. The upper closet joins the Foyer, and the
-   Foyer (the larger room) keeps its name and type.
+2. Chief breaks the closet's wall and drags its end. In HouseCraft, use **Break Wall** (Wall Tools) and click the
+   closet's wall where the new wall meets it. (If you clicked at each junction when drawing, it's already in
+   pieces.) Then click the piece between the upper closet and the Foyer and press **Delete**. The upper closet
+   joins the Foyer, and the Foyer (the larger room) keeps its name and type.
 
 ## A thicker wall type (pages 37–38)
 
@@ -102,7 +102,6 @@ Chief splits a wall automatically where another wall crosses it. **HouseCraft do
 | Missing | FEATURES row |
 |---|---|
 | Walls split where another wall crosses them | WL-27 |
-| Break Wall tool | WL-24 |
 | Per-room label hide/rotate; size line layer | RM-14 |
 | Reverse Layers | WL-25 |
 | Interior Dimension tool; Auto Room Dimension | DIM-01, DIM-26 |
@@ -111,5 +110,5 @@ Chief splits a wall automatically where another wall crosses it. **HouseCraft do
 | Floor overview | VIS-30 |
 | Dashboard and pinned recent files | UI-30, PRJ-02 |
 
-Added for this tutorial: **room dividers** (Room Divider tool and the wall's Invisible box), and **rooms that
+Added since: the **Break Wall** tool (Wall Tools). Added for this tutorial: **room dividers** (Room Divider tool and the wall's Invisible box), and **rooms that
 inherit** settings when split, keeping the larger room's when merged.

@@ -13,6 +13,9 @@ has two files:
   cargo test -p housecraft-api --test tutorials -- --nocapture
   ```
 
+  Set `HC_TUTORIAL_OUT` to a folder to also save each tutorial's finished plan there (to open in HouseCraft and
+  compare with Chief's pictures).
+
 | # | Tutorial (Chief page) | Steps replayed | Gaps | Guide |
 |---|---|---|---|---|
 | 1 | Exterior Walls (3) | 14 | 7 | [01-exterior-walls.md](01-exterior-walls.md) |
@@ -22,7 +25,7 @@ has two files:
 | 5 | Doors and Windows (82) | 19 | 11 | [05-doors-and-windows.md](05-doors-and-windows.md) |
 | 6 | Decks and Porches (105) | 9 | 14 | [06-decks-and-porches.md](06-decks-and-porches.md) |
 | 7 | Roof styles: hip, gable, Dutch gable, shed, offset gable, gambrel, gull wing, half hip, mansard (127) | 12 | 3 | [07-roof-styles.md](07-roof-styles.md) |
-| 8 | Chic Cottage Roof (136) | — | — | next |
+| 8 | Chic Cottage Roof (136) | 11 | 8 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
 | 9–19 | Dormers, Interior Design and Kitchen & Bath tutorials (159–330) | — | — | |
 | 20–22 | Framing tutorials (331–381) | — | — | |
 | 23–26 | Landscaping tutorials (382–450) | — | — | |

@@ -1278,6 +1278,22 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
         (Category::Wall, Surface::Wall)
     };
     let geoms = wall_geoms(doc, floor.id);
+    // Roofs built on a lower floor (a story and a half): walls under them
+    // stop at the roof's underside.
+    let roofs_below: Vec<(Vec<DVec3>, f64)> = doc
+        .iter::<housecraft_model::RoofPlane>()
+        .filter(|r| !r.gable && doc.get::<housecraft_model::Floor>(r.floor).is_some_and(|f| f.elevation.mm() < floor.elevation.mm() - 1.0))
+        .map(|r| {
+            let outline = r.outline.iter().map(|q| { let [x, y, z] = q.mm(); DVec3::new(x, y, z) }).collect();
+            (outline, r.thickness.mm() / r.pitch.to_radians().cos().max(0.1))
+        })
+        .collect();
+    let under_roof = |p: DVec2| -> Option<f64> {
+        roofs_below
+            .iter()
+            .filter_map(|(o, drop)| crate::roof_extras::plane_z(o, p).map(|z| z - drop))
+            .reduce(f64::min)
+    };
     for g in &geoms {
         let Some(wall) = doc.get::<housecraft_model::Wall>(g.id) else {
             continue;
@@ -1330,8 +1346,27 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
             continue;
         }
         let shape = &wall.shape;
-        let top = |u: f64| z0 + shape.top_at(u, height);
-        let breaks = shape.breaks();
+        let plain_top = |u: f64| z0 + shape.top_at(u, height);
+        let mut breaks = shape.breaks();
+        // Trimmed to a roof above where it dips below the wall's own top.
+        let clipped = !roofs_below.is_empty()
+            && (0..=20).any(|k| {
+                let u = g.length * k as f64 / 20.0;
+                under_roof(g.start + g.dir * u).is_some_and(|z| z < plain_top(u) - 1.0)
+            });
+        if clipped {
+            let n = (g.length / 150.0).ceil().max(1.0) as usize;
+            breaks.extend((1..n).map(|k| g.length * k as f64 / n as f64));
+            breaks.sort_by(f64::total_cmp);
+        }
+        let top = |u: f64| {
+            let t = plain_top(u);
+            if clipped {
+                under_roof(g.start + g.dir * u.clamp(0.0, g.length)).map_or(t, |z| z.min(t).max(z0))
+            } else {
+                t
+            }
+        };
         let shared = crate::walls::shared_openings(doc, &geoms, g);
         let niche_spans: Vec<(f64, f64)> = shape
             .niches

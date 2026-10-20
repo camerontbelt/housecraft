@@ -54,6 +54,8 @@ pub enum Tool {
     RevisionCloud,
     /// An invisible wall that separates rooms.
     RoomDivider,
+    /// Click a wall to break it in two there (Add Break).
+    BreakWall,
     /// Draw an elevation or cross-section camera: click where you stand, then the direction to look.
     SectionLine(SectionKind),
     /// Full Camera drawn in plan: where it stands, then where it looks.
@@ -291,7 +293,7 @@ impl Family {
         use WindowStyle as W;
         match self {
             Family::Select => &[Tool::Select],
-            Family::Walls => &[Tool::ExteriorWall, Tool::InteriorWall, Tool::RoomDivider, Tool::RoomBox, Tool::SpaceBox],
+            Family::Walls => &[Tool::ExteriorWall, Tool::InteriorWall, Tool::RoomDivider, Tool::BreakWall, Tool::RoomBox, Tool::SpaceBox],
             Family::Doors => &[
                 Tool::Door(D::Hinged),
                 Tool::Door(D::Double),
@@ -419,7 +421,7 @@ impl Tool {
     pub fn family(self) -> Family {
         match self {
             Tool::Select => Family::Select,
-            Tool::ExteriorWall | Tool::InteriorWall | Tool::RoomDivider | Tool::RoomBox | Tool::SpaceBox => Family::Walls,
+            Tool::ExteriorWall | Tool::InteriorWall | Tool::RoomDivider | Tool::BreakWall | Tool::RoomBox | Tool::SpaceBox => Family::Walls,
             Tool::Door(_) => Family::Doors,
             Tool::Window(_) | Tool::BayWindow(_) | Tool::CornerWindow => Family::Windows,
             Tool::Dimension | Tool::AngularDimension | Tool::GridLine => Family::Dimensions,
@@ -446,6 +448,7 @@ impl Tool {
             Tool::ExteriorWall => "Straight Exterior Wall",
             Tool::InteriorWall => "Straight Interior Wall",
             Tool::RoomDivider => "Room Divider",
+            Tool::BreakWall => "Break Wall",
             Tool::RoomBox => "Room Box",
             Tool::SpaceBox => "Space Planning Box",
             Tool::Door(d) => d.name(),
@@ -536,7 +539,7 @@ impl Tool {
         match self {
             Tool::Select => Icon::Select,
             Tool::ExteriorWall => Icon::ExteriorWall,
-            Tool::InteriorWall | Tool::RoomDivider => Icon::InteriorWall,
+            Tool::InteriorWall | Tool::RoomDivider | Tool::BreakWall => Icon::InteriorWall,
             Tool::RoomBox => Icon::Box,
             Tool::SpaceBox => Icon::Box,
             Tool::Door(D::Hinged) => Icon::Door,
@@ -629,6 +632,7 @@ impl Tool {
                 "Click to start, click for each corner; type a length and Enter for exact walls. Esc or double-click ends."
             }
             Tool::RoomDivider => "Click to start, click for each corner: an invisible wall that separates rooms. Esc ends.",
+            Tool::BreakWall => "Click a wall where it should break in two (doors and windows stay where they are).",
             Tool::Door(_) | Tool::Window(_) => "Click on a wall to place.",
             Tool::BayWindow(_) => "Click on an exterior wall where the bay goes; edit its walls and windows afterwards.",
             Tool::CornerWindow => "Click near the end of a wall at a corner.",

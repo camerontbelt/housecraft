@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 512 items: 29 P0, about 130 P1, about 242 P2, about 103 P3, and 5 out of scope. Each item should eventually map to
+There are 516 items: 29 P0, about 132 P1, about 243 P2, about 104 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -183,6 +183,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-15 | Split rooms inherit the parent room's settings; merged rooms keep the larger room's | P1 | M9 ✓ rooms::sync compares with the plan before the change |
 | RM-16 | Floor/Ceiling Platform defaults shared by new floors (structure, finishes) | P2 | M9 |
 | RM-17 | Outdoor room types (Porch, Deck) are left out of the foundation | P1 | M9 ✓ RoomType.exterior; walls that only enclose outdoor rooms don't shape the foundation |
+| RM-18 | Attic room type (unfinished space under the roof) | P3 | M9 |
 
 ## 6. Walls
 
@@ -211,7 +212,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-21 | Room dividers / invisible walls that split rooms without 3D | P1 | M9 ✓ Room Divider tool; wall Invisible checkbox; dashed in plan, not built, not located by exterior dimensions |
 | WL-22 | Fix Wall Connections: close small gaps and join overlapping walls | P2 | M9 |
 | WL-23 | Glass wall and glass pony wall tools | P2 | M9 |
-| WL-24 | Break Wall tool: split a wall at a clicked point | P1 | M9 |
+| WL-24 | Break Wall tool: split a wall at a clicked point | P1 | M9 ✓ Wall Tools › Break Wall; `break_wall` (openings follow their piece) |
 | WL-25 | Reverse Layers: flip a wall's layers to the other side | P2 | M9 |
 | WL-26 | Edit Wall Layer Intersection handles (where layers of meeting walls stop) | P3 | M9 |
 | WL-27 | Split walls automatically where another wall crosses or meets them | P2 | M9 |
@@ -296,6 +297,9 @@ These come from reading the whole list and change the architecture, not just the
 | RF-15 | Manual ceiling plane tool and Edit All Roof Planes dialog | P2 | M9 |
 | RF-16 | Roof hole tool (cut a roof plane without a skylight) | P2 | M9 |
 | RF-17 | Roof directive parity: High Shed/Gable option; upper pitch Starts at Height (from floor) or In From Baseline; attic wall layer; Reset roof directives to defaults | P2 | M9 |
+| RF-18 | Roof plane editing: break an edge, drag corners, Join Roof Planes (valleys/ridges), curved roof planes | P1 | M9 |
+| RF-19 | Build Roof options: Raise/Lower All Roof Planes, Ignore Top Floor; Display On Floor Above | P2 | M9 |
+| RF-20 | Walls under a roof built on a lower floor stop at its underside (story-and-a-half knee and gable walls) | P1 | M9 ✓ 3D walls are trimmed to the roof's underside |
 
 ## 10. Stairs & ramps
 
