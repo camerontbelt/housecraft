@@ -6,7 +6,8 @@ a copy of the plan from [Tutorial 8](08-chic-cottage-roof.md). The steps also ru
 
 ## Make the option file
 
-**File › Save As…** `Chic Cottage-Dormer Option` (Chief: Make a Copy), and work in that file.
+**File › Save As…** `Chic Cottage-Dormer Option`, and work in that file. (Chief makes a copy and opens it; Save As does
+both. **File › Make a Copy…** would leave you in the original.)
 
 ## Auto floating dormer (pages 161–163)
 

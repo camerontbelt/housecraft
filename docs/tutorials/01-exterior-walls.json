@@ -183,8 +183,7 @@
       "gap": "No spell check. Row: TXT-17"
     },
     {
-      "step": "Save, then make a copy named 'Chic Cottage-Shell' (File > Make a Copy)",
-      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+      "step": "Save, then make a copy named 'Chic Cottage-Shell' (File > Make a Copy)"
     }
   ]
 }

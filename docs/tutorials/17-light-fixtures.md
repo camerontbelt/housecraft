@@ -73,8 +73,7 @@ HouseCraft yet:* a schedule for one room, lighting only, or with your own title.
 1. *Not in HouseCraft yet:* an uppercase setting in text defaults. Type the caps yourself.
 2. **Text with Arrow**: from the Deck light, type `CEILING LIGHT`. *Not in HouseCraft yet:* the `%description%`
    macro reading the object the arrow points at.
-3. **Revision copy:** *not in HouseCraft yet:* Make a Copy. **File › Save As…** `Chic Cottage-Lighting` makes the
-   copy. Then reopen CHIC COTTAGE-CURRENT to keep working in it.
+3. **File › Make a Copy…** `Chic Cottage-Lighting`. You keep working in CHIC COTTAGE-CURRENT.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -88,4 +87,3 @@ HouseCraft yet:* a schedule for one room, lighting only, or with your own title.
 | Schedule from a room, category filter, title | EST-31 |
 | Uppercase text defaults | TXT-24 |
 | Text reading the object its arrow points at | TXT-23 |
-| Make a Copy | PRJ-45 |

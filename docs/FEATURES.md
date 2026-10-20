@@ -162,7 +162,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-42 | Referenced Files dialog: list and relink a layout's plans | P2 | M9 |
 | PRJ-43 | Missing Files check with relink | P2 | M9 |
 | PRJ-44 | Build New Floor: derive the new floor's exterior walls from the floor below (pony walls take the upper type) | P1 | M9 |
-| PRJ-45 | File > Make a Copy: save a revision copy under a new name and stay in the original | P3 | M9 |
+| PRJ-45 | File > Make a Copy: save a revision copy under a new name and stay in the original | P3 | M9 ✓ File > Make a Copy… saves a renamed copy beside the plan (Plan-Copy, Plan-Copy 2…) and adds it to Recent; you keep working in the original |
 | PRJ-46 | Layout page templates: a Use as Page Template flag (template pages don't print), page labels with # numbered per prefix (A1.#, E1.#), layouts as their own file | P2 | M9 |
 | PRJ-47 | Drafting on layout sheets: CAD and text drawn on the page, layout grid snap and arrow-key nudge, rotated text, Center Object, pictures/logos, revision table page ranges and minimum rows, sheet index columns | P2 | M9 |
 | PRJ-48 | Layouts: 3D camera views on pages (image or live), colour-filled elevation boxes, a plan-wide default drawing scale for new boxes | P2 | M9 |

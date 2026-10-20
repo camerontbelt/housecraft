@@ -77,7 +77,7 @@ lines you can drag.
 
 ## Revisions (page 80)
 
-**File › Save As…** `Chic Cottage-Stairs`, then reopen `Chic Cottage-Current`.
+**File › Make a Copy…** `Chic Cottage-Stairs`. You stay in `Chic Cottage-Current`.
 
 ## What this tutorial showed HouseCraft still needs
 

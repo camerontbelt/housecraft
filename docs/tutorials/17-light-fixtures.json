@@ -485,8 +485,7 @@
       "gap": "Text doesn't read the object its arrow points at. Row: TXT-23"
     },
     {
-      "step": "File > Make a Copy as Chic Cottage-Lighting",
-      "gap": "Save As makes the copy and switches to it; no Make a Copy that leaves you in the original. Row: PRJ-45"
+      "step": "File > Make a Copy as Chic Cottage-Lighting"
     }
   ]
 }

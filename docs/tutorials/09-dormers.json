@@ -4,8 +4,7 @@
   "include": "08-chic-cottage-roof.json",
   "steps": [
     {
-      "step": "Make a copy of the plan as 'Chic Cottage-Dormer Option' and open it",
-      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+      "step": "Make a copy of the plan as 'Chic Cottage-Dormer Option' and open it"
     },
     {
       "step": "Dormer defaults: frieze, Shingle-6 walls, 96\" wide",

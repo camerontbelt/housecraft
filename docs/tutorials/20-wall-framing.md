@@ -54,7 +54,7 @@ dragging extension lines to add or remove them.
 
 ## Revision (page 362)
 
-*Not in HouseCraft yet:* Make a Copy. Use **File › Save As…** `Chic Cottage-Wall Framing`.
+**File › Make a Copy…** `Chic Cottage-Wall Framing`.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -67,7 +67,6 @@ dragging extension lines to add or remove them.
 | Detail default sets; framing locate | DIM-29, DIM-30 |
 | Secondary dimension format | DIM-12 |
 | Extension-line handles | DIM-28 |
-| Make a Copy | PRJ-45 |
 
 **Fixed while following this tutorial:**
 

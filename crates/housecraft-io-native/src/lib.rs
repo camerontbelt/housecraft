@@ -119,6 +119,33 @@ pub fn save_path(doc: &Document, path: impl AsRef<Path>) -> Result<(), Error> {
     Ok(())
 }
 
+/// Make a Copy: save the plan to `path` named after the file (a revision
+/// such as "Chic Cottage-Roof"), leaving `doc` itself untouched.
+pub fn save_copy(doc: &Document, path: impl AsRef<Path>) -> Result<(), Error> {
+    let path = path.as_ref();
+    let mut copy = doc.clone();
+    if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+        copy.name = stem.to_string();
+    }
+    save_path(&copy, path)
+}
+
+/// Where Make a Copy suggests saving: beside `original` (or in the current
+/// folder), as "{name}-Copy", numbered so it doesn't overwrite a file.
+pub fn copy_path(original: Option<&Path>, name: &str) -> std::path::PathBuf {
+    let dir = original.and_then(Path::parent).map(Path::to_path_buf).unwrap_or_default();
+    let stem = original.and_then(Path::file_stem).and_then(|s| s.to_str()).unwrap_or(name);
+    let mut n = 1;
+    loop {
+        let suffix = if n == 1 { "-Copy".to_string() } else { format!("-Copy {n}") };
+        let candidate = dir.join(format!("{stem}{suffix}.{EXTENSION}"));
+        if !candidate.exists() {
+            return candidate;
+        }
+        n += 1;
+    }
+}
+
 pub fn load_path(path: impl AsRef<Path>) -> Result<Document, Error> {
     load(std::io::BufReader::new(std::fs::File::open(path)?))
 }
@@ -153,6 +180,22 @@ mod tests {
         save(&doc, &mut buf).unwrap();
         buf.set_position(0);
         assert_eq!(load(buf).unwrap(), doc);
+    }
+
+    #[test]
+    fn make_a_copy_leaves_the_original_and_numbers_names() {
+        let dir = std::env::temp_dir().join(format!("housecraft-copy-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let original = dir.join(format!("Cottage.{EXTENSION}"));
+        let doc = Document::new("Cottage");
+        save_path(&doc, &original).unwrap();
+        let first = copy_path(Some(&original), &doc.name);
+        assert_eq!(first, dir.join(format!("Cottage-Copy.{EXTENSION}")));
+        save_copy(&doc, &first).unwrap();
+        assert_eq!(doc.name, "Cottage", "the open plan keeps its name");
+        assert_eq!(load_path(&first).unwrap().name, "Cottage-Copy");
+        assert_eq!(copy_path(Some(&original), &doc.name), dir.join(format!("Cottage-Copy 2.{EXTENSION}")));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

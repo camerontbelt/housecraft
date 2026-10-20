@@ -217,8 +217,7 @@
       "gap": "Move the lot with Transform/Replicate distances. Rows: DIM-03, CAD-31"
     },
     {
-      "step": "Save and close the plot plan file; Make a Copy of CURRENT as Chic Cottage-Plot Plan",
-      "gap": "No Make a Copy. Row: PRJ-45"
+      "step": "Save and close the plot plan file; Make a Copy of CURRENT as Chic Cottage-Plot Plan"
     }
   ]
 }

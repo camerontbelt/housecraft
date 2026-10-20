@@ -354,8 +354,7 @@
       "gap": "Schedules can only go on floor plans, not in CAD details. Row: EST-26"
     },
     {
-      "step": "Save a copy as Chic Cottage-Floors",
-      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+      "step": "Save a copy as Chic Cottage-Floors"
     }
   ]
 }

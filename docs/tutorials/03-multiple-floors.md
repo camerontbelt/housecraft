@@ -59,7 +59,7 @@ It carries on from [Tutorial 2](02-interior-walls.md). The steps also run as the
 
 ## Revisions (page 59)
 
-**File › Save As…** `Chic Cottage-Floors`, then reopen `Chic Cottage-Current`.
+**File › Make a Copy…** `Chic Cottage-Floors`. You stay in `Chic Cottage-Current`.
 
 ## What this tutorial showed HouseCraft still needs
 

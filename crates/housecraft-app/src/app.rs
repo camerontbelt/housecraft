@@ -1973,6 +1973,28 @@ impl App {
         }
     }
 
+    /// File > Make a Copy: save a revision copy under a new name (beside the
+    /// plan) and keep working in the original.
+    pub fn make_copy(&mut self) {
+        let suggested = housecraft_io_native::copy_path(self.path.as_deref(), &self.doc().name);
+        let Some(path) = pick_copy_path(&suggested) else {
+            return;
+        };
+        if let Some(c) = self.time.flush() {
+            self.run1(c);
+        }
+        match housecraft_io_native::save_copy(self.doc(), &path) {
+            Ok(()) => {
+                let shown = path.display().to_string();
+                self.prefs.recent.retain(|p| p != &shown);
+                self.prefs.recent.insert(0, shown.clone());
+                self.prefs.recent.truncate(8);
+                self.info(format!("Saved a copy as {shown}; still working in this plan"));
+            }
+            Err(e) => self.error(format!("Make a Copy failed: {e}")),
+        }
+    }
+
     /// Do `action`, first asking about unsaved changes if there are any.
     pub fn guarded(&mut self, action: Pending) {
         if self.session.is_dirty() {
@@ -2103,6 +2125,9 @@ impl App {
                 }
                 if item(ui, "Save As…", "", true) {
                     self.save(true);
+                }
+                if item(ui, "Make a Copy…", "", true) {
+                    self.make_copy();
                 }
                 if item(ui, "Save as Template…", "", true) {
                     self.template_name = Some(self.doc().name.clone());
@@ -4969,6 +4994,24 @@ pub fn pick_save_path(name: &str, ext: &str) -> Option<PathBuf> {
         .set_file_name(format!("{name}.{ext}"))
         .add_filter(ext.to_uppercase(), &[ext])
         .save_file()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn pick_copy_path(suggested: &std::path::Path) -> Option<PathBuf> {
+    let ext = housecraft_io_native::EXTENSION;
+    let mut d = rfd::FileDialog::new().add_filter(ext.to_uppercase(), &[ext]);
+    if let Some(dir) = suggested.parent().filter(|d| !d.as_os_str().is_empty()) {
+        d = d.set_directory(dir);
+    }
+    if let Some(name) = suggested.file_name().and_then(|n| n.to_str()) {
+        d = d.set_file_name(name);
+    }
+    d.set_title("Make a Copy").save_file()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn pick_copy_path(_suggested: &std::path::Path) -> Option<PathBuf> {
+    None
 }
 
 #[cfg(target_arch = "wasm32")]

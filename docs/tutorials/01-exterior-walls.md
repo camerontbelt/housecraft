@@ -17,7 +17,7 @@ HouseCraft ever disagree, the test catches it.
 | Default Settings (Edit menu) | **Edit › Default Settings…** (the same idea; fewer categories) |
 | Snap Settings (Edit menu) | **Tools › Snap Settings** |
 | Define Wall Types | **Build › Wall › Wall Types…** or **Tools › Wall Types…** |
-| Make a Copy | **File › Save As…** |
+| Make a Copy | **File › Make a Copy…** |
 
 ## File management, saving, plan views (pages 3–6)
 
@@ -101,7 +101,7 @@ HouseCraft ever disagree, the test catches it.
 1. **Rich text and Uppercase:** *not in HouseCraft yet.* Use the **Text** tool and type the note in capitals:
    `2X6 EXTERIOR WALLS 24" OC U.N.O.`
 2. **Spell check:** *not in HouseCraft yet.*
-3. **Make a Copy:** use **File › Save As…** and name the copy `Chic Cottage-Shell`. Then reopen
+3. **File › Make a Copy…**: name the copy `Chic Cottage-Shell`. It's saved beside your plan, and you stay in
    `Chic Cottage-Current` to carry on.
 
 ## What this tutorial showed HouseCraft still needs
@@ -112,7 +112,7 @@ HouseCraft ever disagree, the test catches it.
 | Tape Measure | DIM-24 |
 | Rich text with uppercase | TXT-02 |
 | Spell check | TXT-17 |
-| Projects with several plans and layouts; Make a Copy | PRJ-09 |
+| Projects with several plans and layouts | PRJ-09 |
 | Move Left End / Right End / Both Ends when resizing by dimension; arrow-key nudging | DIM-03 |
 | "Foundation/Dimension to Exterior of Layer" wall type settings | FD-05 |
 

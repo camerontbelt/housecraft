@@ -65,7 +65,7 @@ HouseCraft yet:* moving a selection by typing on a dimension, point markers, and
 
 ## Revision (page 401)
 
-*Not in HouseCraft yet:* Make a Copy. Use **File › Save As…** `Chic Cottage-Plot Plan`.
+**File › Make a Copy…** `Chic Cottage-Plot Plan`.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -75,7 +75,6 @@ HouseCraft yet:* moving a selection by typing on a dimension, point markers, and
 | Decimal feet and bearings on CAD lines; curved lot sides | SITE-29 |
 | Concentric edit behaviour | CAD-32 |
 | Moving a selection by dimension; Point to Point Move | DIM-03, CAD-31 |
-| Make a Copy | PRJ-45 |
 
 **New while following this tutorial:** **CAD › Convert CAD To › Terrain Perimeter** turns a closed CAD outline into the
 terrain's perimeter.

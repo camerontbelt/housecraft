@@ -39,8 +39,8 @@ lies on the terrain.
 
 ## Annotations and revision (pages 431–432)
 
-*Not in HouseCraft yet:* a street-name label on the road, a hardscaping schedule, and Make a Copy. Use **Text** for
-the street name and **File › Save As…** `Chic Cottage-Hardscape`.
+*Not in HouseCraft yet:* a street-name label on the road, and a hardscaping schedule. Use **Text** for the street
+name. Then **File › Make a Copy…** `Chic Cottage-Hardscape`.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -49,4 +49,3 @@ the street name and **File › Save As…** `Chic Cottage-Hardscape`.
 | Road defaults, curves, stripes, flares, curb cuts, auto sidewalks, labels, schedule | SITE-32 |
 | Terrain passing exactly through elevation data | SITE-33 |
 | Point to Point Move | CAD-31 |
-| Make a Copy | PRJ-45 |

@@ -71,7 +71,7 @@ work (FEATURES ST-20).
 
 ## Revisions and folders (page 124)
 
-**File › Save As…** `Chic Cottage-Porches`. Keep the archive copies in a folder of their own in Windows
+**File › Make a Copy…** `Chic Cottage-Porches`. Keep the archive copies in a folder of their own in Windows
 Explorer. HouseCraft has no Project Browser folders for documents.
 
 ## What this tutorial showed HouseCraft still needs

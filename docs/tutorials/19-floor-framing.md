@@ -66,8 +66,7 @@ its ends, or open it and type its end points.
 
 ## Revision (page 346)
 
-*Not in HouseCraft yet:* Make a Copy. Use **File › Save As…** `Chic Cottage-Floor Framing`, then reopen
-CHIC COTTAGE-CURRENT.
+**File › Make a Copy…** `Chic Cottage-Floor Framing`.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -80,4 +79,3 @@ CHIC COTTAGE-CURRENT.
 | Editable framing types | FR-07 |
 | Bumping and pushing | CAD-28 |
 | Text uppercase, margins, partial underline | TXT-24 |
-| Make a Copy | PRJ-45 |

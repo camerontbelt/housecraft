@@ -54,7 +54,7 @@ elevation data, about 1" below the Garage slab. *Not in HouseCraft yet:* a refer
 
 ## Revision (page 417)
 
-*Not in HouseCraft yet:* Make a Copy. Use **File › Save As…** `Chic Cottage-Terrain`.
+**File › Make a Copy…** `Chic Cottage-Terrain`.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -66,4 +66,3 @@ elevation data, about 1" below the Garage slab. *Not in HouseCraft yet:* a refer
 | Elevation line angle, Add Break, continue drawing | SITE-30 |
 | Curved elevation lines | SITE-29 |
 | Retaining walls separating the terrain | SITE-31 |
-| Make a Copy | PRJ-45 |

@@ -42,7 +42,7 @@ as in the table. **Number Pages** gives every page one prefix (A-1, A-2…).
 
 ## Revision (page 459)
 
-*Not in HouseCraft yet:* Make a Copy. Use **File › Save As…** `Chic Cottage-Page Templates`.
+**File › Make a Copy…** `Chic Cottage-Page Templates`.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -50,4 +50,3 @@ as in the table. **Number Pages** gives every page one prefix (A-1, A-2…).
 |---|---|
 | Template flag (no print), # page labels, separate layout files | PRJ-46 |
 | Insert page before / after | PRJ-41 |
-| Make a Copy | PRJ-45 |

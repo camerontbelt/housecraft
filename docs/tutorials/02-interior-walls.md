@@ -95,7 +95,7 @@ Chief splits a wall automatically where another wall crosses it. **HouseCraft do
 ## Annotations and revisions (pages 43–44)
 
 1. **Text** tool, near the top left of the Dining room: `2X4 INTERIOR WALLS 16" OC U.N.O.`
-2. **File › Save As…** `Chic Cottage-Rooms`, then reopen `Chic Cottage-Current`.
+2. **File › Make a Copy…** `Chic Cottage-Rooms`. You stay in `Chic Cottage-Current`.
 
 ## What this tutorial showed HouseCraft still needs
 

@@ -18,36 +18,36 @@ has two files:
 
 | # | Tutorial (Chief page) | Steps replayed | Gaps | Guide |
 |---|---|---|---|---|
-| 1 | Exterior Walls (3) | 14 | 7 | [01-exterior-walls.md](01-exterior-walls.md) |
-| 2 | Interior Walls (28) | 16 | 11 | [02-interior-walls.md](02-interior-walls.md) |
-| 3 | Multiple Floors (45) | 10 | 8 | [03-multiple-floors.md](03-multiple-floors.md) |
-| 4 | Interior Stairs (60) | 11 | 12 | [04-interior-stairs.md](04-interior-stairs.md) |
-| 5 | Doors and Windows (82) | 19 | 11 | [05-doors-and-windows.md](05-doors-and-windows.md) |
+| 1 | Exterior Walls (3) | 15 | 6 | [01-exterior-walls.md](01-exterior-walls.md) |
+| 2 | Interior Walls (28) | 18 | 9 | [02-interior-walls.md](02-interior-walls.md) |
+| 3 | Multiple Floors (45) | 11 | 7 | [03-multiple-floors.md](03-multiple-floors.md) |
+| 4 | Interior Stairs (60) | 12 | 11 | [04-interior-stairs.md](04-interior-stairs.md) |
+| 5 | Doors and Windows (82) | 20 | 10 | [05-doors-and-windows.md](05-doors-and-windows.md) |
 | 6 | Decks and Porches (105) | 9 | 14 | [06-decks-and-porches.md](06-decks-and-porches.md) |
 | 7 | Roof styles: hip, gable, Dutch gable, shed, offset gable, gambrel, gull wing, half hip, mansard (127) | 12 | 3 | [07-roof-styles.md](07-roof-styles.md) |
-| 8 | Chic Cottage Roof (136) | 11 | 8 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
-| 9 | Dormers (159) | 8 | 9 | [09-dormers.md](09-dormers.md) |
-| 10 | Custom Ceilings (177) | 5 | 7 | [10-custom-ceilings.md](10-custom-ceilings.md) |
-| 11 | Finish Materials (191) | 9 | 6 | [11-finish-materials.md](11-finish-materials.md) |
-| 12 | Room Moldings (211) | 5 | 4 | [12-room-moldings.md](12-room-moldings.md) |
+| 8 | Chic Cottage Roof (136) | 12 | 7 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
+| 9 | Dormers (159) | 9 | 8 | [09-dormers.md](09-dormers.md) |
+| 10 | Custom Ceilings (177) | 6 | 6 | [10-custom-ceilings.md](10-custom-ceilings.md) |
+| 11 | Finish Materials (191) | 10 | 5 | [11-finish-materials.md](11-finish-materials.md) |
+| 12 | Room Moldings (211) | 6 | 3 | [12-room-moldings.md](12-room-moldings.md) |
 | 13 | Interior Furnishings (222) | 9 | 6 | [13-interior-furnishings.md](13-interior-furnishings.md) |
 | 14 | Cabinet Styles (237) | 8 | 4 | [14-cabinet-styles.md](14-cabinet-styles.md) |
 | 15 | Cabinet Layout (260) | 7 | 4 | [15-cabinet-layout.md](15-cabinet-layout.md) |
 | 16 | Appliances and Fixtures (277) | 10 | 6 | [16-appliances-and-fixtures.md](16-appliances-and-fixtures.md) |
-| 17 | Light Fixtures (298) | 15 | 12 | [17-light-fixtures.md](17-light-fixtures.md) |
+| 17 | Light Fixtures (298) | 16 | 11 | [17-light-fixtures.md](17-light-fixtures.md) |
 | 18 | Electrical Objects (317) | 13 | 11 | [18-electrical-objects.md](18-electrical-objects.md) |
-| 19 | Floor Framing (331) | 16 | 11 | [19-floor-framing.md](19-floor-framing.md) |
-| 20 | Wall Framing (349) | 10 | 10 | [20-wall-framing.md](20-wall-framing.md) |
+| 19 | Floor Framing (331) | 17 | 10 | [19-floor-framing.md](19-floor-framing.md) |
+| 20 | Wall Framing (349) | 11 | 9 | [20-wall-framing.md](20-wall-framing.md) |
 | 21 | Roof and Ceiling Framing (364) | 10 | 8 | [21-roof-and-ceiling-framing.md](21-roof-and-ceiling-framing.md) |
-| 22 | Plot Plans (382) | 9 | 7 | [22-plot-plans.md](22-plot-plans.md) |
-| 23 | Terrain Elevation (403) | 10 | 9 | [23-terrain-elevation.md](23-terrain-elevation.md) |
-| 24 | Driveways, Sidewalks, and Roads (420) | 5 | 8 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
+| 22 | Plot Plans (382) | 10 | 6 | [22-plot-plans.md](22-plot-plans.md) |
+| 23 | Terrain Elevation (403) | 11 | 8 | [23-terrain-elevation.md](23-terrain-elevation.md) |
+| 24 | Driveways, Sidewalks, and Roads (420) | 6 | 7 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
 | 25 | Landscaping Design (433) | 12 | 10 | [25-landscaping-design.md](25-landscaping-design.md) |
-| 26 | Layout Page Templates (451) | 6 | 5 | [26-layout-page-templates.md](26-layout-page-templates.md) |
+| 26 | Layout Page Templates (451) | 7 | 4 | [26-layout-page-templates.md](26-layout-page-templates.md) |
 | 27 | Title Blocks and Borders (460) | 9 | 7 | [27-title-blocks-and-borders.md](27-title-blocks-and-borders.md) |
 | 28 | Sending Views to Layout (483) | 9 | 7 | [28-sending-views-to-layout.md](28-sending-views-to-layout.md) |
 
-All 28 tutorials in the guide are covered: 287 steps replayed and 225 gaps, each gap with its FEATURES.md row.
+All 28 tutorials in the guide are covered: 305 steps replayed and 207 gaps, each gap with its FEATURES.md row.
 
 The tutorials build on each other. A JSON file can name the one before it in `include`; its steps run first and
 the new file carries on from that plan (tutorial 2 starts a fresh plan with tutorial 1's shell in a few commands).

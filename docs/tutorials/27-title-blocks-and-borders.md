@@ -58,7 +58,7 @@ rows, and revisions that only show on the pages they belong to.
 
 ## Revision and folders (page 481)
 
-*Not in HouseCraft yet:* Make a Copy and Project Browser folders. Use **File › Save As…** `Chic Cottage-Title Block`.
+**File › Make a Copy…** `Chic Cottage-Title Block`. *Not in HouseCraft yet:* Project Browser folders.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -66,4 +66,4 @@ rows, and revisions that only show on the pages they belong to.
 |---|---|
 | Drafting directly on layout sheets (CAD, grid, nudge, rotated text, centring, pictures, table options) | PRJ-47 |
 | Concentric edit; Point to Point Move | CAD-32, CAD-31 |
-| Make a Copy; folders | PRJ-45, PRJ-09 |
+| Project Browser folders | PRJ-09 |

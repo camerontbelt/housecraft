@@ -57,8 +57,7 @@ putting it in a CAD detail.
 
 ## Revisions and folders (page 329)
 
-*Not in HouseCraft yet:* Make a Copy, and your own folders in the Project Browser. Use **File › Save As…**
-`Chic Cottage-Electrical`, then reopen CHIC COTTAGE-CURRENT.
+**File › Make a Copy…** `Chic Cottage-Electrical`. *Not in HouseCraft yet:* your own folders in the Project Browser.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -69,4 +68,4 @@ putting it in a CAD detail.
 | Ganged electrical blocks | EL-09 |
 | Wiring splines | EL-01 |
 | Schedule title; schedules in CAD details | EST-31 |
-| Make a Copy; Project Browser folders | PRJ-45, PRJ-09 |
+| Project Browser folders | PRJ-09 |

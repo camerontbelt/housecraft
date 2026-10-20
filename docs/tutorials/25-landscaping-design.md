@@ -51,8 +51,7 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
 ## Schedule and revision (pages 447–449)
 
 1. **Tools › Schedules › Place in Plan › Plant Schedule**, then click beside the lot.
-2. *Not in HouseCraft yet:* Make a Copy and Project Browser folders. Use **File › Save As…**
-   `Chic Cottage-Landscaping`.
+2. **File › Make a Copy…** `Chic Cottage-Landscaping`. *Not in HouseCraft yet:* Project Browser folders.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -63,7 +62,7 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
 | Make Parallel | CAD-33 |
 | Plant Chooser and encyclopedia | SITE-20, SITE-21 |
 | Architectural blocks | CB-27 |
-| Make a Copy; folders | PRJ-45, PRJ-09 |
+| Project Browser folders | PRJ-09 |
 
 **New while following this tutorial:**
 
