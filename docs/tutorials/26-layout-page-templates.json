@@ -1,0 +1,237 @@
+{
+  "tutorial": "Layout Page Templates",
+  "source": "Chief Architect X18 Tutorial Guide, Layout Tutorials, pages 451-459",
+  "include": "25-landscaping-design.json",
+  "steps": [
+    {
+      "step": "Open (or start) the Chic Cottage layout",
+      "commands": [
+        {
+          "op": "add_layout",
+          "name": "Chic Cottage",
+          "pages": 2
+        }
+      ],
+      "save": {
+        "lay": "layout"
+      },
+      "expect": [
+        {
+          "get": "$lay",
+          "path": "/pages/1",
+          "is": "A-2"
+        }
+      ]
+    },
+    {
+      "step": "(A separate .layout file)",
+      "gap": "Layouts live in the plan file, not a separate layout file. Row: PRJ-46"
+    },
+    {
+      "step": "Page 0 'Standard Template' and page 1 'Cover Sheet Template' as page templates",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$lay",
+          "set": {
+            "pages": [
+              "Template",
+              "Cover Template"
+            ],
+            "titles": [
+              "Standard Template",
+              "Cover Sheet Template"
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$lay",
+          "path": "/titles/0",
+          "is": "Standard Template"
+        }
+      ]
+    },
+    {
+      "step": "(Use as Page Template: template pages don't print)",
+      "gap": "Any page can be drawn under another, but there is no template flag; template pages print with the rest. Row: PRJ-46"
+    },
+    {
+      "step": "Pages 2-6: page 2 uses the Cover Sheet Template, pages 3-6 the Standard Template; titles Cover Sheet, General Notes, Site Plan",
+      "commands": [
+        {
+          "op": "add_layout_page",
+          "layout": "$lay"
+        },
+        {
+          "op": "add_layout_page",
+          "layout": "$lay"
+        },
+        {
+          "op": "add_layout_page",
+          "layout": "$lay"
+        },
+        {
+          "op": "add_layout_page",
+          "layout": "$lay"
+        },
+        {
+          "op": "add_layout_page",
+          "layout": "$lay"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$lay",
+          "path": "/pages/6",
+          "is": "A-7"
+        }
+      ]
+    },
+    {
+      "step": "(templates and titles)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$lay",
+          "set": {
+            "titles": [
+              "Standard Template",
+              "Cover Sheet Template",
+              "Cover Sheet",
+              "General Notes",
+              "Site Plan",
+              "Floor 1 Plan",
+              "Electrical Floor 1"
+            ],
+            "templates": [
+              null,
+              null,
+              1,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$lay",
+          "path": "/templates/2",
+          "is": 1
+        },
+        {
+          "get": "$lay",
+          "path": "/templates/6",
+          "is": 0
+        },
+        {
+          "get": "$lay",
+          "path": "/titles/4",
+          "is": "Site Plan"
+        }
+      ]
+    },
+    {
+      "step": "Page labels A0.#, A1.#, A1.#, E1.#: each prefix numbered on its own",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$lay",
+          "set": {
+            "pages": [
+              "Template",
+              "Cover Template",
+              "Cover",
+              "A0.1",
+              "A1.1",
+              "A1.2",
+              "E1.1"
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$lay",
+          "path": "/pages/5",
+          "is": "A1.2"
+        }
+      ]
+    },
+    {
+      "step": "(# in a label numbers the page within its prefix)",
+      "gap": "Number Pages gives one prefix to every page; type mixed sheet numbers yourself. Row: PRJ-46"
+    },
+    {
+      "step": "Insert Page Before page 5 (Foundation Plan, A1.#); Insert Page After page 6 (Elevations, A2.#) and after 7 (Sections, A2.#)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$lay",
+          "set": {
+            "pages": [
+              "Template",
+              "Cover Template",
+              "Cover",
+              "A0.1",
+              "A1.1",
+              "A1.2",
+              "A1.3",
+              "A2.1",
+              "A2.2",
+              "E1.1"
+            ],
+            "titles": [
+              "Standard Template",
+              "Cover Sheet Template",
+              "Cover Sheet",
+              "General Notes",
+              "Site Plan",
+              "Foundation Plan",
+              "Floor 1 Plan",
+              "Elevations",
+              "Sections",
+              "Electrical Floor 1"
+            ],
+            "templates": [
+              null,
+              null,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$lay",
+          "path": "/titles/5",
+          "is": "Foundation Plan"
+        },
+        {
+          "get": "$lay",
+          "path": "/pages/9",
+          "is": "E1.1"
+        }
+      ]
+    },
+    {
+      "step": "(Insert Page Before / After)",
+      "gap": "Add Page adds at the end; reorder by editing the page list. Row: PRJ-41"
+    },
+    {
+      "step": "Make a Copy as Chic Cottage-Page Templates",
+      "gap": "No Make a Copy. Row: PRJ-45"
+    }
+  ]
+}

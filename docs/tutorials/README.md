@@ -43,7 +43,8 @@ has two files:
 | 23 | Terrain Elevation (403) | 10 | 9 | [23-terrain-elevation.md](23-terrain-elevation.md) |
 | 24 | Driveways, Sidewalks, and Roads (420) | 5 | 8 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
 | 25 | Landscaping Design (433) | 12 | 10 | [25-landscaping-design.md](25-landscaping-design.md) |
-| 26–28 | Layout tutorials (451–500) | — | — | |
+| 26 | Layout Page Templates (451) | 6 | 5 | [26-layout-page-templates.md](26-layout-page-templates.md) |
+| 27–28 | Title Blocks and Borders, Sending Views to Layout (460–500) | — | — | |
 
 The tutorials build on each other. A JSON file can name the one before it in `include`; its steps run first and
 the new file carries on from that plan (tutorial 2 starts a fresh plan with tutorial 1's shell in a few commands).

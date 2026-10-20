@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 563 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
+There are 564 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -163,6 +163,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-43 | Missing Files check with relink | P2 | M9 |
 | PRJ-44 | Build New Floor: derive the new floor's exterior walls from the floor below (pony walls take the upper type) | P1 | M9 |
 | PRJ-45 | File > Make a Copy: save a revision copy under a new name and stay in the original | P3 | M9 |
+| PRJ-46 | Layout page templates: a Use as Page Template flag (template pages don't print), page labels with # numbered per prefix (A1.#, E1.#), layouts as their own file | P2 | M9 |
 
 ## 5. Rooms
 
