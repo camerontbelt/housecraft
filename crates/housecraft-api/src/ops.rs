@@ -447,9 +447,15 @@ pub(crate) fn update(
     let kind = object.kind();
     let mut value = serde_json::to_value(object).expect("objects serialize");
     merge_patch(&mut value, &serde_json::Value::Object(set.clone()));
-    let updated: Object = serde_json::from_value(value)
+    let mut updated: Object = serde_json::from_value(value)
         .map_err(|e| ApiError::Invalid(format!("invalid {kind} properties: {e}")))?;
     debug_assert_eq!(updated.kind(), kind);
+    // Edited by hand: no longer rebuilt (unless the edit says otherwise).
+    if let Object::FramingMember(m) = &mut updated
+        && !set.contains_key("manual")
+    {
+        m.manual = true;
+    }
     doc.objects.insert(id, updated);
     out.modified.push(id);
     Ok(())

@@ -117,6 +117,8 @@ pub enum Tool {
     Post,
     /// A beam at the ceiling between two clicks.
     Beam,
+    /// A row of wall blocking half-way up, between two clicks.
+    Blocking,
     Deck,
     RaisedPlatform,
     RopeLight,
@@ -525,6 +527,7 @@ impl Tool {
             Tool::JoistDirection => "Joist Direction",
             Tool::Post => "Post",
             Tool::Beam => "Beam",
+            Tool::Blocking => "Blocking",
             Tool::Deck => "Deck",
             Tool::RopeLight => "Rope Light",
             Tool::Curb => "Curb",
@@ -575,7 +578,7 @@ impl Tool {
             Tool::Hill | Tool::Valley | Tool::Plant(_) | Tool::SteppingStones => Icon::Circle,
             Tool::JoistDirection => Icon::Arrow,
             Tool::Post => Icon::Box,
-            Tool::Beam => Icon::Line,
+            Tool::Beam | Tool::Blocking => Icon::Line,
             Tool::Deck | Tool::RaisedPlatform | Tool::RopeLight | Tool::Grass => Icon::Polyline,
             Tool::RetainingWall | Tool::Road(_) | Tool::Fence | Tool::GardenBed | Tool::Stream | Tool::Curb => Icon::Polyline,
             Tool::ObjectPainter => Icon::Select,
@@ -718,6 +721,7 @@ impl Tool {
             Tool::JoistDirection => "Click in a room, then click the direction its floor joists run.",
             Tool::Post => "Click to place a 6x6 post from the floor to the ceiling.",
             Tool::Beam => "Click the two ends of a 2-ply beam under the ceiling.",
+            Tool::Blocking => "Click the two ends of a row of blocking along a wall, half-way up it.",
             Tool::Deck => "Click the deck's corners (against the house for a ledger); double-click or Enter to finish.",
             Tool::RaisedPlatform => "Click the platform's corners; double-click or Enter to finish.",
             Tool::RopeLight => "Click along the rope light's path; double-click or Enter to finish.",

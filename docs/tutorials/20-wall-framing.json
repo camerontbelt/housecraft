@@ -1,0 +1,268 @@
+{
+  "tutorial": "Wall Framing",
+  "source": "Chief Architect X18 Tutorial Guide, Framing Tutorials, pages 349-363",
+  "include": "19-floor-framing.json",
+  "steps": [
+    {
+      "step": "Working Plan View with the 'Framing Set - Working' layer set",
+      "expect": [
+        {
+          "get": "$named:layer_set:Framing Set - Working",
+          "path": "/name",
+          "is": "Framing Set - Working"
+        }
+      ]
+    },
+    {
+      "step": "Automatic framing defaults, wall panel: studs 'Wall Framing - Lumber', plates match studs; solid white fill",
+      "gap": "Wall framing settings are stud spacing, plates, corners and blocking; no framing member defaults or fill style. Row: FR-38"
+    },
+    {
+      "step": "Build Framing once: walls",
+      "commands": [
+        {
+          "op": "build_framing",
+          "parts": {
+            "walls": true,
+            "floors": false,
+            "ceilings": false,
+            "roofs": false
+          }
+        }
+      ],
+      "save": {
+        "studs": "framing_member"
+      },
+      "expect": [
+        {
+          "get": "$studs.0",
+          "path": "/manual",
+          "is": false
+        }
+      ]
+    },
+    {
+      "step": "(Header labels with size and count on Floor 1; Perspective Framing Overview)",
+      "gap": "Headers aren't labelled in plan. Row: FR-38"
+    },
+    {
+      "step": "Porch corner: move a corner stud out of the corner, copy the flat stud three times 1 1/2\" apart, make the moved stud 3 1/2\" wide flat to the inside",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$studs.0"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": 0,
+            "dy": "1 1/2\""
+          },
+          "copies": 3
+        }
+      ],
+      "save": {
+        "corner": "framing_member"
+      },
+      "expect": [
+        {
+          "get": "$corner.2",
+          "path": "/manual",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "(width)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$studs.1",
+          "set": {
+            "width": "3 1/2\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$studs.1",
+          "path": "/manual",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "(Point to Point Move)",
+      "gap": "No Point to Point Move. Row: CAD-31"
+    },
+    {
+      "step": "Stud spacing 24\" OC for the basement's 8\" Concrete with Furring framing layer",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "framing": {
+              "stud_spacing": "24\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/framing/stud_spacing",
+          "is": "24\""
+        }
+      ]
+    },
+    {
+      "step": "(Spacing per wall type's framing layer)",
+      "gap": "Stud spacing is one setting for the whole plan, not per wall type. Row: FR-39"
+    },
+    {
+      "step": "Rebuild all wall framing: hand-edited corner studs survive (Chief replaces them unless Retain Wall Framing)",
+      "commands": [
+        {
+          "op": "build_framing",
+          "parts": {
+            "walls": true,
+            "floors": false,
+            "ceilings": false,
+            "roofs": false
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$corner.2",
+          "path": "/manual",
+          "is": true
+        },
+        {
+          "get": "$studs.1",
+          "path": "/width",
+          "is": "3 1/2\""
+        }
+      ]
+    },
+    {
+      "step": "Back to 16\"; Build Framing for Selected Objects: the six basement walls",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "framing": {
+              "stud_spacing": "16\""
+            }
+          }
+        },
+        {
+          "op": "build_framing",
+          "parts": {
+            "walls": true,
+            "floors": false,
+            "ceilings": false,
+            "roofs": false
+          },
+          "hosts": [
+            "$stairwall"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/framing/stud_spacing",
+          "is": "16\""
+        }
+      ]
+    },
+    {
+      "step": "Retain Wall Framing on the Porch railings",
+      "gap": "Not needed: framing edited by hand is always kept when framing is rebuilt. Row: FR-06"
+    },
+    {
+      "step": "Wall Detail of the Kitchen window wall, named 'Kitchen Window Wall'",
+      "commands": [
+        {
+          "op": "wall_framing_detail",
+          "wall": "$wall_at:61.1,-3251.2"
+        }
+      ],
+      "save": {
+        "detail": "cad_detail"
+      }
+    },
+    {
+      "step": "(name)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$detail",
+          "set": {
+            "name": "Kitchen Window Wall"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$detail",
+          "path": "/name",
+          "is": "Kitchen Window Wall"
+        }
+      ]
+    },
+    {
+      "step": "(Wall Details named by the wall's label, listed per floor, live and editable)",
+      "gap": "Wall Framing Detail draws a picture of the wall's framing as a CAD detail; editing happens in plan or 3D. Row: FR-37"
+    },
+    {
+      "step": "Blocking across the wall between the studs and windows",
+      "commands": [
+        {
+          "op": "add_framing_member",
+          "floor": "$floor1",
+          "role": "blocking",
+          "a": [
+            61.119,
+            -1016.0,
+            1219.2
+          ],
+          "b": [
+            61.119,
+            -2540.0,
+            1219.2
+          ]
+        }
+      ],
+      "save": {
+        "block": "framing_member"
+      },
+      "expect": [
+        {
+          "get": "$block",
+          "path": "/role",
+          "is": "blocking"
+        }
+      ]
+    },
+    {
+      "step": "Wall Detail dimension defaults: inches, 1/16\", locate framing both sides; a 'Wall Detail Default Set'",
+      "gap": "Dimension format is per plan; no per-view default set for details or framing locate settings. Rows: DIM-29, DIM-30"
+    },
+    {
+      "step": "End to End dimensions: wall height, length (moved up 24\"), window openings; a secondary label in feet",
+      "gap": "Dimensions in a framing detail are drawn by hand as CAD; no secondary (dual) format. Rows: DIM-12, FR-37"
+    },
+    {
+      "step": "Extension lines to the headers and blocking; a Running Dimension up the window side; move and remove extension lines",
+      "gap": "No extension-line handles. Row: DIM-28"
+    },
+    {
+      "step": "Make a Copy as Chic Cottage-Wall Framing",
+      "gap": "No Make a Copy. Row: PRJ-45"
+    }
+  ]
+}

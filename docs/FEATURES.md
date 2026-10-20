@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 547 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
+There are 552 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -392,6 +392,9 @@ These come from reading the whole list and change the architecture, not just the
 | FR-34 | Framing defaults: joist spacing per floor, rim joist construction (LVL), Manual Framing defaults for beams/posts, Post with Footing | P3 | M9 |
 | FR-35 | Automatically rebuild framing when the model changes (per category) | P2 | M9 |
 | FR-36 | Trim/extend framing members to another member (with Sticky Mode) | P3 | M9 |
+| FR-37 | Live Wall Detail views: named from the wall's label, listed per floor in the Project Browser, framing edited and blocking drawn there | P2 | M9 |
+| FR-38 | Framing member defaults (stud/plate construction, fill style); header labels with size and count in plan | P3 | M9 |
+| FR-39 | Stud spacing per wall type framing layer | P3 | M9 |
 
 ## 13. CAD tools
 
@@ -427,6 +430,7 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-28 | Bumping/pushing: objects push neighbours instead of overlapping | P3 | M9 |
 | CAD-29 | Reflect About Object (mirror a copy across a door, window or wall centre) | P3 | M9 |
 | CAD-30 | Drawing groups / draw order (Move Forward/Backward) | P2 | M9 |
+| CAD-31 | Point to Point Move: move an object by one of its points onto another point | P2 | M9 |
 
 ## 14. Layers
 
@@ -478,6 +482,7 @@ These come from reading the whole list and change the architecture, not just the
 | DIM-27 | Moving or editing automatic dimensions keeps them (they become manual) | P2 | M9 |
 | DIM-28 | Dimension extension-line and add-segment handles | P2 | M9 |
 | DIM-29 | Dimension defaults choosing what manual dimensions locate (cabinet sides, fixture corners, electrical, blocks) | P3 | M9 |
+| DIM-30 | Per-view default sets for CAD and wall details (dimension units, fractions, framing locate) | P3 | M9 |
 
 ## 16. Lighting, electrical & HVAC
 

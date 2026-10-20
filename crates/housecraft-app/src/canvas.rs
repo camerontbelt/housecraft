@@ -1687,6 +1687,28 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     elevation: Length::from_mm(ground_at(doc, p)),
                 },
             }),
+            Tool::Blocking => {
+                if let Some(a) = pending.pop() {
+                    if a.distance(p) > 100.0 {
+                        let fl = doc.get::<Floor>(app.plan.floor);
+                        let z = fl.map_or(1219.2, |f| (f.elevation + f.ceiling_height * 0.5).mm());
+                        let p3 = |q: DVec2| housecraft_api::units::Point3::from_mm(q.x, q.y, z);
+                        commands.push(Command::AddFramingMember {
+                            floor,
+                            role: FramingRole::Blocking,
+                            a: p3(a),
+                            b: p3(p),
+                            width: None,
+                            depth: None,
+                            rotation: 0.0,
+                            material: FramingMaterial::Lumber,
+                            plies: None,
+                        });
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
             Tool::Post | Tool::Beam => {
                 let fl = doc.get::<Floor>(app.plan.floor);
                 let (z0, zc) = fl.map_or((0.0, 2438.4), |f| (f.elevation.mm(), (f.elevation + f.ceiling_height).mm()));

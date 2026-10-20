@@ -37,7 +37,8 @@ has two files:
 | 17 | Light Fixtures (298) | 15 | 12 | [17-light-fixtures.md](17-light-fixtures.md) |
 | 18 | Electrical Objects (317) | 13 | 11 | [18-electrical-objects.md](18-electrical-objects.md) |
 | 19 | Floor Framing (331) | 16 | 11 | [19-floor-framing.md](19-floor-framing.md) |
-| 20–21 | Wall Framing, Roof and Ceiling Framing (349–381) | — | — | |
+| 20 | Wall Framing (349) | 10 | 10 | [20-wall-framing.md](20-wall-framing.md) |
+| 21 | Roof and Ceiling Framing (364–381) | — | — | |
 | 22–25 | Landscaping tutorials (382–450) | — | — | |
 | 26–28 | Layout tutorials (451–500) | — | — | |
 

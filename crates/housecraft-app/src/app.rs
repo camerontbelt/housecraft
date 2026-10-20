@@ -2621,7 +2621,7 @@ impl App {
                         cmd = Some(Command::AutoPostAndBeam { room, max_span: None, post_spacing: None });
                     }
                     ui.separator();
-                    for tool in [Tool::JoistDirection, Tool::Post, Tool::Beam] {
+                    for tool in [Tool::JoistDirection, Tool::Post, Tool::Beam, Tool::Blocking] {
                         if tool_item(ui, tool) {
                             self.set_tool(tool);
                         }
