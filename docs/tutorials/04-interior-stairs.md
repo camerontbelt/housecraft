@@ -28,8 +28,8 @@ It carries on from [Tutorial 3](03-multiple-floors.md). The steps also run as th
 2. Go to Floor 1. Choose **Straight Stair**, click in the Foyer just right of the Dining wall (the bottom of the
    stair), then click further up the screen (the direction it climbs). HouseCraft works out the risers to reach
    Floor 2 with no riser taller than the maximum.
-3. **Position:** *not in HouseCraft yet:* typing on a dimension to move a stair (that works for walls only). Open the
-   stair and adjust its start point so the bottom riser is 4'6" from the inside of the front wall's framing.
+3. **Position:** draw a **Manual Dimension** from the inside of the front wall's framing to the bottom riser. Select
+   the stair, click the dimension's number, type `4'6"` and press Enter. The stair moves; the wall stays.
 4. Open the stair and set **Tread depth** to `10 1/2"`. It still reaches Floor 2. *Not in HouseCraft yet:* the
    Lock Bottom / Lock Top / Lock Number of Treads options and the Make Best Fit button. HouseCraft stairs always
    start where you put them and fit the floor above.
@@ -85,7 +85,6 @@ lines you can drag.
 |---|---|
 | Newel/baluster styles and materials in stair defaults | ST-12 |
 | Lower garage floor (garage steps) | FD-07 |
-| Move a stair by typing on a dimension | DIM-03 |
 | Lock top/bottom/treads; Make Best Fit | ST-19 |
 | Auto Stairwell room and railings | ST-18 |
 | Movable dimension point markers in sections | SEC-06 |

@@ -27,9 +27,9 @@ of light you want.
 1. *Not in HouseCraft yet:* dimension defaults that choose what a manual dimension snaps to. Dimensions snap to any
    object edge already.
 2. A **Manual Dimension** from the refrigerator to the island shows the 42" gap.
-3. Chief moves the light by typing on that dimension. In HouseCraft that only works for walls. Instead, open the
-   light (double-click it) and type its **Position**, half-way between the refrigerator and the island.
-   Do the same for the gap to the dishwasher.
+3. Draw the dimension from the refrigerator to the light (HouseCraft has no extension lines to add to an existing
+   one). Select the light, click the dimension's number, type `1'9"` and press Enter: the light moves and the
+   dimension follows it. Do the same with a dimension from the dishwasher, typing `21"`.
 
 ## Spacing the lights (pages 305–307)
 
@@ -82,7 +82,6 @@ HouseCraft yet:* a schedule for one room, lighting only, or with your own title.
 | Light fixture library and sizes; lamps; Electrical Defaults | EL-11 |
 | One context-sensitive Light tool; path lights | EL-12 |
 | Locate settings for manual dimensions | DIM-29 |
-| Moving objects other than walls by typing on a dimension | DIM-03 |
 | Multiple Copy interval and 2D array | CAD-08 |
 | Schedule from a room, category filter, title | EST-31 |
 | Uppercase text defaults | TXT-24 |

@@ -62,8 +62,7 @@
       ]
     },
     {
-      "step": "Position the stair 4'6\" from the front wall by typing on a dimension",
-      "gap": "Only walls move by typing on a dimension; open the stair and set its start. Row: DIM-03"
+      "step": "Position the stair 4'6\" from the front wall by typing on a dimension"
     },
     {
       "step": "Lock the bottom, Make Best Fit, lock the number of treads and make treads 10 1/2\" deep",

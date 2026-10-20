@@ -4742,6 +4742,20 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
         if consume(none, Key::Delete) || consume(none, Key::Backspace) {
             self.delete_selection();
         }
+        // Arrow keys nudge the selection 1" (10 mm), Shift+arrow 1' (100 mm).
+        if self.mode == Mode::Plan && !self.selection.is_empty() {
+            let imperial = crate::util::input_unit(self.doc()) == housecraft_api::units::LengthUnit::Inches;
+            let (small, big) = if imperial { (25.4, 304.8) } else { (10.0, 100.0) };
+            for (key, dir) in [(Key::ArrowLeft, (-1.0, 0.0)), (Key::ArrowRight, (1.0, 0.0)), (Key::ArrowUp, (0.0, 1.0)), (Key::ArrowDown, (0.0, -1.0))] {
+                for (mods, step) in [(shift, big), (none, small)] {
+                    if consume(mods, key) {
+                        let d = glam::DVec2::new(dir.0, dir.1) * step;
+                        let cmd = crate::canvas::move_command(self.doc(), &self.selection, d);
+                        self.run1(cmd);
+                    }
+                }
+            }
+        }
         if consume(none, Key::F2) {
             self.show_plan();
         }

@@ -131,8 +131,57 @@
       ]
     },
     {
-      "step": "(Select a light, click a dimension's text and type to move it; add an extension line)",
-      "gap": "Typing on a dimension moves walls only; for other objects type the position in the object's dialog. Rows: DIM-03, DIM-28"
+      "step": "(A dimension from the Kitchen's left wall to the can light; select the light, click the number and type 21\")",
+      "commands": [
+        {
+          "op": "add_dimension",
+          "floor": "$floor1",
+          "geometry": {
+            "type": "linear",
+            "points": [
+              [
+                61.119,
+                -3810.0
+              ],
+              [
+                1295.4,
+                -3810.0
+              ]
+            ],
+            "orientation": "horizontal",
+            "offset": "1'"
+          }
+        }
+      ],
+      "save": {
+        "candim": "dimension"
+      }
+    },
+    {
+      "step": "(type it)",
+      "commands": [
+        {
+          "op": "move_by_dimension",
+          "dimension": "$candim",
+          "segment": 0,
+          "moving": 1,
+          "ids": [
+            "$can"
+          ],
+          "length": "21\""
+        }
+      ],
+      "expect": [
+        {
+          "get": "$can",
+          "path": "/position/0",
+          "is": 594.519
+        }
+      ]
+    },
+    {
+      "step": "(Add an extension line to an existing dimension)",
+      "gap": "No extension lines to add to an existing dimension; draw one to the light. Row: DIM-28"
     },
     {
       "step": "Copy/Paste the can light 40\" up (Tab for Enter Coordinates)",

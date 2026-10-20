@@ -290,7 +290,7 @@
     },
     {
       "step": "Nudge it 1\" with the arrow key, then Align With Wall Above",
-      "gap": "No arrow-key nudge or Align With Wall Above/Below button. Rows: DIM-03, WL-28"
+      "gap": "No Align With Wall Above/Below button; nudge with the arrow keys. Row: WL-28"
     },
     {
       "step": "Copy the wall, open a second plan view, tile the views, and Paste Hold Position on Floor 2",

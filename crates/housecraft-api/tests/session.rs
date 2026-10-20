@@ -2880,6 +2880,35 @@ fn curbs_medians_cul_de_sacs_and_lot_subdivision() {
 }
 
 #[test]
+fn any_selection_moves_by_typing_on_a_dimension() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_electrical", "electrical_kind": "recessed_light", "at": ["5'","10'"]},
+            {"op": "add_electrical", "electrical_kind": "recessed_light", "at": ["5'","14'"]},
+            {"op": "add_dimension", "geometry": {"type": "linear", "points": [[0,"10'"],["5'","10'"]], "orientation": "horizontal", "offset": "1'"}}]"#,
+    );
+    let (light, other, dim) = (out.created[0], out.created[1], out.created[2]);
+    let cmd: Command = serde_json::from_value(serde_json::json!({
+        "op": "move_by_dimension", "dimension": dim.0, "segment": 0, "moving": 1, "ids": [light.0, other.0], "length": "21\""
+    }))
+    .unwrap();
+    s.apply(&[cmd]).unwrap();
+    let doc = s.document();
+    let x = |id: Id| doc.get::<Electrical>(id).unwrap().position.0.mm() / 25.4;
+    assert!((x(light) - 21.0).abs() < 0.01, "the light is 21\" from the wall line: {}", x(light));
+    assert!((x(other) - 21.0).abs() < 0.01, "the other selected light goes with it");
+    let DimensionGeometry::Linear { points, .. } = &doc.get::<Dimension>(dim).unwrap().geometry else { panic!() };
+    assert!((points[1].0.mm() / 25.4 - 21.0).abs() < 0.01, "the dimension still measures to the light");
+    // The fixed end is the other one; a point that isn't an end of the segment is refused.
+    let bad: Command = serde_json::from_value(serde_json::json!({
+        "op": "move_by_dimension", "dimension": dim.0, "segment": 0, "moving": 2, "ids": [light.0], "length": "2'"
+    }))
+    .unwrap();
+    assert!(s.apply(&[bad]).is_err());
+}
+
+#[test]
 fn flat_garden_beds_lie_on_the_ground_and_lots_convert_to_terrain() {
     let mut s = boxed();
     let out = apply(

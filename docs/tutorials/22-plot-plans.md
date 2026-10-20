@@ -59,9 +59,10 @@ toolbar makes another one if you need it.
 
 ## Positioning the house on the lot (pages 399–401)
 
-Measure from the back right corner of the roof to the back and right setback lines with dimensions. Then move the
-terrain and setback together with **Move**, typing the X and Y distances that make those 50' and 30'. *Not in
-HouseCraft yet:* moving a selection by typing on a dimension, point markers, and Point to Point Move.
+Draw a dimension from the back right corner of the roof to the back setback line. Select the terrain and the setback
+line (Shift+click), click the dimension's number, type `50'` and press Enter: both move together. Do the same with a
+horizontal dimension to the right setback line and `30'`. *Not in HouseCraft yet:* point markers and Point to Point
+Move.
 
 ## Revision (page 401)
 
@@ -74,7 +75,7 @@ HouseCraft yet:* moving a selection by typing on a dimension, point markers, and
 | Separate site north; north pointer that rotates with the lot | SITE-28 |
 | Decimal feet and bearings on CAD lines; curved lot sides | SITE-29 |
 | Concentric edit behaviour | CAD-32 |
-| Moving a selection by dimension; Point to Point Move | DIM-03, CAD-31 |
+| Point markers; Point to Point Move | CAD-31 |
 
 **New while following this tutorial:** **CAD › Convert CAD To › Terrain Perimeter** turns a closed CAD outline into the
 terrain's perimeter.

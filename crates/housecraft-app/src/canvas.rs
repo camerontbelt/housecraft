@@ -796,24 +796,35 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
         }
     }
 
-    // Click a dimension beside the selected wall to move the wall by typing
-    // the distance (Chief's associated dimensions).
+    // Click a dimension beside the selection to move it by typing the
+    // distance (Chief's associated dimensions): a wall by the dimension
+    // across it, anything else by a dimension with one end on it.
     if resp.clicked()
         && !ctrl
-        && app.selection.len() == 1
-        && doc.kind_of(app.selection[0]) == Some(ObjectKind::Wall)
+        && !app.selection.is_empty()
         && let Some(c) = app.plan.cursor
-        && let Some((dimension, segment, now, at)) = dimension_beside_wall(doc, app.plan.floor, app.selection[0], c, tol)
     {
-        app.plan.dim_move = Some(DimMove {
-            dimension,
-            segment,
-            wall: app.selection[0],
-            text: Length::from_mm(now).format(doc.settings.display_unit),
-            at,
-            first: true,
-        });
-        return;
+        let lone_wall = app.selection.len() == 1 && doc.kind_of(app.selection[0]) == Some(ObjectKind::Wall);
+        let found = if lone_wall {
+            dimension_beside_wall(doc, app.plan.floor, app.selection[0], c, tol).map(|(d, s, now, at)| (d, s, None, now, at))
+        } else {
+            app.plan
+                .bounds_of(&app.selection)
+                .and_then(|b| dimension_beside_bounds(doc, app.plan.floor, &app.selection, b, c, tol))
+                .map(|(d, s, m, now, at)| (d, s, Some(m), now, at))
+        };
+        if let Some((dimension, segment, moving, now, at)) = found {
+            app.plan.dim_move = Some(DimMove {
+                dimension,
+                segment,
+                moving,
+                ids: app.selection.clone(),
+                text: Length::from_mm(now).format(doc.settings.display_unit),
+                at,
+                first: true,
+            });
+            return;
+        }
     }
     // Alt+click a linked callout to open what it points at.
     if resp.clicked()
@@ -1039,7 +1050,7 @@ impl PlanState {
 }
 
 /// Moving a lone wall drags joined walls with it; anything else is a translate.
-fn move_command(doc: &Document, ids: &[Id], d: DVec2) -> Command {
+pub(crate) fn move_command(doc: &Document, ids: &[Id], d: DVec2) -> Command {
     if let [id] = ids
         && let Some(w) = doc.get::<Wall>(*id)
     {
@@ -2634,11 +2645,14 @@ fn temp_dimension(app: &App, painter: &Painter, view: &View, id: Id, accent: Col
     );
 }
 
-/// A dimension segment being typed on to move a wall.
+/// A dimension segment being typed on to move the selection.
 pub(crate) struct DimMove {
     dimension: Id,
     segment: usize,
-    wall: Id,
+    /// The point of the dimension on the selection (`None`: a lone wall,
+    /// which the dimension crosses).
+    moving: Option<usize>,
+    ids: Vec<Id>,
     text: String,
     /// Where the box sits (model).
     at: DVec2,
@@ -2684,12 +2698,46 @@ fn dimension_beside_wall(doc: &Document, floor: Id, wall: Id, p: DVec2, tol: f64
     best.map(|(_, d, i, len, mid)| (d, i, len, mid))
 }
 
+/// The dimension segment under `p` with exactly one end on the selection
+/// (inside its drawn bounds `b`, give or take `tol`): (dimension, segment,
+/// index of that end, current length, where its text sits).
+fn dimension_beside_bounds(doc: &Document, floor: Id, ids: &[Id], b: (DVec2, DVec2), p: DVec2, tol: f64) -> Option<(Id, usize, usize, f64, DVec2)> {
+    let inside = |q: DVec2| q.x >= b.0.x - tol && q.x <= b.1.x + tol && q.y >= b.0.y - tol && q.y <= b.1.y + tol;
+    let mut best: Option<(f64, Id, usize, usize, f64, DVec2)> = None;
+    for d in doc.iter::<Dimension>().filter(|d| d.floor == floor && !ids.contains(&d.id)) {
+        let DimensionGeometry::Linear { points, orientation, offset } = &d.geometry else { continue };
+        let (axis, line) = match orientation {
+            DimOrientation::Horizontal => (DVec2::X, points.first().map(|q| v2(*q).y + offset.mm())),
+            DimOrientation::Vertical => (DVec2::Y, points.first().map(|q| v2(*q).x + offset.mm())),
+            DimOrientation::Aligned => continue,
+        };
+        let Some(line) = line else { continue };
+        for (i, seg) in points.windows(2).enumerate() {
+            let (a, c) = (v2(seg[0]), v2(seg[1]));
+            let moving = match (inside(a), inside(c)) {
+                (true, false) => i,
+                (false, true) => i + 1,
+                _ => continue,
+            };
+            let mid_along = ((a + c) / 2.0).dot(axis);
+            let mid = if axis == DVec2::X { DVec2::new(mid_along, line) } else { DVec2::new(line, mid_along) };
+            let dist = mid.distance(p);
+            let len = (c - a).dot(axis).abs();
+            let near = (p - mid).dot(axis).abs() <= len / 2.0 && (p - mid).perp_dot(axis).abs() <= tol * 2.5;
+            if (near || dist <= tol * 3.0) && best.as_ref().is_none_or(|b| dist < b.0) {
+                best = Some((dist, d.id, i, moving, len, mid));
+            }
+        }
+    }
+    best.map(|(_, d, i, m, len, mid)| (d, i, m, len, mid))
+}
+
 /// Text prompt, typed-length box and the editable temporary dimension.
 fn overlays(app: &mut App, ui: &mut Ui, view: &View, commands: &mut Vec<Command>) {
     let ctx = ui.ctx().clone();
     // Typing on a dimension beside the selected wall moves the wall.
     if let Some(mut m) = app.plan.dim_move.take() {
-        let mut keep = app.selection == [m.wall];
+        let mut keep = app.selection == m.ids;
         egui::Area::new(egui::Id::unique("dim_move"))
             .fixed_pos(view.to_screen(m.at) - vec2(55.0, 12.0))
             .order(egui::Order::Foreground)
@@ -2704,7 +2752,10 @@ fn overlays(app: &mut App, ui: &mut Ui, view: &View, commands: &mut Vec<Command>
                         && let Some(length) = crate::util::parse(app.doc(), &m.text)
                         && length.mm() > 0.0
                     {
-                        commands.push(Command::MoveWallByDimension { dimension: m.dimension, segment: m.segment, wall: m.wall, length });
+                        commands.push(match m.moving {
+                            None => Command::MoveWallByDimension { dimension: m.dimension, segment: m.segment, wall: m.ids[0], length },
+                            Some(moving) => Command::MoveByDimension { dimension: m.dimension, segment: m.segment, moving, ids: m.ids.clone(), length },
+                        });
                     }
                 }
             });

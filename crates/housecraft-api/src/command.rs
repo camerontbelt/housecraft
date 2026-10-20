@@ -280,6 +280,12 @@ pub enum Command {
     /// dimension next to a selected wall and type a new value. Walls joined
     /// to it stretch to follow.
     MoveWallByDimension { dimension: Id, segment: usize, wall: Id, length: Length },
+    /// Move objects by typing on a dimension: point `moving` of the
+    /// dimension (an end of `segment`, on the objects) ends up `length` from
+    /// the segment's other end, the objects travel with it along the
+    /// dimension, and so does that point of a manual dimension. A lone wall
+    /// drags the walls joined to it.
+    MoveByDimension { dimension: Id, segment: usize, moving: usize, ids: Vec<Id>, length: Length },
     /// Record time spent on the plan (dated today unless given).
     LogTime {
         task: String,
@@ -1310,6 +1316,7 @@ impl Command {
             Command::PinObjects { .. } => "pin_objects",
             Command::LogTime { .. } => "log_time",
             Command::MoveWallByDimension { .. } => "move_wall_by_dimension",
+            Command::MoveByDimension { .. } => "move_by_dimension",
             Command::BreakWall { .. } => "break_wall",
             Command::DeleteTime { .. } => "delete_time",
             Command::SetHatchPattern { .. } => "set_hatch_pattern",
@@ -2064,6 +2071,44 @@ impl Command {
                 let shift = axis * sign * (length.mm() - now);
                 let pt = housecraft_geom::math::pt;
                 ops::move_wall_ends(doc, &w, pt(ws + shift), pt(we + shift), true, &mut out);
+            }
+            Command::MoveByDimension { dimension, segment, moving, ids, length } => {
+                if ids.is_empty() {
+                    return invalid("select what to move");
+                }
+                if *moving != *segment && *moving != segment + 1 {
+                    return invalid("the moving point must be an end of the segment");
+                }
+                let (a, b) = ops::dimension_segment(doc, *dimension, *segment)?;
+                let (m, f) = if *moving == *segment { (a, b) } else { (b, a) };
+                let axis = (b - a).normalize_or_zero();
+                if axis == housecraft_geom::DVec2::ZERO {
+                    return invalid("that dimension segment has no length");
+                }
+                let now = (m - f).dot(axis).abs();
+                let sign = (m - f).dot(axis).signum();
+                let shift = axis * sign * (length.mm() - now);
+                let pt = housecraft_geom::math::pt;
+                match (ids.as_slice(), ids.first().and_then(|id| doc.get::<Wall>(*id)).cloned()) {
+                    ([_], Some(w)) => {
+                        let (ws, we) = (housecraft_geom::v2(w.start), housecraft_geom::v2(w.end));
+                        ops::move_wall_ends(doc, &w, pt(ws + shift), pt(we + shift), true, &mut out);
+                    }
+                    _ => {
+                        let op = TransformOp::Translate { dx: Length::from_mm(shift.x), dy: Length::from_mm(shift.y) };
+                        ops::transform(doc, ids, &op, 0, &mut out)?;
+                    }
+                }
+                // A manual dimension keeps measuring to what moved.
+                if !ids.contains(dimension)
+                    && let Some(d) = doc.get_mut::<Dimension>(*dimension)
+                    && !d.auto
+                    && let DimensionGeometry::Linear { points, .. } = &mut d.geometry
+                    && let Some(p) = points.get_mut(*moving)
+                {
+                    *p = pt(housecraft_geom::v2(*p) + shift);
+                    out.modified.push(*dimension);
+                }
             }
             Command::LogTime { task, minutes, note, date } => {
                 if !(minutes.is_finite() && *minutes > 0.0) {

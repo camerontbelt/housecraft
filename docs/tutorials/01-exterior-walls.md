@@ -96,7 +96,7 @@ HouseCraft ever disagree, the test catches it.
 4. **Resizing a wall:** select it and click the length shown along the wall (the temporary dimension), then type
    the new length. *Not in HouseCraft yet:* the Move Left End / Right End / Both Ends buttons; the start of the
    wall stays put.
-5. Moving with the mouse: drag the selected wall. *Not in HouseCraft yet:* nudging with the arrow keys.
+5. Moving with the mouse: drag the selected wall. Or nudge it with the arrow keys: 1" a press, 1' with Shift.
 
 ## Annotations and revisions (pages 24–26)
 
@@ -114,7 +114,7 @@ HouseCraft ever disagree, the test catches it.
 | Tape Measure | DIM-24 |
 | Rich text with uppercase | TXT-02 |
 | Spell check | TXT-17 |
-| Move Left End / Right End / Both Ends when resizing by dimension; arrow-key nudging | DIM-03 |
+| Move Left End / Right End / Both Ends when resizing by dimension | DIM-03 |
 | "Foundation/Dimension to Exterior of Layer" wall type settings | FD-05 |
 
 Added while writing this guide: moving a wall by typing on a dimension, automatic dimensions that measure to the

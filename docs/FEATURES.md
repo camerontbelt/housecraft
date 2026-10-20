@@ -461,7 +461,7 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | DIM-01 | Baseline, running, centerline, angular, end-to-end, interior, point-to-point, temporary dimensions; one-click exterior | P0 | M1 ◐ point-to-point/running chains, angular, temporary, auto exterior; baseline, centerline, auto interior later |
 | DIM-02 | Dimensions in 3D views | P2 | M7 ✓ 3D > Notes and Dimensions: click two points on the model; kept per camera |
-| DIM-03 | Move objects by editing dimensions; arithmetic in inputs | P0 | M1 ◐ arithmetic everywhere; wall/line length via temporary dimension; select a wall and type on any dimension beside it to move it (`move_wall_by_dimension`); Move Left/Right/Both Ends and arrow-key nudges later |
+| DIM-03 | Move objects by editing dimensions; arithmetic in inputs | P0 | M1 ◐ arithmetic everywhere; wall/line length via temporary dimension; select anything (walls, openings, fixtures, stairs, terrain…) and type on a dimension beside it to move it (`move_wall_by_dimension`, `move_by_dimension`; a manual dimension follows); arrow keys nudge 1" (Shift 1'); Move Left/Right/Both Ends later |
 | DIM-04 | Auto exterior dimensions with auto-refresh | P1 | M1 ✓ Auto Exterior Dimensions are marked automatic and rebuilt whenever that floor's walls or openings change; they locate the outside of the framing (or surfaces, per Auto Dimension Tiers) |
 | DIM-05 | Wall length editing via dimensions; type exact length while drawing | P0 | M1 ✓ |
 | DIM-06 | Dimension snapping rules; hotkey override | P1 | M1 ✓ Default Settings > Text and Dimensions: dimension tool snaps to wall surfaces, framing, centres and opening edges as chosen; hold Alt to snap to nothing |

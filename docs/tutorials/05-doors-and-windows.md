@@ -54,8 +54,8 @@ and the interior door material defaults. Skip these steps.
 
 1. Select the front door, click **Center Object**, then click the Living/Foyer room divider. The door centres on it.
    Do the same for the Garage door and the windows listed in the tutorial.
-2. *Not in HouseCraft yet:* moving a window by typing on a dimension (that works for walls). Drag the window,
-   or open it and change its position, to leave 4 1/2" between the two Bedroom windows.
+2. Draw a dimension between the two Bedroom windows. Select one window, click the dimension's number, type `4 1/2"`
+   and press Enter. The window slides along its wall.
 
 ## Replicating (pages 96–98)
 
@@ -92,7 +92,6 @@ and the interior door material defaults. Skip these steps.
 | Door hardware | DW-19 |
 | Lites in the window defaults | DW-21 |
 | Height change keeps the top | DW-22 |
-| Move a door or window by typing on a dimension | DIM-03 |
 | Reflect About Object | CAD-29 |
 | Make Mulled Unit from separate windows | DW-11 |
 | Schedules in CAD details; labels instead of schedule numbers | EST-26, EST-27 |

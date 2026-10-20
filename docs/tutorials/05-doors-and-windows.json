@@ -465,8 +465,7 @@
       ]
     },
     {
-      "step": "Space the Bedroom windows 4 1/2\" apart by typing on the dimension between them",
-      "gap": "Only walls move by typing on a dimension; set the windows' positions (they're placed 4 1/2\" apart above). Row: DIM-03"
+      "step": "Space the Bedroom windows 4 1/2\" apart by typing on the dimension between them"
     },
     {
       "step": "Reflect the Foyer window about the front door (Copy/Paste, Reflect About Object)",
