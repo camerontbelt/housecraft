@@ -1,0 +1,250 @@
+# Chief Architect X18 inventory, mapped to HouseCraft.
+# Source: the X18 Reference Manual's menu paths and per-chapter tool lists
+# (read locally; names are Chief's menu/tool names, descriptions are ours).
+# Format: chapter | item | status | FEATURES rows | note
+# Status: Y = HouseCraft has it, P = partly, N = missing, S = out of scope (vendor service, proprietary, hardware).
+
+File Management | New Plan / New Layout / Open / Save / Save As | Y | PRJ-01 |
+File Management | New Plan From Template; Save as Template | Y | PRJ-01 |
+File Management | Recent documents with pinning; clear recent/pinned | P | PRJ-02 | recent list; no pinning or clear command
+File Management | Close View / Close All Views / Close All 3D Views | P | UI-24 | tabs close one at a time; no close-all commands
+File Management | Dashboard (start page: recent files, templates, news) | N | UI-24 | no start page
+File Management | Auto archives and Manage Auto Archives | P | UI-15 | archives made and folder shown; no restore/manage dialog
+File Management | Back Up plan / Backup Entire Layout (gather referenced files) | Y | PRJ-08, UI-16 | Gather Files; .hcproj archive
+File Management | New Project / Save Entire Project / Export-Import Project (.caproj) | P | UI-16, PRJ-08 | single plan archives; no multi-document project
+File Management | Project Browser (folders, documents, views, orphan cleanup) | P | PRJ-09, UI-27 | per-plan tree, pins; no project folders of several documents
+File Management | Save Thumbnail Image | N | — | portfolio has no thumbnails
+File Management | View File Information (created/saved by, build, sizes) | N | — |
+File Management | Send (email the plan) | N | — | could open the mail client with the archive attached
+File Management | Download Sample Plans | S | — | vendor content
+File Management | Export Managed Resources / Missing Resources dialog | P | PRJ-08 | Gather reports missing files; no dialog to relink
+File Management | File locking (plan open elsewhere) | N | — |
+Project Planning | Time Tracker: start/stop logging, view log, export | Y | PRJ-19 |
+Project Planning | Plan Database: create, edit, search | Y | PRJ-20 | Plan Portfolio
+Project Planning | Project Information (client, designer fields) | Y | PRJ-22 |
+Project Planning | Loan Calculator | N | — | small; low value
+Project Planning | Space Planning assistant / Build House from room boxes | P | PRJ-03 | space boxes convert to rooms; no assistant
+Project Planning | Room Planner file import (.rplan) | S | — | vendor app format
+Preferences and Default Settings | Preferences dialog | Y | UI-09 |
+Preferences and Default Settings | Default Settings tree with search | P | UI-09, UI-10 | defaults dialog; no search box
+Preferences and Default Settings | Saved Defaults / Default Sets / Active Defaults | Y | PRJ-13, TXT-14 |
+Preferences and Default Settings | Dynamic defaults (objects follow defaults until edited) | P | — | rooms/walls follow defaults; not every object type
+Preferences and Default Settings | Import/Export Settings (default sets, layer sets, note types, wall types, line styles, patterns, hotkeys) | P | IO-07 | settings file covers most; no note types; no legacy importers
+Preferences and Default Settings | Dark mode / color themes | Y | UI-13, UI-18 |
+Toolbars and Hotkeys | Toolbar customization and toolbar sets | N | UI-19 |
+Toolbars and Hotkeys | Hotkeys: edit, import, export | P | UI-20 | user keys and chords; built-ins fixed; no import/export file
+Toolbars and Hotkeys | Tool Search | Y | UI-26 |
+Toolbars and Hotkeys | Edit toolbar (context buttons for the selection) | P | — | spec panel and menus; no floating edit toolbar
+Toolbars and Hotkeys | Start Dictation | S | — | OS feature
+Window and View Tools | Zoom in/out/box, Fill Window, Fill Window Building Only, Fill Selected | P | PRJ-06 | fill window and zoom to selection; no "building only"
+Window and View Tools | Pan window; scrollbars toggle | P | — | pan by drag; no scrollbars
+Window and View Tools | Tab windows; tile horizontally/vertically; swap views; next/previous tab | P | UI-06, UI-24 | tabs; no tiling or swap
+Window and View Tools | Refresh Display; Rebuild 3D | Y | — | automatic
+Window and View Tools | Display toggles: line weights, arc centers, crosshairs, temporary dimensions, drawing sheet, watermark, color | P | UI-17 | color/grid/axes toggles; no crosshairs, arc-centre or sheet toggles
+Window and View Tools | Reference Grid / Angle Snap Grid | P | UI-14 | reference grid; no angle-snap grid display
+Window and View Tools | Saved Plan Views: new, edit active view, save, save as | Y | PRJ-11, PRJ-12 |
+Window and View Tools | Screen Capture > Capture View (to clipboard/file) | P | IO-06 | 3D image export; no plan capture to clipboard
+Window and View Tools | Rotate Plan View (view only, not the model) | N | — | plan can be rotated as a model edit only
+Window and View Tools | Floor/Reference Display: up/down one floor, change floor, reference on/off | Y | LY-06 |
+Window and View Tools | Reference document offset (move the reference plan) | N | LY-07 | reference plan has no offset
+Creating Objects | Snap settings: object, grid, angle snaps; bumping/pushing | P | CAD-03 | object and grid snaps; angle snaps; no bumping/pushing
+Creating Objects | Arc creation modes | P | CAD-02 |
+Creating Objects | Get Last Symbol (place another of the last library item) | N | — |
+Displaying Objects | Layers: create, color, weight, style, fill by layer | Y | LY-02, PRJ-16, PRJ-17 |
+Displaying Objects | Layer Sets and Layer Set Management | Y | LY-01 |
+Displaying Objects | Layer Painter / Layer Eyedropper / Layer Hider | Y | LY-03, LY-04 |
+Displaying Objects | Active Layer Display Options panel | Y | LY-09 |
+Displaying Objects | Line Style Management; import line styles | Y | CAD-20 |
+Displaying Objects | Fill styles and Fill Style Painter | P | MAT-06 | fill styles; no painter tool
+Displaying Objects | Color Chooser (pick colour from screen) | P | MAT-04 | material eyedropper only
+Positioning Objects | Move/copy/rotate/reflect/resize by dialog; multiple copy | Y | CAD-05, CAD-08 |
+Positioning Objects | Align and distribute; center object | Y | CAD-16, MAT-22 |
+Positioning Objects | Edit Behaviors: connect CAD segments, rotate/resize about current point | P | — | no current-point behaviors
+Editing Objects | Undo/Redo, Cut/Copy/Paste, Paste Hold Position, Paste Special | P | UI-11, CAD-04 | paste in place; no Paste Special attribute choice
+Editing Objects | Select objects; select all; select same type/layer | Y | PRJ-18 |
+Editing Objects | Edit Area (and visible / all floors / polyline) | N | — | region select-and-transform across object types
+Editing Objects | Stretch CAD | N | — |
+Editing Objects | Object Painter / Object Eyedropper with scope | Y | MAT-02 |
+Editing Objects | Find/Replace Text; Replace Fonts | Y | TXT-03, TXT-04 |
+Editing Objects | Reverse Plan / rotate whole plan | Y | PRJ-05 |
+Editing Objects | Delete Objects by type/scope | P | PRJ-33 | layouts only
+Editing Objects | Reset to defaults | P | MAT-03 | materials only
+CAD Objects | Point tools: place, input, point markers, delete temporary points | P | CAD-01 | points; no typed input dialog
+CAD Objects | Line tools: draw, input line, line with arrow, construction line | P | CAD-01 | no typed input dialog or construction lines
+CAD Objects | Arc tools: center/radius, start/end/on, tangent, about center, input arc, arc with arrow | P | CAD-02 | 2 of 5 modes
+CAD Objects | Circle, ellipse, oval | Y | CAD-01 |
+CAD Objects | Box, rectangular polyline, regular polygon | Y | CAD-01, CAD-12 |
+CAD Objects | Spline | Y | CAD-01 |
+CAD Objects | Revision Cloud | Y | TXT-22 |
+CAD Objects | Sun Angle; North Pointer | Y | SITE-01 |
+CAD Objects | Current CAD Layer | P | — | layer per object via spec; no "current CAD layer" setting
+CAD Objects | Auto Detail (fill a polyline with a detail pattern) | N | SEC-06 |
+CAD Objects | Plan Footprint (site plan outline) | Y | SITE-14 |
+CAD Objects | Construction-line order management | N | — |
+CAD Objects | Trim, extend, fillet, chamfer, offset, break, join | Y | CAD-01 |
+CAD Objects | Fillet all / chamfer all corners | N | CAD-13 |
+CAD Objects | Patterns: create, add, infinite pattern line, repeat dimensions, preview | P | MAT-17 | hatch pattern editor; no repeat/infinite pattern lines
+CAD Objects | CAD Details: new, from view, management, copy between plans | Y | CAD-17, CAD-18, CAD-19 |
+CAD Objects | CAD Blocks: create, explode, insertion and arrow-backoff points, management | P | CAD-17, LIB-07 | blocks; no arrow-backoff point
+Walls, Railings, and Fencing | Straight and curved exterior/interior walls | P | WL-01 | straight walls only; no curved walls (WL-01 marks this done)
+Walls, Railings, and Fencing | Foundation walls and slab footings | P | FD-01 | built by foundation; no drawing tool
+Walls, Railings, and Fencing | Pony walls (and curved) | P | WL-03 |
+Walls, Railings, and Fencing | Glass walls and glass pony walls | N | WL-02 | glass wall type possible; no tool
+Walls, Railings, and Fencing | Half-walls (solid railings) | P | WL-04 | railing walls
+Walls, Railings, and Fencing | Room dividers / invisible walls | N | — |
+Walls, Railings, and Fencing | Polygon Shaped Room / polygon deck | P | RM-04, SITE-15 |
+Walls, Railings, and Fencing | Wall hatching | Y | WL-13 |
+Walls, Railings, and Fencing | Wall material regions | Y | WL-16 |
+Walls, Railings, and Fencing | Fix Wall Connections | N | — | heal gaps and overlaps
+Walls, Railings, and Fencing | Wall break (split a wall at a point) | P | — | walls split by editing; no break tool
+Walls, Railings, and Fencing | Define Wall Types; library walls | Y | WL-07, WL-14 |
+Walls, Railings, and Fencing | Railings, deck railings, deck edges, railing types | P | WL-04, SITE-15 |
+Walls, Railings, and Fencing | Fencing (follows terrain, gates) | Y | SITE-16 |
+Walls, Railings, and Fencing | Raked and stepped walls; wall niches; double walls | P | WL-06, WL-10, WL-17 |
+Rooms | Room detection, room types, room labels, living area | Y | RM-01, RM-02, RM-03 |
+Rooms | Room polylines; floor/ceiling platforms | Y | RM-06, RM-07 |
+Rooms | Floor material regions; floor holes | P | RM-08, FR-28 | floor regions; hole tool via platform holes
+Rooms | Ceilings: flat, vaulted, tray, coffered, barrel | Y | RF-09 |
+Rooms | Moldings in rooms; molding polylines | Y | RM-05 |
+Dimensions | Manual, end-to-end, point-to-point, running dimensions | Y | DIM-01 |
+Dimensions | Angular dimensions | Y | DIM-01 |
+Dimensions | Interior, baseline, centerline dimensions | N | DIM-01, DIM-10 |
+Dimensions | Automatic exterior dimensions; auto interior dimensions | P | DIM-04 | exterior only
+Dimensions | Temporary dimensions | Y | DIM-01 |
+Dimensions | Tape Measure | N | — |
+Dimensions | Delete Dimensions (auto/all) | P | — | auto dimension refresh; no bulk delete command
+Dimensions | Dimension defaults, styles, arrows, text | P | DIM-08, DIM-17, DIM-14 | no rotatable text
+Dimensions | Secondary (dual-unit) dimensions | N | DIM-12 |
+Dimensions | Move objects by editing dimensions | P | DIM-03 |
+Dimensions | Story pole, elevation dimensions, grid lines | Y | DIM-07, DIM-16, DIM-23 |
+Text, Callouts, and Markers | Text, rich text, text line | P | TXT-01, TXT-02 | plain text; no rich text runs
+Text, Callouts, and Markers | Callouts, markers, leader lines | Y | TXT-05, TXT-07 |
+Text, Callouts, and Markers | Notes, note types, note schedule | P | TXT-16 | numbered notes; no note types
+Text, Callouts, and Markers | Text macros and macro management | Y | TXT-19, TXT-20 |
+Text, Callouts, and Markers | Spell check | N | TXT-17 |
+Text, Callouts, and Markers | Hyperlinks in text | P | TXT-18 |
+Doors | Hinged, sliding, pocket, bifold, garage, barn, shower, fixed doors; doorways | Y | DW-02 |
+Doors | Dynamic door defaults by type | Y | DW-04 |
+Doors | Door framing (headers, trimmers) | Y | FR-22 |
+Doors | Custom doors from library/CAD | P | DW-13, LIB-17 |
+Windows | Standard windows (hung, casement, slider, awning, hopper, fixed) | Y | DW-03 |
+Windows | Bay, box, bow windows | P | DW-08 |
+Windows | Pass-throughs; wall niches | P | DW-03, WL-10 | niches yes; pass-through as opening type partial
+Windows | Corner windows; mulled units | P | DW-10, DW-11 |
+Windows | Window treatments; shutters; muntins | Y | DW-14, DW-15, DW-16 |
+Cabinets | Base, wall, full-height cabinets | Y | CB-01 |
+Cabinets | Fillers (base/wall/full) | Y | CB-09 |
+Cabinets | Soffits, shelves, partitions | P | CB-04 | shelves inside cabinets; no soffit/partition tools
+Cabinets | Custom countertops, counter holes, backsplashes | Y | CB-07, CB-08 |
+Cabinets | Built-in sinks and appliances; storage inserts | Y | CB-04, MAT-25 |
+Cabinets | Cabinet doors/drawers/panels catalogs; hardware | Y | CB-21 |
+Cabinets | Manufacturer cabinet catalogs | S | CB-25 | vendor data
+Electrical | Outlets, switches, light fixtures, rope lights | Y | EL-01, EL-04 |
+Electrical | Auto Place Outlets | Y | EL-02 |
+Electrical | Electrical connections (switch wiring, 3-way/4-way) | Y | EL-01 |
+Electrical | Ganged electrical blocks | N | — |
+Electrical | Lights: add lights, adjust lights, lighting sets | Y | EL-05, EL-06, EL-08 |
+Schedules and Object Labels | Schedules of every object type; room schedules | P | EST-09 |
+Schedules and Object Labels | Custom schedule categories | P | EST-13 |
+Schedules and Object Labels | Object labels with macros; label formatting | P | TXT-09, TXT-10 |
+Foundations | Build Foundation; delete foundation; foundation defaults | Y | FD-02 |
+Foundations | Slabs, slab holes, slab holes with footing | P | FD-04 | slabs via foundation and rooms; no slab/slab-hole drawing tools
+Foundations | Round piers and square pads | Y | FD-03 |
+Multiple Floor Levels | Build new floor; insert floor; exchange floors; delete floor | P | PRJ-14, PRJ-15 | no delete-current-floor command
+Multiple Floor Levels | Rebuild walls/floors/ceilings | Y | — | automatic
+Stairs, Ramps, and Landings | Draw stairs, straight, curved, L, U stairs; landings | P | ST-01, ST-03 | curved partial
+Stairs, Ramps, and Landings | Ramps | Y | ST-10 |
+Stairs, Ramps, and Landings | Auto stairwells; stair sections; wrap-around | Y | ST-04, ST-05, ST-06, ST-09 |
+Roofs | Build Roof (auto roofs from walls) | Y | RF-01 |
+Roofs | Roof plane / ceiling plane drawing tools | P | RF-05 | roof planes; no manual ceiling plane tool
+Roofs | Edit All Roof Planes; delete roof / ceiling planes | P | RF-05 | remove roof; no edit-all dialog
+Roofs | Auto dormer; auto floating dormer | P | RF-02 |
+Roofs | Gable/roof line | P | RF-01 | gable walls via wall directives
+Roofs | Roof holes; skylights | P | RF-08 | skylights; no roof hole tool
+Roofs | Tray ceiling polyline | Y | RF-10 |
+Roofs | Gutters, ridge caps, fascia, energy heels | P | RF-03, RF-06, RF-12 |
+Framing | Build all framing / per area; framing defaults | Y | FR-01, FR-04, FR-25 |
+Framing | Manual members: joist, rafter, beam, post, blocking, purlin | Y | FR-05 |
+Framing | Floor/ceiling and roof trusses; girder truss; truss base | P | FR-10 | trusses auto-fit; no truss base tool
+Framing | Joist direction, roof truss direction | Y | FR-03 |
+Framing | Bearing lines | N | FR-27 | bearing walls only
+Framing | Framing reference markers | Y | FR-02 |
+Framing | Joist and roof blocking | Y | FR-09, FR-30 |
+Framing | Export all wall framing (panel drawings) | P | FR-23 | wall framing detail views; no batch export
+Framing | Structural member reporting (cut list, buy list) | Y | EST-22, EST-23 |
+Trim and Moldings | Molding polylines and lines | Y | RM-05 |
+Trim and Moldings | Corner boards and quoins (auto and manual) | Y | WL-15 |
+Trim and Moldings | Replace Moldings (swap a profile plan-wide) | N | MAT-27 |
+Trim and Moldings | Custom molding profiles | Y | MAT-27 |
+The Library | Library browser, search, tags, favourites | Y | LIB-01, LIB-05, LIB-06 |
+The Library | Import library; install core content; update catalogs; get additional content | S | LIB-03, LIB-04, LIB-18 | vendor catalogs and .calib parked
+The Library | Create plan materials library / image library / backdrop library | P | LIB-01 | materials library from plan; no image/backdrop libraries
+Symbol Objects | Import 3D symbols (OBJ, STL, glTF, DAE, 3DS, SKP) | P | MAT-24, IO-04 | OBJ, STL, glTF/GLB
+Symbol Objects | Convert selection to symbol; symbol specification | Y | MAT-26, LIB-15 |
+Architectural Blocks | Architectural blocks (group, unblock) | Y | CB-03 |
+Other Objects | 3D solids: box, sphere, cylinder, cone, pyramid; faces | P | CAD-09, CAD-10 | box, cylinder, cone, sphere, extrude, revolve; no pyramid or face tool
+Other Objects | Distributed objects | Y | MAT-29 |
+Other Objects | Images (Create Image from view, place images) | P | — | pictures; no Create Image tool
+Materials | Material painter, eyedropper, blend colours | Y | MAT-03, MAT-04 |
+Materials | Plan materials; adjust material definition; interactive material editor | Y | MAT-12, MAT-16 |
+Materials | Material Builder (custom tiles, grout) | N | MAT-13 |
+Materials | Adjust 3D cladding; interactive cladding editor | P | MAT-20 |
+Materials | Convert textures to materials | Y | IO-09 |
+Materials | Delete surface (hide one face in 3D) | N | — |
+3D Views | Full camera, perspective/orthographic floor, full and framing overviews | P | VIS-01 | full camera and overviews; no floor overview
+3D Views | Isometric overviews; view direction presets | Y | VIS-26, VIS-03 |
+3D Views | Orbit, tilt, move camera (mouse, keyboard) | Y | VIS-03 |
+3D Views | Cross Section Slider; clip sides | P | VIS-05 | slider; no side clipping
+3D Views | Hide camera-facing exterior walls | Y | VIS-04 |
+3D Views | Depth cue; toggle shadows; toggle reflections | Y | VIS-28 |
+3D Views | 3D view defaults; camera default sets | Y | VIS-25 |
+3D Views | Virtual reality | S | UI-21 | hardware
+3D Rendering | Rendering techniques and technique options | P | VIS-20 | no squiggle or vector styles
+3D Rendering | Ray trace / path tracing and denoise | P | VIS-22, VIS-23 |
+3D Rendering | Hand-drawn lines; toggle patterns | P | VIS-21 | line overlay; no hand-drawn style
+3D Rendering | Sun, moon, sunlight toggle; adjust sunlight | P | VIS-13 |
+3D Rendering | Water animation | Y | MAT-09 |
+3D Rendering | Spherical backdrops (rotate) | Y | VIS-14, VIS-15 |
+Pictures, Images, and Walkthroughs | Export picture; 360 panorama | Y | IO-06, VIS-12 |
+Pictures, Images, and Walkthroughs | Print image | P | PRN-01 |
+Walkthrough Videos | Walkthrough paths: draw, orbital, stationary | P | VIS-07, VIS-09 | path and orbit; no stationary
+Walkthrough Videos | Record, pause, stop, play, preview, save frame | P | VIS-08 | play and frame export; no live recording UI
+Importing and Exporting | DWG/DXF import and export (2D) | P | IO-03 | DXF only
+Importing and Exporting | 3D model export: DXF/DWG, 3DS, STL, COLLADA | N | IO-04 | no 3D model export yet
+Importing and Exporting | Chief 3D Viewer file export | S | UI-03 | our own web viewer instead
+Importing and Exporting | PDF import and export | P | IO-02, PRN-01 |
+Importing and Exporting | Picture import (BMP/JPG/PNG/TIFF/WebP) and metafiles (EMF) | P | IO-05 | no EMF or WebP
+Importing and Exporting | Backdrop import | Y | VIS-14 |
+Importing and Exporting | Import patterns | P | MAT-17 | own patterns; no .pat import
+Importing and Exporting | Terrain data / GPS data import | P | SITE-06, IO-10 |
+Importing and Exporting | Thermal envelope data export | N | IO-14 | energy export not started
+Importing and Exporting | Chief As-Built (LiDAR) file import | S | UI-02 | vendor app
+Importing and Exporting | Export materials list | P | IO-01 | CSV
+Terrain | Terrain perimeter, build terrain, terrain specification, clear terrain | Y | SITE-04, SITE-07 |
+Terrain | Elevation points, lines, splines, regions; terrain breaks | P | SITE-07, SITE-10 | no elevation regions
+Terrain | Terrain modifiers: raised/lowered regions, hills, valleys | Y | SITE-09 |
+Terrain | Terrain walls, curbs, kidney-shaped features, terrain holes | P | SITE-10, SITE-11 | retaining walls, curbs; no holes or kidney shapes
+Terrain | Water features | P | SITE-11 | streams; no ponds
+Roads, Driveways, and Sidewalks | Roads (straight, spline, polyline), medians, cul-de-sacs, markings, stripes | Y | SITE-12 |
+Roads, Driveways, and Sidewalks | Driveways and sidewalks | Y | SITE-12 |
+Plants and Sprinklers | Plant library, plant images, create plant image | Y | SITE-18, SITE-19 |
+Plants and Sprinklers | Plant chooser and hardiness zones | N | SITE-20 | M8c
+Plants and Sprinklers | Grow all plants (age display) | P | SITE-23 | M8c
+Plants and Sprinklers | Sprinkler heads and lines | N | SITE-17 | M8c
+Materials Lists | Calculate materials (all floors, selection, room) | P | EST-01 | whole plan or floor
+Materials Lists | Materials list polyline (area take-off) | N | EST-01 |
+Materials Lists | Master list; update from master list | Y | EST-02 |
+Materials Lists | Materials list management | P | EST-01 |
+Layout | Layout files, page templates, send views to layout | Y | PRJ-23, PRJ-28, PRJ-29 |
+Layout | Edit layout views; update live/plot-line views | P | PRJ-25, PRJ-27 | live views; no plot-line view updates
+Layout | Page management: insert before/after, delete, duplicate, exchange | P | PRJ-28 | add pages; no duplicate/exchange
+Layout | Edit page information; page table; revision schedule/table | Y | PRJ-30, PRJ-31, PRJ-32 |
+Layout | Referenced plan files (relink) | P | PRJ-27 | relink boxes; no referenced-files dialog
+Printing and Plotting | Print, print view, print preview | P | PRN-01, PRN-03 |
+Printing and Plotting | Drawing sheet setup, scale, center sheet, custom sheet sizes | P | PRN-04 |
+Printing and Plotting | Print image | P | PRN-01 |
+Ruby in Chief Architect | Ruby console and scripting | N | TXT-21, EST-07 | M8d own scripting
+Resources and Support | Help menu: manual, tutorials, videos, support, updates, logs, system information | P | UI-22 | About and shortcuts only
+Tools menu (misc) | Checks: plan check, missing files, referenced plans, spell check | P | PRJ-04, TXT-17 | plan check only
+Tools menu (misc) | Symbol > Convert; plan materials | Y | MAT-26, MAT-16 |
+Tools menu (misc) | Asset management | P | PRJ-08 |

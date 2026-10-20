@@ -4,6 +4,8 @@ This is the parity target. It is derived from Chief Architect's *X18 Detailed Fe
 paraphrased into short engineering items, and it supersedes the rougher inventory in [PLAN.md §2](PLAN.md#2-feature-inventory-from-the-premier-product-page-and-the-x17-changelog).
 Source: https://cloud.chiefarchitect.com/1/pdf/marketing/x18-detailed-feature-list.pdf
 
+**Parity audit (2026-10-19):** [parity/coverage.md](parity/coverage.md) checks this list against the X18 Reference Manual's menus and tools.
+
 **Pri:** P0 MVP · P1 credible v1 · P2 parity · P3 later/optional · ✗ out of scope (vendor-specific service).
 **P0 status (2026-10-17):** all 29 P0 items are implemented; five are partial (◐) as noted in their rows.
 **M3 status (2026-10-18):** foundations (incl. piers), roofs (hip, gable, shed, mansard, gambrel, Dutch gable),
