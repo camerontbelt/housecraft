@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 516 items: 29 P0, about 132 P1, about 243 P2, about 104 P3, and 5 out of scope. Each item should eventually map to
+There are 518 items: 29 P0, about 132 P1, about 245 P2, about 104 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -300,6 +300,8 @@ These come from reading the whole list and change the architecture, not just the
 | RF-18 | Roof plane editing: break an edge, drag corners, Join Roof Planes (valleys/ridges), curved roof planes | P1 | M9 |
 | RF-19 | Build Roof options: Raise/Lower All Roof Planes, Ignore Top Floor; Display On Floor Above | P2 | M9 |
 | RF-20 | Walls under a roof built on a lower floor stop at its underside (story-and-a-half knee and gable walls) | P1 | M9 ✓ 3D walls are trimmed to the roof's underside |
+| RF-21 | Knee Wall roof setting and ceiling break lines (where a flat ceiling meets the sloped roof underside) | P2 | M9 |
+| RF-22 | Dormers: defaults (wall type, frieze), a real window inside (type, size, height), structural dormers that cut the roof and framing | P2 | M9 |
 
 ## 10. Stairs & ramps
 

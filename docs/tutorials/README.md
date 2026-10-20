@@ -26,7 +26,8 @@ has two files:
 | 6 | Decks and Porches (105) | 9 | 14 | [06-decks-and-porches.md](06-decks-and-porches.md) |
 | 7 | Roof styles: hip, gable, Dutch gable, shed, offset gable, gambrel, gull wing, half hip, mansard (127) | 12 | 3 | [07-roof-styles.md](07-roof-styles.md) |
 | 8 | Chic Cottage Roof (136) | 11 | 8 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
-| 9–19 | Dormers, Interior Design and Kitchen & Bath tutorials (159–330) | — | — | |
+| 9 | Dormers (159) | 8 | 9 | [09-dormers.md](09-dormers.md) |
+| 10–19 | Interior Design and Kitchen & Bath tutorials (177–330) | — | — | |
 | 20–22 | Framing tutorials (331–381) | — | — | |
 | 23–26 | Landscaping tutorials (382–450) | — | — | |
 | 27–29 | Layout tutorials (451–500) | — | — | |

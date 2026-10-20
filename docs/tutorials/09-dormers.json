@@ -1,0 +1,338 @@
+{
+  "tutorial": "Dormers",
+  "source": "Chief Architect X18 Tutorial Guide, Roof Tutorials, pages 159-176",
+  "include": "08-chic-cottage-roof.json",
+  "steps": [
+    {
+      "step": "Make a copy of the plan as 'Chic Cottage-Dormer Option' and open it",
+      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+    },
+    {
+      "step": "Dormer defaults: frieze, Shingle-6 walls, 96\" wide",
+      "gap": "No dormer defaults (wall type, frieze); each dormer gets its width when placed. Row: RF-22"
+    },
+    {
+      "step": "Window defaults for dormer windows: 72\" x 48\", top at 93 1/2\", 3 lites high",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "window": {
+              "width": "72\"",
+              "height": "48\"",
+              "head_height": "93 1/2\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/window/head_height",
+          "is": "93 1/2\""
+        }
+      ]
+    },
+    {
+      "step": "Auto Floating Dormer on the front slope, centred on the Dining room, its front 2' in from the front wall",
+      "commands": [
+        {
+          "op": "add_dormer",
+          "floor": "$floor1",
+          "at": [
+            2108.2,
+            -7924.8
+          ],
+          "width": "96\""
+        }
+      ],
+      "save": {
+        "front": "dormer"
+      },
+      "expect": [
+        {
+          "count": "dormer",
+          "is": 1
+        },
+        {
+          "get": "$front",
+          "path": "/window",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "Dormer window: double casement, 72\" x 48\", top at 56\" (above the dormer's floor)",
+      "gap": "A dormer's window is part of the dormer (on or off), not a window you can open and change. Row: RF-22"
+    },
+    {
+      "step": "Knee wall 8' in from the back wall (Ceiling Break Lines show where it goes), the space behind it an Attic",
+      "commands": [
+        {
+          "op": "add_walls",
+          "floor": "$named:floor:Floor 2",
+          "interior": true,
+          "points": [
+            [
+              61.119,
+              -2499.519
+            ],
+            [
+              8798.719,
+              -2499.519
+            ]
+          ]
+        }
+      ],
+      "save": {
+        "knee": "wall"
+      },
+      "expect": [
+        {
+          "get": "$knee.0",
+          "path": "/floor",
+          "is": "$named:floor:Floor 2"
+        }
+      ]
+    },
+    {
+      "step": "(Knee Wall roof setting; Ceiling Break Lines layer; Attic room)",
+      "gap": "No Knee Wall setting, ceiling break lines or Attic room type. Rows: RF-21, RM-18"
+    },
+    {
+      "step": "Structural Auto Dormer in the attic at the back, centred on the first one, its front 2' in from the back wall",
+      "commands": [
+        {
+          "op": "add_dormer",
+          "floor": "$floor1",
+          "at": [
+            2108.2,
+            -670.719
+          ],
+          "width": "96\""
+        }
+      ],
+      "save": {
+        "back": "dormer"
+      },
+      "expect": [
+        {
+          "count": "dormer",
+          "is": 2
+        }
+      ]
+    },
+    {
+      "step": "(Structural vs floating dormers)",
+      "gap": "HouseCraft dormers sit on the roof (like Chief's floating dormers); there's no structural dormer that cuts the roof and framing. Row: RF-22"
+    },
+    {
+      "step": "Manual dormer: a roof hole drawn over the attic at the back right",
+      "gap": "No Roof Hole tool. Row: RF-16"
+    },
+    {
+      "step": "Dormer walls on Floor 2 in the hole (3' and 8' long sides, a 2' deep front) with a double casement window",
+      "commands": [
+        {
+          "op": "add_walls",
+          "floor": "$named:floor:Floor 2",
+          "points": [
+            [
+              9652.0,
+              -2499.519
+            ],
+            [
+              9652.0,
+              -670.719
+            ],
+            [
+              11684.0,
+              -670.719
+            ],
+            [
+              11684.0,
+              -2499.519
+            ]
+          ]
+        }
+      ],
+      "save": {
+        "dw": "wall"
+      },
+      "expect": [
+        {
+          "get": "$dw.1",
+          "path": "/floor",
+          "is": "$named:floor:Floor 2"
+        }
+      ]
+    },
+    {
+      "step": "(window in the dormer's front wall)",
+      "commands": [
+        {
+          "op": "add_window",
+          "wall": "$dw.1",
+          "at": [
+            10668.0,
+            -670.719
+          ],
+          "width": "36\"",
+          "height": "36\""
+        }
+      ],
+      "expect": [
+        {
+          "count": "opening",
+          "is": 26
+        }
+      ]
+    },
+    {
+      "step": "Roof defaults for the dormer: no raise, 6\" eave and gable overhangs, no gutter; draw two roof planes over the side walls",
+      "commands": [
+        {
+          "op": "add_roof_plane",
+          "floor": "$named:floor:Floor 2",
+          "eave_a": [
+            9652.0,
+            -2499.519
+          ],
+          "eave_b": [
+            9652.0,
+            -670.719
+          ],
+          "eave_height": "97 1/8\"",
+          "pitch": 45.0,
+          "points": [
+            [
+              9499.6,
+              -2651.919
+            ],
+            [
+              9499.6,
+              -518.319
+            ],
+            [
+              10668.0,
+              -518.319
+            ],
+            [
+              10668.0,
+              -2651.919
+            ]
+          ]
+        },
+        {
+          "op": "add_roof_plane",
+          "floor": "$named:floor:Floor 2",
+          "eave_a": [
+            11684.0,
+            -670.719
+          ],
+          "eave_b": [
+            11684.0,
+            -2499.519
+          ],
+          "eave_height": "97 1/8\"",
+          "pitch": 45.0,
+          "points": [
+            [
+              11836.4,
+              -2651.919
+            ],
+            [
+              11836.4,
+              -518.319
+            ],
+            [
+              10668.0,
+              -518.319
+            ],
+            [
+              10668.0,
+              -2651.919
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "step": "Join the dormer planes at the ridge and to the main roof along valleys; fit the roof hole to the walls",
+      "gap": "No Join Roof Planes or editable roof holes. Rows: RF-18, RF-16"
+    },
+    {
+      "step": "Annotations: 'VALLEY FLASHING' rotated to the valley, a 24\" rectangle along the valley, and 'FLASHING AT WALL' with leaders",
+      "commands": [
+        {
+          "op": "add_text",
+          "floor": "$named:floor:Floor 2",
+          "position": [
+            11938.0,
+            -1524.0
+          ],
+          "text": "VALLEY FLASHING",
+          "rotation": 45
+        },
+        {
+          "op": "add_cad",
+          "floor": "$named:floor:Floor 2",
+          "shape": {
+            "shape": "polyline",
+            "closed": true,
+            "points": [
+              [
+                11176.0,
+                -1016.0
+              ],
+              [
+                11785.6,
+                -1016.0
+              ],
+              [
+                11785.6,
+                -2540.0
+              ],
+              [
+                11176.0,
+                -2540.0
+              ]
+            ]
+          }
+        },
+        {
+          "op": "add_text",
+          "floor": "$named:floor:Floor 2",
+          "position": [
+            6096.0,
+            -1016.0
+          ],
+          "text": "FLASHING AT WALL",
+          "leaders": [
+            [
+              7620.0,
+              -508.0
+            ]
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "text_exists": "VALLEY FLASHING"
+        },
+        {
+          "text_exists": "FLASHING AT WALL"
+        }
+      ]
+    },
+    {
+      "step": "(Make Parallel/Perpendicular to the valley; Center Object on the valley; Reflect About Object for the opposite valley)",
+      "gap": "No Make Parallel and no Reflect About Object. Rows: CAD-01, CAD-29"
+    },
+    {
+      "step": "Put both roof plans in a 'Roof Tutorials' folder",
+      "gap": "No document folders. Row: PRJ-09"
+    }
+  ]
+}
