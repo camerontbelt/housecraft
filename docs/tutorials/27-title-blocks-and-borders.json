@@ -1,0 +1,497 @@
+{
+  "tutorial": "Title Blocks and Borders",
+  "source": "Chief Architect X18 Tutorial Guide, Layout Tutorials, pages 460-482",
+  "include": "26-layout-page-templates.json",
+  "steps": [
+    {
+      "step": "Drawing Sheet Setup: 36\" x 24\", landscape, 1 in = 1 in",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$lay",
+          "set": {
+            "paper_width": "36\"",
+            "paper_height": "24\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$lay",
+          "path": "/paper_width",
+          "is": "36\""
+        }
+      ]
+    },
+    {
+      "step": "Grid snap 1/8\" for layout; arrow-key nudge by the grid",
+      "gap": "Layout pages hold boxes; CAD isn't drawn on the sheet itself, and there's no layout grid or nudge. Row: PRJ-47"
+    },
+    {
+      "step": "Delete the installed title block and border; draw a new border 1/8\" in, with a second 1/8\" inside it (Concentric)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$lay",
+          "set": {
+            "title_block": false
+          }
+        },
+        {
+          "op": "add_cad_detail",
+          "name": "Standard Title Block",
+          "shapes": [
+            {
+              "shape": {
+                "shape": "polyline",
+                "points": [
+                  [
+                    3.175,
+                    3.175
+                  ],
+                  [
+                    911.225,
+                    3.175
+                  ],
+                  [
+                    911.225,
+                    606.425
+                  ],
+                  [
+                    3.175,
+                    606.425
+                  ]
+                ],
+                "closed": true
+              }
+            },
+            {
+              "shape": {
+                "shape": "polyline",
+                "points": [
+                  [
+                    6.35,
+                    6.35
+                  ],
+                  [
+                    908.05,
+                    6.35
+                  ],
+                  [
+                    908.05,
+                    603.25
+                  ],
+                  [
+                    6.35,
+                    603.25
+                  ]
+                ],
+                "closed": true
+              }
+            },
+            {
+              "shape": {
+                "shape": "polyline",
+                "points": [
+                  [
+                    850.9,
+                    12.7
+                  ],
+                  [
+                    901.7,
+                    12.7
+                  ],
+                  [
+                    901.7,
+                    596.9
+                  ],
+                  [
+                    850.9,
+                    596.9
+                  ]
+                ],
+                "closed": true
+              }
+            },
+            {
+              "shape": {
+                "shape": "polyline",
+                "points": [
+                  [
+                    854.075,
+                    15.875
+                  ],
+                  [
+                    898.525,
+                    15.875
+                  ],
+                  [
+                    898.525,
+                    41.275
+                  ],
+                  [
+                    854.075,
+                    41.275
+                  ]
+                ],
+                "closed": true
+              }
+            },
+            {
+              "shape": {
+                "shape": "polyline",
+                "points": [
+                  [
+                    854.075,
+                    44.45
+                  ],
+                  [
+                    898.525,
+                    44.45
+                  ],
+                  [
+                    898.525,
+                    69.85
+                  ],
+                  [
+                    854.075,
+                    69.85
+                  ]
+                ],
+                "closed": true
+              }
+            },
+            {
+              "shape": {
+                "shape": "polyline",
+                "points": [
+                  [
+                    854.075,
+                    73.025
+                  ],
+                  [
+                    898.525,
+                    73.025
+                  ],
+                  [
+                    898.525,
+                    174.625
+                  ],
+                  [
+                    854.075,
+                    174.625
+                  ]
+                ],
+                "closed": true
+              }
+            },
+            {
+              "shape": {
+                "shape": "polyline",
+                "points": [
+                  [
+                    854.075,
+                    177.8
+                  ],
+                  [
+                    898.525,
+                    177.8
+                  ],
+                  [
+                    898.525,
+                    304.8
+                  ],
+                  [
+                    854.075,
+                    304.8
+                  ]
+                ],
+                "closed": true
+              }
+            },
+            {
+              "shape": {
+                "shape": "polyline",
+                "points": [
+                  [
+                    854.075,
+                    307.975
+                  ],
+                  [
+                    898.525,
+                    307.975
+                  ],
+                  [
+                    898.525,
+                    409.575
+                  ],
+                  [
+                    854.075,
+                    409.575
+                  ]
+                ],
+                "closed": true
+              }
+            }
+          ]
+        }
+      ],
+      "save": {
+        "tbd": "cad_detail"
+      },
+      "expect": [
+        {
+          "get": "$lay",
+          "path": "/title_block",
+          "is": false
+        },
+        {
+          "get": "$tbd",
+          "path": "/name",
+          "is": "Standard Title Block"
+        }
+      ]
+    },
+    {
+      "step": "(Border and title block drawn as a CAD detail and placed on the template page at full size)",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 0,
+          "source": {
+            "type": "detail",
+            "detail": "$tbd"
+          },
+          "x": "0\"",
+          "y": "0\"",
+          "width": "36\"",
+          "height": "24\"",
+          "scale": 1.0,
+          "label": ""
+        }
+      ],
+      "save": {
+        "tbbox": "layout_box"
+      },
+      "expect": [
+        {
+          "get": "$tbbox",
+          "path": "/scale",
+          "is": 1.0
+        }
+      ]
+    },
+    {
+      "step": "Title block frame 2\" wide down the right side; component frames 1\", 1\", 4\", 5\" and 4\" high (Point to Point Move, nudge)",
+      "gap": "Frames are drawn in the CAD detail by typing their corners; no Point to Point Move or nudging. Rows: CAD-31, PRJ-47"
+    },
+    {
+      "step": "Rich text defaults: Chief Blueprint 1/8\"; company name and contact, centred, rotated 90 degrees in the 4\" frame",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 0,
+          "source": {
+            "type": "text",
+            "text": "COTTAGE DESIGN CO.\n123 Main Street\n555-0100"
+          },
+          "x": "33.625\"",
+          "y": "7.875\"",
+          "width": "1.75\"",
+          "height": "4\"",
+          "label": ""
+        }
+      ],
+      "save": {
+        "company": "layout_box"
+      }
+    },
+    {
+      "step": "(Rotate the text 90 degrees; Center Object in the frame)",
+      "gap": "Layout text boxes don't rotate, and there's no Center Object on layout pages. Row: PRJ-47"
+    },
+    {
+      "step": "Sheet title with the page-title macro, sheet number with the page-label macro, and the date",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 0,
+          "source": {
+            "type": "text",
+            "text": "{page_title}"
+          },
+          "x": "33.625\"",
+          "y": "12.0\"",
+          "width": "1.75\"",
+          "height": "5\"",
+          "label": ""
+        },
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 0,
+          "source": {
+            "type": "text",
+            "text": "{sheet}"
+          },
+          "x": "33.625\"",
+          "y": "0.625\"",
+          "width": "1.75\"",
+          "height": "1\"",
+          "label": ""
+        },
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 0,
+          "source": {
+            "type": "text",
+            "text": "{date}"
+          },
+          "x": "33.625\"",
+          "y": "1.75\"",
+          "width": "1.75\"",
+          "height": "1\"",
+          "label": ""
+        }
+      ],
+      "save": {
+        "macros": "layout_box"
+      },
+      "expect": [
+        {
+          "get": "$macros.0",
+          "path": "/source/text",
+          "is": "{page_title}"
+        }
+      ]
+    },
+    {
+      "step": "Revision table above the sheet title, at least 7 rows; a test revision on pages 3 and 4, then Undo",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 0,
+          "source": {
+            "type": "revisions"
+          },
+          "x": "33.625\"",
+          "y": "17.25\"",
+          "width": "1.75\"",
+          "height": "6\"",
+          "label": ""
+        }
+      ],
+      "save": {
+        "revtab": "layout_box"
+      },
+      "expect": [
+        {
+          "get": "$revtab",
+          "path": "/source/type",
+          "is": "revisions"
+        }
+      ]
+    },
+    {
+      "step": "(Minimum rows; revisions listed only on the pages they belong to)",
+      "gap": "The revision table lists the plan's revisions on every page; no minimum rows or page range. Row: PRJ-47"
+    },
+    {
+      "step": "Cover sheet template: copy the border to page 1 (Paste Hold Position)",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 1,
+          "source": {
+            "type": "detail",
+            "detail": "$tbd"
+          },
+          "x": "0\"",
+          "y": "0\"",
+          "width": "36\"",
+          "height": "24\"",
+          "scale": 1.0,
+          "label": ""
+        }
+      ],
+      "expect": [
+        {
+          "count": "layout_box",
+          "is": 7
+        }
+      ]
+    },
+    {
+      "step": "Import a company logo picture, 3\" x 3\", saved in the plan",
+      "gap": "No pictures on layout pages. Row: PRJ-47"
+    },
+    {
+      "step": "Title bar line; company and project text left and right aligned",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 1,
+          "source": {
+            "type": "text",
+            "text": "{project}"
+          },
+          "x": "24\"",
+          "y": "1\"",
+          "width": "9\"",
+          "height": "2\"",
+          "label": ""
+        }
+      ],
+      "expect": [
+        {
+          "count": "layout_box",
+          "is": 8
+        }
+      ]
+    },
+    {
+      "step": "Sheet Index (Layout Page Table) in the top right corner: Sheet and Title columns, centred, 1/4\" title",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 1,
+          "source": {
+            "type": "sheet_index",
+            "layout": "$lay"
+          },
+          "x": "26\"",
+          "y": "12\"",
+          "width": "9\"",
+          "height": "11\"",
+          "label": "Sheet Index"
+        }
+      ],
+      "save": {
+        "index": "layout_box"
+      },
+      "expect": [
+        {
+          "get": "$index",
+          "path": "/label",
+          "is": "Sheet Index"
+        }
+      ]
+    },
+    {
+      "step": "(Rename and remove table columns; alignment and title text style)",
+      "gap": "The sheet index has fixed columns (sheet, title) and text. Row: PRJ-47"
+    },
+    {
+      "step": "Make a Copy as Chic Cottage-Title Block; a Layout Tutorials folder",
+      "gap": "No Make a Copy or folders. Rows: PRJ-45, PRJ-09"
+    }
+  ]
+}

@@ -775,3 +775,38 @@ fn plants_can_show_their_own_picture() {
     let d = plan(doc, &PlanOptions::first(doc).unwrap());
     assert!(d.items.iter().any(|i| i.object == Some(plant) && matches!(&i.prim, Prim::Image { path, .. } if path == "maple-top.png")));
 }
+
+#[test]
+fn template_pages_fill_page_macros_for_the_page_they_sit_under() {
+    let mut s = Session::new(Document::new("Test House"));
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "add_layout", "name": "Set", "pages": 2},
+            {"op": "add_cad_detail", "name": "Border", "shapes": [{"shape": {"shape": "polyline", "points": [[3,3],[911,3],[911,606],[3,606]], "closed": true}}]}]"#,
+    )
+    .unwrap();
+    let out = s.apply(&cmds).unwrap();
+    let (layout, detail) = (out.created[0], out.created[1]);
+    let cmds: Vec<Command> = serde_json::from_str(&format!(
+        r#"[{{"op": "update", "id": {l}, "set": {{"title_block": false, "pages": ["T", "A0.1"], "titles": ["Template", "General Notes"], "templates": [null, 0]}}}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 0, "source": {{"type": "detail", "detail": {d}}}, "x": 0, "y": 0, "width": "36\"", "height": "24\"", "scale": 1.0, "label": ""}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 0, "source": {{"type": "text", "text": "{{page_title}} {{sheet}}"}}, "x": "34\"", "y": "1\"", "width": "2\"", "height": "1\"", "label": ""}}]"#,
+        l = layout.0,
+        d = detail.0
+    ))
+    .unwrap();
+    s.apply(&cmds).unwrap();
+    let doc = s.document();
+    let l = doc.get::<housecraft_api::model::Layout>(layout).unwrap();
+    let d = housecraft_draft::layout::layout_page(doc, l, 1);
+    let texts: Vec<&str> = d
+        .items
+        .iter()
+        .filter_map(|i| match &i.prim {
+            Prim::Text { text, .. } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert!(texts.iter().any(|t| t.contains("General Notes A0.1")), "{texts:?}");
+    let lines = d.items.iter().filter(|i| !matches!(i.prim, Prim::Text { .. })).count();
+    assert!(lines > 0, "the template's border is drawn under page 2");
+}
