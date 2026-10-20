@@ -1,0 +1,1015 @@
+{
+  "tutorial": "Roof Styles",
+  "source": "Chief Architect X18 Tutorial Guide, Roof Tutorials, pages 127-135",
+  "steps": [
+    {
+      "step": "New plan: a 34' x 24' rectangle of exterior walls, drawn clockwise (Chief's default 109 1/8\" ceilings)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$floor1",
+          "set": {
+            "ceiling_height": "109 1/8\""
+          }
+        },
+        {
+          "op": "add_walls",
+          "points": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              7315.200000000001
+            ],
+            [
+              10363.2,
+              7315.200000000001
+            ],
+            [
+              10363.2,
+              0
+            ]
+          ],
+          "closed": true
+        }
+      ],
+      "save": {
+        "box": "wall"
+      },
+      "expect": [
+        {
+          "rooms": 1
+        }
+      ]
+    },
+    {
+      "step": "Hip roof: Build Roof with no directives (pitch 8 in 12)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "roof": {
+              "pitch": 33.6901
+            }
+          }
+        },
+        {
+          "op": "build_roof",
+          "floor": "$floor1"
+        }
+      ],
+      "expect": [
+        {
+          "roof_planes": 4
+        }
+      ]
+    },
+    {
+      "step": "Gable roof: left and right walls Full Gable Wall",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "remove_roof",
+          "floor": "$floor1"
+        },
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "build_roof",
+          "floor": "$floor1"
+        }
+      ],
+      "expect": [
+        {
+          "roof_planes": 2
+        },
+        {
+          "get": "$box.0",
+          "path": "/roof/gable",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "Dutch gable: left and right walls Dutch Gable Wall starting at 180\"",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "remove_roof",
+          "floor": "$floor1"
+        },
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": {
+                "break_height": "70.875\"",
+                "pitch": 33.6901,
+                "gable": true
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": {
+                "break_height": "70.875\"",
+                "pitch": 33.6901,
+                "gable": true
+              }
+            }
+          }
+        },
+        {
+          "op": "build_roof",
+          "floor": "$floor1"
+        }
+      ],
+      "expect": [
+        {
+          "roof_planes": 6
+        },
+        {
+          "count": "roof_plane",
+          "is": 8
+        }
+      ]
+    },
+    {
+      "step": "(Dutch gable: 2 small hips and the two long sides, each in two pieces at the same pitch, with the gable infills above the hips)"
+    },
+    {
+      "step": "Shed roof: left and right Full Gable, top wall High Shed/Gable; pitch 2 in 12",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "remove_roof",
+          "floor": "$floor1"
+        },
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "roof": {
+              "pitch": 9.4623
+            }
+          }
+        },
+        {
+          "op": "build_roof",
+          "floor": "$floor1"
+        }
+      ],
+      "expect": [
+        {
+          "roof_planes": 1
+        },
+        {
+          "count": "roof_plane",
+          "is": 4
+        }
+      ]
+    },
+    {
+      "step": "(Build > Roof > Roof Style > Shed does the same in one step)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "remove_roof",
+          "floor": "$floor1"
+        },
+        {
+          "op": "set_roof_style",
+          "floor": "$floor1",
+          "style": "shed",
+          "pitch": 9.4623
+        }
+      ],
+      "expect": [
+        {
+          "roof_planes": 1
+        }
+      ]
+    },
+    {
+      "step": "(High Shed/Gable Wall)",
+      "gap": "There's no separate High Shed/Gable option; a Full Gable Wall on the high side does the same. Row: RF-17"
+    },
+    {
+      "step": "Offset gable: gables left and right; bottom wall 12 in 12, the rest 2 in 12",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "remove_roof",
+          "floor": "$floor1"
+        },
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": 45.0,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "roof": {
+              "pitch": 9.4623
+            }
+          }
+        },
+        {
+          "op": "build_roof",
+          "floor": "$floor1"
+        }
+      ],
+      "expect": [
+        {
+          "roof_planes": 2
+        }
+      ]
+    },
+    {
+      "step": "Gambrel: gables left and right; top and bottom with an upper pitch of 6 in 12 from 156\"; 12 in 12 below",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "remove_roof",
+          "floor": "$floor1"
+        },
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": {
+                "break_height": "46.875\"",
+                "pitch": 26.5651
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": {
+                "break_height": "46.875\"",
+                "pitch": 26.5651
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "roof": {
+              "pitch": 45.0
+            }
+          }
+        },
+        {
+          "op": "build_roof",
+          "floor": "$floor1"
+        }
+      ],
+      "expect": [
+        {
+          "roof_planes": 4
+        }
+      ]
+    },
+    {
+      "step": "Gull wing: gables left and right; upper pitch 12 in 12 from 125\"; 3 in 12 below",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "remove_roof",
+          "floor": "$floor1"
+        },
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": {
+                "break_height": "15.875\"",
+                "pitch": 45.0
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": {
+                "break_height": "15.875\"",
+                "pitch": 45.0
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "roof": {
+              "pitch": 14.0362
+            }
+          }
+        },
+        {
+          "op": "build_roof",
+          "floor": "$floor1"
+        }
+      ],
+      "expect": [
+        {
+          "roof_planes": 4
+        }
+      ]
+    },
+    {
+      "step": "Half hip: gables left and right with an upper pitch of 3 in 12 from 170\"",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "remove_roof",
+          "floor": "$floor1"
+        },
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": {
+                "break_height": "60.875\"",
+                "pitch": 14.0362
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": true,
+              "pitch": null,
+              "upper": {
+                "break_height": "60.875\"",
+                "pitch": 14.0362
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "roof": {
+              "pitch": 33.6901
+            }
+          }
+        },
+        {
+          "op": "build_roof",
+          "floor": "$floor1"
+        }
+      ],
+      "expect": [
+        {
+          "roof_planes": 6
+        }
+      ]
+    },
+    {
+      "step": "Mansard: every wall an upper pitch of 1.5 in 12 from 132\"; 24 in 12 below",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": null
+            }
+          }
+        },
+        {
+          "op": "remove_roof",
+          "floor": "$floor1"
+        },
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": {
+                "break_height": "22.875\"",
+                "pitch": 7.125
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": {
+                "break_height": "22.875\"",
+                "pitch": 7.125
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": {
+                "break_height": "22.875\"",
+                "pitch": 7.125
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "gable": false,
+              "pitch": null,
+              "upper": {
+                "break_height": "22.875\"",
+                "pitch": 7.125
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "roof": {
+              "pitch": 63.4349
+            }
+          }
+        },
+        {
+          "op": "build_roof",
+          "floor": "$floor1"
+        }
+      ],
+      "expect": [
+        {
+          "roof_planes": 8
+        }
+      ]
+    },
+    {
+      "step": "(Upper pitch 'Starts at Height' is measured from the floor in Chief)",
+      "gap": "HouseCraft's upper-pitch break is measured from the top of the wall: subtract the ceiling height (109 1/8\" here). Row: RF-17"
+    },
+    {
+      "step": "Attic walls: turn off Walls, Attic; Edit > Reset to Defaults for roof directives; Delete Roof Planes",
+      "gap": "No attic walls layer or Reset to Defaults; Build > Roof > Remove Roof deletes the roof. Row: RF-17"
+    }
+  ]
+}

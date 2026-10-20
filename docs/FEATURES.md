@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 511 items: 29 P0, about 130 P1, about 241 P2, about 103 P3, and 5 out of scope. Each item should eventually map to
+There are 512 items: 29 P0, about 130 P1, about 242 P2, about 103 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -295,6 +295,7 @@ These come from reading the whole list and change the architecture, not just the
 | RF-14 | Convert roof/ceiling planes to polylines | P3 | M4 ◐ Convert CAD To > Roof Planes to Polylines; there are no separate ceiling planes yet |
 | RF-15 | Manual ceiling plane tool and Edit All Roof Planes dialog | P2 | M9 |
 | RF-16 | Roof hole tool (cut a roof plane without a skylight) | P2 | M9 |
+| RF-17 | Roof directive parity: High Shed/Gable option; upper pitch Starts at Height (from floor) or In From Baseline; attic wall layer; Reset roof directives to defaults | P2 | M9 |
 
 ## 10. Stairs & ramps
 

@@ -218,6 +218,11 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
         let n = v["objects"].as_object().unwrap().values().filter(|o| o["kind"] == kind).count();
         return if n == want { Ok(()) } else { Err(format!("{n} {kind} objects, expected {want}")) };
     }
+    if let Some(n) = e.get("roof_planes").and_then(Value::as_u64) {
+        // Sloped roof planes (not the gable-end infills).
+        let found = doc.iter::<RoofPlane>().filter(|r| !r.gable).count();
+        return if found == n as usize { Ok(()) } else { Err(format!("{found} roof planes, expected {n}")) };
+    }
     if let Some(n) = e.get("rooms").and_then(Value::as_u64) {
         let floor = run.resolve("$floor1").unwrap();
         let found = housecraft_api::geom::rooms::detect(doc, floor).rooms.len();

@@ -157,6 +157,31 @@ fn split_event(sim: &Sim, ring: &[Vert], v: usize, now: f64) -> Option<(f64, usi
 pub fn skeleton(poly: &[DVec2], speeds: &[f64]) -> Vec<Face> {
     let n = poly.len();
     assert_eq!(n, speeds.len());
+    // One sloping edge (a shed): its plane covers the whole outline, rising
+    // with the distance from that edge.
+    let moving: Vec<usize> = (0..n).filter(|i| speeds[*i] > 0.0).collect();
+    if let [e] = moving[..] {
+        let (a, b) = (poly[e], poly[(e + 1) % n]);
+        let d = (b - a).normalize_or_zero();
+        let inward = DVec2::new(-d.y, d.x);
+        let height = |p: DVec2| inward.dot(p - a).max(0.0) / speeds[e];
+        let mut faces = vec![Face { edge: e, polygon: poly.iter().map(|p| p.extend(height(*p))).collect() }];
+        // The still (gable) edges: walls rising to the plane above them.
+        for k in (0..n).filter(|k| *k != e) {
+            let (p, q) = (poly[k], poly[(k + 1) % n]);
+            let mut polygon = vec![p.extend(0.0), q.extend(0.0)];
+            if height(q) > EPS {
+                polygon.push(q.extend(height(q)));
+            }
+            if height(p) > EPS {
+                polygon.push(p.extend(height(p)));
+            }
+            if polygon.len() >= 3 {
+                faces.push(Face { edge: k, polygon });
+            }
+        }
+        return faces;
+    }
     let mut sim = Sim {
         lines: (0..n)
             .map(|i| {
