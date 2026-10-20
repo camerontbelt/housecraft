@@ -90,6 +90,8 @@ pub struct PlanState {
     /// The first wall of the current run (its start is mitred on closing).
     pub first_wall: Option<Id>,
     temp_dim_edit: Option<(Id, String, bool)>,
+    /// Typing a new value on a dimension next to the selected wall.
+    dim_move: Option<DimMove>,
     /// The switch being wired by the Connect Electrical tool.
     pub wiring: Option<Id>,
 }
@@ -132,6 +134,7 @@ impl PlanState {
             last_wall: None,
             first_wall: None,
             temp_dim_edit: None,
+            dim_move: None,
             wiring: None,
         }
     }
@@ -403,8 +406,17 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     if !commands.is_empty() {
         let tool = app.plan.tool;
         if let Some(out) = app.run(commands) {
-            if tool == Tool::Select && !out.created.is_empty() {
-                app.selection = out.created.clone();
+            // Select what was made (copies, pastes), not the automatic
+            // dimensions rebuilt round a moved wall.
+            let doc = app.session.document();
+            let made: Vec<Id> = out
+                .created
+                .iter()
+                .copied()
+                .filter(|id| !matches!(doc.object(*id), Some(Object::Dimension(d)) if d.auto))
+                .collect();
+            if tool == Tool::Select && !made.is_empty() {
+                app.selection = made;
             }
             if matches!(tool, Tool::ExteriorWall | Tool::InteriorWall) {
                 let doc = app.session.document();
@@ -414,6 +426,14 @@ pub fn show(app: &mut App, ui: &mut Ui) {
                         app.plan.first_wall = Some(*w);
                     }
                 }
+            }
+            // A camera drawn in plan opens in 3D straight away.
+            if tool == Tool::PlaceCamera
+                && let Some(cam) = out.created.iter().find_map(|id| app.doc().get::<Camera>(*id)).cloned()
+            {
+                app.view3d.apply_camera(&cam);
+                app.mode = crate::app::Mode::ThreeD;
+                app.plan.tool = Tool::Select;
             }
             // A new elevation or section opens straight away.
             if matches!(tool, Tool::SectionLine(_))
@@ -776,6 +796,25 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
         }
     }
 
+    // Click a dimension beside the selected wall to move the wall by typing
+    // the distance (Chief's associated dimensions).
+    if resp.clicked()
+        && !ctrl
+        && app.selection.len() == 1
+        && doc.kind_of(app.selection[0]) == Some(ObjectKind::Wall)
+        && let Some(c) = app.plan.cursor
+        && let Some((dimension, segment, now, at)) = dimension_beside_wall(doc, app.plan.floor, app.selection[0], c, tol)
+    {
+        app.plan.dim_move = Some(DimMove {
+            dimension,
+            segment,
+            wall: app.selection[0],
+            text: Length::from_mm(now).format(doc.settings.display_unit),
+            at,
+            first: true,
+        });
+        return;
+    }
     // Alt+click a linked callout to open what it points at.
     if resp.clicked()
         && ui.input(|i| i.modifiers.alt)
@@ -1344,6 +1383,25 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     (None, _) => {
                         app.status = Some(("Click on a switch or fixture.".into(), true));
                     }
+                }
+            }
+            Tool::PlaceCamera => {
+                if let Some(eye) = pending.pop() {
+                    if eye.distance(p) > 1.0 {
+                        // Eye height above the floor, looking level at the focus point.
+                        let z = app.doc().get::<Floor>(app.plan.floor).map_or(0.0, |f| f.elevation.mm()) + 1676.4;
+                        let n = app.doc().iter::<Camera>().count() + 1;
+                        commands.push(Command::AddCamera {
+                            name: format!("Camera {n}"),
+                            projection: Projection::Perspective { fov: 60.0 },
+                            eye: housecraft_api::units::Point3::from_mm(eye.x, eye.y, z),
+                            target: housecraft_api::units::Point3::from_mm(p.x, p.y, z),
+                            layer_set: None,
+                            render: None,
+                        });
+                    }
+                } else {
+                    pending.push(p);
                 }
             }
             Tool::SectionLine(kind) => {
@@ -2522,9 +2580,84 @@ fn temp_dimension(app: &App, painter: &Painter, view: &View, id: Id, accent: Col
     );
 }
 
+/// A dimension segment being typed on to move a wall.
+pub(crate) struct DimMove {
+    dimension: Id,
+    segment: usize,
+    wall: Id,
+    text: String,
+    /// Where the box sits (model).
+    at: DVec2,
+    first: bool,
+}
+
+/// The dimension segment under `p` that measures to `wall` (one end on
+/// the wall, which crosses the dimension): (dimension, segment, current
+/// length, where its text sits).
+fn dimension_beside_wall(doc: &Document, floor: Id, wall: Id, p: DVec2, tol: f64) -> Option<(Id, usize, f64, DVec2)> {
+    let w = doc.get::<Wall>(wall)?;
+    let half = doc.get::<WallType>(w.wall_type)?.thickness().mm() / 2.0 + 1.0;
+    let (ws, wd) = (v2(w.start), (v2(w.end) - v2(w.start)).normalize_or_zero());
+    let mut best: Option<(f64, Id, usize, f64, DVec2)> = None;
+    for d in doc.iter::<Dimension>().filter(|d| d.floor == floor) {
+        let DimensionGeometry::Linear { points, orientation, offset } = &d.geometry else { continue };
+        let (axis, line) = match orientation {
+            DimOrientation::Horizontal => (DVec2::X, points.first().map(|q| v2(*q).y + offset.mm())),
+            DimOrientation::Vertical => (DVec2::Y, points.first().map(|q| v2(*q).x + offset.mm())),
+            DimOrientation::Aligned => continue,
+        };
+        let Some(line) = line else { continue };
+        if wd.dot(axis).abs() > 0.1 {
+            continue;
+        }
+        for (i, seg) in points.windows(2).enumerate() {
+            let (a, b) = (v2(seg[0]), v2(seg[1]));
+            let on = |q: DVec2| (q - ws).dot(axis).abs() <= half;
+            if on(a) == on(b) {
+                continue;
+            }
+            let mid_along = ((a + b) / 2.0).dot(axis);
+            let mid = if axis == DVec2::X { DVec2::new(mid_along, line) } else { DVec2::new(line, mid_along) };
+            let dist = mid.distance(p);
+            let len = (b - a).dot(axis).abs();
+            // Anywhere along the segment near its line, or close to its text.
+            let near = (p - mid).dot(axis).abs() <= len / 2.0 && (p - mid).perp_dot(axis).abs() <= tol * 2.5;
+            if (near || dist <= tol * 3.0) && best.as_ref().is_none_or(|b| dist < b.0) {
+                best = Some((dist, d.id, i, len, mid));
+            }
+        }
+    }
+    best.map(|(_, d, i, len, mid)| (d, i, len, mid))
+}
+
 /// Text prompt, typed-length box and the editable temporary dimension.
 fn overlays(app: &mut App, ui: &mut Ui, view: &View, commands: &mut Vec<Command>) {
     let ctx = ui.ctx().clone();
+    // Typing on a dimension beside the selected wall moves the wall.
+    if let Some(mut m) = app.plan.dim_move.take() {
+        let mut keep = app.selection == [m.wall];
+        egui::Area::new(egui::Id::unique("dim_move"))
+            .fixed_pos(view.to_screen(m.at) - vec2(55.0, 12.0))
+            .order(egui::Order::Foreground)
+            .show(&ctx, |ui| {
+                let edit = ui.add(egui::TextEdit::singleline(&mut m.text).desired_width(110.0));
+                if std::mem::take(&mut m.first) {
+                    edit.request_focus();
+                }
+                if edit.lost_focus() {
+                    keep = false;
+                    if ui.input(|i| i.key_pressed(egui::Key::Enter))
+                        && let Some(length) = crate::util::parse(app.doc(), &m.text)
+                        && length.mm() > 0.0
+                    {
+                        commands.push(Command::MoveWallByDimension { dimension: m.dimension, segment: m.segment, wall: m.wall, length });
+                    }
+                }
+            });
+        if keep {
+            app.plan.dim_move = Some(m);
+        }
+    }
     // Click the temporary dimension of a selected wall or line to type a length.
     if app.selection.len() == 1
         && app.plan.tool == Tool::Select

@@ -105,6 +105,24 @@ pub(crate) fn add_wall(
 
 /// Move a wall's endpoints; walls joined at a moved endpoint follow when `drag`.
 /// Openings keep their distance from the wall start, clamped to stay inside.
+/// The two points dimension `id`'s segment `segment` measures between, as
+/// they are drawn (projected onto the dimension's direction).
+pub(crate) fn dimension_segment(doc: &Document, id: Id, segment: usize) -> Result<(DVec2, DVec2), ApiError> {
+    let d = expect::<Dimension>(doc, id)?;
+    let DimensionGeometry::Linear { points, orientation, .. } = &d.geometry else {
+        return invalid("only linear dimensions move walls");
+    };
+    let (Some(a), Some(b)) = (points.get(segment), points.get(segment + 1)) else {
+        return invalid(format!("the dimension has no segment {segment}"));
+    };
+    let (a, b) = (housecraft_geom::v2(*a), housecraft_geom::v2(*b));
+    Ok(match orientation {
+        DimOrientation::Horizontal => (a, DVec2::new(b.x, a.y)),
+        DimOrientation::Vertical => (a, DVec2::new(a.x, b.y)),
+        DimOrientation::Aligned => (a, b),
+    })
+}
+
 pub(crate) fn move_wall_ends(
     doc: &mut Document,
     wall: &Wall,
@@ -198,6 +216,55 @@ pub(crate) fn opening_position(
     Ok(Length::from_mm(pos.clamp(half, len - half)))
 }
 
+/// A building outline (outside wall surfaces) moved in to the outside of
+/// each wall's framing layer.
+fn framing_outline(doc: &Document, surface: &[DVec2], geoms: &[housecraft_geom::walls::WallGeom]) -> Vec<DVec2> {
+    let n = surface.len();
+    if n < 3 {
+        return surface.to_vec();
+    }
+    let ccw = housecraft_geom::math::signed_area(surface) > 0.0;
+    // Each edge's depth in to the framing: from the wall whose face lies on it.
+    let depth = |a: DVec2, b: DVec2| -> f64 {
+        let mid = (a + b) / 2.0;
+        let dir = (b - a).normalize_or_zero();
+        geoms
+            .iter()
+            .filter(|g| g.dir.perp_dot(dir).abs() < 0.02)
+            .filter_map(|g| {
+                let along = (mid - g.start).dot(g.dir);
+                if along < -1.0 || along > g.length + 1.0 {
+                    return None;
+                }
+                let side = (mid - g.start).dot(g.left);
+                if (side.abs() - g.half).abs() > 2.0 {
+                    return None;
+                }
+                let t = doc.get::<Wall>(g.id).and_then(|w| doc.get::<WallType>(w.wall_type))?;
+                let (lo, hi) = t.main_range();
+                // The left face is the exterior (layer 1) side.
+                Some(if side > 0.0 { lo } else { t.thickness().mm() - hi })
+            })
+            .next()
+            .unwrap_or(0.0)
+    };
+    let lines: Vec<(DVec2, DVec2)> = (0..n)
+        .map(|i| {
+            let (a, b) = (surface[i], surface[(i + 1) % n]);
+            let dir = (b - a).normalize_or_zero();
+            let inward = if ccw { dir.perp() } else { -dir.perp() };
+            (a + inward * depth(a, b), dir)
+        })
+        .collect();
+    (0..n)
+        .map(|i| {
+            let (p, d) = lines[(i + n - 1) % n];
+            let (q, e) = lines[i];
+            housecraft_geom::math::line_intersection(p, d, q, e).unwrap_or(q)
+        })
+        .collect()
+}
+
 pub(crate) fn exterior_dimensions(
     doc: &mut Document,
     floor: Id,
@@ -217,7 +284,10 @@ pub(crate) fn exterior_dimensions(
     let off = d.dimensions.exterior_offset.mm();
     let tiers = doc.settings.auto_dims.get(&floor).copied().unwrap_or(d.dimensions.auto);
     let geoms = housecraft_geom::walls::wall_geoms(doc, floor);
-    for fp in &regions.footprints {
+    for surface in &regions.footprints {
+        // Dimensions locate the outside of the framing unless set to surfaces.
+        let framing = if tiers.surfaces { surface.clone() } else { framing_outline(doc, surface, &geoms) };
+        let fp = &framing;
         let (lo, hi) = housecraft_geom::math::bounds(fp.iter().copied()).expect("non-empty");
         // Real corners only: walls meeting the outline leave straight-through points.
         let n = fp.len();
@@ -237,7 +307,8 @@ pub(crate) fn exterior_dimensions(
         // Positions on each side (bottom, top, left, right) for the inner
         // tiers: opening centres, and interior walls meeting the outline.
         let near_outline = |p: DVec2, tol: f64| {
-            (0..fp.len()).any(|i| housecraft_geom::math::distance_to_segment(p, fp[i], fp[(i + 1) % fp.len()]) < tol)
+            let s = surface;
+            (0..s.len()).any(|i| housecraft_geom::math::distance_to_segment(p, s[i], s[(i + 1) % s.len()]) < tol)
         };
         let mid = (lo + hi) / 2.0;
         let mut openings: [Vec<f64>; 4] = Default::default();

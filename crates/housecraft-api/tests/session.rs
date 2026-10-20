@@ -2488,7 +2488,7 @@ fn auto_dimension_tiers_presets_grids_and_view_heights() {
     let count = |s: &Session| s.document().iter::<Dimension>().filter(|d| d.auto).count();
     s.apply(&[Command::AddExteriorDimensions { floor: None, options: None }]).unwrap();
     let plain = count(&s);
-    let all = AutoDims { openings: true, interior_walls: true, corners: true, overall: true };
+    let all = AutoDims { openings: true, interior_walls: true, corners: true, overall: true, surfaces: false };
     s.apply(&[Command::AddExteriorDimensions { floor: None, options: Some(all) }]).unwrap();
     let tiered = count(&s);
     assert_eq!(tiered, plain + 2, "an openings row on the west and a partition row on the south");

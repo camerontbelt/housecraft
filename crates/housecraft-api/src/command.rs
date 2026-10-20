@@ -272,6 +272,11 @@ pub enum Command {
     },
     /// Client, designer and custom project fields.
     SetProjectInfo { info: ProjectInfo },
+    /// Move `wall` along a dimension so that segment `segment` (0 = the
+    /// first pair of points) measures `length`, as when you click a
+    /// dimension next to a selected wall and type a new value. Walls joined
+    /// to it stretch to follow.
+    MoveWallByDimension { dimension: Id, segment: usize, wall: Id, length: Length },
     /// Record time spent on the plan (dated today unless given).
     LogTime {
         task: String,
@@ -1292,6 +1297,7 @@ impl Command {
             Command::SetProjectInfo { .. } => "set_project_info",
             Command::PinObjects { .. } => "pin_objects",
             Command::LogTime { .. } => "log_time",
+            Command::MoveWallByDimension { .. } => "move_wall_by_dimension",
             Command::DeleteTime { .. } => "delete_time",
             Command::SetHatchPattern { .. } => "set_hatch_pattern",
             Command::DeleteHatchPattern { .. } => "delete_hatch_pattern",
@@ -1995,6 +2001,28 @@ impl Command {
             }
             Command::Scatter { source, region, count, seed, size_variation, rotate } => {
                 crate::convert::scatter(doc, *source, *region, *count, *seed, *size_variation, *rotate, &mut out)?
+            }
+            Command::MoveWallByDimension { dimension, segment, wall, length } => {
+                let (a, b) = ops::dimension_segment(doc, *dimension, *segment)?;
+                let w = expect::<Wall>(doc, *wall)?.clone();
+                let t = doc.get::<WallType>(w.wall_type).map_or(100.0, |t| t.thickness().mm());
+                let axis = (b - a).normalize_or_zero();
+                let (ws, we) = (housecraft_geom::v2(w.start), housecraft_geom::v2(w.end));
+                if axis == housecraft_geom::DVec2::ZERO || (we - ws).normalize_or_zero().dot(axis).abs() > 0.1 {
+                    return invalid("the wall does not cross this dimension");
+                }
+                // The end of the segment on the wall (within its thickness).
+                let on_wall = |p: housecraft_geom::DVec2| ((p - ws).dot(axis)).abs() <= t / 2.0 + 1.0;
+                let (moving, fixed) = match (on_wall(a), on_wall(b)) {
+                    (true, false) => (a, b),
+                    (false, true) => (b, a),
+                    _ => return invalid("neither end of that dimension segment is on the wall"),
+                };
+                let now = (moving - fixed).dot(axis).abs();
+                let sign = (moving - fixed).dot(axis).signum();
+                let shift = axis * sign * (length.mm() - now);
+                let pt = housecraft_geom::math::pt;
+                ops::move_wall_ends(doc, &w, pt(ws + shift), pt(we + shift), true, &mut out);
             }
             Command::LogTime { task, minutes, note, date } => {
                 if !(minutes.is_finite() && *minutes > 0.0) {

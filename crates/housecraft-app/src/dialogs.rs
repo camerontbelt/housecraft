@@ -2104,6 +2104,10 @@ fn auto_dims_dialog(app: &mut App, ctx: &Context) {
         ui.checkbox(&mut dims.interior_walls, "Interior walls meeting the outside walls");
         ui.checkbox(&mut dims.corners, "Every jog of the outline");
         ui.checkbox(&mut dims.overall, "Overall length");
+        ui.separator();
+        ui.label("Locate walls at:");
+        ui.radio_value(&mut dims.surfaces, false, "The outside of the framing (wall dimension layer)");
+        ui.radio_value(&mut dims.surfaces, true, "The outside surfaces");
         ui.horizontal(|ui| {
             if ui.button("Dimension This Floor").clicked() {
                 commands.push(Command::AddExteriorDimensions { floor: Some(app.plan.floor), options: Some(dims) });

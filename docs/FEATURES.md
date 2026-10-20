@@ -5,6 +5,7 @@ paraphrased into short engineering items, and it supersedes the rougher inventor
 Source: https://cloud.chiefarchitect.com/1/pdf/marketing/x18-detailed-feature-list.pdf
 
 **Parity audit (2026-10-19):** [parity/coverage.md](parity/coverage.md) checks this list against the X18 Reference Manual's menus and tools.
+**Tutorial tests:** [tutorials/](tutorials/README.md) replays Chief's Tutorial Guide step by step; each tutorial has a HouseCraft guide.
 **M9 (everyday tools):** the 46 rows marked M9 or GUI that the audit added: commands the manual documents but the
 marketing list skipped (curved walls, room dividers, Break Wall, typed CAD input, Edit Area, Tape Measure, layout page tools…).
 
@@ -61,7 +62,7 @@ These come from reading the whole list and change the architecture, not just the
 
 | ID | Feature | Pri | M |
 |---|---|---|---|
-| VIS-01 | Perspective and orthographic cameras; named, saved, editable, copyable | P0 | M1 ✓ |
+| VIS-01 | Perspective and orthographic cameras; named, saved, editable, copyable | P0 | M1 ✓ Full Camera drawn in plan (stand here, look there) opens and saves the view |
 | VIS-02 | XYZ axes indicator and project-origin marker in 2D/3D | P1 | M1 ✓ red X / blue Y origin marker and corner axis indicator in plan; X/Y/Z arrows in 3D (Preferences toggle) |
 | VIS-03 | Navigation: orbit, pan, dolly, tilt, walk; standard view-direction presets | P0 | M1 ✓ (orbit, pan, dolly, walk, presets) |
 | VIS-04 | Auto-hide camera-facing exterior walls while navigating small rooms | P2 | M7 ✓ option to hide walls between the camera and what it looks at |
@@ -407,8 +408,8 @@ These come from reading the whole list and change the architecture, not just the
 |---|---|---|---|
 | DIM-01 | Baseline, running, centerline, angular, end-to-end, interior, point-to-point, temporary dimensions; one-click exterior | P0 | M1 ◐ point-to-point/running chains, angular, temporary, auto exterior; baseline, centerline, auto interior later |
 | DIM-02 | Dimensions in 3D views | P2 | M7 ✓ 3D > Notes and Dimensions: click two points on the model; kept per camera |
-| DIM-03 | Move objects by editing dimensions; arithmetic in inputs | P0 | M1 ◐ arithmetic everywhere, wall/line length via temporary dimension; moving by any placed dimension later |
-| DIM-04 | Auto exterior dimensions with auto-refresh | P1 | M1 ✓ Auto Exterior Dimensions are marked automatic and rebuilt whenever that floor's walls or openings change |
+| DIM-03 | Move objects by editing dimensions; arithmetic in inputs | P0 | M1 ◐ arithmetic everywhere; wall/line length via temporary dimension; select a wall and type on any dimension beside it to move it (`move_wall_by_dimension`); Move Left/Right/Both Ends and arrow-key nudges later |
+| DIM-04 | Auto exterior dimensions with auto-refresh | P1 | M1 ✓ Auto Exterior Dimensions are marked automatic and rebuilt whenever that floor's walls or openings change; they locate the outside of the framing (or surfaces, per Auto Dimension Tiers) |
 | DIM-05 | Wall length editing via dimensions; type exact length while drawing | P0 | M1 ✓ |
 | DIM-06 | Dimension snapping rules; hotkey override | P1 | M1 ✓ Default Settings > Text and Dimensions: dimension tool snaps to wall surfaces, framing, centres and opening edges as chosen; hold Alt to snap to nothing |
 | DIM-07 | Column/bubble grid lines with auto labeling | P2 | M4 ✓ Column Grid Line tool: bubbles number 1, 2, 3 left to right and A, B, C bottom to top, renumbering as lines move or go |

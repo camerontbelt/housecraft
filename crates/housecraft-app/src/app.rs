@@ -1469,6 +1469,13 @@ impl App {
     }
 
     pub fn camera_action(&mut self, action: CameraAction) {
+        // In a plan view the Full Camera is drawn: stand here, look there.
+        if action == CameraAction::FullCamera && self.mode == Mode::Plan && self.plan.sheet.is_none() {
+            self.plan.tool = crate::tools::Tool::PlaceCamera;
+            self.plan.pending.clear();
+            self.info("Full Camera: click where the camera stands, then click where it looks.");
+            return;
+        }
         self.mode = Mode::ThreeD;
         self.view3d.preset_for(action);
     }

@@ -54,6 +54,8 @@ pub enum Tool {
     RevisionCloud,
     /// Draw an elevation or cross-section camera: click where you stand, then the direction to look.
     SectionLine(SectionKind),
+    /// Full Camera drawn in plan: where it stands, then where it looks.
+    PlaceCamera,
     Stair(StairKind),
     Electrical(ElectricalKind),
     /// Wire switches to the fixtures they control.
@@ -421,7 +423,7 @@ impl Tool {
             Tool::Dimension | Tool::AngularDimension | Tool::GridLine => Family::Dimensions,
             Tool::Text | Tool::TextArrow | Tool::Callout | Tool::Marker | Tool::RevisionCloud => Family::Text,
             Tool::RoofPlane | Tool::Dormer(_) | Tool::Skylight => Family::Roofs,
-            Tool::SectionLine(_) => Family::Cameras,
+            Tool::SectionLine(_) | Tool::PlaceCamera => Family::Cameras,
             Tool::Stair(_) => Family::Stairs,
             Tool::Electrical(_) | Tool::ConnectSwitch => Family::Electrical,
             Tool::Cabinet(_)
@@ -477,6 +479,7 @@ impl Tool {
             Tool::Skylight => "Skylight",
             Tool::SectionLine(SectionKind::Section) => "Cross Section / Elevation",
             Tool::SectionLine(SectionKind::Elevation) => "Elevation",
+            Tool::PlaceCamera => "Full Camera",
             Tool::Stair(StairKind::Straight) => "Straight Stair",
             Tool::Stair(StairKind::L) => "L-Shaped Stair",
             Tool::Stair(StairKind::U) => "U-Shaped Stair",
@@ -574,7 +577,7 @@ impl Tool {
             Tool::Callout | Tool::Marker | Tool::RevisionCloud => Icon::Text,
             Tool::RoofPlane | Tool::Dormer(_) => Icon::Roof,
             Tool::Skylight => Icon::Window,
-            Tool::SectionLine(_) => Icon::Camera,
+            Tool::SectionLine(_) | Tool::PlaceCamera => Icon::Camera,
             Tool::Stair(_) => Icon::Stairs,
             Tool::Electrical(_) | Tool::ConnectSwitch => Icon::Electrical,
             Tool::PlaceBlock(_) => Icon::Box,
@@ -665,6 +668,7 @@ impl Tool {
             Tool::SectionLine(_) => {
                 "Click where the view stands, then click in the direction to look."
             }
+            Tool::PlaceCamera => "Click where the camera stands, then click where it looks (its focus point).",
             Tool::Dormer(_) => "Click on a roof plane where the dormer's front goes; it faces down the roof.",
             Tool::Skylight => "Click on a roof plane to place a skylight.",
             Tool::RoofPlane => {

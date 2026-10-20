@@ -279,11 +279,14 @@ pub struct AutoDims {
     pub corners: bool,
     /// Overall length of each side (outermost).
     pub overall: bool,
+    /// Measure to the walls' outside surfaces instead of the outside of
+    /// their framing (main) layer.
+    pub surfaces: bool,
 }
 
 impl Default for AutoDims {
     fn default() -> Self {
-        AutoDims { openings: false, interior_walls: false, corners: true, overall: true }
+        AutoDims { openings: false, interior_walls: false, corners: true, overall: true, surfaces: false }
     }
 }
 

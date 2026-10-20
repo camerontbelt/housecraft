@@ -48,9 +48,10 @@ fn plan_contains_every_kind_of_object() {
         texts.iter().filter(|t| **t == "Unspecified").count() == 2,
         "{texts:?}"
     );
-    // Exterior dimensions run face to face: 40' + a 2x6 wall on each side.
-    assert!(texts.contains(&"40'-7 3/16\""), "{texts:?}");
-    assert!(texts.contains(&"30'-7 3/16\""), "{texts:?}");
+    // Exterior dimensions locate the outside of the framing (as Chief's
+    // do): 40' between centrelines + 2 x 2 13/32" out to the framing face.
+    assert!(texts.contains(&"40'-4 13/16\""), "{texts:?}");
+    assert!(texts.contains(&"30'-4 13/16\""), "{texts:?}");
     for kind in ["wall", "opening", "cad", "dimension", "room"] {
         let any = d.items.iter().any(|i| {
             i.object

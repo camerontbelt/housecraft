@@ -531,6 +531,28 @@ impl WallType {
         self.layers.iter().map(|l| l.thickness).sum()
     }
 
+    /// The main (framing) layers' span, in mm from the exterior face: the
+    /// flagged main layers, or else the thickest layer.
+    pub fn main_range(&self) -> (f64, f64) {
+        let mut at = 0.0;
+        let (mut lo, mut hi) = (f64::MAX, f64::MIN);
+        for l in &self.layers {
+            if l.main {
+                lo = lo.min(at);
+                hi = hi.max(at + l.thickness.mm());
+            }
+            at += l.thickness.mm();
+        }
+        if lo <= hi {
+            return (lo, hi);
+        }
+        let Some(main) = self.layers.iter().enumerate().max_by(|a, b| a.1.thickness.mm().total_cmp(&b.1.thickness.mm())).map(|(i, _)| i) else {
+            return (0.0, 0.0);
+        };
+        let before: f64 = self.layers[..main].iter().map(|l| l.thickness.mm()).sum();
+        (before, before + self.layers[main].thickness.mm())
+    }
+
     /// Where the centreline sits relative to a line drawn along `r`, in mm
     /// to the left (the exterior side) of the drawing direction.
     pub fn centerline_offset(&self, r: crate::WallReference) -> f64 {

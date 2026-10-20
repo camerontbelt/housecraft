@@ -1,0 +1,190 @@
+{
+  "tutorial": "Exterior Walls",
+  "source": "Chief Architect X18 Tutorial Guide, Floor Plan Tutorials, pages 3-27",
+  "steps": [
+    {
+      "step": "Start a new plan from the residential template (Chief: File > New Project, Chic Cottage)",
+      "gap": "No multi-document projects: HouseCraft starts a single plan (File > New Plan). Chief's 'Siding-6' wall type is HouseCraft's 'Exterior 2x6'. Rows: PRJ-09, UI-16"
+    },
+    {
+      "step": "Look at the Working Plan View's saved settings in the Project Browser",
+      "expect": [
+        { "count": "plan_view", "is": 1 },
+        { "count": "default_set", "is": 1 }
+      ]
+    },
+    {
+      "step": "Draw a first exterior wall right to left, 13 to 14 feet long (the bottom of the bump-out)",
+      "commands": [
+        { "op": "add_walls", "points": [[13258.8, -11582.4], [9144, -11582.4]] }
+      ],
+      "save": { "first": "wall" },
+      "expect": [
+        { "get": "$first", "path": "/wall_type", "is": "$named:Exterior 2x6" }
+      ]
+    },
+    {
+      "step": "Create a 'Stone-6' wall type: copy of the siding wall with stacked stone, thinset, metal lath and 1\" insulation outside the sheathing",
+      "commands": [
+        {
+          "op": "add_wall_type",
+          "name": "Stone-6",
+          "layers": [
+            { "name": "Stacked Stone", "thickness": "3\"", "material": "Stacked stone" },
+            { "name": "Thinset Mortar", "thickness": "3/8\"", "material": "Thinset mortar" },
+            { "name": "Metal Lath", "thickness": "1/16\"", "material": "Metal lath" },
+            { "name": "Insulation Sheet", "thickness": "1\"", "material": "Rigid insulation" },
+            { "name": "Sheathing", "thickness": "7/16\"", "material": "OSB" },
+            { "name": "Framing", "thickness": "5 1/2\"", "material": "2x6 stud", "main": true },
+            { "name": "Interior finish", "thickness": "1/2\"", "material": "Gypsum board" }
+          ]
+        }
+      ],
+      "save": { "stone": "wall_type" },
+      "expect": [
+        { "count": "wall_type", "is": 4 }
+      ]
+    },
+    {
+      "step": "Set which layer bears on the foundation (Foundation to Exterior of Layer)",
+      "gap": "Wall types have no 'foundation to exterior of layer' or 'dimension to exterior of layer' setting; HouseCraft uses the main (framing) layer for both. Row: FD-05"
+    },
+    {
+      "step": "Make Stone-6 the default exterior wall type, then draw the next wall up about 10 feet from the first wall's left end",
+      "commands": [
+        { "op": "update", "id": "$named:default_set:Default", "set": { "exterior_wall_type": "$stone" } },
+        { "op": "add_walls", "points": [[9144, -11582.4], [9144, -8534.4]] }
+      ],
+      "save": { "second": "wall" },
+      "expect": [
+        { "get": "$second", "path": "/wall_type", "is": "$stone" }
+      ]
+    },
+    {
+      "step": "Change the first wall to Stone-6 in its specification",
+      "commands": [
+        { "op": "update", "id": "$first", "set": { "wall_type": "$stone" } }
+      ],
+      "expect": [
+        { "get": "$first", "path": "/wall_type", "is": "$stone" }
+      ]
+    },
+    {
+      "step": "Set the pony wall defaults: Siding-6 above, Stone-6 below, split at 20\"",
+      "gap": "No pony wall defaults or Straight Pony Wall tool; pony walls are made by editing a drawn wall (Wall Specification > pony). Row: WL-03"
+    },
+    {
+      "step": "Floor structure defaults: 3/4\" OSB on 2x12 joists (11 1/4\"), 12\" total; 1st floor ceiling height 97 1/8\"",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$floor1",
+          "set": {
+            "ceiling_height": "97 1/8\"",
+            "floor_structure": "12\"",
+            "platform": [
+              { "name": "Subfloor", "thickness": "3/4\"", "material": "OSB" },
+              { "name": "Joists", "thickness": "11 1/4\"", "material": "2x12 joist", "main": true }
+            ]
+          }
+        }
+      ],
+      "expect": [
+        { "get": "$floor1", "path": "/ceiling_height", "is": "97 1/8\"" },
+        { "get": "$floor1", "path": "/floor_structure", "is": "12\"" }
+      ]
+    },
+    {
+      "step": "Draw the rest of the outline clockwise (about 40' a side), then make those walls pony walls: Siding-6 over Stone-6 at 20\"",
+      "commands": [
+        { "op": "add_walls", "wall_type": "$named:Exterior 2x6", "points": [[9144, -8534.4], [457.2, -8534.4], [457.2, 152.4], [13258.8, 152.4], [13258.8, -11582.4]] }
+      ],
+      "save": { "pony": "wall" },
+      "expect": [
+        { "count": "wall", "is": 6 },
+        { "rooms": 1 }
+      ]
+    },
+    {
+      "step": "(pony walls, continued)",
+      "commands": [
+        { "op": "update", "id": "$pony.0", "set": { "shape": { "pony": { "lower_type": "$stone", "split": "20\"" } } } },
+        { "op": "update", "id": "$pony.1", "set": { "shape": { "pony": { "lower_type": "$stone", "split": "20\"" } } } },
+        { "op": "update", "id": "$pony.2", "set": { "shape": { "pony": { "lower_type": "$stone", "split": "20\"" } } } },
+        { "op": "update", "id": "$pony.3", "set": { "shape": { "pony": { "lower_type": "$stone", "split": "20\"" } } } }
+      ],
+      "expect": [
+        { "get": "$pony.2", "path": "/shape/pony/split", "is": "20\"" }
+      ]
+    },
+    {
+      "step": "The enclosed area becomes a room with a floor, a ceiling and a living area label",
+      "expect": [
+        { "rooms": 1 },
+        { "living_area_at_least": 1000 }
+      ]
+    },
+    {
+      "step": "Draw a full camera inside the building",
+      "commands": [
+        { "op": "add_camera", "name": "Inside", "projection": { "type": "perspective", "fov": 60 }, "eye": [3000, -4000, 1650], "target": [9000, -2000, 1500] }
+      ],
+      "expect": [
+        { "count": "camera", "is": 2 }
+      ]
+    },
+    {
+      "step": "Draw a back-clipped cross section through the bump-out",
+      "commands": [
+        { "op": "add_section_view", "a": [11500, -9500], "b": [11500, -10200], "section_kind": "section", "depth": "2'" }
+      ],
+      "expect": [
+        { "count": "section_view", "is": 1 }
+      ]
+    },
+    {
+      "step": "Measure the wall and floor layers with the Tape Measure",
+      "gap": "No Tape Measure tool. Row: DIM-24"
+    },
+    {
+      "step": "Auto Exterior Dimensions, locating the outside of the wall framing",
+      "commands": [
+        { "op": "add_exterior_dimensions" }
+      ]
+    },
+    {
+      "step": "Move the walls by typing on dimensions, clockwise: lower-left wall 28' from the top, left wall 42' from the right, bump-out 38'4\" from the top and 28'8\" from the left",
+      "dimension_moves": [
+        { "wall": "$pony.0", "from": "$pony.2", "length": "28'" },
+        { "wall": "$pony.1", "from": "$pony.3", "length": "42'" },
+        { "wall": "$first", "from": "$pony.2", "length": "38'4\"" },
+        { "wall": "$second", "from": "$pony.1", "length": "28'8\"" }
+      ],
+      "expect": [
+        { "rooms": 1 },
+        { "auto_dimensions_include": ["42'", "42'", "28'", "38'4\"", "28'8\"", "13'4\"", "10'4\""] }
+      ]
+    },
+    {
+      "step": "Rich Text defaults: uppercase",
+      "gap": "No rich text or uppercase text style option; type the note in capitals. Rows: TXT-01, TXT-02"
+    },
+    {
+      "step": "Add the note '2x6 exterior walls 24\" OC U.N.O.' outside the lower-left corner",
+      "commands": [
+        { "op": "add_text", "position": [0, -10000], "text": "2X6 EXTERIOR WALLS 24\" OC U.N.O." }
+      ],
+      "expect": [
+        { "text_exists": "2X6 EXTERIOR WALLS 24\" OC U.N.O." }
+      ]
+    },
+    {
+      "step": "Spell check flags U.N.O.; teach it the word",
+      "gap": "No spell check. Row: TXT-17"
+    },
+    {
+      "step": "Save, then make a copy named 'Chic Cottage-Shell' (File > Make a Copy)",
+      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+    }
+  ]
+}
