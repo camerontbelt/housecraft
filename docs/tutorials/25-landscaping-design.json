@@ -1,0 +1,404 @@
+{
+  "tutorial": "Landscaping Design",
+  "source": "Chief Architect X18 Tutorial Guide, Landscaping Tutorials, pages 433-450",
+  "include": "24-driveways-sidewalks-roads.json",
+  "steps": [
+    {
+      "step": "Landscaping layer set: lock the road and sidewalk layers, hide elevation data",
+      "expect": [
+        {
+          "get": "$named:layer_set:Landscaping Layer Set",
+          "path": "/name",
+          "is": "Landscaping Layer Set"
+        }
+      ]
+    },
+    {
+      "step": "Material default for Dirt: Mulch - Dark",
+      "gap": "Garden beds take their soil material from the plan materials, not a Dirt default. Row: SITE-34"
+    },
+    {
+      "step": "Polyline Garden Bed between the porch stairs, the Garage, the sidewalk and the driveway",
+      "commands": [
+        {
+          "op": "add_site_feature",
+          "floor": "$floor1",
+          "points": [
+            [
+              6400.8,
+              -11582.4
+            ],
+            [
+              8686.8,
+              -11734.8
+            ],
+            [
+              8991.6,
+              -14935.2
+            ],
+            [
+              6400.8,
+              -14935.2
+            ]
+          ],
+          "feature": {
+            "type": "garden_bed",
+            "height": "0\""
+          }
+        }
+      ],
+      "save": {
+        "bed": "site_feature"
+      },
+      "expect": [
+        {
+          "get": "$bed",
+          "path": "/feature/type",
+          "is": "garden_bed"
+        }
+      ]
+    },
+    {
+      "step": "(Add Break, Move Edge, curved edge along the sidewalk)",
+      "gap": "Garden bed outlines are edited by their corners; no Add Break, edge moves or arcs. Row: SITE-30"
+    },
+    {
+      "step": "Planting border: copy the plot plan polyline in place, Convert Polyline > Garden Bed",
+      "commands": [
+        {
+          "op": "add_cad",
+          "floor": "$floor1",
+          "shape": {
+            "shape": "polyline",
+            "points": [
+              [
+                -16764.0,
+                12192.0
+              ],
+              [
+                22860.0,
+                34137.6
+              ],
+              [
+                24384.0,
+                30480.0
+              ],
+              [
+                -14630.4,
+                9144.0
+              ]
+            ],
+            "closed": true
+          }
+        }
+      ],
+      "save": {
+        "border_line": "cad"
+      }
+    },
+    {
+      "step": "(convert)",
+      "commands": [
+        {
+          "op": "convert_cad",
+          "ids": [
+            "$border_line"
+          ],
+          "to": {
+            "type": "site_feature",
+            "feature": {
+              "type": "garden_bed",
+              "height": "0\""
+            }
+          }
+        }
+      ],
+      "save": {
+        "border": "site_feature"
+      },
+      "expect": [
+        {
+          "count": "site_feature",
+          "is": 6
+        }
+      ]
+    },
+    {
+      "step": "(Align the border's inside edges with the setback lines and retaining walls: Make Parallel)",
+      "gap": "No Make Parallel or Add Break on garden beds. Rows: CAD-33, SITE-30"
+    },
+    {
+      "step": "Fencing defaults: 72\" rail, 5 1/2\" posts 74\" high, iron pole panels, top and bottom rails 5 1/2\" x 1 1/2\"",
+      "gap": "Fences are picket, privacy or rail with a height and post spacing; no panel library, rail sizes or post size. Row: SITE-34"
+    },
+    {
+      "step": "Straight Fencing along the left setback, the back and the right angled setback",
+      "commands": [
+        {
+          "op": "add_site_feature",
+          "floor": "$floor1",
+          "points": [
+            [
+              -7620.0,
+              -13716.0
+            ],
+            [
+              -13716.0,
+              9753.6
+            ],
+            [
+              21336.0,
+              31394.4
+            ],
+            [
+              35966.4,
+              3657.6
+            ]
+          ],
+          "feature": {
+            "type": "fence",
+            "style": "privacy",
+            "height": "6'",
+            "post_spacing": "8'"
+          }
+        }
+      ],
+      "save": {
+        "fence": "site_feature"
+      },
+      "expect": [
+        {
+          "get": "$fence",
+          "path": "/feature/height",
+          "is": "6'"
+        }
+      ]
+    },
+    {
+      "step": "(The fence replaces the retaining wall where they overlap; Undo; move the wall)",
+      "gap": "Not needed: fences and retaining walls are separate objects that can overlap."
+    },
+    {
+      "step": "A gate in the back fence near the left corner, 72\" high, 4\" off the ground",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$fence",
+          "set": {
+            "feature": {
+              "type": "fence",
+              "style": "privacy",
+              "height": "6'",
+              "post_spacing": "8'",
+              "gates": [
+                {
+                  "at": "86'",
+                  "width": "4'"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$fence",
+          "path": "/feature/gates/0/width",
+          "is": "4'"
+        }
+      ]
+    },
+    {
+      "step": "(Gates from the library; gate height and floor-to-bottom)",
+      "gap": "Gates are openings in the fence as tall as the fence; no gate styles or height. Row: SITE-34"
+    },
+    {
+      "step": "Plant Chooser: search 'fir', place a Balsam Fir at the top right corner of the lot",
+      "commands": [
+        {
+          "op": "add_plant",
+          "floor": "$floor1",
+          "at": [
+            30480.0,
+            28041.6
+          ],
+          "name": "Balsam Fir",
+          "form": "conifer"
+        }
+      ],
+      "expect": [
+        {
+          "count": "plant",
+          "is": 1
+        }
+      ]
+    },
+    {
+      "step": "(Plant Chooser search and plant information)",
+      "gap": "No plant chooser or plant encyclopedia. Rows: SITE-20, SITE-21"
+    },
+    {
+      "step": "Two adult paper birches behind the retaining walls",
+      "commands": [
+        {
+          "op": "add_plant",
+          "floor": "$floor1",
+          "at": [
+            34137.6,
+            15849.6
+          ],
+          "name": "Paper Birch",
+          "form": "tree",
+          "height": "40'",
+          "spread": "25'"
+        },
+        {
+          "op": "add_plant",
+          "floor": "$floor1",
+          "at": [
+            31699.2,
+            18897.6
+          ],
+          "name": "Paper Birch",
+          "form": "tree",
+          "height": "40'",
+          "spread": "25'"
+        }
+      ],
+      "save": {
+        "birch": "plant"
+      },
+      "expect": [
+        {
+          "get": "$birch.0",
+          "path": "/height",
+          "is": "40'"
+        }
+      ]
+    },
+    {
+      "step": "Reverse one birch's image and resize it",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$birch.1",
+          "set": {
+            "height": "34'"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$birch.1",
+          "path": "/height",
+          "is": "34'"
+        }
+      ]
+    },
+    {
+      "step": "(Reverse Image)",
+      "gap": "Plants are 3D shapes, not images; nothing to reverse. Row: SITE-18"
+    },
+    {
+      "step": "Three rhododendrons blocked together and copied along the angled retaining wall",
+      "commands": [
+        {
+          "op": "add_plant",
+          "floor": "$floor1",
+          "at": [
+            18288.0,
+            21336.0
+          ],
+          "name": "Rhododendron (cream)",
+          "form": "shrub"
+        },
+        {
+          "op": "add_plant",
+          "floor": "$floor1",
+          "at": [
+            19202.4,
+            21640.8
+          ],
+          "name": "Rhododendron (cream)",
+          "form": "shrub"
+        },
+        {
+          "op": "add_plant",
+          "floor": "$floor1",
+          "at": [
+            18592.8,
+            22250.4
+          ],
+          "name": "Rhododendron (cream)",
+          "form": "shrub"
+        }
+      ],
+      "save": {
+        "rh": "plant"
+      },
+      "expect": [
+        {
+          "count": "plant",
+          "is": 6
+        }
+      ]
+    },
+    {
+      "step": "(copies)",
+      "commands": [
+        {
+          "op": "transform",
+          "ids": [
+            "$rh.0",
+            "$rh.1",
+            "$rh.2"
+          ],
+          "transform": {
+            "type": "translate",
+            "dx": "12'",
+            "dy": "-8'"
+          },
+          "copies": 2
+        }
+      ],
+      "expect": [
+        {
+          "count": "plant",
+          "is": 12
+        }
+      ]
+    },
+    {
+      "step": "(Make / Explode Architectural Block)",
+      "gap": "No architectural blocks. Row: CB-27"
+    },
+    {
+      "step": "Plant schedule",
+      "commands": [
+        {
+          "op": "add_schedule",
+          "floor": "$floor1",
+          "schedule_kind": "plants",
+          "position": [
+            -24384.0,
+            18288.0
+          ]
+        }
+      ],
+      "save": {
+        "psched": "schedule"
+      },
+      "expect": [
+        {
+          "get": "$psched",
+          "path": "/schedule_kind",
+          "is": "plants"
+        }
+      ]
+    },
+    {
+      "step": "Make a Copy as Chic Cottage-Landscaping; a Landscaping Tutorials folder",
+      "gap": "No Make a Copy or folders. Rows: PRJ-45, PRJ-09"
+    }
+  ]
+}

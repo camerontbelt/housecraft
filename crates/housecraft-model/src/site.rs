@@ -205,7 +205,8 @@ pub enum SiteKind {
         #[serde(default)]
         gates: Vec<Gate>,
     },
-    /// A raised garden bed (closed outline).
+    /// A garden bed (closed outline): raised by `height`, or a flat mulch
+    /// bed on the ground when 0.
     GardenBed { height: Length },
     /// Stones along a path.
     SteppingStones { spacing: Length, size: Length },

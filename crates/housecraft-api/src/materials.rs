@@ -410,6 +410,9 @@ pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
             SiteKind::RetainingWall { thickness, .. } => {
                 t.add("Site", format!("Retaining wall {} thick", fmt(*thickness)), Measure::Length, run, f.id);
             }
+            SiteKind::GardenBed { height } if height.mm() < 1.0 => {
+                t.add("Site", "Mulch bed", Measure::Area, housecraft_geom::math::signed_area(&pts).abs(), f.id);
+            }
             SiteKind::GardenBed { height } => {
                 t.add("Site", format!("Garden bed edging {} high", fmt(*height)), Measure::Length, perimeter(&pts), f.id);
             }

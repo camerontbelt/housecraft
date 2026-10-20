@@ -225,12 +225,22 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, mes
             if signed_area(&pts) < 0.0 {
                 pts.reverse();
             }
-            let base = pts.iter().map(|p| z(*p)).fold(f64::MAX, f64::min);
-            mesh.prism_look(&pts, base - 50.0, base + height.mm(), wood);
             let soil = look(Color::rgb(90, 65, 45), 1.0, 0.95);
-            let inner = crate::math::inset_polygon(&pts, 50.0);
-            if inner.len() >= 3 {
-                mesh.prism_look(&inner, base + height.mm() - 10.0, base + height.mm() + 5.0, soil);
+            if height.mm() < 1.0 {
+                // A flat bed (mulch) lying on the ground.
+                let mut edge: Vec<DVec2> = along(&pts, true, 600.0).into_iter().map(|(p, _)| p).collect();
+                edge.pop();
+                let on = |p: DVec2| DVec3::new(p.x, p.y, z(p) + 25.0);
+                for [a, b, c] in crate::triangulate::triangulate(&edge) {
+                    mesh.polygon_look(&[on(edge[a]), on(edge[b]), on(edge[c])], soil);
+                }
+            } else {
+                let base = pts.iter().map(|p| z(*p)).fold(f64::MAX, f64::min);
+                mesh.prism_look(&pts, base - 50.0, base + height.mm(), wood);
+                let inner = crate::math::inset_polygon(&pts, 50.0);
+                if inner.len() >= 3 {
+                    mesh.prism_look(&inner, base + height.mm() - 10.0, base + height.mm() + 5.0, soil);
+                }
             }
         }
         SiteKind::SteppingStones { spacing, size } => {

@@ -821,7 +821,7 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                             c.non_negative(id, "gate position", g.at);
                         }
                     }
-                    SiteKind::GardenBed { height } => c.positive(id, "height", *height),
+                    SiteKind::GardenBed { height } => c.non_negative(id, "height", *height),
                     SiteKind::SteppingStones { spacing, size } => {
                         c.positive(id, "spacing", *spacing);
                         c.positive(id, "size", *size);

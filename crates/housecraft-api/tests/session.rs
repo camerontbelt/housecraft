@@ -2880,6 +2880,30 @@ fn curbs_medians_cul_de_sacs_and_lot_subdivision() {
 }
 
 #[test]
+fn flat_garden_beds_lie_on_the_ground_and_lots_convert_to_terrain() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_cad", "shape": {"shape": "polyline", "points": [["-20'","-20'"],["60'","-20'"],["60'","60'"],["-20'","60'"]], "closed": true}},
+            {"op": "add_elevation_data", "shape": {"type": "line", "points": [["-30'","-15'"],["70'","-15'"]], "elevation": "0\""}},
+            {"op": "add_elevation_data", "shape": {"type": "line", "points": [["-30'","55'"],["70'","55'"]], "elevation": "6'"}}]"#,
+    );
+    s.apply(&[Command::ConvertCad { ids: vec![out.created[0]], to: housecraft_api::CadTarget::TerrainPerimeter }]).unwrap();
+    assert_eq!(s.document().iter::<Terrain>().count(), 1);
+    assert!(s.document().get::<Cad>(out.created[0]).is_none(), "the outline became the terrain");
+    let bed = apply(
+        &mut s,
+        r#"[{"op": "add_site_feature", "points": [["40'","10'"],["50'","10'"],["50'","40'"],["40'","40'"]], "feature": {"type": "garden_bed", "height": "0\""}}]"#,
+    )
+    .created[0];
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    let zs: Vec<f64> = mesh.faces.iter().filter(|f| mesh.parts[f.part].object == bed).flat_map(|f| f.points.iter().map(|p| p.z)).collect();
+    assert!(!zs.is_empty(), "a flat bed draws");
+    let (lo, hi) = zs.iter().fold((f64::MAX, f64::MIN), |(a, b), z| (a.min(*z), b.max(*z)));
+    assert!(hi - lo > 2.0 * 304.8, "it follows the slope rather than sitting flat: {lo}..{hi}");
+}
+
+#[test]
 fn end_panels_girders_post_and_beam_flat_headers_and_deck_beams() {
     let count = |s: &Session, r: FramingRole| s.document().iter::<FramingMember>().filter(|m| m.role == r).count();
     let set_framing = |s: &mut Session, v: serde_json::Value| {

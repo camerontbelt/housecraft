@@ -1577,7 +1577,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     });
                     ui.end_row();
                 }
-                SiteKind::GardenBed { height } => len(ui, ed, "Height", "feature.height", height),
+                SiteKind::GardenBed { height } => len(ui, ed, "Height (0: flat mulch bed)", "feature.height", height),
                 SiteKind::SteppingStones { spacing, size } => {
                     len(ui, ed, "Spacing", "feature.spacing", spacing);
                     len(ui, ed, "Stone Size", "feature.size", size);
