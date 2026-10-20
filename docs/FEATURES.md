@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 518 items: 29 P0, about 132 P1, about 245 P2, about 104 P3, and 5 out of scope. Each item should eventually map to
+There are 520 items: 29 P0, about 132 P1, about 247 P2, about 104 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -184,6 +184,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-16 | Floor/Ceiling Platform defaults shared by new floors (structure, finishes) | P2 | M9 |
 | RM-17 | Outdoor room types (Porch, Deck) are left out of the foundation | P1 | M9 ✓ RoomType.exterior; walls that only enclose outdoor rooms don't shape the foundation |
 | RM-18 | Attic room type (unfinished space under the roof) | P3 | M9 |
+| RM-19 | Ceiling finish definitions (layers, materials) for the plan, each floor, room types and rooms; lowered ceilings by finish | P2 | M9 |
 
 ## 6. Walls
 
@@ -248,6 +249,7 @@ These come from reading the whole list and change the architecture, not just the
 | CB-23 | Flush cabinet moldings | P3 | M5 ✓ |
 | CB-24 | NKBA-standard display options | P2 | M5 ✓ |
 | CB-25 | Manufacturer cabinet catalogs | P3 | M8 |
+| CB-26 | Soffit tool and defaults (boxes against walls/ceilings for trays, coffers, bulkheads) | P2 | M9 |
 
 ## 8. Doors & windows
 

@@ -1,0 +1,146 @@
+{
+  "tutorial": "Custom Ceilings",
+  "source": "Chief Architect X18 Tutorial Guide, Interior Design Tutorials, pages 177-190",
+  "include": "08-chic-cottage-roof.json",
+  "steps": [
+    {
+      "step": "Ceiling finish defaults: drywall and paint; the Garage room type gets 5/8\" fire-rated drywall under 1 1/2\" rigid insulation",
+      "gap": "No ceiling finish definitions (layers) for the plan, room types or rooms. Row: RM-19"
+    },
+    {
+      "step": "Hat channel: a steel framing type and member for ceiling joists",
+      "gap": "No custom framing types or framing member defaults. Row: FR-07"
+    },
+    {
+      "step": "A 'Hat Channel' material (grey, not in the materials list), added to the library",
+      "commands": [
+        {
+          "op": "add_material",
+          "name": "Hat Channel",
+          "color": "#808080"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:material:Hat Channel",
+          "path": "/name",
+          "is": "Hat Channel"
+        }
+      ]
+    },
+    {
+      "step": "Lowered basement ceiling: Floor 0's ceiling finish gets a 1\" hat channel layer",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:6350.0,-3810.0@Foundation",
+          "set": {
+            "ceiling_height": "112 1/8\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:6350.0,-3810.0@Foundation",
+          "path": "/ceiling_height",
+          "is": "112 1/8\""
+        }
+      ]
+    },
+    {
+      "step": "(Through the ceiling finish, not the room's height)",
+      "gap": "Lower a room's ceiling with its Ceiling Height; ceiling finish layers aren't modelled. Row: RM-19"
+    },
+    {
+      "step": "Remove the ceiling finish from the room below the Porch",
+      "gap": "No ceiling finish layers to remove. Row: RM-19"
+    },
+    {
+      "step": "Cathedral ceiling over the Deck: untick Flat Ceiling Over This Room so it follows the roof",
+      "gap": "The deck isn't a room; a room's ceiling can follow the roof with Ceiling > Vaulted. Row: SITE-26"
+    },
+    {
+      "step": "Tray ceiling in the basement with 36\" x 12\" soffits round the room",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:6350.0,-3810.0@Foundation",
+          "set": {
+            "ceiling": {
+              "style": "tray",
+              "inset": "36\"",
+              "rise": "12\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:6350.0,-3810.0@Foundation",
+          "path": "/ceiling/style",
+          "is": "tray"
+        }
+      ]
+    },
+    {
+      "step": "(Soffit tool and its defaults; soffits stopped either side of the stair wall)",
+      "gap": "No Soffit tool; use the room's Ceiling: Tray (or Coffered). Row: CB-26"
+    },
+    {
+      "step": "Coffered ceiling: more soffits across the room (Copy/Paste, Reflect About Object)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:6350.0,-3810.0@Foundation",
+          "set": {
+            "ceiling": {
+              "style": "coffered",
+              "spacing": "6'",
+              "beam_width": "36\"",
+              "depth": "12\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:6350.0,-3810.0@Foundation",
+          "path": "/ceiling/style",
+          "is": "coffered"
+        }
+      ]
+    },
+    {
+      "step": "Annotations: '36\" X 12\" SOFFITS' in the basement, '2:12 CATHEDRAL CEILING' on the deck",
+      "commands": [
+        {
+          "op": "add_text",
+          "floor": "$named:floor:Foundation",
+          "position": [
+            6350.0,
+            -1016.0
+          ],
+          "text": "36\" X 12\" SOFFITS"
+        },
+        {
+          "op": "add_text",
+          "floor": "$floor1",
+          "position": [
+            6350.0,
+            1270.0
+          ],
+          "text": "2:12 CATHEDRAL CEILING"
+        }
+      ],
+      "expect": [
+        {
+          "text_exists": "2:12 CATHEDRAL CEILING"
+        }
+      ]
+    },
+    {
+      "step": "Save a copy as Chic Cottage-Ceilings",
+      "gap": "No Make a Copy; use File > Save As. Row: PRJ-09"
+    }
+  ]
+}

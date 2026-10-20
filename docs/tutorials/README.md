@@ -27,7 +27,8 @@ has two files:
 | 7 | Roof styles: hip, gable, Dutch gable, shed, offset gable, gambrel, gull wing, half hip, mansard (127) | 12 | 3 | [07-roof-styles.md](07-roof-styles.md) |
 | 8 | Chic Cottage Roof (136) | 11 | 8 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
 | 9 | Dormers (159) | 8 | 9 | [09-dormers.md](09-dormers.md) |
-| 10–19 | Interior Design and Kitchen & Bath tutorials (177–330) | — | — | |
+| 10 | Custom Ceilings (177) | 5 | 7 | [10-custom-ceilings.md](10-custom-ceilings.md) |
+| 11–19 | Finish Materials, Room Moldings, Furnishings and Kitchen & Bath tutorials (191–330) | — | — | |
 | 20–22 | Framing tutorials (331–381) | — | — | |
 | 23–26 | Landscaping tutorials (382–450) | — | — | |
 | 27–29 | Layout tutorials (451–500) | — | — | |
