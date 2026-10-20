@@ -1,0 +1,428 @@
+{
+  "tutorial": "Floor Framing",
+  "source": "Chief Architect X18 Tutorial Guide, Framing Tutorials, pages 331-348",
+  "include": "18-electrical-objects.json",
+  "steps": [
+    {
+      "step": "Framing Type defaults: I-Joist, Lumber (nominal sizes), LVL",
+      "gap": "Members are lumber, LVL, PSL, VSL or steel; no editable framing types or nominal-size setting. Row: FR-07"
+    },
+    {
+      "step": "Switch to the Framing, Floor Plan View",
+      "expect": [
+        {
+          "get": "$named:plan_view:Framing Plan",
+          "path": "/name",
+          "is": "Framing Plan"
+        }
+      ]
+    },
+    {
+      "step": "Automatic framing defaults: floor joists 16\" OC, 1 1/2\" wide",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "framing": {
+              "joist_spacing": "16\"",
+              "lumber_width": "1 1/2\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/framing/joist_spacing",
+          "is": "16\""
+        }
+      ]
+    },
+    {
+      "step": "(Spacing per floor; Rim Joist construction is LVL)",
+      "gap": "One joist spacing for every floor; rim joists are lumber like the joists. Row: FR-34"
+    },
+    {
+      "step": "Framing Reference Marker at the outside corner of the framing, bottom left",
+      "gap": "Joist layout starts at each footprint's edge; no Framing Reference Marker to measure it from. Row: FR-33"
+    },
+    {
+      "step": "Copy the Framing, Floor layer set as 'Framing Set - Working' and turn on ceiling joists",
+      "commands": [
+        {
+          "op": "add_layer_set",
+          "name": "Framing Set - Working"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:layer_set:Framing Set - Working",
+          "path": "/name",
+          "is": "Framing Set - Working"
+        }
+      ]
+    },
+    {
+      "step": "Build Framing: floors and ceilings, rebuilt automatically",
+      "commands": [
+        {
+          "op": "build_framing",
+          "floor": null,
+          "parts": {
+            "walls": false,
+            "floors": true,
+            "ceilings": true,
+            "roofs": false
+          }
+        }
+      ],
+      "expect": [
+        {
+          "joists": "floor_joist",
+          "floor": "$floor1",
+          "run": "y"
+        }
+      ]
+    },
+    {
+      "step": "(Automatically Rebuild Framing)",
+      "gap": "Framing rebuilds when you choose Build Framing, not automatically when the model changes. Row: FR-35"
+    },
+    {
+      "step": "Joist Direction: a horizontal line in the basement; the joists turn to follow it",
+      "commands": [
+        {
+          "op": "add_joist_direction",
+          "floor": "$floor1",
+          "at": [
+            2540.0,
+            -2540.0
+          ],
+          "angle": 0.0
+        }
+      ],
+      "save": {
+        "jd": "joist_direction"
+      }
+    },
+    {
+      "step": "(rebuild)",
+      "commands": [
+        {
+          "op": "build_framing",
+          "floor": "$floor1",
+          "parts": {
+            "walls": false,
+            "floors": true,
+            "ceilings": true,
+            "roofs": false
+          }
+        }
+      ],
+      "expect": [
+        {
+          "joists": "floor_joist",
+          "floor": "$floor1",
+          "run": "x"
+        }
+      ]
+    },
+    {
+      "step": "Rotate the line 90 degrees: the joists follow",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$jd",
+          "set": {
+            "angle": 90.0
+          }
+        },
+        {
+          "op": "build_framing",
+          "floor": "$floor1",
+          "parts": {
+            "walls": false,
+            "floors": true,
+            "ceilings": true,
+            "roofs": false
+          }
+        }
+      ],
+      "expect": [
+        {
+          "joists": "floor_joist",
+          "floor": "$floor1",
+          "run": "y"
+        }
+      ]
+    },
+    {
+      "step": "Delete it (joists go back), Undo; turn off automatic rebuild and delete it again",
+      "commands": [
+        {
+          "op": "delete",
+          "ids": [
+            "$jd"
+          ]
+        },
+        {
+          "op": "build_framing",
+          "floor": "$floor1",
+          "parts": {
+            "walls": false,
+            "floors": true,
+            "ceilings": true,
+            "roofs": false
+          }
+        }
+      ],
+      "expect": [
+        {
+          "joists": "floor_joist",
+          "floor": "$floor1",
+          "run": "y"
+        }
+      ]
+    },
+    {
+      "step": "Bearing wall: the basement wall left of the stair becomes a foundation wall and a bearing wall",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$stairwall",
+          "set": {
+            "shape": {
+              "bearing": true
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$stairwall",
+          "path": "/shape/bearing",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "Build Framing once, Floors, Floor 1 only: the joists turn to bear on it",
+      "commands": [
+        {
+          "op": "build_framing",
+          "floor": "$floor1",
+          "parts": {
+            "walls": false,
+            "floors": true,
+            "ceilings": true,
+            "roofs": false
+          }
+        }
+      ]
+    },
+    {
+      "step": "(Joists choose the shorter span between bearing walls and beams)",
+      "gap": "Joists run the short way across the whole floor and only splice over bearing walls; draw a Joist Direction line to turn them. Row: FR-33"
+    },
+    {
+      "step": "Post and beam defaults: beams 12\" x 3 1/2\" with joists; 3 1/2\" posts with square footings",
+      "gap": "Posts and beams are 2x stock unless you type their size; no Manual Framing defaults or post-with-footing. Row: FR-34"
+    },
+    {
+      "step": "Post with Footing at the top of the stair wall; another at the top left of the Garage",
+      "commands": [
+        {
+          "op": "add_framing_member",
+          "floor": "$named:floor:Foundation",
+          "role": "post",
+          "a": [
+            4146.55,
+            -4959.35,
+            -2873.375
+          ],
+          "b": [
+            4146.55,
+            -4959.35,
+            -323.85
+          ],
+          "width": "3 1/2\"",
+          "depth": "3 1/2\""
+        },
+        {
+          "op": "add_framing_member",
+          "floor": "$named:floor:Foundation",
+          "role": "post",
+          "a": [
+            8737.6,
+            -8534.4,
+            -2873.375
+          ],
+          "b": [
+            8737.6,
+            -8534.4,
+            -625.475
+          ],
+          "width": "3 1/2\"",
+          "depth": "3 1/2\""
+        }
+      ],
+      "save": {
+        "posts": "framing_member"
+      },
+      "expect": [
+        {
+          "get": "$posts.0",
+          "path": "/role",
+          "is": "post"
+        }
+      ]
+    },
+    {
+      "step": "Floor/Ceiling Beam from the post to the back wall, its top level with the joists",
+      "commands": [
+        {
+          "op": "add_framing_member",
+          "floor": "$named:floor:Foundation",
+          "role": "beam",
+          "a": [
+            4146.55,
+            -4959.35,
+            -171.45
+          ],
+          "b": [
+            4146.55,
+            -254.0,
+            -171.45
+          ],
+          "width": "3 1/2\"",
+          "depth": "12\""
+        }
+      ],
+      "save": {
+        "beam": "framing_member"
+      },
+      "expect": [
+        {
+          "get": "$beam",
+          "path": "/depth",
+          "is": "12\""
+        }
+      ]
+    },
+    {
+      "step": "A second beam from the Garage post to the back wall, lowered 11 7/8\" so the joists sit on it",
+      "commands": [
+        {
+          "op": "add_framing_member",
+          "floor": "$named:floor:Foundation",
+          "role": "beam",
+          "a": [
+            8737.6,
+            -8534.4,
+            -473.075
+          ],
+          "b": [
+            8737.6,
+            -254.0,
+            -473.075
+          ],
+          "width": "3 1/2\"",
+          "depth": "12\""
+        }
+      ],
+      "save": {
+        "beam2": "framing_member"
+      },
+      "expect": [
+        {
+          "get": "$beam2",
+          "path": "/role",
+          "is": "beam"
+        }
+      ]
+    },
+    {
+      "step": "(Rebuild: joists butt the first beam and lap over the second)",
+      "gap": "Joists don't stop at or bear on beams. Row: FR-33"
+    },
+    {
+      "step": "Move a ceiling joist; joists bump and push (Bumping/Pushing snap)",
+      "gap": "Joists can be moved but don't bump or push. Row: CAD-28"
+    },
+    {
+      "step": "Trim the ceiling joists to a selected joist (Trim Object, Sticky Mode)",
+      "gap": "Extend/Trim works on CAD lines and walls, not framing. Row: FR-36"
+    },
+    {
+      "step": "Framing rich text defaults: uppercase, centred, border with 6\" margins",
+      "gap": "Text has a border but no margin, uppercase or per-character underline. Row: TXT-24"
+    },
+    {
+      "step": "Rich Text on Floor 0: ALL FLOOR JOISTS ARE U.N.O.: 2x12s SPF #2 OR BETTER @16\" O.C.",
+      "commands": [
+        {
+          "op": "add_text",
+          "floor": "$named:floor:Foundation",
+          "position": [
+            1524.0,
+            -10668.0
+          ],
+          "text": "ALL FLOOR JOISTS ARE U.N.O.:\n2x12s SPF #2 OR BETTER @16\" O.C.",
+          "justify": "center"
+        }
+      ],
+      "save": {
+        "note": "text"
+      },
+      "expect": [
+        {
+          "text_exists": "ALL FLOOR JOISTS ARE U.N.O.:\n2x12s SPF #2 OR BETTER @16\" O.C."
+        }
+      ]
+    },
+    {
+      "step": "(border)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$note",
+          "set": {
+            "border": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$note",
+          "path": "/border",
+          "is": true
+        }
+      ]
+    },
+    {
+      "step": "Copy it beside the deck joists and change it to deck joists, 2x10s",
+      "commands": [
+        {
+          "op": "add_text",
+          "floor": "$named:floor:Foundation",
+          "position": [
+            6350.0,
+            1524.0
+          ],
+          "text": "ALL DECK JOISTS ARE U.N.O.:\n2x10s SPF #2 OR BETTER @16\" O.C.",
+          "justify": "center"
+        }
+      ],
+      "expect": [
+        {
+          "text_exists": "ALL DECK JOISTS ARE U.N.O.:\n2x10s SPF #2 OR BETTER @16\" O.C."
+        }
+      ]
+    },
+    {
+      "step": "Make a Copy as Chic Cottage-Floor Framing",
+      "gap": "No Make a Copy. Row: PRJ-45"
+    }
+  ]
+}

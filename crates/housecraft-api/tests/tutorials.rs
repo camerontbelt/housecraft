@@ -234,6 +234,26 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
         let found = doc.iter::<RoofPlane>().filter(|r| !r.gable).count();
         return if found == n as usize { Ok(()) } else { Err(format!("{found} roof planes, expected {n}")) };
     }
+    if let Some(role) = e.get("joists") {
+        // {"joists": role, "floor": ref, "run": "x" | "y"}: that floor has
+        // members of the role, most of them running along that axis.
+        let floor = e["floor"].as_u64().map(Id).ok_or("joists needs a floor")?;
+        let members: Vec<_> = doc
+            .iter::<FramingMember>()
+            .filter(|m| m.floor == floor && serde_json::to_value(m.role).unwrap() == *role)
+            .collect();
+        if members.is_empty() {
+            return Err(format!("no {role} members"));
+        }
+        let along_x = members.iter().filter(|m| (m.b.0.mm() - m.a.0.mm()).abs() > (m.b.1.mm() - m.a.1.mm()).abs()).count();
+        let found = if along_x * 2 > members.len() { "x" } else { "y" };
+        let want = e["run"].as_str().unwrap_or(found);
+        return if found == want {
+            Ok(())
+        } else {
+            Err(format!("{} {role} members mostly run along {found}, expected {want}", members.len()))
+        };
+    }
     if let Some(n) = e.get("rooms").and_then(Value::as_u64) {
         let floor = run.resolve("$floor1").unwrap();
         let found = housecraft_api::geom::rooms::detect(doc, floor).rooms.len();

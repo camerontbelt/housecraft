@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 543 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
+There are 547 items: 29 P0, about 133 P1, about 254 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -388,6 +388,10 @@ These come from reading the whole list and change the architecture, not just the
 | FR-30 | Deck framing: planks, borders, beams, joists, posts, footings, blocking; auto-rebuild | P2 | M6 ✓ decks rebuild themselves: planks, border, joists, rims, ledger, beams, posts, footings, railings, optional blocking rows |
 | FR-31 | Deck ledger controls (X18+) | P3 | M6 ✓ a ledger where a deck meets the house (on/off), with its own depth |
 | FR-32 | Deck beam controls | P3 | M6 ✓ beam inset and largest joist span, or beam positions typed by hand |
+| FR-33 | Joist layout by structure: shortest span between bearing walls and beams, joists butting flush beams and bearing on dropped ones; Framing Reference Marker as the layout origin | P2 | M9 |
+| FR-34 | Framing defaults: joist spacing per floor, rim joist construction (LVL), Manual Framing defaults for beams/posts, Post with Footing | P3 | M9 |
+| FR-35 | Automatically rebuild framing when the model changes (per category) | P2 | M9 |
+| FR-36 | Trim/extend framing members to another member (with Sticky Mode) | P3 | M9 |
 
 ## 13. CAD tools
 
@@ -650,7 +654,7 @@ These come from reading the whole list and change the architecture, not just the
 | TXT-21 | Scripting console (CA: Ruby → ours: Rhai/Lua over the command API) | P2 | M8 |
 | TXT-22 | Revision clouds with defaults | P1 | M4 ✓ |
 | TXT-23 | Referenced-object macros: text with an arrow shows the comment/size of what it points at | P3 | M9 |
-| TXT-24 | Uppercase option in text defaults | P3 | M9 |
+| TXT-24 | Text formatting: uppercase option in defaults, border margins, underline/case per character | P3 | M9 |
 
 ## 22. Printing
 
