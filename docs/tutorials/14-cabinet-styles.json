@@ -1,0 +1,248 @@
+{
+  "tutorial": "Cabinet Styles",
+  "source": "Chief Architect X18 Tutorial Guide, Kitchen and Bath Tutorials, pages 237-259",
+  "include": "13-interior-furnishings.json",
+  "steps": [
+    {
+      "step": "Switch to the Kitchen & Bath Plan View",
+      "gap": "No ready-made Kitchen & Bath plan view; View > Add Standard Plan Views adds one. Row: PRJ-13"
+    },
+    {
+      "step": "A base cabinet against the Kitchen wall under the windows; door style 'Beaded Recessed Panel'",
+      "commands": [
+        {
+          "op": "add_cabinet",
+          "floor": "$floor1",
+          "cabinet_kind": "base",
+          "at": [
+            162.719,
+            -3251.2
+          ],
+          "width": "36\""
+        }
+      ],
+      "save": {
+        "base": "cabinet"
+      }
+    },
+    {
+      "step": "(door style and CP04 bar pulls, 6\" from the top)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$base",
+          "set": {
+            "door_style": "shaker",
+            "hardware": "pull"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$base",
+          "path": "/door_style",
+          "is": "shaker"
+        },
+        {
+          "get": "$base",
+          "path": "/hardware",
+          "is": "pull"
+        }
+      ]
+    },
+    {
+      "step": "(Door styles and handles from the library; handle position)",
+      "gap": "Door styles are slab, shaker or raised and handles knob or pull; no library door panels or handle position. Row: CB-28"
+    },
+    {
+      "step": "A wall cabinet beside the windows and a full-height cabinet in the Kitchen's corner",
+      "commands": [
+        {
+          "op": "add_cabinet",
+          "floor": "$floor1",
+          "cabinet_kind": "wall",
+          "at": [
+            162.719,
+            -1016.0
+          ]
+        },
+        {
+          "op": "add_cabinet",
+          "floor": "$floor1",
+          "cabinet_kind": "full",
+          "at": [
+            3556.0,
+            -4857.75
+          ]
+        }
+      ],
+      "save": {
+        "more": "cabinet"
+      },
+      "expect": [
+        {
+          "count": "cabinet",
+          "is": 3
+        }
+      ]
+    },
+    {
+      "step": "Match Properties: copy the base cabinet's door style and handles to the wall and full-height cabinets",
+      "commands": [
+        {
+          "op": "match_properties",
+          "from": "$base",
+          "to": [
+            "$more.0",
+            "$more.1"
+          ],
+          "fields": [
+            "door_style",
+            "hardware"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$more.0",
+          "path": "/door_style",
+          "is": "shaker"
+        },
+        {
+          "get": "$more.1",
+          "path": "/hardware",
+          "is": "pull"
+        },
+        {
+          "get": "$more.0",
+          "path": "/cabinet_kind",
+          "is": "wall"
+        },
+        {
+          "get": "$more.1",
+          "path": "/height",
+          "is": "84\""
+        }
+      ]
+    },
+    {
+      "step": "Countertop 1 1/4\" thick (3 cm) with a 1 1/2\" overhang; a 4\" backsplash",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$base",
+          "set": {
+            "countertop": {
+              "thickness": "1 1/4\"",
+              "overhang": "1 1/2\"",
+              "backsplash": "4\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$base",
+          "path": "/countertop/thickness",
+          "is": "1 1/4\""
+        },
+        {
+          "get": "$base",
+          "path": "/countertop/backsplash",
+          "is": "4\""
+        }
+      ]
+    },
+    {
+      "step": "(Side backsplash)",
+      "gap": "No side backsplash on a cabinet's countertop (use a custom backsplash). Row: CB-08"
+    },
+    {
+      "step": "EM05 edge molding on the counter (an ogee edge)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$base",
+          "set": {
+            "countertop": {
+              "edge": "ogee"
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$base",
+          "path": "/countertop/edge",
+          "is": "ogee"
+        }
+      ]
+    },
+    {
+      "step": "Wall cabinet to the ceiling (Elevation From Ceiling, 0\") with a 3\" crown and a 1\" light rail",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$more.0",
+          "set": {
+            "elevation": "67 1/8\"",
+            "moldings": [
+              {
+                "place": "top",
+                "shape": "crown",
+                "height": "3\"",
+                "projection": "3\""
+              },
+              {
+                "place": "bottom",
+                "shape": "flat",
+                "height": "1\"",
+                "projection": "1\""
+              }
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$more.0",
+          "path": "/moldings/1/place",
+          "is": "bottom"
+        }
+      ]
+    },
+    {
+      "step": "(Elevation measured from the ceiling)",
+      "gap": "Cabinet elevation is from the floor only; for a cabinet to the ceiling, set elevation = ceiling - height. Row: CB-28"
+    },
+    {
+      "step": "Cabinet box and doors Color - Robin's Egg",
+      "commands": [
+        {
+          "op": "paint_material",
+          "material": "$named:material:Color - Robin's Egg",
+          "scope": "object",
+          "ids": [
+            "$base"
+          ],
+          "surface": "cabinet_box"
+        },
+        {
+          "op": "paint_material",
+          "material": "$named:material:Color - Robin's Egg",
+          "scope": "object",
+          "ids": [
+            "$base"
+          ],
+          "surface": "cabinet_door"
+        }
+      ],
+      "expect": [
+        {
+          "count": "material_assignment",
+          "is": 6
+        }
+      ]
+    }
+  ]
+}

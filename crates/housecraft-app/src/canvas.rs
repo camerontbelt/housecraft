@@ -844,7 +844,8 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
             match pick {
                 Pick::Match(from) => {
                     if doc.kind_of(target) == doc.kind_of(from) {
-                        commands.push(Command::MatchProperties { from, to: vec![target] });
+                        let fields = app.match_fields.iter().filter(|(_, on)| *on).map(|(f, _)| f.clone()).collect();
+                        commands.push(Command::MatchProperties { from, to: vec![target], fields });
                     }
                 }
                 Pick::Center(ids) => {

@@ -284,6 +284,7 @@ pub fn show(app: &mut App, ctx: &Context) {
     line_styles_dialog(app, ctx);
     portfolio_dialog(app, ctx);
     crate::project_tools::time_tracker_window(app, ctx);
+    match_properties_window(app, ctx);
     scatter_dialog(app, ctx);
     plan_check_dialog(app, ctx);
     hatch_dialog(app, ctx);
@@ -2237,6 +2238,33 @@ fn scatter_dialog(app: &mut App, ctx: &Context) {
         app.info(format!("{} copies scattered", out.created.len()));
         app.selection = out.created;
     }
+}
+
+/// While Match Properties is picking: which properties get copied.
+fn match_properties_window(app: &mut App, ctx: &Context) {
+    if !matches!(app.plan.pick, Some(crate::canvas::Pick::Match(_))) || app.match_fields.is_empty() {
+        return;
+    }
+    egui::Window::new("Match Properties").resizable(false).default_pos([260.0, 160.0]).show(ctx, |ui| {
+        ui.label("Click the objects to copy these onto:");
+        egui::ScrollArea::vertical().max_height(320.0).show(ui, |ui| {
+            for (field, on) in &mut app.match_fields {
+                let name = field.replace('_', " ");
+                let mut c = name.chars();
+                let label = c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default();
+                ui.checkbox(on, label);
+            }
+        });
+        ui.horizontal(|ui| {
+            if ui.small_button("All").clicked() {
+                app.match_fields.iter_mut().for_each(|f| f.1 = true);
+            }
+            if ui.small_button("None").clicked() {
+                app.match_fields.iter_mut().for_each(|f| f.1 = false);
+            }
+        });
+        ui.weak("Esc ends.");
+    });
 }
 
 /// One plan in the portfolio.

@@ -2213,14 +2213,14 @@ fn match_properties_copies_settings_not_placement() {
         ),
     );
     let (src, dst) = (out.created[0], out.created[1]);
-    s.apply(&[Command::MatchProperties { from: src, to: vec![dst] }]).unwrap();
+    s.apply(&[Command::MatchProperties { from: src, to: vec![dst], fields: Vec::new() }]).unwrap();
     let doc = s.document();
     let (a, b) = (doc.get::<Opening>(src).unwrap(), doc.get::<Opening>(dst).unwrap());
     assert_eq!(a.width, b.width);
     assert_eq!(b.wall, w[1].id, "stays in its own wall");
     assert!((b.position.feet() - 3.0).abs() < 1e-9, "stays where it was");
     // Different kinds don't match.
-    let err = s.apply(&[Command::MatchProperties { from: src, to: vec![w[0].id] }]).unwrap_err();
+    let err = s.apply(&[Command::MatchProperties { from: src, to: vec![w[0].id], fields: Vec::new() }]).unwrap_err();
     assert!(err.to_string().contains("can't match"), "{err}");
 }
 

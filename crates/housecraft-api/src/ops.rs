@@ -527,21 +527,30 @@ fn is_geometry(v: &serde_json::Value) -> bool {
     }
 }
 
-pub(crate) fn match_properties(
-    doc: &mut Document,
-    from: Id,
-    to: &[Id],
-    out: &mut Outcome,
-) -> Result<(), ApiError> {
-    let source = doc.object(from).ok_or(ApiError::NotFound(from))?;
-    let kind = source.kind();
-    let value = serde_json::to_value(source).expect("objects serialize");
-    let set: serde_json::Map<String, serde_json::Value> = value
+/// The properties Match Properties can copy from an object.
+pub fn matchable(object: &Object) -> serde_json::Map<String, serde_json::Value> {
+    let value = serde_json::to_value(object).expect("objects serialize");
+    value
         .as_object()
         .expect("objects are JSON objects")
         .iter()
         .filter(|(k, v)| !PLACEMENT_KEYS.contains(&k.as_str()) && !is_geometry(v))
         .map(|(k, v)| (k.clone(), v.clone()))
+        .collect()
+}
+
+pub(crate) fn match_properties(
+    doc: &mut Document,
+    from: Id,
+    to: &[Id],
+    fields: &[String],
+    out: &mut Outcome,
+) -> Result<(), ApiError> {
+    let source = doc.object(from).ok_or(ApiError::NotFound(from))?;
+    let kind = source.kind();
+    let set: serde_json::Map<String, serde_json::Value> = matchable(source)
+        .into_iter()
+        .filter(|(k, _)| fields.is_empty() || fields.contains(k))
         .collect();
     for id in to.iter().filter(|id| **id != from) {
         let target = doc.kind_of(*id).ok_or(ApiError::NotFound(*id))?;

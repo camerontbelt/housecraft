@@ -153,6 +153,8 @@ pub struct App {
     /// Another plan file shown for reference.
     pub reference: Option<crate::project_tools::RefPlan>,
     pub time: crate::project_tools::TimeTracker,
+    /// Match Properties: which of the source's properties to copy.
+    pub match_fields: Vec<(String, bool)>,
     pub prefs: Prefs,
     pub dialogs: Dialogs,
     pub materials: crate::materials::MaterialsDialog,
@@ -237,6 +239,7 @@ impl App {
             view3d: View3d::default(),
             reference: None,
             time: Default::default(),
+            match_fields: Vec::new(),
             prefs,
             dialogs: Dialogs::default(),
             materials: Default::default(),
@@ -1321,6 +1324,17 @@ impl App {
 
     /// Wait for a plan click for an edit button (see [`crate::canvas::Pick`]).
     pub fn start_pick(&mut self, pick: crate::canvas::Pick) {
+        if let crate::canvas::Pick::Match(from) = pick {
+            // What it is and how big stay unticked: copy style, not size.
+            let keep_off = ["cabinet_kind", "appliance_kind", "opening_kind", "width", "depth", "height", "length"];
+            self.match_fields = housecraft_api::query::matchable_fields(self.doc(), from)
+                .into_iter()
+                .map(|f| {
+                    let on = !keep_off.contains(&f.as_str());
+                    (f, on)
+                })
+                .collect();
+        }
         self.mode = Mode::Plan;
         self.plan.pick = Some(pick);
     }

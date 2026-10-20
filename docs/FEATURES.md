@@ -25,7 +25,7 @@ user library, drafting in elevation/section views and camera default sets were a
 **M:** roadmap milestone from [PLAN.md §5](PLAN.md#5-roadmap-vertical-slices). `GUI`/`web` = front-end work, not
 tied to a model milestone. `✓` = done. `(X18+)` marks a feature new in X18.
 
-There are 530 items: 29 P0, about 133 P1, about 252 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
+There are 531 items: 29 P0, about 133 P1, about 253 P2, about 108 P3, and 5 out of scope. Each item should eventually map to
 `housecraft-api` commands so that it is scriptable from the CLI and MCP.
 
 ---
@@ -253,6 +253,7 @@ These come from reading the whole list and change the architecture, not just the
 | CB-25 | Manufacturer cabinet catalogs | P3 | M8 |
 | CB-26 | Soffit tool and defaults (boxes against walls/ceilings for trays, coffers, bulkheads) | P2 | M9 |
 | CB-27 | Architectural blocks in the plan: group objects to move/edit/schedule as one; explode | P2 | M9 |
+| CB-28 | Cabinet door panels and handles from the library; handle position; cabinet elevation measured from the ceiling | P2 | M9 |
 
 ## 8. Doors & windows
 
@@ -540,7 +541,7 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-20 | 3D cladding from moldings (board & batten, lap, standing seam) (X18+) | P2 | M5 ✓ |
 | MAT-21 | Style palettes (save and apply finish sets) | P2 | M5 ✓ save and apply styles (materials, door style, hardware) |
 | MAT-22 | Center object between two objects | P1 | M1 ✓ Center Object button: then click a wall or line to centre along it, or an object to centre on it |
-| MAT-23 | Match / apply properties across same-type items | P1 | M1 ✓ Match Properties works for any kind of object; placement and facing are kept |
+| MAT-23 | Match / apply properties across same-type items | P1 | M1 ✓ Match Properties works for any kind of object; placement and facing are kept; choose which properties to copy (kind and size off by default) |
 | MAT-24 | Import custom 3D symbols | P1 | M5 ◐ OBJ (with MTL colours), STL and glTF/GLB models stored in the plan, placed and stretched like cabinets, paintable; DAE and SKP later |
 | MAT-25 | Smart symbols (sinks cut counters, wall-hung items, light fixtures emit) | P2 | M5 ✓ symbols can behave as sinks (cut countertops), wall-hung (hang at a set height) or light fixtures (light the 3D view) |
 | MAT-26 | Convert selection to symbol object | P2 | M5 ✓ Library > Convert Selection to Symbol keeps the 3D look in one symbol |

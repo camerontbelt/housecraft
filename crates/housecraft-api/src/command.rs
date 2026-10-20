@@ -1073,8 +1073,14 @@ pub enum Command {
     },
     /// Copy `from`'s properties (type, size, layer, materials, style…) onto
     /// each object in `to` of the same kind; where they are and which way
-    /// they face is kept.
-    MatchProperties { from: Id, to: Vec<Id> },
+    /// they face is kept. `fields` limits it to those properties (as in
+    /// [`crate::query::matchable_fields`]); empty copies them all.
+    MatchProperties {
+        from: Id,
+        to: Vec<Id>,
+        #[serde(default)]
+        fields: Vec<String>,
+    },
     /// Copy a CAD line/polyline/circle/arc or a wall parallel to itself;
     /// positive distance is to the left (outward for circles and arcs).
     Offset { id: Id, distance: Length },
@@ -3687,7 +3693,7 @@ impl Command {
                 transform,
                 copies,
             } => ops::transform(doc, ids, transform, *copies, &mut out)?,
-            Command::MatchProperties { from, to } => ops::match_properties(doc, *from, to, &mut out)?,
+            Command::MatchProperties { from, to, fields } => ops::match_properties(doc, *from, to, fields, &mut out)?,
             Command::Offset { id, distance } => ops::offset(doc, *id, *distance, &mut out)?,
             Command::ExtendTo { id, boundary } => ops::extend_to(doc, *id, *boundary, &mut out)?,
             Command::Fillet { a, b, radius } => ops::fillet(doc, *a, *b, *radius, &mut out)?,

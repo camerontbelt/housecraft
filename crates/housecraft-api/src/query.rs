@@ -133,6 +133,12 @@ pub fn get_object(doc: &Document, id: Id) -> Option<serde_json::Value> {
         .map(|o| serde_json::to_value(o).expect("model serializes"))
 }
 
+/// The properties Match Properties can copy from object `id` (its type,
+/// size, style, materials…; not where it is).
+pub fn matchable_fields(doc: &Document, id: Id) -> Vec<String> {
+    doc.object(id).map(|o| crate::ops::matchable(o).keys().cloned().collect()).unwrap_or_default()
+}
+
 /// Hours by task, most first.
 pub fn time_by_task(doc: &Document) -> Vec<(String, f64)> {
     let mut by: std::collections::BTreeMap<String, f64> = std::collections::BTreeMap::new();
