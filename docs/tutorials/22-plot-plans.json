@@ -214,7 +214,7 @@
     },
     {
       "step": "(Moving a selection by typing on a dimension; point markers; Point to Point Move)",
-      "gap": "No point markers or Point to Point Move. Row: CAD-31"
+      "gap": "No point markers. Row: CAD-31"
     },
     {
       "step": "Save and close the plot plan file; Make a Copy of CURRENT as Chic Cottage-Plot Plan"

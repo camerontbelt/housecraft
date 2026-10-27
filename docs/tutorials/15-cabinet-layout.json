@@ -129,7 +129,7 @@
     },
     {
       "step": "(Sticky Mode; Reflect About Object; module lines and where the fillers go)",
-      "gap": "No Sticky Mode or Reflect About Object; Auto Fillers places fillers at the ends of runs. Rows: CAD-29, CB-09"
+      "gap": "No Sticky Mode; Auto Fillers places fillers at the ends of runs. Row: CB-09"
     },
     {
       "step": "Island: the middle cabinet 30\" wide turned to face left, 18\" drawer bases either side",

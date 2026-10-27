@@ -61,8 +61,8 @@ toolbar makes another one if you need it.
 
 Draw a dimension from the back right corner of the roof to the back setback line. Select the terrain and the setback
 line (Shift+click), click the dimension's number, type `50'` and press Enter: both move together. Do the same with a
-horizontal dimension to the right setback line and `30'`. *Not in HouseCraft yet:* point markers and Point to Point
-Move.
+horizontal dimension to the right setback line and `30'`. *Not in HouseCraft yet:* point markers. To move a
+selection from one corner onto another, use **Edit › Point to Point Move**.
 
 ## Revision (page 401)
 
@@ -75,7 +75,7 @@ Move.
 | Separate site north; north pointer that rotates with the lot | SITE-28 |
 | Decimal feet and bearings on CAD lines; curved lot sides | SITE-29 |
 | Concentric edit behaviour | CAD-32 |
-| Point markers; Point to Point Move | CAD-31 |
+| Point markers | CAD-31 |
 
 **New while following this tutorial:** **CAD › Convert CAD To › Terrain Perimeter** turns a closed CAD outline into the
 terrain's perimeter.

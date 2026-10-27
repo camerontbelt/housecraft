@@ -59,8 +59,9 @@ and the interior door material defaults. Skip these steps.
 
 ## Replicating (pages 96–98)
 
-1. *Not in HouseCraft yet:* Reflect About Object. Use **Edit › Move / Copy / Rotate / Reflect…** with a mirror line
-   through the middle of the door.
+1. Select the Foyer window, choose **Edit › Reflect About Object** (or the mirror button on the edit toolbar), then
+   hold Ctrl and click the front door. Ctrl keeps the original, so a mirrored copy appears on the other side of the
+   door's centre line.
 2. **Kitchen window:** select it, **Edit › Multiple Copy…**, 2 copies, moved `-35 1/2"` along the wall. **Fixed
    for this tutorial:** windows and doors can now be copied along their wall this way. Before, they could only be
    copied together with the wall.
@@ -92,7 +93,6 @@ and the interior door material defaults. Skip these steps.
 | Door hardware | DW-19 |
 | Lites in the window defaults | DW-21 |
 | Height change keeps the top | DW-22 |
-| Reflect About Object | CAD-29 |
 | Make Mulled Unit from separate windows | DW-11 |
 | Schedules in CAD details; labels instead of schedule numbers | EST-26, EST-27 |
 | Text that shows the pointed-at object's comment | TXT-23 |

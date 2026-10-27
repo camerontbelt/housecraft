@@ -12,8 +12,8 @@ lies on the terrain.
 
 1. *Not in HouseCraft yet:* road defaults. A new road is 24' wide; open it and set **Width** `28'`.
 2. **Road**: click the bottom-right corner of the terrain, then the lower-left corner. Press Enter.
-3. *Not in HouseCraft yet:* curved roads (Change Line/Arc), Point to Point Move, and road stripes. For a gentle curve,
-   draw the road with more corners.
+3. *Not in HouseCraft yet:* curved roads (Change Line/Arc) and road stripes. For a gentle curve, draw the road with more
+   corners. To snap the road onto the lot edge, use **Edit › Point to Point Move**.
 
 ## Road in 3D and its height (pages 425–427)
 
@@ -48,4 +48,3 @@ name. Then **File › Make a Copy…** `Chic Cottage-Hardscape`.
 |---|---|
 | Road defaults, curves, stripes, flares, curb cuts, auto sidewalks, labels, schedule | SITE-32 |
 | Terrain passing exactly through elevation data | SITE-33 |
-| Point to Point Move | CAD-31 |

@@ -92,8 +92,7 @@
       ]
     },
     {
-      "step": "(Point to Point Move)",
-      "gap": "No Point to Point Move. Row: CAD-31"
+      "step": "(Point to Point Move): Edit > Point to Point Move"
     },
     {
       "step": "Stud spacing 24\" OC for the basement's 8\" Concrete with Furring framing layer",

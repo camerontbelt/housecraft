@@ -432,11 +432,11 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-26 | Delete Objects dialog in plans (by type, floor, room) | P2 | M9 |
 | CAD-27 | Paste Special: choose which attributes to paste | P3 | M9 |
 | CAD-28 | Bumping/pushing: objects push neighbours instead of overlapping | P3 | M9 |
-| CAD-29 | Reflect About Object (mirror a copy across a door, window or wall centre) | P3 | M9 |
+| CAD-29 | Reflect About Object (mirror a copy across a door, window or wall centre) | P3 | M9 ✓ Edit › Reflect About Object (and the edit toolbar's mirror button): click a wall, CAD line, door or window; Ctrl+click keeps the original (`reflect_about`) |
 | CAD-30 | Drawing groups / draw order (Move Forward/Backward) | P2 | M9 |
-| CAD-31 | Point to Point Move: move an object by one of its points onto another point | P2 | M9 |
+| CAD-31 | Point to Point Move: move an object by one of its points onto another point | P2 | M9 ◐ Edit › Point to Point Move: click a snapped point on the selection, then where it goes; Ctrl+click moves a copy (`point_to_point_move`); point markers later |
 | CAD-32 | Concentric edit behaviour: resize a closed shape in or out by a set jump (setbacks) | P3 | M9 |
-| CAD-33 | Additional allowed angles for angle snaps (e.g. a lot's side); Make Parallel/Perpendicular edit tool | P2 | M9 |
+| CAD-33 | Additional allowed angles for angle snaps (e.g. a lot's side); Make Parallel/Perpendicular edit tool | P2 | M9 ◐ Edit › Make Parallel / Perpendicular: click a reference line, then an edge of the selection, which turns about that edge's middle (`make_parallel`); single-edge moves on polylines and additional allowed angles later |
 
 ## 14. Layers
 

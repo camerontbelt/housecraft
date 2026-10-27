@@ -22,11 +22,11 @@ has two files:
 | 2 | Interior Walls (28) | 18 | 9 | [02-interior-walls.md](02-interior-walls.md) |
 | 3 | Multiple Floors (45) | 11 | 7 | [03-multiple-floors.md](03-multiple-floors.md) |
 | 4 | Interior Stairs (60) | 13 | 10 | [04-interior-stairs.md](04-interior-stairs.md) |
-| 5 | Doors and Windows (82) | 21 | 9 | [05-doors-and-windows.md](05-doors-and-windows.md) |
+| 5 | Doors and Windows (82) | 22 | 8 | [05-doors-and-windows.md](05-doors-and-windows.md) |
 | 6 | Decks and Porches (105) | 10 | 13 | [06-decks-and-porches.md](06-decks-and-porches.md) |
 | 7 | Roof styles: hip, gable, Dutch gable, shed, offset gable, gambrel, gull wing, half hip, mansard (127) | 12 | 3 | [07-roof-styles.md](07-roof-styles.md) |
 | 8 | Chic Cottage Roof (136) | 12 | 7 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
-| 9 | Dormers (159) | 10 | 7 | [09-dormers.md](09-dormers.md) |
+| 9 | Dormers (159) | 11 | 6 | [09-dormers.md](09-dormers.md) |
 | 10 | Custom Ceilings (177) | 6 | 6 | [10-custom-ceilings.md](10-custom-ceilings.md) |
 | 11 | Finish Materials (191) | 10 | 5 | [11-finish-materials.md](11-finish-materials.md) |
 | 12 | Room Moldings (211) | 6 | 3 | [12-room-moldings.md](12-room-moldings.md) |
@@ -37,7 +37,7 @@ has two files:
 | 17 | Light Fixtures (298) | 18 | 11 | [17-light-fixtures.md](17-light-fixtures.md) |
 | 18 | Electrical Objects (317) | 14 | 10 | [18-electrical-objects.md](18-electrical-objects.md) |
 | 19 | Floor Framing (331) | 17 | 10 | [19-floor-framing.md](19-floor-framing.md) |
-| 20 | Wall Framing (349) | 11 | 9 | [20-wall-framing.md](20-wall-framing.md) |
+| 20 | Wall Framing (349) | 12 | 8 | [20-wall-framing.md](20-wall-framing.md) |
 | 21 | Roof and Ceiling Framing (364) | 11 | 7 | [21-roof-and-ceiling-framing.md](21-roof-and-ceiling-framing.md) |
 | 22 | Plot Plans (382) | 10 | 6 | [22-plot-plans.md](22-plot-plans.md) |
 | 23 | Terrain Elevation (403) | 11 | 8 | [23-terrain-elevation.md](23-terrain-elevation.md) |

@@ -326,8 +326,7 @@
       ]
     },
     {
-      "step": "(Make Parallel/Perpendicular to the valley; Center Object on the valley; Reflect About Object for the opposite valley)",
-      "gap": "No Make Parallel and no Reflect About Object. Rows: CAD-01, CAD-29"
+      "step": "(Make Parallel/Perpendicular to the valley; Center Object on the valley; Reflect About Object for the opposite valley): Edit menu tools"
     },
     {
       "step": "Put both roof plans in a 'Roof Tutorials' folder"

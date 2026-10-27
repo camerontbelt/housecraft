@@ -349,17 +349,21 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     let tol = PICK_PX * view.mpp;
     app.plan.cursor = resp.hover_pos().map(|p| view.to_model(p));
     app.plan.snap = app.plan.cursor.map(|c| {
+        let point_pick = match &app.plan.pick {
+            Some(Pick::PointMove { from, .. }) => Some(*from),
+            _ => None,
+        };
         let from = app.plan.pending.last().copied().or(match &app.plan.drag {
             Some(Drag::Handle { id, handle }) => {
                 handle_anchor(app.session.document(), *id, *handle)
             }
-            _ => None,
+            _ => point_pick.flatten(),
         });
         let cache = app.plan.cache.as_ref().expect("cache built");
         let targets = if matches!(app.plan.tool, Tool::Dimension | Tool::AngularDimension) { &cache.dim_targets } else { &cache.targets };
         // Holding Alt places freely, ignoring every snap.
         let free = ui.input(|i| i.modifiers.alt);
-        if (app.plan.tool == Tool::Select && app.plan.drag.is_none()) || free {
+        if (app.plan.tool == Tool::Select && app.plan.drag.is_none() && point_pick.is_none()) || free {
             Snap {
                 point: c,
                 kind: SnapKind::Free,
@@ -850,9 +854,46 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
         && let Some(c) = app.plan.cursor
         && let Some(pick) = app.plan.pick.clone()
     {
+        // Tools that click points or edges rather than objects.
+        let at = app.plan.snap.map_or(c, |s| s.point);
+        let copy = ui.input(|i| i.modifiers.ctrl);
+        match pick {
+            Pick::PointMove { ids, from: None } => {
+                app.plan.pick = Some(Pick::PointMove { ids, from: Some(at) });
+                return;
+            }
+            Pick::PointMove { ids, from: Some(from) } => {
+                if from.distance(at) > 0.5 {
+                    commands.push(Command::PointToPointMove { ids, from: pt(from), to: pt(at), copy });
+                }
+                app.plan.pick = None;
+                return;
+            }
+            Pick::Parallel { ids, reference: None } => {
+                if let Some(edge) = nearest_edge(cache, c, tol, |o| o.is_some_and(|o| !ids.contains(&o))) {
+                    app.plan.pick = Some(Pick::Parallel { ids, reference: Some(edge) });
+                }
+                return;
+            }
+            Pick::Parallel { ids, reference: Some(r) } => {
+                if let Some(e) = nearest_edge(cache, c, tol, |o| o.is_some_and(|o| ids.contains(&o))) {
+                    commands.push(Command::MakeParallel { ids, edge: [pt(e[0]), pt(e[1])], reference: [pt(r[0]), pt(r[1])] });
+                    app.plan.pick = None;
+                }
+                return;
+            }
+            _ => {}
+        }
         let hit = hit_test(doc, cache, c, tol).into_iter().next();
         if let Some(target) = hit {
             match pick {
+                Pick::Reflect(ids) => {
+                    if !ids.contains(&target) {
+                        commands.push(Command::ReflectAbout { ids, about: target, copy });
+                        app.plan.pick = None;
+                    }
+                }
+                Pick::PointMove { .. } | Pick::Parallel { .. } => {}
                 Pick::Match(from) => {
                     if doc.kind_of(target) == doc.kind_of(from) {
                         let fields = app.match_fields.iter().filter(|(_, on)| *on).map(|(f, _)| f.clone()).collect();
@@ -1015,12 +1056,23 @@ pub enum Pick {
     /// Layer Painter: the first click picks a layer (Alt+click picks
     /// again); later clicks move objects onto it.
     PaintLayer(Option<Id>),
+    /// Point to Point Move: click a point on these, then where it goes.
+    PointMove { ids: Vec<Id>, from: Option<DVec2> },
+    /// Reflect About Object: click a wall, line, door or window to mirror across.
+    Reflect(Vec<Id>),
+    /// Make Parallel: click a reference line, then an edge of these.
+    Parallel { ids: Vec<Id>, reference: Option<[DVec2; 2]> },
 }
 
 impl Pick {
     /// Status-bar instructions while waiting for the click.
     pub fn hint(&self) -> &'static str {
         match self {
+            Pick::PointMove { from: None, .. } => "Point to Point Move: click the point to move from (it snaps to corners and ends). Esc cancels.",
+            Pick::PointMove { from: Some(_), .. } => "Point to Point Move: click where that point goes. Ctrl+click moves a copy. Esc cancels.",
+            Pick::Reflect(_) => "Reflect About Object: click a wall, line, door or window to mirror across. Ctrl+click keeps the original. Esc cancels.",
+            Pick::Parallel { reference: None, .. } => "Make Parallel: click the line or edge to line up with. Esc cancels.",
+            Pick::Parallel { reference: Some(_), .. } => "Make Parallel: click the edge of the selection to turn parallel (or square) to it. Esc cancels.",
             Pick::Match(_) => "Match Properties: click each object of the same kind to copy onto. Esc ends.",
             Pick::Center(_) => "Center Object: click a wall or line to centre along, or an object to centre on. Esc cancels.",
             Pick::HideLayer => "Layer Hider: click objects to hide their layers. Esc ends.",
@@ -1028,6 +1080,31 @@ impl Pick {
             Pick::PaintLayer(Some(_)) => "Layer Painter: click objects to move them onto the picked layer (Alt+click picks another). Esc ends.",
         }
     }
+}
+
+/// The drawn straight edge nearest `p` (within `tol`) of items `keep` allows.
+fn nearest_edge(cache: &Cache, p: DVec2, tol: f64, keep: impl Fn(Option<Id>) -> bool) -> Option<[DVec2; 2]> {
+    let mut best: Option<(f64, [DVec2; 2])> = None;
+    for item in cache.drawing.items.iter().filter(|i| keep(i.object)) {
+        let (points, closed) = match &item.prim {
+            Prim::Polyline { points, closed, .. } => (points, *closed),
+            Prim::Polygon { points, .. } => (points, true),
+            _ => continue,
+        };
+        let n = points.len();
+        let edges = if closed && n > 2 { n } else { n.saturating_sub(1) };
+        for i in 0..edges {
+            let (a, b) = (points[i], points[(i + 1) % n]);
+            if a.distance(b) < 1.0 {
+                continue;
+            }
+            let d = housecraft_api::geom::math::closest_on_segment(p, a, b).0.distance(p);
+            if d <= tol && best.is_none_or(|(bd, _)| d < bd) {
+                best = Some((d, [a, b]));
+            }
+        }
+    }
+    best.map(|(_, e)| e)
 }
 
 /// Model-space bounds of everything drawn for `ids`.

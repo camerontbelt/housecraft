@@ -22,7 +22,7 @@ carries on from [Tutorial 19](19-floor-framing.md). The steps also run as the au
 1. Zoom in on the lower-left corner of the Porch. Select the upright corner stud and drag it up out of the corner.
 2. Select the flat corner stud. Edit toolbar **Multiple Copy…**: **Y distance** `1 1/2"`, **Number of copies** `3`.
 3. Open the stud you moved: **Width** `3 1/2"`.
-4. *Not in HouseCraft yet:* Point to Point Move. Drag the stud into place with object snaps on.
+4. With the stud selected, **Edit › Point to Point Move**: click a point on the selection (it snaps to corners and ends), then the point it should land on.
 
 Any member you move or edit by hand is kept when framing is rebuilt. Chief needs **Retain Wall Framing** for that;
 HouseCraft always keeps hand edits.
@@ -63,7 +63,6 @@ dragging extension lines to add or remove them.
 | Live, editable wall details named from the wall's label | FR-37 |
 | Framing member defaults and fill; header labels | FR-38 |
 | Stud spacing per wall type | FR-39 |
-| Point to Point Move | CAD-31 |
 | Detail default sets; framing locate | DIM-29, DIM-30 |
 | Secondary dimension format | DIM-12 |
 | Extension-line handles | DIM-28 |

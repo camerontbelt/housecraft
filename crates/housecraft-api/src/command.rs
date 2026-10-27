@@ -286,6 +286,28 @@ pub enum Command {
     /// dimension, and so does that point of a manual dimension. A lone wall
     /// drags the walls joined to it.
     MoveByDimension { dimension: Id, segment: usize, moving: usize, ids: Vec<Id>, length: Length },
+    /// Point to Point Move: move objects so that `from` (a point on them)
+    /// lands on `to`; with `copy`, a moved copy is made instead.
+    PointToPointMove {
+        ids: Vec<Id>,
+        from: Point2,
+        to: Point2,
+        #[serde(default)]
+        copy: bool,
+    },
+    /// Reflect About Object: mirror objects across a wall or CAD line, or
+    /// across the centre line of a door or window (square to its wall).
+    /// With `copy`, the originals stay and mirrored copies are made.
+    ReflectAbout {
+        ids: Vec<Id>,
+        about: Id,
+        #[serde(default)]
+        copy: bool,
+    },
+    /// Make Parallel / Perpendicular: rotate objects about the middle of
+    /// `edge` (one of their edges) so it lies parallel to `reference`, or
+    /// square to it when it is already closer to square.
+    MakeParallel { ids: Vec<Id>, edge: [Point2; 2], reference: [Point2; 2] },
     /// Record time spent on the plan (dated today unless given).
     LogTime {
         task: String,
@@ -1317,6 +1339,9 @@ impl Command {
             Command::LogTime { .. } => "log_time",
             Command::MoveWallByDimension { .. } => "move_wall_by_dimension",
             Command::MoveByDimension { .. } => "move_by_dimension",
+            Command::PointToPointMove { .. } => "point_to_point_move",
+            Command::ReflectAbout { .. } => "reflect_about",
+            Command::MakeParallel { .. } => "make_parallel",
             Command::BreakWall { .. } => "break_wall",
             Command::DeleteTime { .. } => "delete_time",
             Command::SetHatchPattern { .. } => "set_hatch_pattern",
@@ -2108,6 +2133,32 @@ impl Command {
                 {
                     *p = pt(housecraft_geom::v2(*p) + shift);
                     out.modified.push(*dimension);
+                }
+            }
+            Command::PointToPointMove { ids, from, to, copy } => {
+                let d = housecraft_geom::v2(*to) - housecraft_geom::v2(*from);
+                let op = TransformOp::Translate { dx: Length::from_mm(d.x), dy: Length::from_mm(d.y) };
+                ops::transform(doc, ids, &op, u32::from(*copy), &mut out)?;
+            }
+            Command::ReflectAbout { ids, about, copy } => {
+                if ids.contains(about) {
+                    return invalid("reflect about something that isn't selected");
+                }
+                let (a, b) = ops::reflect_line(doc, *about)?;
+                let pt = housecraft_geom::math::pt;
+                ops::transform(doc, ids, &TransformOp::Mirror { a: pt(a), b: pt(b) }, u32::from(*copy), &mut out)?;
+            }
+            Command::MakeParallel { ids, edge, reference } => {
+                let v2 = housecraft_geom::v2;
+                let (e0, e1, r0, r1) = (v2(edge[0]), v2(edge[1]), v2(reference[0]), v2(reference[1]));
+                let (de, dr) = (e1 - e0, r1 - r0);
+                if de.length() < 1e-6 || dr.length() < 1e-6 {
+                    return invalid("the edge and the reference line need a length");
+                }
+                let angle = ops::parallel_turn(de.to_angle().to_degrees(), dr.to_angle().to_degrees());
+                if angle.abs() > 1e-9 {
+                    let center = housecraft_geom::math::pt((e0 + e1) / 2.0);
+                    ops::transform(doc, ids, &TransformOp::Rotate { center, angle }, 0, &mut out)?;
                 }
             }
             Command::LogTime { task, minutes, note, date } => {

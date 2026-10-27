@@ -2909,6 +2909,51 @@ fn any_selection_moves_by_typing_on_a_dimension() {
 }
 
 #[test]
+fn point_to_point_move_reflect_about_and_make_parallel() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_electrical", "electrical_kind": "recessed_light", "at": ["5'","10'"]},
+            {"op": "add_cad", "shape": {"shape": "line", "a": ["20'","0'"], "b": ["20'","10'"]}},
+            {"op": "add_cad", "shape": {"shape": "line", "a": ["0'","30'"], "b": ["10'","31'"]}}]"#,
+    );
+    let (light, mirror, slanted) = (out.created[0], out.created[1], out.created[2]);
+    let at = |s: &Session, id: Id| {
+        let p = s.document().get::<Electrical>(id).unwrap().position;
+        (p.0.mm() / 304.8, p.1.mm() / 304.8)
+    };
+    let close = |a: (f64, f64), b: (f64, f64)| (a.0 - b.0).abs() < 1e-6 && (a.1 - b.1).abs() < 1e-6;
+
+    // Point to Point Move: a point 1' right of the light lands on (7', 12').
+    let mv: Command = serde_json::from_value(serde_json::json!({
+        "op": "point_to_point_move", "ids": [light.0], "from": ["6'", "10'"], "to": ["7'", "12'"]
+    }))
+    .unwrap();
+    s.apply(&[mv]).unwrap();
+    assert!(close(at(&s, light), (6.0, 12.0)), "{:?}", at(&s, light));
+
+    // Reflect About Object across the line x = 20', keeping the original.
+    let out = s.apply(&[Command::ReflectAbout { ids: vec![light], about: mirror, copy: true }]).unwrap();
+    assert!(close(at(&s, light), (6.0, 12.0)), "the original stays");
+    let copy = *out.created.first().expect("a mirrored copy");
+    assert!(close(at(&s, copy), (34.0, 12.0)), "{:?}", at(&s, copy));
+    assert!(s.apply(&[Command::ReflectAbout { ids: vec![light], about: light, copy: false }]).is_err());
+
+    // Make Parallel: the slanted line turns about its middle to run level.
+    let ft = |x: f64, y: f64| housecraft_api::units::Point2(Length::from_mm(x * 304.8), Length::from_mm(y * 304.8));
+    s.apply(&[Command::MakeParallel { ids: vec![slanted], edge: [ft(0.0, 30.0), ft(10.0, 31.0)], reference: [ft(0.0, 0.0), ft(-5.0, 0.0)] }])
+        .unwrap();
+    let Shape::Line { a, b, .. } = s.document().get::<Cad>(slanted).unwrap().shape else { panic!() };
+    assert!((a.1.mm() - b.1.mm()).abs() < 1e-6, "level now");
+    assert!(((a.1.mm() + b.1.mm()) / 2.0 / 304.8 - 30.5).abs() < 1e-6, "turned about its middle");
+    // Nearly square to the reference: it turns square instead.
+    s.apply(&[Command::MakeParallel { ids: vec![slanted], edge: [a, b], reference: [ft(0.0, 0.0), ft(1.0, 9.0)] }]).unwrap();
+    let Shape::Line { a: a2, b: b2, .. } = s.document().get::<Cad>(slanted).unwrap().shape else { panic!() };
+    let (d, r) = (housecraft_api::geom::DVec2::new(b2.0.mm() - a2.0.mm(), b2.1.mm() - a2.1.mm()), housecraft_api::geom::DVec2::new(1.0, 9.0));
+    assert!(d.normalize().dot(r.normalize()).abs() < 1e-9, "square to it");
+}
+
+#[test]
 fn flat_garden_beds_lie_on_the_ground_and_lots_convert_to_terrain() {
     let mut s = boxed();
     let out = apply(

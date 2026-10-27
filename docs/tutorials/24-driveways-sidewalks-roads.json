@@ -45,7 +45,7 @@
     },
     {
       "step": "(Change Line/Arc to curve it along the lot's curved edge; Point to Point Move onto the edge)",
-      "gap": "Roads are straight-segment paths; no arcs. Rows: SITE-32, CAD-31"
+      "gap": "Roads are straight-segment paths; no arcs. Row: SITE-32"
     },
     {
       "step": "Road Stripe for a bike lane, 6' from the road's edge",

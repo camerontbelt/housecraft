@@ -2424,6 +2424,15 @@ impl App {
                     if item(ui, "Center Object", "", has_sel) {
                         self.start_pick(crate::canvas::Pick::Center(self.selection.clone()));
                     }
+                    if item(ui, "Point to Point Move", "", has_sel) {
+                        self.start_pick(crate::canvas::Pick::PointMove { ids: self.selection.clone(), from: None });
+                    }
+                    if item(ui, "Reflect About Object", "", has_sel) {
+                        self.start_pick(crate::canvas::Pick::Reflect(self.selection.clone()));
+                    }
+                    if item(ui, "Make Parallel / Perpendicular", "", has_sel) {
+                        self.start_pick(crate::canvas::Pick::Parallel { ids: self.selection.clone(), reference: None });
+                    }
                     let view = self.plan.sheet.and_then(|s| self.doc().get::<SectionView>(s).cloned());
                     if item(ui, "Center in View", "", has_sel && view.is_some())
                         && let Some(v) = view
@@ -3755,11 +3764,13 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
             if icons::button(ui, Icon::Rotate, false, true, "Rotate…").clicked() {
                 t.open_tab(crate::dialogs::TransformTab::Rotate);
             }
-            if icons::button(ui, Icon::Reflect, false, true, "Reflect About Object…").clicked() {
-                t.open_tab(crate::dialogs::TransformTab::Reflect);
-            }
+            let reflect = icons::button(ui, Icon::Reflect, false, true, "Reflect About Object: then click a wall, line, door or window")
+                .clicked();
             if icons::button(ui, Icon::MultiCopy, false, true, "Multiple Copy…").clicked() {
                 t.open_multiple();
+            }
+            if reflect {
+                self.start_pick(crate::canvas::Pick::Reflect(self.selection.clone()));
             }
             ui.separator();
             if icons::button(ui, Icon::MatchProperties, false, n == 1, "Match Properties: click others to copy onto")

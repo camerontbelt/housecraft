@@ -284,7 +284,7 @@
     },
     {
       "step": "Title block frame 2\" wide down the right side; component frames 1\", 1\", 4\", 5\" and 4\" high (Point to Point Move, nudge)",
-      "gap": "Frames are drawn in the CAD detail by typing their corners; no Point to Point Move or nudging. Rows: CAD-31, PRJ-47"
+      "gap": "Frames are drawn in a CAD detail, not on the sheet itself. Row: PRJ-47"
     },
     {
       "step": "Rich text defaults: Chief Blueprint 1/8\"; company name and contact, centred, rotated 90 degrees in the 4\" frame",

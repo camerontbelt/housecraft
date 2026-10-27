@@ -26,8 +26,9 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
 
 1. Draw a CAD polyline round the border you want (or copy the lot outline and **Edit › Paste Hold Position**).
 2. Select it, then **CAD › Convert CAD To › Garden Bed**. Open the bed and set **Height** `0`.
-3. *Not in HouseCraft yet:* Make Parallel, to line the border's inside edges up with the setback lines. Drag the
-   corners onto the setback lines with object snaps on.
+3. To line an edge up with a setback line, select the bed, choose **Edit › Make Parallel / Perpendicular**, click
+   the setback line, then click the bed's edge. The whole bed turns. *Not in HouseCraft yet:* moving a single edge,
+   so drag the corners onto the setback lines with object snaps on.
 
 ## Fencing and a gate (pages 440–443)
 
@@ -60,7 +61,6 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
 |---|---|
 | Dirt material default; fence panels, rails, posts; gate styles | SITE-34 |
 | Add Break, edge moves and arcs on garden beds | SITE-30 |
-| Make Parallel | CAD-33 |
 | Plant Chooser and encyclopedia | SITE-20, SITE-21 |
 | Architectural blocks | CB-27 |
 

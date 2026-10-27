@@ -125,7 +125,7 @@
     },
     {
       "step": "(Align the border's inside edges with the setback lines and retaining walls: Make Parallel)",
-      "gap": "No Make Parallel or Add Break on garden beds. Rows: CAD-33, SITE-30"
+      "gap": "Make Parallel turns the whole bed; no Add Break or single-edge moves on garden beds. Row: SITE-30"
     },
     {
       "step": "Fencing defaults: 72\" rail, 5 1/2\" posts 74\" high, iron pole panels, top and bottom rails 5 1/2\" x 1 1/2\"",

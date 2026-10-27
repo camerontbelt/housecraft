@@ -33,8 +33,8 @@ the paint reaches:
    layers. Use a **Wall Material Region** for both.
 2. Make a `Shower Tile` material. Choose **Wall Material Region** (CAD Tools), click the Bath's wall, then open
    the region and set it to start 18" up and stop 12" below the ceiling.
-3. *Not in HouseCraft yet:* the single-wall Wall Elevation view, Simplify Polyline, and Reflect About Object for
-   copying the region to the opposite wall. Place a second region there the same way.
+3. *Not in HouseCraft yet:* the single-wall Wall Elevation view, and Simplify Polyline. Place a second region on
+   the opposite wall the same way.
 
 ## Flooring (pages 203–209)
 
@@ -50,4 +50,3 @@ type has its own floor finish (Kitchen tile, Bath tile, Garage concrete) keep th
 | Wall coverings | MAT-32 |
 | Material regions as layers that cut the finish | WL-16 |
 | Single-wall Wall Elevation view | SEC-14 |
-| Reflect About Object | CAD-29 |

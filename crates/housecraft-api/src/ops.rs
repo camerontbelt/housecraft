@@ -921,6 +921,36 @@ fn transformed_openings(old: &Wall, openings: &[Opening], t: &Transform2) -> Vec
         .collect()
 }
 
+/// The line Reflect About Object mirrors across for `id`: a wall's or CAD
+/// line's own line, or the centre line of a door or window, square to its wall.
+pub(crate) fn reflect_line(doc: &Document, id: Id) -> Result<(DVec2, DVec2), ApiError> {
+    match doc.object(id).ok_or(ApiError::NotFound(id))? {
+        Object::Wall(w) => Ok((v2(w.start), v2(w.end))),
+        Object::Cad(c) => match c.shape {
+            Shape::Line { a, b, .. } => Ok((v2(a), v2(b))),
+            _ => invalid("reflect about a straight CAD line"),
+        },
+        Object::Opening(o) => {
+            let w = expect::<Wall>(doc, o.wall)?;
+            let (s, e) = (v2(w.start), v2(w.end));
+            let dir = (e - s).normalize_or_zero();
+            let c = s + dir * o.position.mm();
+            Ok((c, c + perp(dir)))
+        }
+        o => invalid(format!("reflect about a wall, line, door or window, not a {}", o.kind())),
+    }
+}
+
+/// Degrees to turn an edge at `edge` degrees so it lies parallel to a line at
+/// `reference` degrees, or square to it when that is the smaller turn.
+pub(crate) fn parallel_turn(edge: f64, reference: f64) -> f64 {
+    let d = (reference - edge).rem_euclid(180.0);
+    let parallel = if d > 90.0 { d - 180.0 } else { d };
+    let square = (reference + 90.0 - edge).rem_euclid(180.0);
+    let square = if square > 90.0 { square - 180.0 } else { square };
+    if parallel.abs() <= square.abs() { parallel } else { square }
+}
+
 pub(crate) fn transform(
     doc: &mut Document,
     ids: &[Id],

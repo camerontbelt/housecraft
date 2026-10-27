@@ -39,7 +39,9 @@ both. **File › Make a Copy…** would leave you in the original.)
 
 1. **Text** tool: `VALLEY FLASHING`. Open it and set the rotation to match the valley.
 2. **Rectangular Polyline** (CAD) along the valley, and **Text with Arrow**: `FLASHING AT WALL`.
-3. *Not in HouseCraft yet:* Make Parallel/Perpendicular and Reflect About Object.
+3. To line the text or polyline up with the valley, select it, choose **Edit › Make Parallel / Perpendicular**, click
+   the valley line, then click an edge of your selection. For the opposite valley, select the notes and use
+   **Edit › Reflect About Object**, Ctrl+clicking a CAD line drawn along the ridge to make mirrored copies.
 
 ## Filing the roof plans (page 175)
 
@@ -55,4 +57,3 @@ Chic Cottage-Roof and Chic Cottage-Dormer Option, then drag them onto the new fo
 | Attic room type | RM-18 |
 | Roof Hole tool | RF-16 |
 | Join Roof Planes | RF-18 |
-| Reflect About Object; Make Parallel | CAD-29, CAD-01 |

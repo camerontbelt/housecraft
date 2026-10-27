@@ -159,7 +159,7 @@
     },
     {
       "step": "(Wall Elevation view of one room's wall; Simplify Polyline; Reflect About Object for the opposite wall)",
-      "gap": "No single-wall elevation view; regions are edited in their specification, not drawn in an elevation. Rows: SEC-14, CAD-29"
+      "gap": "No single-wall elevation view; regions are edited in their specification, not drawn in an elevation. Row: SEC-14"
     },
     {
       "step": "Flooring: red oak plank everywhere (Floor/Ceiling Platform floor finish); room types keep their own",

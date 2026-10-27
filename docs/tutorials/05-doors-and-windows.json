@@ -468,8 +468,7 @@
       "step": "Space the Bedroom windows 4 1/2\" apart by typing on the dimension between them"
     },
     {
-      "step": "Reflect the Foyer window about the front door (Copy/Paste, Reflect About Object)",
-      "gap": "No 'reflect about object'; use Edit > Move / Copy / Rotate / Reflect with a mirror line through the door's centre. Row: CAD-29"
+      "step": "Reflect the Foyer window about the front door: Edit > Reflect About Object, Ctrl+click the door (covered by the reflect_about test)"
     },
     {
       "step": "Kitchen window: Transform/Replicate, 2 copies 35 1/2\" apart along the wall",

@@ -24,8 +24,8 @@ page at full size (scale 1). The words go in text boxes that use page macros.
    - title block frame: 2" wide down the right side (33.5, 0.5 to 35.5, 23.5);
    - component frames inside it, 1/8" apart, from the bottom: 1", 1", 4", 5" and 4" high.
 
-   *Not in HouseCraft yet:* the Concentric behaviour and Point to Point Move, so type the corners. Open each rectangle to
-   type them exactly.
+   *Not in HouseCraft yet:* the Concentric behaviour, so type the corners. Open each rectangle to type them exactly,
+   or use **Edit › Point to Point Move** to snap one frame's corner onto another's.
 2. With the detail open, **File › Layout › Send to Layout › Chic Cottage, page 1** (the Standard Template page). Open
    the box and set **Left** `0`, **Bottom** `0`, **Width** `36"`, **Height** `24"`, **Scale** 1, and an empty
    **Caption**.
@@ -67,4 +67,4 @@ then drag it in).
 | Missing | FEATURES row |
 |---|---|
 | Drafting directly on layout sheets (CAD, grid, nudge, rotated text, centring, pictures, table options) | PRJ-47 |
-| Concentric edit; Point to Point Move | CAD-32, CAD-31 |
+| Concentric edit | CAD-32 |

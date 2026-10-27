@@ -33,8 +33,9 @@ elevation data, about 1" below the Garage slab. *Not in HouseCraft yet:* a refer
 2. Copy another near the back of the lot at `6'`. Move it to about 2' inside the back setback line. Add one more 3' in
    front of it at `5'`. The slope is gentle behind the Deck and steeper at the back.
 3. Select the back two lines and rotate them 15° clockwise (rotate handle, or **Move / Copy / Rotate / Reflect…** ›
-   **Rotate** `-15`). *Not in HouseCraft yet:* typing an elevation line's angle with its start point locked, Make
-   Parallel, and curved elevation lines.
+   **Rotate** `-15`). *Not in HouseCraft yet:* typing an elevation line's angle with its start point locked, and
+   curved elevation lines. To set a line parallel to the lot edge, select it, choose **Edit › Make Parallel /
+   Perpendicular**, click the lot edge, then click the line.
 
 ## Elevation polyline (pages 413–415)
 
@@ -60,7 +61,7 @@ elevation data, about 1" below the Garage slab. *Not in HouseCraft yet:* a refer
 
 | Missing | FEATURES row |
 |---|---|
-| Additional allowed angles; Make Parallel | CAD-33 |
+| Additional allowed angles | CAD-33 |
 | Duplicate a saved plan view | PRJ-12 |
 | Terrain reference point | SITE-27 |
 | Elevation line angle, Add Break, continue drawing | SITE-30 |

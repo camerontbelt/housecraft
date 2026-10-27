@@ -20,8 +20,8 @@ snap to walls and to each other as you drag; drag each one into place.
 
 ## Copying (pages 265–268)
 
-*Not in HouseCraft yet:* Sticky Mode and Reflect About Object. Use **Edit › Multiple Copy…** (or Copy and Paste)
-and move the copy into place. **Cabinet Tools › Auto Fillers** puts fillers at the ends of a run.
+*Not in HouseCraft yet:* Sticky Mode. To mirror a cabinet, select it, choose **Edit › Reflect About Object** and
+Ctrl+click the wall or window to mirror across. **Cabinet Tools › Auto Fillers** puts fillers at the ends of a run.
 
 ## Island and breakfast bar (pages 268–274)
 
@@ -37,4 +37,4 @@ and move the copy into place. **Cabinet Tools › Auto Fillers** puts fillers at
 |---|---|
 | Bump and push | CAD-28 |
 | Automatic diagonal corner cabinets; overhang per side | CB-29 |
-| Sticky Mode; Reflect About Object | CAD-29 |
+| Sticky Mode | CB-09 |
