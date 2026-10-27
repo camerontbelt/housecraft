@@ -436,7 +436,7 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 c.non_negative(id, "thickness", r.thickness);
             }
             Object::Schedule(s) => {
-                c.reference(id, "floor", s.floor, K::Floor);
+                c.sheet(id, s.floor, false);
                 c.reference(id, "layer", s.layer, K::Layer);
                 c.finite(id, "position", &s.position.mm());
                 if let Some(h) = s.text_height {

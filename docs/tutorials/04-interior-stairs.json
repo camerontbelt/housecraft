@@ -303,7 +303,7 @@
     },
     {
       "step": "(Note types, Generate Shape from Schedule, capsule markers; CAD Detail Management; align schedules)",
-      "gap": "No note types or capsule marker; schedules can't go in CAD details. Rows: TXT-16, EST-26"
+      "gap": "No note types or capsule marker (CAD Detail Management and schedules placed in a detail are there). Row: TXT-16"
     },
     {
       "step": "Save a copy as Chic Cottage-Stairs"

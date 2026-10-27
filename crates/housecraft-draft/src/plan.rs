@@ -1095,6 +1095,16 @@ pub fn drafting(doc: &Document, sheet: Id, layer_set: Option<Id>) -> Drawing {
     let mut out = Drawing::default();
     pictures(&ctx, sheet, &mut out);
     cad_shapes(&ctx, sheet, &mut out);
+    // Schedules placed in a detail (legends) list every floor.
+    for s in doc.iter::<Schedule>().filter(|s| s.floor == sheet) {
+        let look = ctx.look(s.layer);
+        if look.visible {
+            let style = ctx.text_style(None, &look);
+            let h = s.text_height.unwrap_or(style.height).mm();
+            let ink = style.color.map_or(look.ink, Ink::Color);
+            schedule_table(doc, s, h, look.stroke, ink, &mut out);
+        }
+    }
     notes(&ctx, sheet, &mut out);
     out
 }
@@ -1179,7 +1189,8 @@ fn schedule_table(
         doc,
         s.schedule_kind,
         &housecraft_api::schedule::ScheduleOptions {
-            floor: (!s.all_floors).then_some(s.floor),
+            // On a floor plan, that floor unless it lists all; in a detail, all.
+            floor: (!s.all_floors && doc.get::<Floor>(s.floor).is_some()).then_some(s.floor),
             columns: s.columns.clone(),
             also: s.also.clone(),
             renovation: s.renovation,

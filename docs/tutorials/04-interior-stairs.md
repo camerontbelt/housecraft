@@ -73,8 +73,8 @@ lines you can drag.
 2. **Callout** tool (Text Tools): click near the bottom of the stairs, type `HEADROOM 6' 8" MIN.`, then open it and
    tick **Numbered Note**. It shows a number, and the Note Schedule lists the text.
 3. Copy it to the Foundation with **Ctrl+C**, then **Paste Hold Position**.
-4. *Not in HouseCraft yet:* note types, the capsule shape, the schedule in a CAD detail, and lining schedules up
-   with Align/Distribute.
+4. A schedule can go in a CAD detail: open the detail, then **Tools › Schedules › Place in Plan**. *Not in
+   HouseCraft yet:* note types, the capsule shape, and lining schedules up with Align/Distribute.
 
 ## Revisions (page 80)
 
@@ -90,5 +90,5 @@ lines you can drag.
 | Open Below room; Same Wall Type handle | ST-18 |
 | Movable dimension point markers in sections | SEC-06 |
 | Top/bottom clip planes in sections | SEC-01 |
-| Note types, capsule markers, schedules in CAD details | TXT-16, EST-26 |
+| Note types, capsule markers | TXT-16 |
 | Tiled views; Tape Measure | UI-32, DIM-24 |

@@ -262,12 +262,13 @@ fn export_table(app: &mut App, table: &ScheduleTable, title: &str, f: TableForma
     }
 }
 
-/// Place a schedule table on the current floor, top-left at the view centre.
+/// Place a schedule table on the current floor (or the open CAD detail),
+/// top-left at the view centre.
 pub fn place_schedule(app: &mut App, kind: ScheduleKind) {
     let at = housecraft_api::geom::pt(app.plan.center);
     if app
         .run1(Command::AddSchedule {
-            floor: Some(app.plan.floor),
+            floor: Some(app.plan.sheet.unwrap_or(app.plan.floor)),
             schedule_kind: kind,
             position: at,
             columns: Vec::new(),

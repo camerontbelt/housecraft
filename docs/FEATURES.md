@@ -638,7 +638,7 @@ These come from reading the whole list and change the architecture, not just the
 | EST-23 | Pricing in framing buy lists | P3 | M6 ✓ framing buy-list lines take prices like any materials-list line |
 | EST-24 | Materials List Polyline: take-off for a drawn area | P2 | M9 |
 | EST-25 | Wall schedule construction columns (layers of the upper and lower wall) | P3 | M9 |
-| EST-26 | Schedules placed in CAD details (legends) | P2 | M9 |
+| EST-26 | Schedules placed in CAD details (legends) | P2 | M9 ✓ open a CAD detail and Place in Plan puts the schedule there (`add_schedule` with the detail as `floor`); in a detail it lists every floor |
 | EST-27 | Door/window schedules: show objects' own labels instead of schedule-number callouts | P3 | M9 |
 | EST-28 | Reorder schedule rows (drag rows; Move Up/Down in Schedule) | P3 | M9 ◐ Row Order ▲/▼ (Move Up/Down in Schedule) in the schedule dialog; dragging rows in the table later |
 | EST-29 | Room moldings schedule (profiles and lengths by room) | P3 | M9 |

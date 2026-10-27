@@ -480,8 +480,40 @@
       ]
     },
     {
-      "step": "(Title; schedules in a CAD detail)",
-      "gap": "Schedules have the kind's title and sit in the plan. Row: EST-31"
+      "step": "(Schedule in the Legends and Notes CAD detail)",
+      "commands": [
+        {
+          "op": "add_cad_detail",
+          "name": "Legends and Notes"
+        }
+      ],
+      "save": {
+        "lnd": "cad_detail"
+      },
+      "expect": []
+    },
+    {
+      "step": "(With the detail open, place the Electrical Schedule there instead of in the plan)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$legend",
+          "set": {
+            "floor": "$lnd"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$legend",
+          "path": "/floor",
+          "is": "$lnd"
+        }
+      ]
+    },
+    {
+      "step": "(Title the schedule Electrical Legend)",
+      "gap": "Schedules have the kind's title. Row: EST-31"
     },
     {
       "step": "Make a Copy as Chic Cottage-Electrical; Project Browser folder Kitchen and Bath Tutorials holding the revisions"

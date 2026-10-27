@@ -196,7 +196,8 @@ pub enum Command {
         shadows: Option<bool>,
     },
     /// Place a schedule table (door, window, room, wall, fixture, stair or
-    /// roof plane) with its top-left corner at `position`.
+    /// roof plane) with its top-left corner at `position`, on a floor plan or
+    /// in a CAD detail (a legend listing every floor).
     AddSchedule {
         floor: Option<Id>,
         schedule_kind: ScheduleKind,
@@ -1850,7 +1851,8 @@ impl Command {
                 columns,
                 all_floors,
             } => {
-                let floor = ops::resolve_floor(doc, *floor)?;
+                // A floor plan, or a CAD detail or other drafting sheet (a legend).
+                let floor = ops::resolve_sheet(doc, *floor, false)?;
                 let known = crate::schedule::available_columns(*schedule_kind);
                 if let Some(bad) = columns
                     .iter()

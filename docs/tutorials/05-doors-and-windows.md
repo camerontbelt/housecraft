@@ -73,8 +73,9 @@ and the interior door material defaults. Skip these steps.
 
 1. **Tools › Schedules › Place in Plan › Door Schedule**, then **Window Schedule**. Double-click a schedule to
    choose its columns.
-2. *Not in HouseCraft yet:* placing them in a CAD detail, and swapping the schedule-number callouts for the
-   objects' own labels.
+2. Make a CAD detail named `Schedules Detail` (**CAD › CAD Details › New CAD Detail**). With it open, place the
+   door and window schedules again there, and delete the ones on the plan.
+3. *Not in HouseCraft yet:* swapping the schedule-number callouts for the objects' own labels.
 
 ## Annotations (pages 100–103)
 
@@ -94,7 +95,7 @@ and the interior door material defaults. Skip these steps.
 | Lites in the window defaults | DW-21 |
 | Height change keeps the top | DW-22 |
 | Make Mulled Unit from separate windows | DW-11 |
-| Schedules in CAD details; labels instead of schedule numbers | EST-26, EST-27 |
+| Labels instead of schedule numbers | EST-27 |
 | Text that shows the pointed-at object's comment | TXT-23 |
 
 Fixed for this tutorial: the default garage door (16', too wide for the Chic Cottage's 13'4" garage, so it

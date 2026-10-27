@@ -343,15 +343,46 @@
           "count": "schedule",
           "is": 1
         }
-      ]
+      ],
+      "save": {
+        "wallsched": "schedule"
+      }
     },
     {
       "step": "(Schedule columns: Wall Construction Upper/Lower; rename and resize columns)",
       "gap": "Wall schedules have no construction (layer) columns; columns can't be renamed or resized by handle. Rows: EST-25, EST-10"
     },
     {
-      "step": "Put the schedule in a 'Legends' CAD detail",
-      "gap": "Schedules can only go on floor plans, not in CAD details. Row: EST-26"
+      "step": "Put the schedule in a 'Legends' CAD detail: CAD > CAD Details > New CAD Detail named Legends",
+      "commands": [
+        {
+          "op": "add_cad_detail",
+          "name": "Legends"
+        }
+      ],
+      "save": {
+        "legends": "cad_detail"
+      },
+      "expect": []
+    },
+    {
+      "step": "(With the detail open, Tools > Schedules > Place in Plan > Wall Schedule, then delete the one on the plan; in a detail it lists every floor)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$wallsched",
+          "set": {
+            "floor": "$legends"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$wallsched",
+          "path": "/floor",
+          "is": "$legends"
+        }
+      ]
     },
     {
       "step": "Save a copy as Chic Cottage-Floors"

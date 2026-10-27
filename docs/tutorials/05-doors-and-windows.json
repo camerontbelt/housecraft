@@ -587,11 +587,57 @@
           "count": "schedule",
           "is": 4
         }
+      ],
+      "save": {
+        "dwsched": "schedule"
+      }
+    },
+    {
+      "step": "(Schedules in the 'Schedules Detail' CAD detail)",
+      "commands": [
+        {
+          "op": "add_cad_detail",
+          "name": "Schedules Detail"
+        }
+      ],
+      "save": {
+        "schdetail": "cad_detail"
+      },
+      "expect": []
+    },
+    {
+      "step": "(With the detail open, place the door and window schedules there and delete the plan's copies)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$dwsched.0",
+          "set": {
+            "floor": "$schdetail"
+          }
+        },
+        {
+          "op": "update",
+          "id": "$dwsched.1",
+          "set": {
+            "floor": "$schdetail"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$dwsched.1",
+          "path": "/floor",
+          "is": "$schdetail"
+        },
+        {
+          "count": "schedule",
+          "is": 4
+        }
       ]
     },
     {
-      "step": "(Schedules in the 'Schedules Detail' CAD detail; schedule numbers off, objects keep their own labels)",
-      "gap": "Schedules can't go in CAD details, and the schedule-number callouts can't be swapped for labels. Rows: EST-26, EST-27"
+      "step": "(Schedule numbers off: objects keep their own labels)",
+      "gap": "The schedule-number callouts can't be swapped for the objects' own labels. Row: EST-27"
     },
     {
       "step": "Comment on the Garage door: '20 minute self-closing'",

@@ -2343,7 +2343,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 doc,
                 s.schedule_kind,
                 &housecraft_api::schedule::ScheduleOptions {
-                    floor: (!s.all_floors).then_some(s.floor),
+                    floor: (!s.all_floors && doc.get::<Floor>(s.floor).is_some()).then_some(s.floor),
                     columns: s.columns.clone(),
                     also: s.also.clone(),
                     renovation: s.renovation,

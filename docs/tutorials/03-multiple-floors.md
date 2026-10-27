@@ -54,8 +54,10 @@ It carries on from [Tutorial 2](02-interior-walls.md). The steps also run as the
 1. **Tools › Schedules › Place in Plan › Wall Schedule** puts a wall schedule in the middle of the view.
    Double-click it to choose columns (Type, Thickness, Qty…) and its title (`Wall Legend`).
 2. Room dividers are left out of wall schedules automatically, so there's nothing to untick.
-3. *Not in HouseCraft yet:* the "Wall Construction, Upper/Lower" columns, renaming or dragging columns wider,
-   and putting the schedule in a **CAD detail**. It goes on the floor plan for now.
+3. To keep it off the plan, make a CAD detail for legends: **CAD › CAD Details › New CAD Detail**, named
+   `Legends`. With the detail open, **Tools › Schedules › Place in Plan › Wall Schedule** puts the schedule in the
+   detail, where it lists every floor. Delete the one on the floor plan.
+4. *Not in HouseCraft yet:* the "Wall Construction, Upper/Lower" columns, and renaming or dragging columns wider.
 
 ## Revisions (page 59)
 
@@ -72,7 +74,6 @@ It carries on from [Tutorial 2](02-interior-walls.md). The steps also run as the
 | Align With Wall Above/Below | WL-28 |
 | Tiled plan views | UI-32 |
 | Wall construction columns; rename/resize columns | EST-25, EST-10 |
-| Schedules in CAD details | EST-26 |
 
 Fixed for this tutorial: **the foundation kept rebuilding its walls**. It wiped the furred wall type, and any
 wall drawn on the foundation floor, as soon as anything changed. Now it only replaces outside walls that no

@@ -850,3 +850,20 @@ fn room_labels_hide_and_turn() {
     s.apply(&set(serde_json::json!({"label_hidden": true}))).unwrap();
     assert_eq!(label(&s), None, "hidden");
 }
+
+#[test]
+fn schedules_go_in_cad_details_as_legends() {
+    let mut s = house();
+    let cmds: Vec<Command> = serde_json::from_str(r#"[{"op": "add_cad_detail", "name": "Legends and Notes"}]"#).unwrap();
+    let detail = s.apply(&cmds).unwrap().created[0];
+    let cmds: Vec<Command> =
+        serde_json::from_value(serde_json::json!([{"op": "add_schedule", "floor": detail.0, "schedule_kind": "doors", "position": [0, 0]}])).unwrap();
+    let sched = s.apply(&cmds).unwrap().created[0];
+    let doc = s.document();
+    assert!(doc.validate().is_empty(), "{:?}", doc.validate());
+    let d = housecraft_draft::drafting(doc, detail, None);
+    let rows = d.items.iter().filter(|i| i.object == Some(sched) && matches!(&i.prim, Prim::Text { .. })).count();
+    assert!(rows > 2, "the table is drawn in the detail (title, headings, the door)");
+    let p = plan(doc, &PlanOptions::first(doc).unwrap());
+    assert!(!p.items.iter().any(|i| i.object == Some(sched)), "not on the floor plan");
+}
