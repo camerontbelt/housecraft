@@ -518,6 +518,10 @@ pub struct StairExtras {
     pub rail_return: bool,
     /// The bottom steps wrap round the sides of the stair (this many).
     pub wrap: u32,
+    /// Goes down from the floor (or a deck it starts on) to the terrain:
+    /// `start` is the top, the rise reaches the ground, and a deck railing
+    /// opens where the stair meets it. Straight stairs only.
+    pub to_grade: bool,
 }
 
 impl StairExtras {

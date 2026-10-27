@@ -39,9 +39,9 @@ these on each wall or deck instead.
 
 1. **Terrain › Site › Deck**: click the four corners: along the back wall 36" in from each side, then 8' out.
    Press **Enter**.
-2. Open the deck: **Plank thickness** `1"`, **Plank gap** `1/4"`. It has a railing on its open sides.
-3. *Not in HouseCraft yet:* the deck as a room enclosed by deck railings, deck post footing depth, and the
-   footings' own layer.
+2. Open the deck: **Plank thickness** `1"`, **Plank gap** `1/4"`, **Footing Depth** `30"` (how far the post
+   footings reach into the ground). It has a railing on its open sides.
+3. *Not in HouseCraft yet:* the deck as a room enclosed by deck railings, and a layer of its own for the footings.
 
 ## Dimensioning exterior rooms (pages 112–115)
 
@@ -58,9 +58,14 @@ extension-line / add-segment handles. Draw manual dimensions to the deck and por
 
 ## Deck and porch stairs (pages 119–121)
 
-*Not in HouseCraft yet:* stairs that go **down** to the terrain. HouseCraft's stairs only climb to the floor
-above, so skip the deck stairs and the concrete porch steps for now. They're the top item for the next round of
-work (FEATURES ST-20).
+1. **Deck stairs:** pick the **Straight Stair** tool and click just outside the deck's left railing, pointing the
+   stair at the deck. Double-click the stair to open it, set **Width** `5'`, keep both railings, and under **Style**
+   tick **Down to grade**. The stair now starts at the deck's top and steps down to the ground, the plan shows
+   **DN**, and the deck railing opens where the stair meets it.
+2. **Porch steps:** another Straight Stair at the middle of the porch's front edge, pointing at the house.
+   **Width** `6'`, tick **Down to grade**, and untick **Stringers** so the steps are solid blocks.
+3. *Not in HouseCraft yet:* a concrete material just for the stairs, and stairs opening a half wall. Add a break in
+   the porch's front half wall on each side of the steps (**Edit › Add Break**) and delete the piece between.
 
 ## Annotations (pages 121–124)
 
@@ -79,9 +84,9 @@ Shift+click to pick several first). They move on disk too.
 
 | Missing | FEATURES row |
 |---|---|
-| Stairs down to the terrain; concrete stairs | ST-20 |
+| Stairs opening half walls; concrete stair material | ST-20, ST-12 |
 | Half Wall / Railing / Deck Railing tools and defaults | WL-29 |
-| Decks as rooms; deck footing settings | SITE-26 |
+| Decks as rooms; a footing layer | SITE-26 |
 | Moving automatic dimensions; extension-line handles | DIM-27, DIM-28 |
 | Terrain reference point | SITE-27 |
 | Foundation wall tool; per-room stem walls | FD-09 |

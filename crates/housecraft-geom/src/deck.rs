@@ -47,6 +47,37 @@ fn stations(lo: f64, hi: f64, step: f64) -> Vec<f64> {
     v
 }
 
+/// The railing along a→b with openings where stairs down to grade leave
+/// the deck through it.
+fn rail_gaps(doc: &Document, deck: &Deck, a: DVec2, b: DVec2) -> Vec<(DVec2, DVec2)> {
+    let len = a.distance(b);
+    let dir = (b - a) / len.max(1e-9);
+    let mut cuts: Vec<(f64, f64)> = doc
+        .iter::<Stair>()
+        .filter(|s| s.floor == deck.floor && s.extras.to_grade)
+        .filter_map(|s| {
+            let p = v2(s.start);
+            let along = (p - a).dot(dir);
+            let off = (p - a).dot(perp(dir)).abs();
+            let half = s.width.mm() / 2.0;
+            (off < 300.0 && along > -half && along < len + half).then_some((along - half, along + half))
+        })
+        .collect();
+    cuts.sort_by(|x, y| x.0.total_cmp(&y.0));
+    let mut out = Vec::new();
+    let mut from = 0.0;
+    for (c0, c1) in cuts {
+        if c0 > from + 10.0 {
+            out.push((a + dir * from, a + dir * c0.min(len)));
+        }
+        from = from.max(c1);
+    }
+    if from < len - 10.0 {
+        out.push((a + dir * from, b));
+    }
+    out
+}
+
 pub fn parts(doc: &Document, deck: &Deck) -> Option<DeckParts> {
     let raw: Vec<DVec2> = deck.outline.iter().map(|p| v2(*p)).collect();
     if raw.len() < 3 {
@@ -74,7 +105,7 @@ pub fn parts(doc: &Document, deck: &Deck) -> Option<DeckParts> {
         if deck.ledger && on_house {
             parts.ledgers.push((a, b));
         } else if deck.railing && !on_house {
-            parts.rails.push((a, b));
+            parts.rails.extend(rail_gaps(doc, deck, a, b));
         }
     }
     // Decking.
@@ -203,7 +234,7 @@ pub fn parts(doc: &Document, deck: &Deck) -> Option<DeckParts> {
                     if bottom - g > 50.0 {
                         push(&mut parts, FramingRole::Post, p.extend(g), p.extend(bottom), 2.0 * post_half, 2.0 * post_half, 0.0);
                     }
-                    push(&mut parts, FramingRole::Footing, p.extend(g - 450.0), p.extend(g + 50.0), 300.0, 300.0, 0.0);
+                    push(&mut parts, FramingRole::Footing, p.extend(g - deck.footing_depth.mm().max(50.0)), p.extend(g + 50.0), 300.0, 300.0, 0.0);
                 }
             }
         }

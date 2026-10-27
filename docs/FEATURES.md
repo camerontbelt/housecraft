@@ -339,7 +339,7 @@ These come from reading the whole list and change the architecture, not just the
 | ST-17 | Handrail returns & extensions | P2 | M3 ✓ handrail extensions past the top and bottom, and returns turning the rail ends down |
 | ST-18 | Auto Stairwell makes an Open Below room on the floor above, enclosed by railings with a doorway at the top | P2 | M9 |
 | ST-19 | Stair Lock Top / Lock Bottom / Lock Number of Treads and a Make Best Fit button | P2 | M9 |
-| ST-20 | Exterior stairs that go down to the terrain (DN), cutting a doorway in the railing; solid concrete stair style | P1 | M9 |
+| ST-20 | Exterior stairs that go down to the terrain (DN), cutting a doorway in the railing; solid concrete stair style | P1 | M9 ◐ straight stairs tick Down to grade (`extras.to_grade`): they start at the floor or the deck they touch, step down to the terrain, read DN and open the deck railing; untick Stringers for solid steps; opening half walls and a concrete material later |
 
 ## 11. Foundations
 
@@ -537,7 +537,7 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-22 | Landscaping plans and plant schedules | P3 | M6 ✓ plant schedule; plants and site work in the materials list |
 | SITE-23 | Plant growth over time | P3 | M8 |
 | SITE-24 | 3D plants with shadows | P2 | M7 ✓ plants cast sun shadows in 3D |
-| SITE-26 | Decks as rooms enclosed by Deck Railings (Deck room type defaults: planking, framing, post footing depth and layer) | P2 | M9 |
+| SITE-26 | Decks as rooms enclosed by Deck Railings (Deck room type defaults: planking, framing, post footing depth and layer) | P2 | M9 ◐ each deck has a Footing Depth; decks as rooms and a footing layer later |
 | SITE-27 | Terrain elevation reference point (surface height set at a chosen point) | P3 | M9 |
 | SITE-28 | North Pointer object that rotates with the lot; a separate site north for plot plans vs the house | P3 | M9 |
 | SITE-29 | Plot plan lines: decimal-feet lengths and quadrant-bearing angles on CAD lines; curved lot sides by radius and arc length | P2 | M9 |

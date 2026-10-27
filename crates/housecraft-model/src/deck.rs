@@ -38,6 +38,9 @@ pub struct Deck {
     /// Largest joist span between beams (or a beam and the ledger).
     pub max_span: Length,
     pub post_spacing: Length,
+    /// How far the post footings reach below the ground.
+    #[serde(default = "footing_depth")]
+    pub footing_depth: Length,
     /// Fasten to the house with a ledger board where it touches a wall
     /// (no beam or posts there).
     #[serde(default = "yes")]
@@ -60,6 +63,10 @@ pub struct Deck {
     #[serde(default)]
     pub covered: bool,
     pub color: Color,
+}
+
+fn footing_depth() -> Length {
+    Length::from_inches(18.0)
 }
 
 fn yes() -> bool {
@@ -88,6 +95,7 @@ impl Deck {
             beam_inset: i(24.0),
             max_span: Length::from_feet(10.0),
             post_spacing: Length::from_feet(8.0),
+            footing_depth: footing_depth(),
             ledger: true,
             blocking: false,
             ledger_depth: None,

@@ -82,7 +82,7 @@
     },
     {
       "step": "Deck room defaults: 1\" planks with 1/4\" gaps; deck post footings 30\" deep",
-      "gap": "Deck defaults live on each deck (set below), and post footings have no depth setting. Row: SITE-26"
+      "gap": "Deck defaults (planks, footing depth) live on each deck and are set below. Row: SITE-26"
     },
     {
       "step": "Deck at the back: three deck railings enclosing a deck room, 36\" in from each side wall and 8' deep",
@@ -126,14 +126,15 @@
       ]
     },
     {
-      "step": "(Plank thickness 1\", gap 1/4\")",
+      "step": "(Plank thickness 1\", gap 1/4\", footings 30\" deep)",
       "commands": [
         {
           "op": "update",
           "id": "$deck",
           "set": {
             "plank_thickness": "1\"",
-            "plank_gap": "1/4\""
+            "plank_gap": "1/4\"",
+            "footing_depth": "30\""
           }
         }
       ],
@@ -142,6 +143,11 @@
           "get": "$deck",
           "path": "/plank_gap",
           "is": "1/4\""
+        },
+        {
+          "get": "$deck",
+          "path": "/footing_depth",
+          "is": "30\""
         }
       ]
     },
@@ -229,12 +235,97 @@
       "gap": "Stair defaults have no newel style or per-part materials. Row: ST-12"
     },
     {
-      "step": "Deck stairs: click outside the left deck railing; they go down to the terrain (DN) and open the railing; 5' wide with railings both sides",
-      "gap": "Stairs only climb to the floor above; exterior stairs down to the terrain, and the doorway they cut in the railing, aren't there. Row: ST-20"
+      "step": "Deck stairs: outside the left deck railing, going down to the terrain (Open Object > Down to grade); 5' wide with railings both sides. The deck railing opens where they meet it",
+      "commands": [
+        {
+          "op": "add_stair",
+          "floor": "$floor1",
+          "start": [
+            914.4,
+            1249.4
+          ],
+          "direction": 0,
+          "width": "5'",
+          "railing_left": true,
+          "railing_right": true
+        }
+      ],
+      "save": {
+        "deck_stairs": "stair"
+      }
     },
     {
-      "step": "Concrete porch stairs, 6' wide, centred on the front door, solid concrete",
-      "gap": "Same: no stairs down to the terrain; no solid (concrete) stair style. Row: ST-20"
+      "step": "(Open the stair: tick Down to grade)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$deck_stairs",
+          "set": {
+            "extras": {
+              "to_grade": true
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$deck_stairs",
+          "path": "/extras/to_grade",
+          "is": true
+        },
+        {
+          "stair_to_grade": "$deck_stairs"
+        }
+      ]
+    },
+    {
+      "step": "Concrete porch stairs, 6' wide, centred on the porch's front, down to grade with no stringers (solid)",
+      "commands": [
+        {
+          "op": "add_stair",
+          "floor": "$floor1",
+          "start": [
+            6472.6,
+            -10911.7
+          ],
+          "direction": 90,
+          "width": "6'",
+          "railing_left": true,
+          "railing_right": true
+        }
+      ],
+      "save": {
+        "porch_stairs": "stair"
+      }
+    },
+    {
+      "step": "(Open the stair: tick Down to grade, untick Stringers)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$porch_stairs",
+          "set": {
+            "extras": {
+              "to_grade": true
+            },
+            "stringers": false
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$porch_stairs",
+          "path": "/extras/to_grade",
+          "is": true
+        },
+        {
+          "stair_to_grade": "$porch_stairs"
+        }
+      ]
+    },
+    {
+      "step": "(Concrete material on the porch stairs; the stairs opening the porch's front half wall)",
+      "gap": "Stairs have one material and only open deck railings; break the half wall (Add Break) and delete the piece in front of the stairs. Rows: ST-12, ST-20"
     },
     {
       "step": "Notes: 'CONCRETE STEPS TO GRADE', 'FRAMED STEPS TO GRADE', and numbered note 'EXTERIOR LANDING 36\" MINIMUM IN DIRECTION OF TRAVEL' (copied to both stairs)",

@@ -528,7 +528,8 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
 
     for stair in doc.iter::<Stair>() {
         let here = stair.floor == opts.floor;
-        let below = doc
+        let below = !stair.extras.to_grade
+            && doc
             .floor_above(stair.floor)
             .is_some_and(|f| f.id == opts.floor);
         if !here && !below {
@@ -1924,7 +1925,8 @@ fn stair_symbol(
         width: stroke.width * 0.6,
         ..stroke
     };
-    let cut_riser = (STAIR_CUT / g.riser_height).ceil() as u32;
+    // A stair down to grade lies wholly below the cut: nothing is dashed.
+    let cut_riser = if stair.extras.to_grade { u32::MAX } else { (STAIR_CUT / g.riser_height).ceil() as u32 };
     for step in &g.steps {
         let beyond = here && step.index > cut_riser;
         out.push(
@@ -1952,7 +1954,7 @@ fn stair_symbol(
         }
     }
     // Break line: a zig-zag across the tread at the cut.
-    if here && let Some(step) = g.steps.iter().rfind(|s| s.index <= cut_riser && !s.landing) {
+    if here && !stair.extras.to_grade && let Some(step) = g.steps.iter().rfind(|s| s.index <= cut_riser && !s.landing) {
         let p = &step.poly;
         // Corner to corner across the tread, so the slant reads at any scale.
         let (a, b) = (p[0], p[2]);
@@ -1968,8 +1970,10 @@ fn stair_symbol(
     }
     // Walk line and arrow.
     // From the floor above the arrow points down the stair.
+    // A stair down to grade reads DN from the floor it leaves.
+    let up = here && !stair.extras.to_grade;
     let mut walk: Vec<DVec2> = g.walk.iter().map(|p| p.truncate()).collect();
-    if !here {
+    if !up {
         walk.reverse();
     }
     if walk.len() >= 2 {
@@ -2001,7 +2005,7 @@ fn stair_symbol(
             Some(stair.id),
             Prim::Text {
                 at: walk[0] - dir0 * text * 1.4,
-                text: if here { "UP" } else { "DN" }.into(),
+                text: if up { "UP" } else { "DN" }.into(),
                 height: text * 0.8,
                 rotation: 0.0,
                 justify: Justify::Center,

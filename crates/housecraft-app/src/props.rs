@@ -1460,6 +1460,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ("Beam Inset", "beam_inset", dk.beam_inset),
                 ("Largest Joist Span", "max_span", dk.max_span),
                 ("Post Spacing", "post_spacing", dk.post_spacing),
+                ("Footing Depth", "footing_depth", dk.footing_depth),
                 ("Railing Height", "railing_height", dk.railing_height),
             ] {
                 if let Some(l) = ed.length(ui, label, field, v) {
@@ -2500,6 +2501,9 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     ui.checkbox(&mut x.winders, "Winders instead of the landing");
                 }
                 ui.checkbox(&mut x.open_risers, "Open risers");
+                if s.shape == StairShape::Straight {
+                    ui.checkbox(&mut x.to_grade, "Down to grade (starts at the top, opens a deck railing)");
+                }
                 ui.checkbox(&mut x.starter, "Starter step (wide, round ends)");
                 ui.checkbox(&mut x.rail_return, "Handrail returns");
                 ui.horizontal(|ui| {

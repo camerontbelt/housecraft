@@ -95,13 +95,60 @@ fn section_risers(sections: &[StairSection]) -> (u32, u32) {
     (treads, landings)
 }
 
+/// Where a stair down to grade starts at the top: the floor, or the top of
+/// a deck whose edge it starts on.
+pub fn grade_top(doc: &Document, stair: &Stair) -> f64 {
+    let floor_z = doc.get::<housecraft_model::Floor>(stair.floor).map_or(0.0, |f| f.elevation.mm());
+    let p = v2(stair.start);
+    doc.iter::<housecraft_model::Deck>()
+        .filter(|d| d.floor == stair.floor)
+        .filter(|d| {
+            let outline: Vec<DVec2> = d.outline.iter().map(|q| v2(*q)).collect();
+            crate::math::distance_to_polyline(p, &outline, true) < 300.0
+        })
+        .map(|d| floor_z + d.height.mm())
+        .reduce(f64::max)
+        .unwrap_or(floor_z)
+}
+
+/// A stair down to grade laid out as an ordinary one climbing from the
+/// ground: the same stair moved to its bottom, with the rise it needs, and
+/// the height of its bottom.
+fn to_grade(doc: &Document, stair: &Stair) -> Option<(Stair, f64)> {
+    if !stair.extras.to_grade || stair.shape != StairShape::Straight {
+        return None;
+    }
+    let top = grade_top(doc, stair);
+    let ground = crate::site::ground(doc);
+    let dir = DVec2::from_angle(stair.direction.to_radians());
+    let start = v2(stair.start);
+    let (mut run, mut rise) = (0.0, 0.0);
+    // The ground under the bottom step sets the rise, which sets how far out
+    // the bottom is: a few rounds settle it.
+    for _ in 0..4 {
+        rise = top - ground(start - dir * run);
+        if rise < 50.0 {
+            return None;
+        }
+        let risers = ((rise / stair.max_riser.mm()).ceil() as u32).max(1);
+        run = tread_count(risers, &stair.shape) as f64 * stair.tread_depth.mm();
+    }
+    let mut s = stair.clone();
+    s.start = crate::math::pt(start - dir * run);
+    s.rise = Some(housecraft_units::Length::from_mm(rise));
+    s.extras.to_grade = false;
+    Some((s, top - rise))
+}
+
 pub fn geometry_with(doc: &Document, stair: &Stair, connect: bool) -> StairGeom {
+    let graded = to_grade(doc, stair);
+    let stair = graded.as_ref().map_or(stair, |(s, _)| s);
     let floor_z = doc
         .get::<housecraft_model::Floor>(stair.floor)
         .map_or(0.0, |f| f.elevation.mm());
     // A stair that starts on another stair's landing climbs from there.
-    let landing = if connect { landing_under(doc, stair) } else { None };
-    let base_z = landing.unwrap_or(floor_z);
+    let landing = if connect && graded.is_none() { landing_under(doc, stair) } else { None };
+    let base_z = graded.as_ref().map(|g| g.1).or(landing).unwrap_or(floor_z);
     let rise = match (landing, stair.rise) {
         (Some(_), None) => (doc.stair_rise(stair).mm() - (base_z - floor_z)).max(1.0),
         _ => doc.stair_rise(stair).mm().max(1.0),

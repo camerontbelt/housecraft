@@ -2909,6 +2909,44 @@ fn any_selection_moves_by_typing_on_a_dimension() {
 }
 
 #[test]
+fn deck_stairs_go_down_to_grade_through_the_railing() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_deck", "points": [["30'",0],["46'",0],["46'","20'"],["30'","20'"]], "height": "3'"},
+            {"op": "add_stair", "start": ["38'","20'"], "direction": 270, "width": "5'"}]"#,
+    );
+    let (deck, stair) = (out.created[0], out.created[1]);
+    let rails_before = {
+        let dk = s.document().get::<Deck>(deck).unwrap();
+        housecraft_api::geom::deck::parts(s.document(), dk).unwrap().rails.len()
+    };
+    let mut extras = s.document().get::<Stair>(stair).unwrap().extras.clone();
+    extras.to_grade = true;
+    s.apply(&[Command::Update { id: stair, set: patch(serde_json::json!({"extras": extras})) }]).unwrap();
+    s.apply(&[Command::Update { id: deck, set: patch(serde_json::json!({"footing_depth": "30\""})) }]).unwrap();
+    let doc = s.document();
+    let st = doc.get::<Stair>(stair).unwrap();
+    let g = housecraft_api::geom::stairs::geometry(doc, st);
+    let ground = housecraft_api::geom::sun::grade(doc).unwrap();
+    assert!((g.base_z - ground).abs() < 1.0, "the bottom is on the ground: {} vs {ground}", g.base_z);
+    let top = g.base_z + g.risers as f64 * g.riser_height;
+    assert!((top - 3.0 * 304.8).abs() < 1.0, "the top is the deck: {top}");
+    assert!(g.riser_height <= st.max_riser.mm() + 0.1);
+    let y = 20.0 * 304.8;
+    assert!(g.steps.iter().all(|step| step.poly.iter().all(|p| p.y >= y - 1.0)), "it runs out away from the deck");
+
+    let dk = doc.get::<Deck>(deck).unwrap();
+    let parts = housecraft_api::geom::deck::parts(doc, dk).unwrap();
+    assert_eq!(parts.rails.len(), rails_before + 1, "the back railing opens in two");
+    let gap = |x: f64| parts.rails.iter().any(|(a, b)| (a.y - y).abs() < 1.0 && (b.y - y).abs() < 1.0 && a.x.min(b.x) < x && a.x.max(b.x) > x);
+    assert!(!gap(38.0 * 304.8), "no railing across the stair");
+    assert!(gap(32.0 * 304.8) && gap(44.0 * 304.8), "railing either side");
+    let footing = parts.members.iter().find(|m| m.role == FramingRole::Footing).unwrap();
+    assert!((footing.a.z - (ground - 30.0 * 25.4)).abs() < 1.0, "footings 30\" deep: {}", footing.a.z);
+}
+
+#[test]
 fn point_to_point_move_reflect_about_and_make_parallel() {
     let mut s = boxed();
     let out = apply(

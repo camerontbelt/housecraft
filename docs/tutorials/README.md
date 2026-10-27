@@ -23,7 +23,7 @@ has two files:
 | 3 | Multiple Floors (45) | 11 | 7 | [03-multiple-floors.md](03-multiple-floors.md) |
 | 4 | Interior Stairs (60) | 13 | 10 | [04-interior-stairs.md](04-interior-stairs.md) |
 | 5 | Doors and Windows (82) | 22 | 8 | [05-doors-and-windows.md](05-doors-and-windows.md) |
-| 6 | Decks and Porches (105) | 10 | 13 | [06-decks-and-porches.md](06-decks-and-porches.md) |
+| 6 | Decks and Porches (105) | 14 | 12 | [06-decks-and-porches.md](06-decks-and-porches.md) |
 | 7 | Roof styles: hip, gable, Dutch gable, shed, offset gable, gambrel, gull wing, half hip, mansard (127) | 12 | 3 | [07-roof-styles.md](07-roof-styles.md) |
 | 8 | Chic Cottage Roof (136) | 12 | 7 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
 | 9 | Dormers (159) | 11 | 6 | [09-dormers.md](09-dormers.md) |

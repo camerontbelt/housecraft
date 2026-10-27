@@ -324,6 +324,21 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
         let mesh = housecraft_api::geom::mesh::build(doc, None);
         return if mesh.parts.iter().any(|p| p.object == id) { Ok(()) } else { Err(format!("#{} is not built in 3D", id.0)) };
     }
+    if let Some(target) = e.get("stair_to_grade") {
+        // {"stair_to_grade": id}: the stair runs from where it starts (floor or
+        // deck) down to the ground under its bottom step.
+        let id = target.as_u64().map(Id).ok_or(format!("unknown {target}"))?;
+        let st = doc.get::<Stair>(id).ok_or("no such stair")?;
+        let g = housecraft_api::geom::stairs::geometry(doc, st);
+        let top = g.base_z + g.risers as f64 * g.riser_height;
+        let want = housecraft_api::geom::stairs::grade_top(doc, st);
+        let bottom = g.walk.first().ok_or("no steps")?;
+        let ground = housecraft_api::geom::site::ground(doc)(bottom.truncate());
+        if (top - want).abs() > 1.0 || (g.base_z - ground).abs() > 1.0 {
+            return Err(format!("stair runs {:.0}..{top:.0} mm; ground {ground:.0}, top {want:.0}", g.base_z));
+        }
+        return Ok(());
+    }
     if let Some(target) = e.get("stair_reaches") {
         // {"stair_reaches": id, "floor": id, "max_riser": length}: the stair climbs
         // exactly to that floor with no riser taller than allowed.
