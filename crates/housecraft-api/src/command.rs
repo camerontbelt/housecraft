@@ -1144,6 +1144,45 @@ pub enum Command {
     /// Delete objects. Floors take their contents with them; walls take their
     /// doors and windows. Objects still referenced elsewhere cannot be deleted.
     Delete { ids: Vec<Id> },
+    /// Delete Objects: every object of the given kinds on `floor` (every
+    /// floor when `None`), optionally only those inside `room`.
+    DeleteObjects {
+        floor: Option<Id>,
+        kinds: Vec<ObjectKind>,
+        #[serde(default)]
+        room: Option<Id>,
+    },
+    /// Delete Dimensions on `floor` (every floor when `None`): automatic
+    /// ones, manual ones, or both.
+    DeleteDimensions {
+        floor: Option<Id>,
+        #[serde(default)]
+        which: DimensionsToDelete,
+    },
+    /// Reverse Layers: flip a wall end for end so its layers face the other
+    /// way, keeping doors, windows, niches and the top where they are.
+    ReverseWallLayers { id: Id },
+    /// Auto Room Dimension: a dimension along the inside of each wall of a
+    /// room, `offset` in from the wall surface.
+    AutoRoomDimension {
+        room: Id,
+        #[serde(default = "room_dim_offset")]
+        offset: Length,
+    },
+}
+
+/// Which dimensions Delete Dimensions removes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DimensionsToDelete {
+    Automatic,
+    Manual,
+    #[default]
+    All,
+}
+
+fn room_dim_offset() -> Length {
+    Length::from_inches(12.0)
 }
 
 fn one() -> u32 {
@@ -1427,6 +1466,10 @@ impl Command {
             Command::Chamfer { .. } => "chamfer",
             Command::InsertObjects { .. } => "insert_objects",
             Command::Delete { .. } => "delete",
+            Command::DeleteObjects { .. } => "delete_objects",
+            Command::DeleteDimensions { .. } => "delete_dimensions",
+            Command::ReverseWallLayers { .. } => "reverse_wall_layers",
+            Command::AutoRoomDimension { .. } => "auto_room_dimension",
         }
     }
 
@@ -3882,6 +3925,97 @@ impl Command {
                 dy,
             } => ops::insert_objects(doc, objects, *floor, *dx, *dy, &mut out)?,
             Command::Delete { ids } => ops::delete(doc, ids, &mut out)?,
+            Command::DeleteObjects { floor, kinds, room } => {
+                let inside = match room {
+                    Some(r) => {
+                        let rm = expect::<Room>(doc, *r)?;
+                        let regions = housecraft_geom::rooms::detect(doc, rm.floor);
+                        let i = regions.room_at(housecraft_geom::v2(rm.anchor)).ok_or_else(|| ApiError::Invalid("that room isn't enclosed".into()))?;
+                        Some((rm.floor, regions.rooms[i].centerline.clone()))
+                    }
+                    None => None,
+                };
+                let ids: Vec<Id> = doc
+                    .objects
+                    .iter()
+                    .filter(|(_, o)| kinds.contains(&o.kind()))
+                    .map(|(id, _)| *id)
+                    .filter(|id| floor.is_none_or(|f| doc.floor_of(*id) == Some(f)))
+                    .filter(|id| match &inside {
+                        None => true,
+                        Some((f, poly)) => {
+                            doc.floor_of(*id) == Some(*f)
+                                && ops::position_of(doc, *id).is_some_and(|p| housecraft_geom::math::point_in_polygon(p, poly))
+                        }
+                    })
+                    .collect();
+                ops::delete(doc, &ids, &mut out)?;
+            }
+            Command::DeleteDimensions { floor, which } => {
+                let ids: Vec<Id> = doc
+                    .iter::<Dimension>()
+                    .filter(|d| floor.is_none_or(|f| d.floor == f))
+                    .filter(|d| match which {
+                        DimensionsToDelete::Automatic => d.auto,
+                        DimensionsToDelete::Manual => !d.auto,
+                        DimensionsToDelete::All => true,
+                    })
+                    .map(|d| d.id)
+                    .collect();
+                ops::delete(doc, &ids, &mut out)?;
+            }
+            Command::ReverseWallLayers { id } => {
+                let w = expect::<Wall>(doc, *id)?.clone();
+                let len = housecraft_geom::v2(w.start).distance(housecraft_geom::v2(w.end));
+                let flip = |d: Length| Length::from_mm(len - d.mm());
+                for o in doc.openings_in(*id).cloned().collect::<Vec<_>>() {
+                    if let Some(om) = doc.get_mut::<Opening>(o.id) {
+                        om.position = flip(o.position);
+                        // The same physical swing (the hinge is seen from that side).
+                        om.swing_in = !o.swing_in;
+                    }
+                    out.modified.push(o.id);
+                }
+                if let Some(wm) = doc.get_mut::<Wall>(*id) {
+                    std::mem::swap(&mut wm.start, &mut wm.end);
+                    let s = &mut wm.shape;
+                    for t in &mut s.top {
+                        t.along = flip(t.along);
+                    }
+                    s.top.reverse();
+                    for n in &mut s.niches {
+                        n.position = flip(n.position);
+                        n.interior = !n.interior;
+                    }
+                    for n in &mut s.newels {
+                        *n = flip(*n);
+                    }
+                }
+                out.modified.push(*id);
+            }
+            Command::AutoRoomDimension { room, offset } => {
+                let rm = expect::<Room>(doc, *room)?.clone();
+                let regions = housecraft_geom::rooms::detect(doc, rm.floor);
+                let i = regions.room_at(housecraft_geom::v2(rm.anchor)).ok_or_else(|| ApiError::Invalid("that room isn't enclosed".into()))?;
+                // Finished faces, counter-clockwise: the room is left of each edge.
+                let poly = regions.rooms[i].polygon.clone();
+                let n = poly.len();
+                for k in 0..n {
+                    let (a, b) = (poly[k], poly[(k + 1) % n]);
+                    if a.distance(b) < 300.0 {
+                        continue;
+                    }
+                    let pt = housecraft_geom::math::pt;
+                    let dim = Command::AddDimension {
+                        floor: Some(rm.floor),
+                        layer: None,
+                        geometry: DimensionGeometry::Linear { points: vec![pt(a), pt(b)], orientation: DimOrientation::Aligned, offset: *offset },
+                        text_override: None,
+                    }
+                    .apply(doc)?;
+                    out.merge(dim);
+                }
+            }
         }
         Ok(out)
     }

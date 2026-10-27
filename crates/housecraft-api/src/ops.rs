@@ -1365,6 +1365,34 @@ fn offset_polyline(points: &[DVec2], closed: bool, dist: f64) -> Vec<DVec2> {
         .collect()
 }
 
+/// Where an object is in plan, for picking objects inside a room: its
+/// position or anchor, the middle of a wall or line, or the middle of its
+/// outline. `None` for objects with no place in plan (types, floors…).
+pub(crate) fn position_of(doc: &Document, id: Id) -> Option<DVec2> {
+    let v = serde_json::to_value(doc.object(id)?).ok()?;
+    let point = |p: &serde_json::Value| -> Option<DVec2> {
+        let p: Point2 = serde_json::from_value(p.clone()).ok()?;
+        Some(v2(p))
+    };
+    for key in ["position", "anchor", "at", "center"] {
+        if let Some(p) = v.get(key).and_then(point) {
+            return Some(p);
+        }
+    }
+    if let (Some(a), Some(b)) = (v.get("start").and_then(point), v.get("end").and_then(point)) {
+        return Some((a + b) / 2.0);
+    }
+    for key in ["points", "outline"] {
+        if let Some(ps) = v.get(key).and_then(|x| x.as_array()) {
+            let ps: Vec<DVec2> = ps.iter().filter_map(point).collect();
+            if !ps.is_empty() {
+                return Some(ps.iter().copied().sum::<DVec2>() / ps.len() as f64);
+            }
+        }
+    }
+    None
+}
+
 pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Result<(), ApiError> {
     let mut doomed: BTreeSet<Id> = BTreeSet::new();
     for id in ids {

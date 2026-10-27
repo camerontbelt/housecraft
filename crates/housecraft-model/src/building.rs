@@ -1383,6 +1383,16 @@ pub struct Room {
     /// Overrides the room type's moldings.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub moldings: Option<Vec<RoomMolding>>,
+    /// The label (name, size, area) is hidden in plan.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub label_hidden: bool,
+    /// The label is turned this many degrees counter-clockwise.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub label_rotation: f64,
+}
+
+fn is_zero(v: &f64) -> bool {
+    *v == 0.0
 }
 
 /// The shape of a room's ceiling.

@@ -19,7 +19,7 @@ has two files:
 | # | Tutorial (Chief page) | Steps replayed | Gaps | Guide |
 |---|---|---|---|---|
 | 1 | Exterior Walls (3) | 15 | 6 | [01-exterior-walls.md](01-exterior-walls.md) |
-| 2 | Interior Walls (28) | 18 | 9 | [02-interior-walls.md](02-interior-walls.md) |
+| 2 | Interior Walls (28) | 22 | 6 | [02-interior-walls.md](02-interior-walls.md) |
 | 3 | Multiple Floors (45) | 11 | 7 | [03-multiple-floors.md](03-multiple-floors.md) |
 | 4 | Interior Stairs (60) | 13 | 10 | [04-interior-stairs.md](04-interior-stairs.md) |
 | 5 | Doors and Windows (82) | 22 | 8 | [05-doors-and-windows.md](05-doors-and-windows.md) |

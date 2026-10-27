@@ -414,20 +414,23 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
     let regions = rooms::detect(doc, opts.floor);
     for room in doc.rooms_on(opts.floor) {
         let look = ctx.look(room.layer);
-        if !look.visible {
+        if !look.visible || room.label_hidden {
             continue;
         }
         let style = ctx.text_style(None, &look);
         let h = style.height.mm();
         let at = v2(room.anchor);
         let ink = style.color.map_or(look.ink, Ink::Color);
+        // Lines stack down the label's own up direction when it is turned.
+        let turn = room.label_rotation;
+        let up = DVec2::from_angle((90.0 + turn).to_radians());
         out.push(
             Some(room.id),
             Prim::Text {
-                at: at + DVec2::Y * h * 0.15,
+                at: at + up * h * 0.15,
                 text: doc.room_name(room),
                 height: h,
-                rotation: 0.0,
+                rotation: turn,
                 justify: Justify::Center,
                 middle: false,
                 bold: style.bold,
@@ -461,10 +464,10 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             out.push(
                 Some(room.id),
                 Prim::Text {
-                    at: at - DVec2::Y * h * (1.1 + k as f64 * 0.95),
+                    at: at - up * h * (1.1 + k as f64 * 0.95),
                     text: line,
                     height: h * 0.7,
-                    rotation: 0.0,
+                    rotation: turn,
                     justify: Justify::Center,
                     middle: false,
                     bold: false,

@@ -8,7 +8,7 @@
     },
     {
       "step": "Open CHIC COTTAGE-CURRENT from the Dashboard's recent documents and pin it",
-      "gap": "No Dashboard; File > Recent Files lists plans but can't pin them. Rows: UI-30, PRJ-02"
+      "gap": "No Dashboard; pin plans in File > Recent Files instead. Row: UI-30"
     },
     {
       "step": "(From tutorial 1) the 42' x 38'4\" shell, measured to the framing; 97 1/8\" ceilings on a 12\" floor",
@@ -387,8 +387,31 @@
       ]
     },
     {
-      "step": "Delete a room label, restore it (Show Room Label), and rotate the closet's label",
-      "gap": "Room labels can't be hidden per room or rotated; they follow the Room Labels layer. Row: RM-14"
+      "step": "Delete a room label, restore it (untick, then tick Show the label in plan), and rotate the closet's label 90°",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:11938.0,-4064.0",
+          "set": {
+            "label_hidden": true
+          }
+        },
+        {
+          "op": "update",
+          "id": "$room_at:11938.0,-4064.0",
+          "set": {
+            "label_hidden": false,
+            "label_rotation": 90.0
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:11938.0,-4064.0",
+          "path": "/label_rotation",
+          "is": 90.0
+        }
+      ]
     },
     {
       "step": "Turn off the room size line under the labels in Active Layer Display Options",
@@ -519,8 +542,23 @@
       ]
     },
     {
-      "step": "Reverse the Fire-6 wall's layers so the fire-rated side faces the Garage",
-      "gap": "No Reverse Layers button; swap the wall's start and end in its specification. Row: WL-25"
+      "step": "Reverse the Fire-6 wall's layers so the fire-rated side faces the Garage (Reverse Layers in its dialog)",
+      "commands": [
+        {
+          "op": "reverse_wall_layers",
+          "id": "$wall_at:10160.0,-4959.3"
+        }
+      ],
+      "expect": [
+        {
+          "rooms": 9
+        },
+        {
+          "get": "$wall_at:10160.0,-4959.3",
+          "path": "/wall_type",
+          "is": "$named:Fire-6"
+        }
+      ]
     },
     {
       "step": "Replace the Living/Entry wall with a Room Divider: the rooms stay separate, nothing is built",
@@ -616,12 +654,47 @@
       ]
     },
     {
-      "step": "Interior Dimension tool (locates the inside of the framing) and Auto Room Dimension",
-      "gap": "No Interior Dimension or Auto Room Dimension; use Manual Dimension. Rows: DIM-01, DIM-26"
+      "step": "Auto Room Dimension in the Bath: a dimension along the inside of each wall",
+      "commands": [
+        {
+          "op": "auto_room_dimension",
+          "room": "$room_at:9652.0,-4064.0"
+        }
+      ],
+      "save": {
+        "bathdims": "dimension"
+      },
+      "expect": [
+        {
+          "get": "$bathdims.0",
+          "path": "/geometry/orientation",
+          "is": "aligned"
+        },
+        {
+          "count": "dimension",
+          "is": 13
+        }
+      ]
     },
     {
-      "step": "Delete Dimensions / Edit > Delete Objects",
-      "gap": "No Delete Dimensions or Delete Objects; select and delete. Rows: DIM-25, CAD-26"
+      "step": "(Interior Dimension tool)",
+      "gap": "No Interior Dimension tool; Auto Room Dimension measures the inside faces, or draw a Manual Dimension. Row: DIM-01"
+    },
+    {
+      "step": "Delete Dimensions: Edit > Delete Dimensions > Manual, This Floor takes the Bath's dimensions away again",
+      "commands": [
+        {
+          "op": "delete_dimensions",
+          "floor": "$named:floor:Floor 1",
+          "which": "manual"
+        }
+      ],
+      "expect": [
+        {
+          "count": "dimension",
+          "is": 8
+        }
+      ]
     },
     {
       "step": "Align collinear walls with the Move handle; Edit Wall Layer Intersection handles",

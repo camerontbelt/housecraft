@@ -828,3 +828,25 @@ fn outdoor_outlets_are_marked_wp() {
     assert!(wp(out.created[0]), "the outside one");
     assert!(!wp(out.created[1]), "not the inside one");
 }
+
+#[test]
+fn room_labels_hide_and_turn() {
+    let mut s = house();
+    let doc = s.document();
+    let room = doc.iter::<housecraft_api::model::Room>().next().unwrap().id;
+    let name = doc.room_name(doc.get::<housecraft_api::model::Room>(room).unwrap());
+    let label = |s: &Session| {
+        let doc = s.document();
+        let d = plan(doc, &PlanOptions::first(doc).unwrap());
+        d.items.iter().find_map(|i| match &i.prim {
+            Prim::Text { text, rotation, .. } if i.object == Some(room) && *text == name => Some(*rotation),
+            _ => None,
+        })
+    };
+    assert_eq!(label(&s), Some(0.0));
+    let set = |v: serde_json::Value| -> Vec<Command> { serde_json::from_value(serde_json::json!([{"op": "update", "id": room.0, "set": v}])).unwrap() };
+    s.apply(&set(serde_json::json!({"label_rotation": 90.0}))).unwrap();
+    assert_eq!(label(&s), Some(90.0));
+    s.apply(&set(serde_json::json!({"label_hidden": true}))).unwrap();
+    assert_eq!(label(&s), None, "hidden");
+}

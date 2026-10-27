@@ -11,7 +11,7 @@ It picks up from [Tutorial 1](01-exterior-walls.md). The steps also run as the a
 | "Interior-4" wall | **Interior 2x4** |
 | "Fire-6" wall | Not built in: you make it (below) |
 | Open Object | Double-click the object |
-| Dashboard, pinned documents | **File › Recent Files** (no pinning yet) |
+| Dashboard, pinned documents | **File › Recent Files** (with Pin / Unpin) |
 
 ## One habit to learn first
 
@@ -51,9 +51,10 @@ Chief splits a wall automatically where another wall crosses it. **HouseCraft do
    middle wall.
 3. Name the rooms: Bath and Closet behind the Garage, Closet for the narrow room beside the Garage.
 4. Rename the Entry: open it and type `Foyer` in **Name**.
-5. *Not in HouseCraft yet:* deleting, restoring or rotating one room's label, and turning off the size line
-   under labels from the layer list. You can change what the label shows for all rooms in
-   **Edit › Default Settings… › Rooms**.
+5. To hide one room's label, open the room and untick **Room Label › Show the label in plan**; tick it again to
+   bring it back. To turn the closet's label, type `90` in **Label Rotation**.
+6. *Not in HouseCraft yet:* turning off the size line under labels from the layer list. You can change what the
+   label shows for all rooms in **Edit › Default Settings… › Rooms**.
 
 ## Merging rooms (page 36)
 
@@ -69,8 +70,8 @@ Chief splits a wall automatically where another wall crosses it. **HouseCraft do
    layers to: Type X gypsum 5/8", 2x6 stud 5 1/2" (**Main**), Gypsum board 1/2".
 2. Select the wall between the Garage and the Bath, Shift+click the wall between the Garage and the closet, open
    them and choose **Fire-6**.
-3. *Not in HouseCraft yet:* the **Reverse Layers** button. To flip a wall, open it and swap its start and end
-   points.
+3. Open the Garage/Bath wall and click **Reverse Layers** so the fire-rated side faces the Garage. Doors and
+   windows in the wall stay where they are.
 
 ## Room dividers (pages 38–39)
 
@@ -83,12 +84,14 @@ Chief splits a wall automatically where another wall crosses it. **HouseCraft do
 
 ## Positioning interior walls (pages 39–42)
 
-1. *Not in HouseCraft yet:* the **Interior Dimension** tool and the **Auto Room Dimension** button. Use the
-   **Manual Dimension** tool (Dimension Tools) between the inside faces of the walls.
+1. Open the Bath and click **Auto Room Dimension**: each wall gets a dimension along the inside of the room.
+   *Not in HouseCraft yet:* the **Interior Dimension** tool. For a single inside measurement, use the **Manual
+   Dimension** tool (Dimension Tools) between the inside faces of the walls.
 2. Move walls exactly as in Tutorial 1: select the wall, click the number on a dimension beside it, type the
    distance and press Enter.
-3. *Not in HouseCraft yet:* **Delete Dimensions** and **Edit › Delete Objects**. Box-select the dimensions and
-   press **Delete**.
+3. **Edit › Delete Dimensions › Manual, This Floor** takes away the dimensions you drew (or the automatic ones, or
+   all). To delete every object of a kind, select one of them and use **Edit › Delete Objects of the Selected
+   Kinds**: on this floor, on all floors, or only inside a room you also selected.
 4. Collinear walls: drag the wall's middle until it lines up (the snap shows when the faces meet). *Not in
    HouseCraft yet:* the Edit Wall Layer Intersection handles.
 
@@ -102,13 +105,11 @@ Chief splits a wall automatically where another wall crosses it. **HouseCraft do
 | Missing | FEATURES row |
 |---|---|
 | Walls split where another wall crosses them | WL-27 |
-| Per-room label hide/rotate; size line layer | RM-14 |
-| Reverse Layers | WL-25 |
-| Interior Dimension tool; Auto Room Dimension | DIM-01, DIM-26 |
-| Delete Dimensions; Delete Objects | DIM-25, CAD-26 |
+| Size line on its own layer | RM-14 |
+| Interior Dimension tool | DIM-01 |
 | Wall layer intersection handles | WL-26 |
 | Floor overview | VIS-30 |
-| Dashboard and pinned recent files | UI-30, PRJ-02 |
+| Dashboard | UI-30 |
 
 Added since: the **Break Wall** tool (Wall Tools). Added for this tutorial: **room dividers** (Room Divider tool and the wall's Invisible box), and **rooms that
 inherit** settings when split, keeping the larger room's when merged.

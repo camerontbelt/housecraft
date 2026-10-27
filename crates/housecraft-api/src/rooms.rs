@@ -68,7 +68,7 @@ pub(crate) fn sync(doc: &mut Document, before: Option<&Document>, out: &mut Outc
                 // Split off an existing room: it inherits that room's settings.
                 let parent = was_at(region.label_point).map(|(r, _)| r);
                 out.created.push(doc.insert(match parent {
-                    Some(p) => Room { id: Id(0), anchor: pt(region.label_point), name: None, ..p },
+                    Some(p) => Room { id: Id(0), anchor: pt(region.label_point), name: None, label_hidden: false, label_rotation: 0.0, ..p },
                     None => Room {
                         id: Id(0),
                         floor,
@@ -81,6 +81,8 @@ pub(crate) fn sync(doc: &mut Document, before: Option<&Document>, out: &mut Outc
                         ceiling: Default::default(),
                         living_area: None,
                         moldings: None,
+                        label_hidden: false,
+                        label_rotation: 0.0,
                     },
                 }));
             }

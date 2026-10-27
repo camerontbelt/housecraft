@@ -873,6 +873,11 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 });
             }
             direction_row(ui, doc, w.start, w.end);
+            ui.label("");
+            if ui.button("Reverse Layers").on_hover_text("Flip the wall so its layers face the other way").clicked() {
+                ed.out.push(Command::ReverseWallLayers { id });
+            }
+            ui.end_row();
             ed.opt_length(ui, "Height", "height", w.height, doc.wall_height(w));
             if let Some(p) = ed.point(ui, "Start", "start", w.start) {
                 ed.out.push(Command::MoveWall {
@@ -2778,6 +2783,20 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
         Object::Room(r) => {
             ed.text(ui, "Room Name", "name", &doc.room_name(r));
             ed.pick::<RoomType>(ui, "Room Type", "room_type", Some(r.room_type), None);
+            Ed::label(ui, "Room Label");
+            let mut show = !r.label_hidden;
+            if ui.checkbox(&mut show, "Show the label in plan").changed() {
+                ed.out.push(patch(id, json!({ "label_hidden": !show })));
+            }
+            ui.end_row();
+            if let Some(a) = ed.number(ui, "Label Rotation (°)", "label_rotation", r.label_rotation) {
+                ed.out.push(patch(id, json!({ "label_rotation": a })));
+            }
+            ui.label("");
+            if ui.button("Auto Room Dimension").on_hover_text("Dimension each wall along the inside of the room").clicked() {
+                ed.out.push(Command::AutoRoomDimension { room: id, offset: Length::from_inches(12.0) });
+            }
+            ui.end_row();
             let area = housecraft_api::query::room_areas(doc, r.floor)
                 .into_iter()
                 .find(|(i, _)| *i == id)

@@ -2373,6 +2373,41 @@ impl App {
                 if item(ui, "Delete", "Del", has_sel) {
                     self.delete_selection();
                 }
+                ui.menu_button("Delete Dimensions", |ui| {
+                    let floor = Some(self.plan.floor);
+                    for (label, which) in [
+                        ("Automatic, This Floor", housecraft_api::DimensionsToDelete::Automatic),
+                        ("Manual, This Floor", housecraft_api::DimensionsToDelete::Manual),
+                        ("All, This Floor", housecraft_api::DimensionsToDelete::All),
+                    ] {
+                        if item(ui, label, "", true) {
+                            self.run1(Command::DeleteDimensions { floor, which });
+                        }
+                    }
+                });
+                // Delete Objects: everything of the selected objects' kinds.
+                let kinds: Vec<ObjectKind> = {
+                    let doc = self.doc();
+                    let mut k: Vec<ObjectKind> = self.selection.iter().filter_map(|id| doc.kind_of(*id)).collect();
+                    k.sort_by_key(|x| format!("{x:?}"));
+                    k.dedup();
+                    k
+                };
+                let room = self.selection.iter().copied().find(|id| self.doc().kind_of(*id) == Some(ObjectKind::Room));
+                ui.add_enabled_ui(!kinds.is_empty(), |ui| {
+                    ui.menu_button("Delete Objects of the Selected Kinds", |ui| {
+                        let others: Vec<ObjectKind> = kinds.iter().copied().filter(|k| *k != ObjectKind::Room).collect();
+                        if item(ui, "On This Floor", "", true) {
+                            self.run1(Command::DeleteObjects { floor: Some(self.plan.floor), kinds: kinds.clone(), room: None });
+                        }
+                        if item(ui, "On All Floors", "", true) {
+                            self.run1(Command::DeleteObjects { floor: None, kinds: kinds.clone(), room: None });
+                        }
+                        if item(ui, "In the Selected Room", "", room.is_some() && !others.is_empty()) {
+                            self.run1(Command::DeleteObjects { floor: None, kinds: others, room });
+                        }
+                    });
+                });
                 ui.separator();
                 if item(ui, "Select All", "Ctrl+A", true) {
                     self.select_all();

@@ -184,7 +184,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-11 | Multi-select edit rooms (type, vaulted, heights, platform) | P1 | M3 ✓ |
 | RM-12 | Object Information Panel (custom fields) for rooms | P1 | M1 ✓ Object Information in every placed object's and room's specification: code, description, manufacturer, comment and your own fields |
 | RM-13 | Room label dimension formats | P1 | M1 ✓ Default Settings > Rooms: labels show area, size (rounded or exact) and ceiling height |
-| RM-14 | Per-room label control: hide/show, rotate, move; size line on its own layer | P2 | M9 |
+| RM-14 | Per-room label control: hide/show, rotate, move; size line on its own layer | P2 | M9 ◐ each room's label can be hidden and rotated; size line on its own layer later |
 | RM-15 | Split rooms inherit the parent room's settings; merged rooms keep the larger room's | P1 | M9 ✓ rooms::sync compares with the plan before the change |
 | RM-16 | Floor/Ceiling Platform defaults shared by new floors (structure, finishes) | P2 | M9 |
 | RM-17 | Outdoor room types (Porch, Deck) are left out of the foundation | P1 | M9 ✓ RoomType.exterior; walls that only enclose outdoor rooms don't shape the foundation |
@@ -220,7 +220,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-22 | Fix Wall Connections: close small gaps and join overlapping walls | P2 | M9 |
 | WL-23 | Glass wall and glass pony wall tools | P2 | M9 |
 | WL-24 | Break Wall tool: split a wall at a clicked point | P1 | M9 ✓ Wall Tools › Break Wall; `break_wall` (openings follow their piece) |
-| WL-25 | Reverse Layers: flip a wall's layers to the other side | P2 | M9 |
+| WL-25 | Reverse Layers: flip a wall's layers to the other side | P2 | M9 ✓ Reverse Layers in the wall dialog (`reverse_wall_layers`): flips the wall end for end, keeping doors, windows, niches and the top in place |
 | WL-26 | Edit Wall Layer Intersection handles (where layers of meeting walls stop) | P3 | M9 |
 | WL-27 | Split walls automatically where another wall crosses or meets them | P2 | M9 |
 | WL-28 | Align With Wall Above / Below edit buttons | P2 | M9 |
@@ -429,7 +429,7 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-23 | Typed CAD input (Input Point/Line/Arc dialogs with distance and angle) | P1 | M9 |
 | CAD-24 | Construction lines (infinite guide lines) with order management | P3 | M9 |
 | CAD-25 | Edit behaviours: rotate/resize about a chosen current point; connect CAD segments | P3 | M9 |
-| CAD-26 | Delete Objects dialog in plans (by type, floor, room) | P2 | M9 |
+| CAD-26 | Delete Objects dialog in plans (by type, floor, room) | P2 | M9 ◐ Edit › Delete Objects of the Selected Kinds: on this floor, all floors or inside a selected room (`delete_objects`); a dialog to tick kinds later |
 | CAD-27 | Paste Special: choose which attributes to paste | P3 | M9 |
 | CAD-28 | Bumping/pushing: objects push neighbours instead of overlapping | P3 | M9 |
 | CAD-29 | Reflect About Object (mirror a copy across a door, window or wall centre) | P3 | M9 ✓ Edit › Reflect About Object (and the edit toolbar's mirror button): click a wall, CAD line, door or window; Ctrl+click keeps the original (`reflect_about`) |
@@ -483,8 +483,8 @@ These come from reading the whole list and change the architecture, not just the
 | DIM-22 | Angled dimension behaviour | P2 | M1 |
 | DIM-23 | Story pole dimensions | P3 | M4 ✓ Story Pole in a view: marked staff with each level's height |
 | DIM-24 | Tape Measure tool (measure without placing a dimension) | P2 | M9 |
-| DIM-25 | Delete Dimensions (automatic, manual or all, by floor) | P2 | M9 |
-| DIM-26 | Auto Room Dimension: dimension every wall of a selected room | P2 | M9 |
+| DIM-25 | Delete Dimensions (automatic, manual or all, by floor) | P2 | M9 ✓ Edit › Delete Dimensions: automatic, manual or all on this floor (`delete_dimensions`, any floor or all) |
+| DIM-26 | Auto Room Dimension: dimension every wall of a selected room | P2 | M9 ✓ Auto Room Dimension in the room dialog (`auto_room_dimension`): one dimension along each inside wall face |
 | DIM-27 | Moving or editing automatic dimensions keeps them (they become manual) | P2 | M9 |
 | DIM-28 | Dimension extension-line and add-segment handles | P2 | M9 |
 | DIM-29 | Dimension defaults choosing what manual dimensions locate (cabinet sides, fixture corners, electrical, blocks) | P3 | M9 |

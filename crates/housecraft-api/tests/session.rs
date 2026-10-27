@@ -2909,6 +2909,36 @@ fn any_selection_moves_by_typing_on_a_dimension() {
 }
 
 #[test]
+fn reverse_layers_and_delete_objects_in_a_room() {
+    let mut s = boxed();
+    let wall = s.document().iter::<Wall>().next().unwrap().clone();
+    let door = apply(&mut s, &format!(r#"[{{"op": "add_door", "wall": {}, "position": "5'"}}]"#, wall.id.0)).created[0];
+    let before = s.document().get::<Opening>(door).unwrap().clone();
+    s.apply(&[Command::ReverseWallLayers { id: wall.id }]).unwrap();
+    let doc = s.document();
+    let w = doc.get::<Wall>(wall.id).unwrap();
+    assert_eq!((w.start, w.end), (wall.end, wall.start), "flipped end for end");
+    let o = doc.get::<Opening>(door).unwrap();
+    let len = wall.length().mm();
+    assert!((o.position.mm() - (len - before.position.mm())).abs() < 1e-6, "the door stays put");
+    assert_eq!(o.swing_in, !before.swing_in, "and still swings the same way");
+
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_electrical", "electrical_kind": "recessed_light", "at": ["5'","5'"]},
+            {"op": "add_electrical", "electrical_kind": "recessed_light", "at": ["40'","5'"]}]"#,
+    );
+    let room = s.document().iter::<Room>().next().unwrap().id;
+    s.apply(&[Command::DeleteObjects { floor: None, kinds: vec![ObjectKind::Electrical], room: Some(room) }]).unwrap();
+    assert!(s.document().get::<Electrical>(out.created[0]).is_none(), "inside the room: deleted");
+    assert!(s.document().get::<Electrical>(out.created[1]).is_some(), "outside: kept");
+    let dims = s.apply(&[Command::AutoRoomDimension { room, offset: Length::from_inches(12.0) }]).unwrap().created.len();
+    assert_eq!(dims, 4, "one per wall of the box");
+    s.apply(&[Command::DeleteDimensions { floor: None, which: housecraft_api::DimensionsToDelete::Manual }]).unwrap();
+    assert_eq!(s.document().iter::<Dimension>().filter(|d| !d.auto).count(), 0);
+}
+
+#[test]
 fn fences_size_their_posts_and_rails_and_gates_have_a_height_and_style() {
     let mut s = boxed();
     let fence = apply(
