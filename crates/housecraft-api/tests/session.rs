@@ -2909,6 +2909,30 @@ fn any_selection_moves_by_typing_on_a_dimension() {
 }
 
 #[test]
+fn outlets_go_in_the_floor_in_the_open_and_weatherproof_outside() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_electrical", "electrical_kind": "outlet", "at": ["-1'","15'"]},
+            {"op": "add_electrical", "electrical_kind": "outlet", "at": ["1'","15'"]},
+            {"op": "add_electrical", "electrical_kind": "outlet240", "at": ["10'","15'"]},
+            {"op": "add_electrical", "electrical_kind": "data_jack", "at": ["1'","10'"]},
+            {"op": "add_electrical", "electrical_kind": "air_switch", "at": ["10'","10'"]}]"#,
+    );
+    let doc = s.document();
+    let e = |i: usize| doc.get::<Electrical>(out.created[i]).unwrap();
+    assert!(e(0).weatherproof && e(0).electrical_kind == ElectricalKind::Outlet, "outside: WP");
+    assert!(!e(1).weatherproof, "inside");
+    assert_eq!(e(2).electrical_kind, ElectricalKind::FloorOutlet240, "out in the room");
+    assert!(e(3).position.0.mm().abs() > 1.0 && e(3).position.0.mm() < 304.8, "a jack goes on the wall face");
+    assert!(e(4).electrical_kind.is_switch(), "an air switch controls things like a switch");
+    let mesh = housecraft_api::geom::mesh::build(doc, None);
+    for i in 0..5 {
+        assert!(mesh.parts.iter().any(|p| p.object == out.created[i]), "#{i} is built");
+    }
+}
+
+#[test]
 fn floors_set_their_own_joist_spacing_and_rim_material() {
     let mut s = boxed();
     let floor2 = apply(&mut s, r#"[{"op": "add_floor"}]"#).created[0];

@@ -13,26 +13,31 @@ they face out.
 1. **Duplex Outlet**: click on the wall behind the refrigerator, then on the wall left of the sliding door to the
    Deck. Click a third time on the outside of that wall, on the Deck.
 2. Open one (double-click): **Height** is blank, which means the standard 12".
-3. *Not in HouseCraft yet:* the WP mark on outdoor outlets and a floor-outlet symbol. Recessing the outlet into the
-   wall (distance from wall, wall cut) isn't there either. Our outlet already sits on the wall's outer face.
+3. The outlet on the Deck side is drawn with **WP** (weatherproof) by itself, because it faces outdoors. Its dialog
+   has a **Weatherproof** box if you need to change that. An outlet clicked out in a room, more than 2' from any
+   wall, becomes a **Floor Outlet**.
+4. Open the inside outlet: **Height** `11 1/2"`.
+5. *Not in HouseCraft yet:* recessing an outlet into the wall (distance from wall, wall cut). Our outlet sits on the
+   wall's face.
 
 ## Counter outlets (pages 321–323)
 
-1. **GFCI Outlet** on the Kitchen's left wall, under a window. Open it and set **Height** `39"`. *Not in HouseCraft
-   yet:* outlets starting at counter height when they're over a countertop, and turning an outlet sideways in an
-   elevation.
+1. **GFCI Outlet** on the Kitchen's left wall, under a window. Open it and set **Height** `39"`. To turn it sideways, tick
+   **Plate** › **On its side (landscape)**. *Not in HouseCraft yet:* outlets starting at counter height by themselves
+   when they're over a countertop.
 2. **Center Object**, then click the sink base: the outlet centres on it.
 3. Select it and open the edit toolbar's **Move / Copy / Rotate / Reflect…** › **Move**. Move it `72"` along the
    wall without a copy. Then copy it three times `-48"` with **Multiple Copy…** (**Number of copies** `3`).
 4. One more **GFCI Outlet** on the Dining room wall, left of the refrigerator. Height `39"`.
-5. **240V Outlet** on the island where the range is. *Not in HouseCraft yet:* the floor-mounted 240V symbol and a
-   garbage disposal outlet.
+5. **240V Outlet** on the island where the range is. It's out in the room, so it becomes a **240V Floor Outlet**.
+6. **Disposal Outlet** on the wall behind the sink base. It's drawn with a **D**.
 
 ## Switches (pages 324–325)
 
 1. **Switch**: on the back wall right of the sliding door, and right of the doorway into the Dining room.
-2. Two more switches beside the Deck one. *Not in HouseCraft yet:* Make Ganged Electrical Block, and the countertop
-   air switch.
+2. Two more switches beside the Deck one. *Not in HouseCraft yet:* Make Ganged Electrical Block.
+3. **Air Switch** on the countertop beside the sink. It's a switch, so you can wire it to the disposal outlet with
+   **Connect Electrical**.
 
 ## Wiring (pages 326–328)
 
@@ -47,7 +52,9 @@ fixture again to unwire it.
 
 ## Data and security (page 328)
 
-**Smoke Detector** in the Bedroom. *Not in HouseCraft yet:* data jacks, alarms and other security symbols.
+**Smoke Detector** in the Bedroom. The electrical tool list also has **Data Jack**, **Phone Jack**, **TV Jack**,
+**CO Detector**, **Motion Sensor**, **Alarm Keypad** and **Doorbell Button**. Put a data jack and a phone jack in
+the Bedroom and an alarm keypad by the Deck door.
 
 ## Legend (page 328)
 
@@ -64,8 +71,7 @@ putting it in a CAD detail.
 
 | Missing | FEATURES row |
 |---|---|
-| WP outlets, floor outlets, counter-height outlets, recessing, sideways outlets | EL-14 |
-| Data/security symbols, air switch, disposal and floor outlets | EL-13 |
+| Counter-height outlets; recessing into the wall | EL-14 |
 | Ganged electrical blocks | EL-09 |
 | Wiring splines | EL-01 |
 | Schedule title; schedules in CAD details | EST-31 |

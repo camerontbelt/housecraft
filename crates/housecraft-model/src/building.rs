@@ -257,10 +257,25 @@ pub enum ElectricalKind {
     ReturnGrille,
     Thermostat,
     ExhaustFan,
+    // More electrical (added later, so listed after the plumbing and HVAC).
+    /// A receptacle in the floor (an island, the middle of a room).
+    FloorOutlet,
+    FloorOutlet240,
+    /// A switched outlet under the sink for a garbage disposal.
+    DisposalOutlet,
+    /// A push button on the countertop that switches the disposal.
+    AirSwitch,
+    DataJack,
+    PhoneJack,
+    TvJack,
+    CoDetector,
+    MotionSensor,
+    AlarmKeypad,
+    Doorbell,
 }
 
 impl ElectricalKind {
-    pub const ALL: [ElectricalKind; 18] = [
+    pub const ALL: [ElectricalKind; 29] = [
         ElectricalKind::Outlet,
         ElectricalKind::GfciOutlet,
         ElectricalKind::Outlet240,
@@ -279,6 +294,17 @@ impl ElectricalKind {
         ElectricalKind::ReturnGrille,
         ElectricalKind::Thermostat,
         ElectricalKind::ExhaustFan,
+        ElectricalKind::FloorOutlet,
+        ElectricalKind::FloorOutlet240,
+        ElectricalKind::DisposalOutlet,
+        ElectricalKind::AirSwitch,
+        ElectricalKind::DataJack,
+        ElectricalKind::PhoneJack,
+        ElectricalKind::TvJack,
+        ElectricalKind::CoDetector,
+        ElectricalKind::MotionSensor,
+        ElectricalKind::AlarmKeypad,
+        ElectricalKind::Doorbell,
     ];
 
     pub fn name(self) -> &'static str {
@@ -301,6 +327,17 @@ impl ElectricalKind {
             ElectricalKind::ReturnGrille => "Return Air Grille",
             ElectricalKind::Thermostat => "Thermostat",
             ElectricalKind::ExhaustFan => "Exhaust Fan",
+            ElectricalKind::FloorOutlet => "Floor Outlet",
+            ElectricalKind::FloorOutlet240 => "240V Floor Outlet",
+            ElectricalKind::DisposalOutlet => "Disposal Outlet",
+            ElectricalKind::AirSwitch => "Air Switch",
+            ElectricalKind::DataJack => "Data Jack",
+            ElectricalKind::PhoneJack => "Phone Jack",
+            ElectricalKind::TvJack => "TV Jack",
+            ElectricalKind::CoDetector => "CO Detector",
+            ElectricalKind::MotionSensor => "Motion Sensor",
+            ElectricalKind::AlarmKeypad => "Alarm Keypad",
+            ElectricalKind::Doorbell => "Doorbell Button",
         }
     }
 
@@ -344,7 +381,30 @@ impl ElectricalKind {
     }
 
     pub fn is_switch(self) -> bool {
-        matches!(self, ElectricalKind::Switch | ElectricalKind::Dimmer)
+        matches!(self, ElectricalKind::Switch | ElectricalKind::Dimmer | ElectricalKind::AirSwitch)
+    }
+
+    /// Receptacles: wall outlets become floor outlets placed in the open,
+    /// and are marked WP outside.
+    pub fn is_outlet(self) -> bool {
+        matches!(
+            self,
+            ElectricalKind::Outlet
+                | ElectricalKind::GfciOutlet
+                | ElectricalKind::Outlet240
+                | ElectricalKind::DisposalOutlet
+                | ElectricalKind::FloorOutlet
+                | ElectricalKind::FloorOutlet240
+        )
+    }
+
+    /// The floor-mounted version of a wall outlet.
+    pub fn in_floor(self) -> Option<ElectricalKind> {
+        match self {
+            ElectricalKind::Outlet | ElectricalKind::GfciOutlet => Some(ElectricalKind::FloorOutlet),
+            ElectricalKind::Outlet240 => Some(ElectricalKind::FloorOutlet240),
+            _ => None,
+        }
     }
 
     /// Mounted on a wall face (snaps to walls when placed).
@@ -361,6 +421,13 @@ impl ElectricalKind {
                 | ElectricalKind::GasOutlet
                 | ElectricalKind::ReturnGrille
                 | ElectricalKind::Thermostat
+                | ElectricalKind::DisposalOutlet
+                | ElectricalKind::DataJack
+                | ElectricalKind::PhoneJack
+                | ElectricalKind::TvJack
+                | ElectricalKind::MotionSensor
+                | ElectricalKind::AlarmKeypad
+                | ElectricalKind::Doorbell
         )
     }
 
@@ -376,7 +443,14 @@ impl ElectricalKind {
             ElectricalKind::GasOutlet => 12.0,
             ElectricalKind::ReturnGrille => 12.0,
             ElectricalKind::Thermostat => 60.0,
-            ElectricalKind::FloorDrain => 0.0,
+            ElectricalKind::FloorDrain | ElectricalKind::FloorOutlet | ElectricalKind::FloorOutlet240 => 0.0,
+            ElectricalKind::DisposalOutlet => 18.0,
+            ElectricalKind::DataJack | ElectricalKind::PhoneJack | ElectricalKind::TvJack => 12.0,
+            ElectricalKind::MotionSensor => 84.0,
+            ElectricalKind::AlarmKeypad => 54.0,
+            ElectricalKind::Doorbell => 48.0,
+            // On the countertop.
+            ElectricalKind::AirSwitch => 36.0,
             _ => return None,
         }))
     }
@@ -410,6 +484,12 @@ pub struct Electrical {
     /// A light fixture's style and size; `None` draws the kind's plain symbol.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fixture: Option<Fixture>,
+    /// Weatherproof (an outlet outdoors): drawn with WP.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub weatherproof: bool,
+    /// The cover plate turned on its side (horizontal).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub landscape: bool,
 }
 
 /// What a light fixture looks like and how big it is.

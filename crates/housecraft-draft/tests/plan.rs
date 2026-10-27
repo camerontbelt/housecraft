@@ -812,3 +812,19 @@ fn template_pages_fill_page_macros_for_the_page_they_sit_under() {
     let lines = d.items.iter().filter(|i| !matches!(i.prim, Prim::Text { .. })).count();
     assert!(lines > 0, "the template's border is drawn under page 2");
 }
+
+#[test]
+fn outdoor_outlets_are_marked_wp() {
+    let mut s = house();
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "add_electrical", "electrical_kind": "outlet", "at": ["-1'","10'"]},
+            {"op": "add_electrical", "electrical_kind": "outlet", "at": ["1'","10'"]}]"#,
+    )
+    .unwrap();
+    let out = s.apply(&cmds).unwrap();
+    let doc = s.document();
+    let d = plan(doc, &PlanOptions::first(doc).unwrap());
+    let wp = |id| d.items.iter().any(|i| i.object == Some(id) && matches!(&i.prim, Prim::Text { text, .. } if text == "WP"));
+    assert!(wp(out.created[0]), "the outside one");
+    assert!(!wp(out.created[1]), "not the inside one");
+}

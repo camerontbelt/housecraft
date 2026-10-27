@@ -866,11 +866,36 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
         return;
     }
     match e.electrical_kind {
-        K::Outlet | K::GfciOutlet | K::Outlet240 | K::Switch | K::Dimmer => {
-            // Cover plate standing proud of the wall face.
+        K::Outlet
+        | K::GfciOutlet
+        | K::Outlet240
+        | K::Switch
+        | K::Dimmer
+        | K::DisposalOutlet
+        | K::DataJack
+        | K::PhoneJack
+        | K::TvJack
+        | K::Doorbell => {
+            // Cover plate standing proud of the wall face (on its side when landscape).
             let zc = z.unwrap_or(z0 + 300.0);
-            let plate = rect(p + out * 4.0, along, 70.0, 8.0);
-            mesh.prism(&plate, zc - 57.0, zc + 57.0, Surface::Device);
+            let (w, h) = if e.landscape { (114.0, 70.0) } else { (70.0, 114.0) };
+            let plate = rect(p + out * 4.0, along, w, 8.0);
+            mesh.prism(&plate, zc - h / 2.0, zc + h / 2.0, Surface::Device);
+        }
+        K::AlarmKeypad | K::MotionSensor => {
+            let zc = z.unwrap_or(z0 + 1400.0);
+            mesh.prism(&rect(p + out * 15.0, along, 130.0, 30.0), zc - 60.0, zc + 60.0, Surface::Device);
+        }
+        K::FloorOutlet | K::FloorOutlet240 => {
+            mesh.prism(&rect(p, out, 110.0, 110.0), z0, z0 + 4.0, Surface::Device);
+        }
+        K::AirSwitch => {
+            // A button standing on the countertop.
+            let zc = z.unwrap_or(z0 + 914.0);
+            mesh.prism(&disc(p, 22.0, 12), zc, zc + 60.0, Surface::Device);
+        }
+        K::CoDetector => {
+            mesh.prism(&disc(p, 60.0, 12), ceiling - 35.0, ceiling, Surface::Device);
         }
         K::WallLight => {
             let zc = z.unwrap_or(z0 + 1800.0);

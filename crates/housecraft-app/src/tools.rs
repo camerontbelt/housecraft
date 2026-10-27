@@ -368,6 +368,17 @@ impl Family {
                 Tool::Electrical(ElectricalKind::CeilingFan),
                 Tool::Electrical(ElectricalKind::SmokeDetector),
                 Tool::Electrical(ElectricalKind::JunctionBox),
+                Tool::Electrical(ElectricalKind::FloorOutlet),
+                Tool::Electrical(ElectricalKind::FloorOutlet240),
+                Tool::Electrical(ElectricalKind::DisposalOutlet),
+                Tool::Electrical(ElectricalKind::AirSwitch),
+                Tool::Electrical(ElectricalKind::DataJack),
+                Tool::Electrical(ElectricalKind::PhoneJack),
+                Tool::Electrical(ElectricalKind::TvJack),
+                Tool::Electrical(ElectricalKind::CoDetector),
+                Tool::Electrical(ElectricalKind::MotionSensor),
+                Tool::Electrical(ElectricalKind::AlarmKeypad),
+                Tool::Electrical(ElectricalKind::Doorbell),
                 Tool::Electrical(ElectricalKind::HoseBibb),
                 Tool::Electrical(ElectricalKind::FloorDrain),
                 Tool::Electrical(ElectricalKind::GasOutlet),
@@ -671,7 +682,10 @@ impl Tool {
                 "Click the bottom of the stair, then click in the direction it climbs."
             }
             Tool::Electrical(k) if k.on_wall() => "Click near a wall to place it on the wall face.",
-            Tool::Electrical(ElectricalKind::FloorDrain) => "Click to place it in the floor.",
+            Tool::Electrical(ElectricalKind::FloorDrain | ElectricalKind::FloorOutlet | ElectricalKind::FloorOutlet240) => {
+                "Click to place it in the floor."
+            }
+            Tool::Electrical(ElectricalKind::AirSwitch) => "Click on the countertop to place it.",
             Tool::Electrical(_) => "Click to place it on the ceiling.",
             Tool::ConnectSwitch => {
                 "Click a switch, then click fixtures to wire or unwire them. Shared fixtures make 3-way and 4-way switches."

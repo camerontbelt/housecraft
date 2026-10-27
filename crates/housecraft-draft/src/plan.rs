@@ -1788,6 +1788,59 @@ fn electrical_symbol(
             if e.electrical_kind == K::GfciOutlet {
                 text(out, c + n * r * 2.2, "GFI", r * 1.1);
             }
+            if e.weatherproof {
+                text(out, c + n * r * 2.2 + t * r * 2.6, "WP", r * 1.1);
+            }
+        }
+        K::DisposalOutlet => {
+            let c = p + n * r;
+            circle(out, c, r);
+            for k in [-0.35, 0.35] {
+                let o = n * (r * k);
+                line(out, c + o - t * r * 1.5, c + o + t * r * 1.5);
+            }
+            text(out, c + n * r * 2.2, "D", r * 1.1);
+        }
+        K::FloorOutlet | K::FloorOutlet240 => {
+            // An outlet in a box.
+            let (u, v) = (n * r * 1.4, t * r * 1.4);
+            out.push(id, Prim::Polyline { points: vec![p - u - v, p + u - v, p + u + v, p - u + v], closed: true, stroke });
+            circle(out, p, r * 0.8);
+            let prongs: &[f64] = if e.electrical_kind == K::FloorOutlet240 { &[-0.4, 0.0, 0.4] } else { &[-0.3, 0.3] };
+            for k in prongs {
+                let o = n * (r * k);
+                line(out, p + o - t * r * 0.8, p + o + t * r * 0.8);
+            }
+        }
+        K::AirSwitch => {
+            circle(out, p, r * 0.6);
+            text(out, p + n * r * 1.8, switch_label.unwrap_or("AS"), r * 1.2);
+        }
+        K::DataJack | K::PhoneJack | K::TvJack => {
+            // A triangle pointing into the room, lettered.
+            let c = p + n * r;
+            out.push(id, Prim::Polyline { points: vec![p - t * r, p + t * r, p + n * r * 1.6], closed: true, stroke });
+            let label = match e.electrical_kind {
+                K::DataJack => "D",
+                K::PhoneJack => "P",
+                _ => "TV",
+            };
+            text(out, c + n * r * 2.0, label, r * 1.1);
+        }
+        K::CoDetector => {
+            circle(out, p, r * 1.4);
+            text(out, p, "CO", r * 1.0);
+        }
+        K::MotionSensor | K::AlarmKeypad | K::Doorbell => {
+            let c = p + n * r;
+            let (u, v) = (n * r * 0.6, t * r);
+            out.push(id, Prim::Polyline { points: vec![c - u - v, c + u - v, c + u + v, c - u + v], closed: true, stroke });
+            let label = match e.electrical_kind {
+                K::MotionSensor => "MS",
+                K::AlarmKeypad => "KP",
+                _ => "DB",
+            };
+            text(out, c + n * r * 2.0, label, r * 1.1);
         }
         K::Switch | K::Dimmer => {
             let c = p + n * r * 2.0;

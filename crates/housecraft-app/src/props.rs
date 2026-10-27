@@ -2331,6 +2331,12 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             if let Some(n) = ed.number(ui, "Facing (deg)", "rotation", e.rotation) {
                 ed.out.push(patch(id, json!({ "rotation": n })));
             }
+            if e.electrical_kind.on_wall() {
+                ed.check(ui, "Plate", "landscape", "On its side (landscape)", e.landscape);
+            }
+            if e.electrical_kind.is_outlet() {
+                ed.check(ui, "Weatherproof", "weatherproof", "Outdoors: marked WP", e.weatherproof);
+            }
             // A table lamp stands on a table top at its height.
             let table = e.fixture.is_some_and(|f| f.style == FixtureStyle::TableLamp);
             match e.electrical_kind.default_height().or(table.then(|| Length::from_inches(30.0))) {

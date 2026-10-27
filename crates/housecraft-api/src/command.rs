@@ -156,7 +156,8 @@ pub enum Command {
     },
     /// Place an electrical device or fixture. Wall devices (outlets,
     /// switches, wall lights) snap to the nearest wall face within 2' and
-    /// face into the room unless `rotation` is given.
+    /// face into the room unless `rotation` is given. An outlet with no wall
+    /// that near becomes a floor outlet; one facing outdoors is weatherproof.
     AddElectrical {
         floor: Option<Id>,
         electrical_kind: ElectricalKind,
@@ -1675,17 +1676,24 @@ impl Command {
                 let floor = ops::resolve_floor(doc, *floor)?;
                 let mut position = *at;
                 let mut angle = rotation.unwrap_or(0.0);
-                if electrical_kind.on_wall()
-                    && rotation.is_none()
-                    && let Some((q, a)) = housecraft_geom::electrical::snap_to_wall(
-                        doc,
-                        floor,
-                        housecraft_geom::v2(*at),
-                        Length::from_feet(2.0).mm(),
-                    )
-                {
-                    position = housecraft_geom::pt(q);
-                    angle = a;
+                let mut kind = *electrical_kind;
+                let mut weatherproof = false;
+                if (kind.on_wall() || kind.in_floor().is_some()) && rotation.is_none() {
+                    match housecraft_geom::electrical::snap_to_wall(doc, floor, housecraft_geom::v2(*at), Length::from_feet(2.0).mm()) {
+                        Some((q, a)) => {
+                            position = housecraft_geom::pt(q);
+                            angle = a;
+                            // An outlet facing out of the building is weatherproof.
+                            let front = q + housecraft_geom::DVec2::from_angle(a.to_radians()) * 150.0;
+                            weatherproof = kind.is_outlet()
+                                && !housecraft_geom::rooms::detect(doc, floor)
+                                    .footprints
+                                    .iter()
+                                    .any(|f| housecraft_geom::math::point_in_polygon(front, f));
+                        }
+                        // An outlet out in the room goes in the floor.
+                        None => kind = kind.in_floor().unwrap_or(kind),
+                    }
                 }
                 if !controls.is_empty() && !electrical_kind.is_switch() {
                     return invalid("only switches control fixtures");
@@ -1693,7 +1701,7 @@ impl Command {
                 out.created.push(doc.insert(Electrical {
                     id: Id(0),
                     floor,
-                    electrical_kind: *electrical_kind,
+                    electrical_kind: kind,
                     position,
                     rotation: angle,
                     height: *height,
@@ -1702,6 +1710,8 @@ impl Command {
                     layer: d.layers.electrical.unwrap_or(d.layers.cad),
                     light: None,
                     fixture: None,
+                    weatherproof,
+                    landscape: false,
                 }));
             }
             Command::ConnectSwitch {

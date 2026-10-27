@@ -56,8 +56,28 @@
       ]
     },
     {
-      "step": "(Weatherproof WP symbol outside; floor outlet when you click in the open; Height to Center 11 1/2\")",
-      "gap": "Outlets outside aren't marked WP, and an outlet clicked in the open keeps the wall symbol; outlets default to 12\" high. Row: EL-14"
+      "step": "(Outlets: the outside one is marked WP by itself; one clicked out in a room becomes a floor outlet; Height 11 1/2\")",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$out.0",
+          "set": {
+            "height": "11 1/2\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$out.2",
+          "path": "/weatherproof",
+          "is": true
+        },
+        {
+          "get": "$out.0",
+          "path": "/height",
+          "is": "11 1/2\""
+        }
+      ]
     },
     {
       "step": "Recess the Deck outlet into the wall (distance from wall -4\", cuts the wall 4\")",
@@ -104,8 +124,23 @@
       "gap": "New outlets don't notice the countertop; set the height yourself. Row: EL-14"
     },
     {
-      "step": "Wall Elevation: turn the outlet horizontal (don't regenerate its plan symbol)",
-      "gap": "Electrical objects have no rotation about the wall's face (portrait/landscape). Row: EL-14"
+      "step": "Wall Elevation: turn the outlet horizontal: open it and tick Plate > On its side (landscape)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$gfci",
+          "set": {
+            "landscape": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$gfci",
+          "path": "/landscape",
+          "is": true
+        }
+      ]
     },
     {
       "step": "Counter outlets: centre on the sink base, then move 72\" and Transform/Replicate three copies 48\" apart",
@@ -175,18 +210,39 @@
             2032.0,
             -2540.0
           ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "disposal_outlet",
+          "at": [
+            86.519,
+            -3251.2
+          ]
         }
       ],
       "expect": [
         {
+          "get": "$lib220.0",
+          "path": "/electrical_kind",
+          "is": "floor_outlet240"
+        },
+        {
+          "get": "$lib220.1",
+          "path": "/electrical_kind",
+          "is": "disposal_outlet"
+        },
+        {
           "count": "electrical",
-          "is": 57
+          "is": 58
         }
-      ]
+      ],
+      "save": {
+        "lib220": "electrical"
+      }
     },
     {
-      "step": "(Floor 220V symbol; disposal outlet)",
-      "gap": "One 240V outlet symbol; no floor-mounted or appliance (disposal) outlets. Row: EL-13"
+      "step": "(The 240V outlet at the island goes in the floor by itself; the Disposal Outlet tool marks the outlet behind the sink D)"
     },
     {
       "step": "Switches: right of the sliding door to the Deck, right of the doorway into the Dining room",
@@ -222,8 +278,28 @@
       ]
     },
     {
-      "step": "(Air switch on the countertop for the disposal)",
-      "gap": "No air switch. Row: EL-13"
+      "step": "Air switch on the countertop beside the sink for the disposal",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "air_switch",
+          "at": [
+            700.0,
+            -3251.2
+          ]
+        }
+      ],
+      "save": {
+        "air": "electrical"
+      },
+      "expect": [
+        {
+          "get": "$air",
+          "path": "/electrical_kind",
+          "is": "air_switch"
+        }
+      ]
     },
     {
       "step": "Two more switches beside the Deck one, then Make Ganged Electrical Block; a gang by the Dining doorway too",
@@ -253,7 +329,7 @@
       "expect": [
         {
           "count": "electrical",
-          "is": 61
+          "is": 63
         }
       ]
     },
@@ -328,18 +404,44 @@
             10414.0,
             -1524.0
           ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "data_jack",
+          "at": [
+            10414.0,
+            -500.0
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "phone_jack",
+          "at": [
+            9500.0,
+            -1524.0
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "alarm_keypad",
+          "at": [
+            6858.0,
+            -500.0
+          ]
         }
       ],
       "expect": [
         {
           "count": "electrical",
-          "is": 62
+          "is": 67
         }
       ]
     },
     {
-      "step": "(Jacks, alarms and other special symbols)",
-      "gap": "Smoke detectors and junction boxes only; no data jacks, alarms or security symbols. Row: EL-13"
+      "step": "(Data, phone and TV jacks, CO detectors, motion sensors, alarm keypads and doorbells are in the electrical tool list)"
     },
     {
       "step": "Electrical legend: an Electrical Schedule in the Legends and Notes CAD detail, titled Electrical Legend, with scaled pictures",
