@@ -10,7 +10,7 @@ It carries on from [Tutorial 3](03-multiple-floors.md). The steps also run as th
 |---|---|
 | Build › Stairs › Draw Stairs / Straight Stairs | **Stair Tools › Straight Stair** (Build › Stairs) |
 | Staircase Specification | Double-click the stair |
-| Auto Stairwell button | The stair's **Stairwell** box (on by default) |
+| Auto Stairwell button | The **Auto Stairwell** button in the stair's dialog |
 | Back Clipped Cross Section | **3D › Elevations and Sections › Cross Section / Elevation Tool** |
 | Note (CAD › Text › Note) | The **Callout** tool, then tick **Numbered Note** |
 | Tools › Schedules › Note Schedule | **Tools › Schedules › Place in Plan › Note Schedule** |
@@ -44,8 +44,9 @@ It carries on from [Tutorial 3](03-multiple-floors.md). The steps also run as th
 
 1. The stair's **Stairwell** box is ticked by default, so the floor above is already cut open over the stair.
    Look at Floor 2 in 3D or in the section to see the opening.
-2. *Not in HouseCraft yet:* the automatic Open Below room and the railings round it. Draw railings round the
-   opening yourself.
+2. Double-click the stair and click **Auto Stairwell**. On Floor 2, railings now run along both sides and the
+   bottom end of the opening. The top end stays open, because that's where you step off the stair.
+3. *Not in HouseCraft yet:* an Open Below room inside the railings, with its own label.
 
 ## Headroom (pages 69–71)
 
@@ -58,8 +59,8 @@ the point markers at the dimension's ends.
    from the basement to Floor 1, with its own stairwell cut in Floor 1.
 2. *Not in HouseCraft yet:* the **Tape Measure**.
 3. Hide stairs while you work round them: **Layer Display** tab (right side), untick **Stairs**.
-4. The railing-to-wall steps don't apply (HouseCraft made no railings). Draw the walls you want round the
-   stairwell with the **Straight Interior Wall** tool.
+4. To turn a railing into a wall, double-click it and change its **Wall Type** to an interior wall type.
+   *Not in HouseCraft yet:* the Same Wall Type handle, so do each railing in turn.
 
 ## Clipping the section (pages 75–77)
 
@@ -86,7 +87,7 @@ lines you can drag.
 | Newel/baluster styles and materials in stair defaults | ST-12 |
 | Lower garage floor (garage steps) | FD-07 |
 | Lock top/bottom/treads; Make Best Fit | ST-19 |
-| Auto Stairwell room and railings | ST-18 |
+| Open Below room; Same Wall Type handle | ST-18 |
 | Movable dimension point markers in sections | SEC-06 |
 | Top/bottom clip planes in sections | SEC-01 |
 | Note types, capsule markers, schedules in CAD details | TXT-16, EST-26 |

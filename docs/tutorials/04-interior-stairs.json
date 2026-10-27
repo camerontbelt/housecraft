@@ -127,18 +127,37 @@
       "gap": "No tiled views. Row: UI-32"
     },
     {
-      "step": "Auto Stairwell: open the floor above the stair",
+      "step": "Auto Stairwell: open the stair's dialog and click Auto Stairwell. The floor above is cut and railings go round the opening, open at the top",
+      "commands": [
+        {
+          "op": "auto_stairwell",
+          "stair": "$stair"
+        }
+      ],
+      "save": {
+        "rails": "wall"
+      },
       "expect": [
         {
           "get": "$stair",
           "path": "/stairwell",
           "is": true
+        },
+        {
+          "get": "$rails.0",
+          "path": "/wall_type",
+          "is": "$named:wall_type:Railing"
+        },
+        {
+          "get": "$rails.0",
+          "path": "/floor",
+          "is": "$named:floor:Floor 2"
         }
       ]
     },
     {
-      "step": "(Auto Stairwell makes an Open Below room on Floor 2 enclosed by railings, with a doorway at the top)",
-      "gap": "Stairwells cut the floor above but make no Open Below room or railings; draw railings round the opening. Row: ST-18"
+      "step": "(The opening on Floor 2 as an Open Below room)",
+      "gap": "The opening isn't a room of its own (no Open Below room type), so it has no label. Row: ST-18"
     },
     {
       "step": "Headroom: an end-to-end dimension in the section from the nosing to the ceiling; move its point marker",
@@ -186,7 +205,7 @@
     },
     {
       "step": "(Turn railings into walls; Same Wall Type handle)",
-      "gap": "No railings are made round stairwells (see above), and there's no Same Wall Type handle. Row: ST-18"
+      "gap": "No Same Wall Type handle; open each railing and change its wall type. Row: ST-18"
     },
     {
       "step": "Section view clip planes: Clip Sides and Clip Elevation, moved to frame the stairs",

@@ -2909,6 +2909,25 @@ fn any_selection_moves_by_typing_on_a_dimension() {
 }
 
 #[test]
+fn auto_stairwell_rails_the_opening_but_not_the_top() {
+    let mut s = boxed();
+    apply(&mut s, r#"[{"op": "add_floor"}]"#);
+    let floor1 = s.document().floors_by_elevation()[0].id;
+    let stair = apply(&mut s, &format!(r#"[{{"op": "add_stair", "floor": {}, "start": ["5'","5'"], "direction": 90, "width": "3'", "stairwell": false}}]"#, floor1.0)).created[0];
+    let out = s.apply(&[Command::AutoStairwell { stair }]).unwrap();
+    let doc = s.document();
+    assert!(doc.get::<Stair>(stair).unwrap().stairwell);
+    let rails: Vec<&Wall> = out.created.iter().filter_map(|id| doc.get::<Wall>(*id)).collect();
+    assert_eq!(rails.len(), 3, "both sides and the bottom end");
+    let above = doc.floor_above(floor1).unwrap().id;
+    assert!(rails.iter().all(|w| w.floor == above && doc.get::<WallType>(w.wall_type).unwrap().railing.is_some()));
+    let g = housecraft_api::geom::stairs::geometry(doc, doc.get::<Stair>(stair).unwrap());
+    let top = g.steps.iter().flat_map(|s| s.poly.iter().map(|p| p.y)).fold(f64::MIN, f64::max);
+    let across_top = rails.iter().any(|w| (w.start.1.mm() - top).abs() < 1.0 && (w.end.1.mm() - top).abs() < 1.0);
+    assert!(!across_top, "the top end is the way off the stair");
+}
+
+#[test]
 fn light_fixtures_have_styles_and_sizes() {
     let mut s = boxed();
     let out = apply(

@@ -167,6 +167,9 @@ pub enum Command {
         #[serde(default)]
         controls: Vec<Id>,
     },
+    /// Auto Stairwell: cut the floor above the stair and put railings round
+    /// the opening there, leaving the top end open as the way off the stair.
+    AutoStairwell { stair: Id },
     /// Wire a switch to fixtures (or unwire with `disconnect`). Switches that
     /// share a fixture become 3-way and 4-way automatically.
     ConnectSwitch {
@@ -1339,6 +1342,7 @@ impl Command {
             Command::LogTime { .. } => "log_time",
             Command::MoveWallByDimension { .. } => "move_wall_by_dimension",
             Command::MoveByDimension { .. } => "move_by_dimension",
+            Command::AutoStairwell { .. } => "auto_stairwell",
             Command::PointToPointMove { .. } => "point_to_point_move",
             Command::ReflectAbout { .. } => "reflect_about",
             Command::MakeParallel { .. } => "make_parallel",
@@ -2135,6 +2139,42 @@ impl Command {
                     *p = pt(housecraft_geom::v2(*p) + shift);
                     out.modified.push(*dimension);
                 }
+            }
+            Command::AutoStairwell { stair } => {
+                let st = ops::expect::<Stair>(doc, *stair)?.clone();
+                let Some(above) = doc.floor_above(st.floor).map(|f| f.id) else {
+                    return invalid("there is no floor above the stair");
+                };
+                let Some(railing) = doc.iter::<WallType>().find(|t| t.railing.is_some()).map(|t| t.id) else {
+                    return invalid("the plan has no railing wall type");
+                };
+                // The opening's extent along and across the stair.
+                let g = housecraft_geom::stairs::geometry(doc, &st);
+                let u = housecraft_geom::DVec2::from_angle(st.direction.to_radians());
+                let v = housecraft_geom::math::perp(u);
+                let pts: Vec<_> = g.steps.iter().flat_map(|s| s.poly.iter().copied()).collect();
+                if pts.is_empty() {
+                    return invalid("the stair has no steps");
+                }
+                let span = |d: housecraft_geom::DVec2| pts.iter().map(|p| p.dot(d)).fold((f64::MAX, f64::MIN), |(lo, hi), x| (lo.min(x), hi.max(x)));
+                let ((a0, a1), (b0, b1)) = (span(u), span(v));
+                let at = |a: f64, b: f64| housecraft_geom::math::pt(u * a + v * b);
+                if let Some(s) = doc.get_mut::<Stair>(*stair)
+                    && !s.stairwell
+                {
+                    s.stairwell = true;
+                    out.modified.push(*stair);
+                }
+                let walls = Command::AddWalls {
+                    floor: Some(above),
+                    points: vec![at(a1, b0), at(a0, b0), at(a0, b1), at(a1, b1)],
+                    closed: false,
+                    wall_type: Some(railing),
+                    interior: true,
+                    height: None,
+                }
+                .apply(doc)?;
+                out.merge(walls);
             }
             Command::PointToPointMove { ids, from, to, copy } => {
                 let d = housecraft_geom::v2(*to) - housecraft_geom::v2(*from);

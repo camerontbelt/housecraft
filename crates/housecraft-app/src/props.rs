@@ -2604,6 +2604,11 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "stairwell": w })));
             }
             ui.end_row();
+            ui.label("");
+            if ui.button("Auto Stairwell").on_hover_text("Cut the floor above and put railings round the opening, open at the top").clicked() {
+                ed.out.push(Command::AutoStairwell { stair: id });
+            }
+            ui.end_row();
             ed.pick::<Layer>(ui, "Layer", "layer", Some(s.layer), None);
         }
         Object::RoofPlane(r) => {
