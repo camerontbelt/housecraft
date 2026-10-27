@@ -1051,6 +1051,8 @@ fn slide_opening(
 enum LineRef {
     Cad(Id),
     Wall(Id),
+    /// A joist, rafter, beam or other member that isn't upright.
+    Framing(Id),
 }
 
 fn line_ref(doc: &Document, id: Id) -> Result<(LineRef, DVec2, DVec2), ApiError> {
@@ -1060,9 +1062,12 @@ fn line_ref(doc: &Document, id: Id) -> Result<(LineRef, DVec2, DVec2), ApiError>
             shape: Shape::Line { a, b, .. },
             ..
         }) => Ok((LineRef::Cad(id), v2(*a), v2(*b))),
+        Object::FramingMember(m) if !m.is_vertical() => {
+            Ok((LineRef::Framing(id), DVec2::new(m.a.0.mm(), m.a.1.mm()), DVec2::new(m.b.0.mm(), m.b.1.mm())))
+        }
         o => Err(ApiError::WrongKind {
             id,
-            expected: "a wall or a CAD line".into(),
+            expected: "a wall, a CAD line or a framing member".into(),
             actual: o.kind(),
         }),
     }
@@ -1082,6 +1087,19 @@ fn set_line(doc: &mut Document, r: LineRef, a: DVec2, b: DVec2, out: &mut Outcom
             {
                 *pa = pt(a);
                 *pb = pt(b);
+            }
+            out.modified.push(id);
+        }
+        LineRef::Framing(id) => {
+            if let Some(m) = doc.get_mut::<FramingMember>(id) {
+                // Heights follow the member's slope, so rafters stay on their pitch.
+                let (pa, pb) = (DVec2::new(m.a.0.mm(), m.a.1.mm()), DVec2::new(m.b.0.mm(), m.b.1.mm()));
+                let (za, zb) = (m.a.2.mm(), m.b.2.mm());
+                let d = pb - pa;
+                let z = |p: DVec2| za + (zb - za) * (p - pa).dot(d) / d.length_squared().max(1e-9);
+                m.a = Point3(Length::from_mm(a.x), Length::from_mm(a.y), Length::from_mm(z(a)));
+                m.b = Point3(Length::from_mm(b.x), Length::from_mm(b.y), Length::from_mm(z(b)));
+                m.manual = true;
             }
             out.modified.push(id);
         }

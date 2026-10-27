@@ -254,6 +254,11 @@ fn one_ply() -> u32 {
 }
 
 impl FramingMember {
+    /// Upright (studs, posts): both ends over the same plan point.
+    pub fn is_vertical(&self) -> bool {
+        (self.a.0.mm() - self.b.0.mm()).hypot(self.a.1.mm() - self.b.1.mm()) < 1.0
+    }
+
     pub fn length(&self) -> Length {
         let d = [0, 1, 2].map(|k| self.b.mm()[k] - self.a.mm()[k]);
         Length::from_mm((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt())

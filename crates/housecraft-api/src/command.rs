@@ -275,8 +275,8 @@ pub enum Command {
     },
     /// Client, designer and custom project fields.
     SetProjectInfo { info: ProjectInfo },
-    /// Break a wall in two at the point on it nearest `at` (Add Break):
-    /// doors and windows go with the piece they are in.
+    /// Break a wall (or a framing member) in two at the point on it nearest
+    /// `at` (Add Break): doors and windows go with the piece they are in.
     BreakWall { id: Id, at: Point2 },
     /// Move `wall` along a dimension so that segment `segment` (0 = the
     /// first pair of points) measures `length`, as when you click a
@@ -1484,6 +1484,8 @@ impl Command {
                             floor_structure: structure,
                             foundation: None,
                             auto_roof: false,
+                            joist_spacing: None,
+                            rim_material: None,
                             platform: if floor_structure.is_none() {
                                 housecraft_model::default_platform()
                             } else {
@@ -1507,6 +1509,8 @@ impl Command {
                             floor_structure: structure,
                             foundation: None,
                             auto_roof: false,
+                            joist_spacing: None,
+                            rim_material: None,
                             platform: if floor_structure.is_none() {
                                 housecraft_model::default_platform()
                             } else {
@@ -2051,6 +2055,29 @@ impl Command {
             }
             Command::Scatter { source, region, count, seed, size_variation, rotate } => {
                 crate::convert::scatter(doc, *source, *region, *count, *seed, *size_variation, *rotate, &mut out)?
+            }
+            Command::BreakWall { id, at } if doc.get::<FramingMember>(*id).is_some() => {
+                let m = expect::<FramingMember>(doc, *id)?.clone();
+                let v3 = |p: Point3| housecraft_geom::DVec3::new(p.0.mm(), p.1.mm(), p.2.mm());
+                let (a, b) = (v3(m.a), v3(m.b));
+                let (p, _) = housecraft_geom::math::closest_on_segment(housecraft_geom::v2(*at), a.truncate(), b.truncate());
+                let ab = (b - a).truncate();
+                if m.is_vertical() || ab.length() < 1.0 {
+                    return invalid("break a joist, beam or rafter, not an upright member");
+                }
+                let t = (p - a.truncate()).dot(ab) / ab.length_squared();
+                if t * ab.length() < 1.0 || (1.0 - t) * ab.length() < 1.0 {
+                    return invalid("break the member away from its ends");
+                }
+                let q = a.lerp(b, t);
+                let q = Point3(Length::from_mm(q.x), Length::from_mm(q.y), Length::from_mm(q.z));
+                let second = doc.insert(FramingMember { id: Id(0), a: q, manual: true, ..m.clone() });
+                if let Some(first) = doc.get_mut::<FramingMember>(m.id) {
+                    first.b = q;
+                    first.manual = true;
+                }
+                out.modified.push(m.id);
+                out.created.push(second);
             }
             Command::BreakWall { id, at } => {
                 let w = expect::<Wall>(doc, *id)?.clone();

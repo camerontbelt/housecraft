@@ -2840,6 +2840,24 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 }
             }
             platform_editor(ui, ed, f);
+            // Joists under this floor (framed floors).
+            if f.foundation.is_none() {
+                ed.opt_length(ui, "Joist Spacing", "joist_spacing", f.joist_spacing, Some(doc.active_defaults().framing.joist_spacing));
+                Ed::label(ui, "Rim Joists");
+                let mut rim = f.rim_material;
+                egui::ComboBox::from_id_salt(ed.key("rim_material"))
+                    .selected_text(rim.map_or("Like the joists", |m| m.name()))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut rim, None, "Like the joists");
+                        for m in FramingMaterial::ALL {
+                            ui.selectable_value(&mut rim, Some(m), m.name());
+                        }
+                    });
+                if rim != f.rim_material {
+                    ed.out.push(patch(id, json!({ "rim_material": rim })));
+                }
+                ui.end_row();
+            }
             if let Some(fd) = &f.foundation {
                 Ed::label(ui, "Foundation");
                 ui.label(format!("{:?}", fd.kind));

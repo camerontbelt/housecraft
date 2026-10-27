@@ -1233,14 +1233,18 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
     if let Some(p) = click {
         match tool {
             Tool::BreakWall => {
-                let near = app
-                    .doc()
-                    .walls_and_dividers_on(app.plan.floor)
-                    .map(|w| (housecraft_api::geom::math::closest_on_segment(p, v2(w.start), v2(w.end)).0.distance(p), w.id))
-                    .min_by(|a, b| a.0.total_cmp(&b.0));
+                // Walls, or joists, beams and rafters when framing is shown.
+                let doc = app.doc();
+                let dist = |a: DVec2, b: DVec2| housecraft_api::geom::math::closest_on_segment(p, a, b).0.distance(p);
+                let walls = doc.walls_and_dividers_on(app.plan.floor).map(|w| (dist(v2(w.start), v2(w.end)), w.id));
+                let members = doc
+                    .iter::<housecraft_api::model::FramingMember>()
+                    .filter(|m| m.floor == app.plan.floor && !m.is_vertical())
+                    .map(|m| (dist(DVec2::new(m.a.0.mm(), m.a.1.mm()), DVec2::new(m.b.0.mm(), m.b.1.mm())), m.id));
+                let near = walls.chain(members).min_by(|a, b| a.0.total_cmp(&b.0));
                 match near {
                     Some((d, id)) if d < 300.0 => commands.push(Command::BreakWall { id, at: pt(p) }),
-                    _ => app.status = Some(("Click on a wall.".into(), true)),
+                    _ => app.status = Some(("Click on a wall or framing member.".into(), true)),
                 }
             }
             Tool::RoomDivider => {

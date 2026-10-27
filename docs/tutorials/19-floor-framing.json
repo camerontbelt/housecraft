@@ -40,8 +40,24 @@
       ]
     },
     {
-      "step": "(Spacing per floor; Rim Joist construction is LVL)",
-      "gap": "One joist spacing for every floor; rim joists are lumber like the joists. Row: FR-34"
+      "step": "(Open Floor 1's floor dialog: Joist Spacing 16\", Rim Joists LVL)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:floor:Floor 1",
+          "set": {
+            "joist_spacing": "16\"",
+            "rim_material": "lvl"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:floor:Floor 1",
+          "path": "/rim_material",
+          "is": "lvl"
+        }
+      ]
     },
     {
       "step": "Framing Reference Marker at the outside corner of the framing, bottom left",
@@ -351,8 +367,7 @@
       "gap": "Joists can be moved but don't bump or push. Row: CAD-28"
     },
     {
-      "step": "Trim the ceiling joists to a selected joist (Trim Object, Sticky Mode)",
-      "gap": "Extend/Trim works on CAD lines and walls, not framing. Row: FR-36"
+      "step": "Trim the ceiling joists to a selected joist: select a joist, Shift+click the joist to trim to, Edit > Trim / Extend to Second Object (covered by the framing_members_trim_extend_and_break test). No Sticky Mode, so do one joist at a time"
     },
     {
       "step": "Framing rich text defaults: uppercase, centred, border with 6\" margins",

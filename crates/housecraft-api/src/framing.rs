@@ -76,6 +76,10 @@ fn insert(doc: &mut Document, layer: Id, m: Member, d: &FramingDefaults, out: &m
     // Steel walls: studs, plates and their blocking in light-gauge steel.
     let material = if doc.kind_of(m.host) == Some(ObjectKind::Wall) && !matches!(m.role, FramingRole::Header | FramingRole::Post | FramingRole::Girt) {
         d.wall_material
+    } else if m.role == FramingRole::RimJoist
+        && let Some(rim) = doc.get::<Floor>(m.host).and_then(|f| f.rim_material)
+    {
+        rim
     } else {
         FramingMaterial::Lumber
     };

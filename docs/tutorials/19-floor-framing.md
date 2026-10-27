@@ -15,8 +15,9 @@ basement's lowered-ceiling joists are on the **Foundation** floor.
 2. Snaps: **Tools › Snap Settings**. Turn grid snaps off and object snaps on.
 3. Pick **Framing Plan** from the plan view list on the top toolbar (added by **View › Add Standard Plan Views** in
    Tutorial 17).
-4. **Edit › Default Settings…** › **Framing**: **Floor joist spacing** `16"`, **Lumber thickness** `1 1/2"`. *Not in HouseCraft
-   yet:* a different spacing per floor, and LVL rim joists.
+4. **Edit › Default Settings…** › **Framing**: **Floor joist spacing** `16"`, **Lumber thickness** `1 1/2"`. To give one
+   floor its own spacing or LVL rim joists, double-click the floor under **Floors** in the
+   **Project Browser**, then set **Joist Spacing** and **Rim Joists** `LVL`.
 5. *Not in HouseCraft yet:* the Framing Reference Marker. Joists are laid out from the edge of the building.
 
 ## A working layer set (page 335)
@@ -54,8 +55,11 @@ basement's lowered-ceiling joists are on the **Foundation** floor.
 
 ## Editing joists (pages 342–344)
 
-*Not in HouseCraft yet:* bumping and pushing joists, and trimming joists to another member. Select a joist and drag
-its ends, or open it and type its end points.
+1. To trim a joist to another member: click the joist, Shift+click the member to trim it to, then choose
+   **Edit › Trim / Extend to Second Object**. The end nearer the member moves onto it (shorter or longer), and the
+   joist is kept when framing is rebuilt. Do the joists one at a time.
+2. To split a joist, beam or rafter, use the **Break Wall** tool (Add Break) and click on the member.
+3. *Not in HouseCraft yet:* bumping and pushing joists, and Sticky Mode for trimming many at once.
 
 ## Annotations (pages 344–346)
 
@@ -73,9 +77,9 @@ its ends, or open it and type its end points.
 | Missing | FEATURES row |
 |---|---|
 | Joists that span onto bearing walls and beams; Framing Reference Marker | FR-33 |
-| Per-floor joist spacing, LVL rims, post/beam defaults, Post with Footing | FR-34 |
+| Post/beam defaults, Post with Footing | FR-34 |
 | Automatic framing rebuild | FR-35 |
-| Trim joists to a member | FR-36 |
+| Sticky Mode for trimming many joists | FR-36 |
 | Editable framing types | FR-07 |
 | Bumping and pushing | CAD-28 |
 | Text uppercase, margins, partial underline | TXT-24 |

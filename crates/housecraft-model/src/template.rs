@@ -89,6 +89,8 @@ pub(crate) fn new_document(name: String) -> Document {
         floor_structure: default_floor_structure(),
         foundation: None,
         auto_roof: false,
+        joist_spacing: None,
+        rim_material: None,
         platform: Vec::new(),
     });
 

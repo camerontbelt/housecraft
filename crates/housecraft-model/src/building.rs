@@ -28,6 +28,13 @@ pub struct Floor {
     /// Regenerate this floor's roof from its walls whenever they change.
     #[serde(default)]
     pub auto_roof: bool,
+    /// Spacing of the joists under this floor; `None` uses the framing defaults.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub joist_spacing: Option<Length>,
+    /// What the rim joists under this floor are made of (LVL rim board);
+    /// `None` is lumber like the joists.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rim_material: Option<crate::FramingMaterial>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

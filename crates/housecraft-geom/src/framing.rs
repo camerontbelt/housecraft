@@ -646,7 +646,7 @@ pub fn floor_framing(doc: &Document, d: &FramingDefaults, floor: &Floor) -> Vec<
     let depth = d.floor_joist_depth.mm();
     let z = floor.elevation.mm() - 19.0 - depth / 2.0;
     let mut out = Vec::new();
-    joists(doc, floor.id, false, z, d.joist_spacing.mm().max(100.0), d.lumber_width.mm(), depth, &stair_holes(doc, floor.id), d.joist_splice, &mut out);
+    joists(doc, floor.id, false, z, floor.joist_spacing.unwrap_or(d.joist_spacing).mm().max(100.0), d.lumber_width.mm(), depth, &stair_holes(doc, floor.id), d.joist_splice, &mut out);
     out
 }
 

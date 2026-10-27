@@ -2909,6 +2909,60 @@ fn any_selection_moves_by_typing_on_a_dimension() {
 }
 
 #[test]
+fn floors_set_their_own_joist_spacing_and_rim_material() {
+    let mut s = boxed();
+    let floor2 = apply(&mut s, r#"[{"op": "add_floor"}]"#).created[0];
+    apply(&mut s, &format!(r#"[{{"op": "add_walls", "floor": {}, "points": [[0,0], [0,"30'"], ["20'","30'"], ["20'",0]], "closed": true}}]"#, floor2.0));
+    let joists = |s: &mut Session| {
+        apply(s, r#"[{"op": "build_framing", "parts": {"walls": false, "ceilings": false, "roofs": false}}]"#);
+        let doc = s.document();
+        let ms: Vec<FramingMember> = doc.iter::<FramingMember>().filter(|m| m.host == Some(floor2)).cloned().collect();
+        ms
+    };
+    let at16 = joists(&mut s);
+    let n16 = at16.iter().filter(|m| m.role == FramingRole::FloorJoist).count();
+    assert!(n16 > 0, "floor 2 is framed");
+    assert!(at16.iter().filter(|m| m.role == FramingRole::RimJoist).all(|m| m.material == FramingMaterial::Lumber));
+    s.apply(&[Command::Update { id: floor2, set: patch(serde_json::json!({"joist_spacing": "24\"", "rim_material": "lvl"})) }]).unwrap();
+    let at24 = joists(&mut s);
+    let n24 = at24.iter().filter(|m| m.role == FramingRole::FloorJoist).count();
+    assert!(n24 < n16, "fewer joists at 24\" ({n24} vs {n16})");
+    let rims: Vec<_> = at24.iter().filter(|m| m.role == FramingRole::RimJoist).collect();
+    assert!(!rims.is_empty() && rims.iter().all(|m| m.material == FramingMaterial::Lvl), "LVL rim board");
+}
+
+#[test]
+fn framing_members_trim_extend_and_break() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_framing_member", "role": "ceiling_joist", "a": ["2'","2'","9'"], "b": ["2'","20'","9'"]},
+            {"op": "add_framing_member", "role": "ceiling_joist", "a": ["4'","2'","9'"], "b": ["4'","8'","9'"]},
+            {"op": "add_framing_member", "role": "beam", "a": [0,"12'","9'"], "b": ["10'","12'","9'"]},
+            {"op": "add_framing_member", "role": "rafter", "a": ["6'","0","8'"], "b": ["6'","10'","13'"]}]"#,
+    );
+    let (long, short, beam, rafter) = (out.created[0], out.created[1], out.created[2], out.created[3]);
+    let ft = |l: Length| l.mm() / 304.8;
+    s.apply(&[Command::ExtendTo { id: long, boundary: beam }, Command::ExtendTo { id: short, boundary: beam }]).unwrap();
+    let doc = s.document();
+    let m = doc.get::<FramingMember>(long).unwrap();
+    assert!((ft(m.a.1) - 2.0).abs() < 1e-6 && (ft(m.b.1) - 12.0).abs() < 1e-6, "trimmed back to the beam");
+    assert!(m.manual, "kept when framing is rebuilt");
+    assert!((ft(doc.get::<FramingMember>(short).unwrap().b.1) - 12.0).abs() < 1e-6, "extended to the beam");
+    // A rafter trimmed to the beam keeps its pitch.
+    s.apply(&[Command::ExtendTo { id: rafter, boundary: beam }]).unwrap();
+    let r = s.document().get::<FramingMember>(rafter).unwrap();
+    assert!((ft(r.b.1) - 12.0).abs() < 1e-6 && (ft(r.b.2) - 14.0).abs() < 1e-6, "{:?}", r.b);
+    // Add Break splits a member in two.
+    let out = s.apply(&[Command::BreakWall { id: beam, at: housecraft_api::units::Point2(Length::from_mm(4.0 * 304.8), Length::from_mm(12.5 * 304.8)) }]).unwrap();
+    let doc = s.document();
+    let (first, second) = (doc.get::<FramingMember>(beam).unwrap(), doc.get::<FramingMember>(out.created[0]).unwrap());
+    assert!((ft(first.b.0) - 4.0).abs() < 1e-6 && (ft(second.a.0) - 4.0).abs() < 1e-6 && (ft(second.b.0) - 10.0).abs() < 1e-6);
+    let post = apply(&mut s, r#"[{"op": "add_framing_member", "role": "post", "a": ["5'","5'",0], "b": ["5'","5'","8'"]}]"#).created[0];
+    assert!(s.apply(&[Command::BreakWall { id: post, at: housecraft_api::units::Point2(Length::from_mm(5.0 * 304.8), Length::from_mm(5.0 * 304.8)) }]).is_err());
+}
+
+#[test]
 fn auto_stairwell_rails_the_opening_but_not_the_top() {
     let mut s = boxed();
     apply(&mut s, r#"[{"op": "add_floor"}]"#);

@@ -392,9 +392,9 @@ These come from reading the whole list and change the architecture, not just the
 | FR-31 | Deck ledger controls (X18+) | P3 | M6 ✓ a ledger where a deck meets the house (on/off), with its own depth |
 | FR-32 | Deck beam controls | P3 | M6 ✓ beam inset and largest joist span, or beam positions typed by hand |
 | FR-33 | Joist layout by structure: shortest span between bearing walls and beams, joists butting flush beams and bearing on dropped ones; Framing Reference Marker as the layout origin | P2 | M9 |
-| FR-34 | Framing defaults: joist spacing per floor, rim joist construction (LVL), Manual Framing defaults for beams/posts, Post with Footing | P3 | M9 |
+| FR-34 | Framing defaults: joist spacing per floor, rim joist construction (LVL), Manual Framing defaults for beams/posts, Post with Footing | P3 | M9 ◐ each floor's dialog sets its Joist Spacing and Rim Joists material (LVL…); Manual Framing defaults and Post with Footing later |
 | FR-35 | Automatically rebuild framing when the model changes (per category) | P2 | M9 |
-| FR-36 | Trim/extend framing members to another member (with Sticky Mode); Add Break to split a member | P3 | M9 |
+| FR-36 | Trim/extend framing members to another member (with Sticky Mode); Add Break to split a member | P3 | M9 ◐ Trim / Extend to Second Object and Add Break (Break Wall tool, `break_wall`) work on joists, beams and rafters, keeping rafters on their pitch; Sticky Mode later |
 | FR-37 | Live Wall Detail views: named from the wall's label, listed per floor in the Project Browser, framing edited and blocking drawn there | P2 | M9 |
 | FR-38 | Framing member defaults (stud/plate construction, fill style); header labels with size and count in plan | P3 | M9 |
 | FR-39 | Stud spacing per wall type framing layer | P3 | M9 |
