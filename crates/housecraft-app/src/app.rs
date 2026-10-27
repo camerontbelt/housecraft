@@ -1150,8 +1150,14 @@ impl App {
         self.clipboard_layout = None;
         let doc = self.doc();
         let mut ids: Vec<Id> = self.selection.clone();
-        // Bring doors and windows along with their walls.
+        // An architectural block brings its objects.
         for id in self.selection.iter() {
+            if let Some(g) = doc.get::<housecraft_api::model::Group>(*id) {
+                ids.extend(g.members.iter().copied());
+            }
+        }
+        // Bring doors and windows along with their walls.
+        for id in ids.clone().iter() {
             if doc.kind_of(*id) == Some(ObjectKind::Wall) {
                 ids.extend(doc.openings_in(*id).map(|o| o.id));
             }
@@ -2443,6 +2449,21 @@ impl App {
                         self.run1(Command::ExtendTo { id, boundary });
                     }
                     ui.separator();
+                    if item(ui, "Make Architectural Block", "", self.selection.len() >= 2) {
+                        let ids = self.selection.clone();
+                        if let Some(out) = self.run1(Command::MakeGroup { ids, name: None }) {
+                            self.selection = out.created.clone();
+                        }
+                    }
+                    let block = self.selection.iter().copied().find(|id| self.doc().kind_of(*id) == Some(ObjectKind::Group));
+                    if item(ui, "Explode Architectural Block", "", block.is_some())
+                        && let Some(id) = block
+                    {
+                        let members = self.doc().get::<housecraft_api::model::Group>(id).map(|g| g.members.clone()).unwrap_or_default();
+                        if self.run1(Command::ExplodeGroup { id }).is_some() {
+                            self.selection = members;
+                        }
+                    }
                     if item(ui, "Pin Selected in Project Browser", "", !self.selection.is_empty()) {
                         let ids = self.selection.clone();
                         self.run1(Command::PinObjects { ids, pinned: true });

@@ -40,8 +40,11 @@ There's one style of each, not Chief's catalog of brands and styles. For a parti
 
 ## Blocks, library folders, schedule (pages 230–236)
 
-*Not in HouseCraft yet:* architectural blocks in the plan (group the dresser, vase and frame so they move together),
-user library folders and links, and a furniture schedule.
+1. Click the dresser, Shift+click the vase and the frame, then **Edit › Make Architectural Block**. The three now
+   select, move, copy and delete together. Open the block (double-click) to rename it `Dresser Set`.
+2. To change one piece, select the block and choose **Edit › Explode Architectural Block**, edit the piece, then make
+   the block again. *Not in HouseCraft yet:* editing a piece without exploding the block.
+3. *Not in HouseCraft yet:* user library folders and links, and a furniture schedule.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -50,7 +53,7 @@ user library folders and links, and a furniture schedule.
 | More furniture styles; replace with another style | LIB-12, MAT-24 |
 | Accent upholstery default | MAT-33 |
 | Draw order | CAD-30 |
-| Architectural blocks in the plan | CB-27 |
+| Editing a piece inside an architectural block | CB-27 |
 | Library folders | LIB-01 |
 | Furniture schedule | EST-30 |
 

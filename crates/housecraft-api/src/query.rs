@@ -355,6 +355,7 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
             a.surface.map_or(String::new(), |s| format!(" ({})", s.name()))
         ),
         Object::Block(b) => format!("block {:?}", b.name),
+        Object::Group(g) => format!("{} ({} objects)", g.name, g.members.len()),
         Object::BlockRef(r) => format!(
             "block {:?}",
             doc.get::<Block>(r.block).map_or("?", |b| b.name.as_str())

@@ -340,8 +340,36 @@
       "gap": "Built-in furniture comes in one style per piece, so there's nothing to swap to; edit sizes instead (or import your own models). Rows: LIB-12, MAT-24"
     },
     {
-      "step": "Architectural Blocks: the dresser, vase and frame; the dining set; edit a piece inside; add a block to the library",
-      "gap": "No architectural blocks in the plan (grouped objects that move as one); groups are saved to and placed from the library only. Row: CB-27"
+      "step": "Architectural Blocks: select the dresser, vase and frame, Edit > Make Architectural Block",
+      "commands": [
+        {
+          "op": "make_group",
+          "ids": [
+            "$ends.2",
+            "$acc.0",
+            "$acc.1"
+          ],
+          "name": "Dresser Set"
+        }
+      ],
+      "save": {
+        "dblock": "group"
+      },
+      "expect": [
+        {
+          "get": "$dblock",
+          "path": "/name",
+          "is": "Dresser Set"
+        },
+        {
+          "count": "group",
+          "is": 1
+        }
+      ]
+    },
+    {
+      "step": "(Edit a piece inside a block without exploding it)",
+      "gap": "A piece inside an architectural block can't be edited on its own; explode the block, edit, and make it again. Row: CB-27"
     },
     {
       "step": "Library folders for plan content and a linked Beach Palette folder",

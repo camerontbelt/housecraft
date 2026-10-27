@@ -164,6 +164,7 @@ objects! {
     CadDetail => "cad_detail",
     Block => "block",
     BlockRef => "block_ref",
+    Group => "group",
     Material => "material",
     MaterialAssignment => "material_assignment",
     Cabinet => "cabinet",
@@ -201,7 +202,8 @@ impl ObjectKind {
     pub fn is_placed(self) -> bool {
         matches!(
             self,
-            ObjectKind::Wall
+            ObjectKind::Group
+                | ObjectKind::Wall
                 | ObjectKind::Opening
                 | ObjectKind::Cad
                 | ObjectKind::Dimension
@@ -656,6 +658,7 @@ impl Document {
             Object::Callout(c) => Some(c.floor),
             Object::RevisionCloud(c) => Some(c.floor),
             Object::BlockRef(b) => Some(b.floor),
+            Object::Group(g) => Some(g.floor),
             Object::Cabinet(c) => Some(c.floor),
             Object::Countertop(c) => Some(c.floor),
             Object::Appliance(a) => Some(a.floor),
@@ -869,7 +872,7 @@ macro_rules! named {
 }
 named!(
     Floor, WallType, RoomType, Layer, LayerSet, TextStyle, DefaultSet, PlanView, Camera, SectionView,
-    CadDetail, Block, Layout, Material, SymbolDef, MoldingProfile, StylePalette, Walkthrough
+    CadDetail, Block, Group, Layout, Material, SymbolDef, MoldingProfile, StylePalette, Walkthrough
 );
 
 #[cfg(test)]

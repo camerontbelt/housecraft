@@ -256,7 +256,7 @@ These come from reading the whole list and change the architecture, not just the
 | CB-24 | NKBA-standard display options | P2 | M5 ✓ |
 | CB-25 | Manufacturer cabinet catalogs | P3 | M8 |
 | CB-26 | Soffit tool and defaults (boxes against walls/ceilings for trays, coffers, bulkheads) | P2 | M9 |
-| CB-27 | Architectural blocks in the plan: group objects to move/edit/schedule as one; explode | P2 | M9 |
+| CB-27 | Architectural blocks in the plan: group objects to move/edit/schedule as one; explode | P2 | M9 ◐ Edit › Make / Explode Architectural Block (`make_group`, `explode_group`): grouped objects pick, move, copy, paste and delete as one; editing a piece in place and block schedules later |
 | CB-28 | Cabinet door panels and handles from the library; handle position; cabinet elevation measured from the ceiling | P2 | M9 |
 | CB-29 | Automatic diagonal corner cabinets; countertop overhang set per side (island backs) | P2 | M9 |
 | CB-30 | Cabinet partitions (finished end panels between cabinets and appliances, with crown) | P2 | M9 |

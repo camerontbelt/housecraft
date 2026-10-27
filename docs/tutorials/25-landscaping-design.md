@@ -49,7 +49,8 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
    **Spread** `25'`. Make one a little smaller so they don't look identical. HouseCraft plants are 3D shapes, so
    there's no image to reverse.
 3. Three **Shrubs** close together, named `Rhododendron (cream)`. Select all three and copy them along the angled
-   retaining wall (**Multiple Copy…**). *Not in HouseCraft yet:* architectural blocks to group them.
+   retaining wall (**Multiple Copy…**). To keep them together, select all three
+   and choose **Edit › Make Architectural Block** first; then the copies come out as blocks too.
 
 ## Schedule and revision (pages 447–449)
 
@@ -64,7 +65,6 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
 | Dirt material default; fencing defaults and panel library | SITE-34 |
 | Add Break, edge moves and arcs on garden beds | SITE-30 |
 | Plant Chooser and encyclopedia | SITE-20, SITE-21 |
-| Architectural blocks | CB-27 |
 
 **New while following this tutorial:**
 

@@ -143,8 +143,41 @@
       ]
     },
     {
-      "step": "(Explode / Make Architectural Block; resize the bar to match)",
-      "gap": "No architectural blocks in the plan. Row: CB-27"
+      "step": "(Make the island's cabinets an Architectural Block, then Explode it again to edit them)",
+      "commands": [
+        {
+          "op": "make_group",
+          "ids": [
+            "$run.0",
+            "$run.2"
+          ]
+        }
+      ],
+      "save": {
+        "island": "group"
+      },
+      "expect": [
+        {
+          "get": "$island",
+          "path": "/members/1",
+          "is": "$run.2"
+        }
+      ]
+    },
+    {
+      "step": "(Explode Architectural Block)",
+      "commands": [
+        {
+          "op": "explode_group",
+          "id": "$island"
+        }
+      ],
+      "expect": [
+        {
+          "count": "cabinet",
+          "is": 11
+        }
+      ]
     },
     {
       "step": "Built-in microwave in the top-left wall cabinet, under its door (cabinet 18\" deep)",
@@ -252,7 +285,7 @@
     },
     {
       "step": "Tub spout and shower head over the tub, blocked together and centred",
-      "gap": "No tub/shower trim fixtures or architectural blocks. Rows: EL-10, CB-27"
+      "gap": "No tub/shower trim fixtures to block together. Row: EL-10"
     },
     {
       "step": "Reverse the bathtub symbol so the drain is at the other end",

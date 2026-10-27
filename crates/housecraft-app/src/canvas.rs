@@ -188,7 +188,7 @@ impl PlanState {
             sun_shadows: self.sun_shadows,
             default_set: None,
         };
-        let drawing = match self.sheet.and_then(|s| doc.object(s)) {
+        let mut drawing = match self.sheet.and_then(|s| doc.object(s)) {
             Some(Object::SectionView(v)) => housecraft_draft::elevation::section_view(doc, v),
             Some(Object::CadDetail(d)) => {
                 housecraft_draft::detail::cad_detail(doc, d.id, Some(self.layer_set))
@@ -196,6 +196,16 @@ impl PlanState {
             Some(Object::Block(b)) => housecraft_draft::detail::cad_detail(doc, b.id, Some(self.layer_set)),
             _ => housecraft_draft::plan(doc, &opts),
         };
+        // An architectural block's objects pick, highlight and move as the block.
+        let grouped: std::collections::HashMap<Id, Id> =
+            doc.iter::<housecraft_api::model::Group>().flat_map(|g| g.members.iter().map(move |m| (*m, g.id))).collect();
+        if !grouped.is_empty() {
+            for item in &mut drawing.items {
+                if let Some(g) = item.object.and_then(|o| grouped.get(&o)) {
+                    item.object = Some(*g);
+                }
+            }
+        }
         let fills = drawing
             .items
             .iter()

@@ -959,7 +959,14 @@ pub(crate) fn transform(
     out: &mut Outcome,
 ) -> Result<(), ApiError> {
     let t = to_transform(op)?;
-    let selected: BTreeSet<Id> = ids.iter().copied().collect();
+    // Architectural blocks move their objects (and are copied with them).
+    let groups: Vec<Group> = ids.iter().filter_map(|id| doc.get::<Group>(*id).cloned()).collect();
+    let selected: BTreeSet<Id> = ids
+        .iter()
+        .copied()
+        .filter(|id| doc.get::<Group>(*id).is_none())
+        .chain(groups.iter().flat_map(|g| g.members.iter().copied()))
+        .collect();
     let mut targets: Vec<Object> = Vec::new();
     let mut lone_openings: Vec<Opening> = Vec::new();
     for id in &selected {
@@ -1009,9 +1016,11 @@ pub(crate) fn transform(
     }
     let mut step = t;
     for _ in 0..copies {
+        let mut copied: std::collections::HashMap<Id, Id> = std::collections::HashMap::new();
         for object in &targets {
             let new = transformed(doc, object, &step)?;
             let new_id = doc.insert(new);
+            copied.insert(object.id(), new_id);
             out.created.push(new_id);
             if let Object::Wall(old) = object {
                 let openings: Vec<Opening> = doc.openings_in(old.id).cloned().collect();
@@ -1019,6 +1028,12 @@ pub(crate) fn transform(
                     o.wall = new_id;
                     out.created.push(doc.insert(o));
                 }
+            }
+        }
+        for g in &groups {
+            let members: Vec<Id> = g.members.iter().filter_map(|m| copied.get(m).copied()).collect();
+            if members.len() >= 2 {
+                out.created.push(doc.insert(Group { id: Id(0), members, ..g.clone() }));
             }
         }
         step = step.then(t);
@@ -1398,8 +1413,16 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
     for id in ids {
         let object = doc.object(*id).ok_or(ApiError::NotFound(*id))?;
         doomed.insert(*id);
-        if let Object::Wall(_) = object {
-            doomed.extend(doc.openings_in(*id).map(|o| o.id));
+        match object {
+            Object::Wall(_) => doomed.extend(doc.openings_in(*id).map(|o| o.id)),
+            // An architectural block takes its objects with it.
+            Object::Group(g) => {
+                for m in &g.members {
+                    doomed.insert(*m);
+                    doomed.extend(doc.openings_in(*m).map(|o| o.id));
+                }
+            }
+            _ => {}
         }
     }
     // What is drawn on a doomed floor, view, detail or block goes with it, as
@@ -1447,6 +1470,18 @@ pub(crate) fn delete(doc: &mut Document, ids: &[Id], out: &mut Outcome) -> Resul
             .count()
     {
         return invalid("a document must keep at least one floor");
+    }
+    // Groups lose deleted members; one left with fewer than two goes.
+    for g in doc.iter::<Group>().filter(|g| !doomed.contains(&g.id)).cloned().collect::<Vec<_>>() {
+        let left: Vec<Id> = g.members.iter().copied().filter(|m| !doomed.contains(m)).collect();
+        if left.len() < 2 {
+            doomed.insert(g.id);
+        } else if left.len() < g.members.len() {
+            if let Some(gm) = doc.get_mut::<Group>(g.id) {
+                gm.members = left;
+            }
+            out.modified.push(g.id);
+        }
     }
     for id in &doomed {
         doc.remove(*id);
@@ -1535,6 +1570,8 @@ pub(crate) fn insert_objects(
         Object::Layer(_) | Object::WallType(_) | Object::TextStyle(_) | Object::RoomType(_) => -1,
         Object::SymbolDef(_) | Object::CadDetail(_) | Object::SectionView(_) | Object::Block(_) => 0,
         Object::Wall(_) => 1,
+        // Blocks last, so their objects are already re-pointed.
+        Object::Group(_) => 3,
         _ => 2,
     });
     let mut remap = std::collections::BTreeMap::new();
@@ -1615,6 +1652,13 @@ pub(crate) fn insert_objects(
                 o.wall = *remap.get(&o.wall).unwrap_or(&o.wall);
                 Object::Opening(o)
             }
+            Object::Group(mut g) => {
+                g.members = g.members.into_iter().filter_map(|m| remap.get(&m).copied()).collect();
+                if g.members.len() < 2 {
+                    continue;
+                }
+                Object::Group(g)
+            }
             o if o.kind().is_placed() => transformed(doc, &o, &shift)?,
             o => o,
         };
@@ -1649,6 +1693,7 @@ pub(crate) fn insert_objects(
                 Object::Plant(p) => p.floor = f,
                 Object::ElevationData(e) => e.floor = f,
                 Object::MaterialRegion(r) => r.floor = f,
+                Object::Group(g) => g.floor = f,
                 _ => {}
             }
         }

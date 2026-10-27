@@ -409,6 +409,9 @@ fn every_object_kind_round_trips_through_json() {
             layout.0, block.0, material.0, wall.0, symbol_def.0, material.0
         ),
     );
+    let plant = s.document().iter::<Plant>().next().unwrap().id;
+    let toilet = s.document().iter::<Appliance>().next().unwrap().id;
+    s.apply(&[Command::MakeGroup { ids: vec![plant, toilet], name: None }]).unwrap();
     let doc = s.document();
     for kind in ObjectKind::ALL {
         assert!(
@@ -2906,6 +2909,44 @@ fn any_selection_moves_by_typing_on_a_dimension() {
     }))
     .unwrap();
     assert!(s.apply(&[bad]).is_err());
+}
+
+#[test]
+fn architectural_blocks_move_copy_delete_and_explode_as_one() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_electrical", "electrical_kind": "recessed_light", "at": ["5'","5'"]},
+            {"op": "add_electrical", "electrical_kind": "recessed_light", "at": ["7'","5'"]},
+            {"op": "add_electrical", "electrical_kind": "recessed_light", "at": ["9'","5'"]}]"#,
+    );
+    let (a, b, c) = (out.created[0], out.created[1], out.created[2]);
+    let block = s.apply(&[Command::MakeGroup { ids: vec![a, b], name: Some("Shrubs".into()) }]).unwrap().created[0];
+    assert!(s.document().validate().is_empty());
+    let x = |s: &Session, id: Id| s.document().get::<Electrical>(id).unwrap().position.0.mm() / 304.8;
+    // Moving the block moves its objects.
+    s.apply(&[Command::Transform { ids: vec![block], transform: housecraft_api::TransformOp::Translate { dx: Length::from_mm(304.8), dy: Length::ZERO }, copies: 0 }]).unwrap();
+    assert!((x(&s, a) - 6.0).abs() < 1e-6 && (x(&s, b) - 8.0).abs() < 1e-6 && (x(&s, c) - 9.0).abs() < 1e-6);
+    // Copies come out as a block of copies.
+    let copied = s.apply(&[Command::Transform { ids: vec![block], transform: housecraft_api::TransformOp::Translate { dx: Length::ZERO, dy: Length::from_mm(3048.0) }, copies: 1 }]).unwrap();
+    let new_block = copied.created.iter().copied().find(|id| s.document().get::<Group>(*id).is_some()).expect("a copied block");
+    assert_eq!(s.document().get::<Group>(new_block).unwrap().members.len(), 2);
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
+    // Pasting a block with its objects re-points it at the pasted copies.
+    let doc = s.document();
+    let clip: Vec<serde_json::Value> = [a, b, block].iter().map(|id| serde_json::to_value(doc.object(*id).unwrap()).unwrap()).collect();
+    let pasted = s.apply(&[Command::InsertObjects { objects: clip, floor: None, dx: Length::from_mm(6096.0), dy: Length::ZERO }]).unwrap();
+    let pg = pasted.created.iter().copied().find(|id| s.document().get::<Group>(*id).is_some()).expect("a pasted block");
+    assert!(s.document().get::<Group>(pg).unwrap().members.iter().all(|m| pasted.created.contains(m)));
+    assert!(s.document().validate().is_empty(), "{:?}", s.document().validate());
+    // Deleting the block deletes its objects; exploding keeps them.
+    s.apply(&[Command::Delete { ids: vec![new_block] }]).unwrap();
+    assert_eq!(s.document().iter::<Electrical>().count(), 5);
+    s.apply(&[Command::ExplodeGroup { id: block }]).unwrap();
+    assert!(s.document().get::<Electrical>(a).is_some() && s.document().get::<Group>(block).is_none());
+    // A block left with one object goes away.
+    s.apply(&[Command::Delete { ids: vec![s.document().get::<Group>(pg).unwrap().members[0]] }]).unwrap();
+    assert!(s.document().get::<Group>(pg).is_none());
 }
 
 #[test]

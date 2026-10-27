@@ -858,6 +858,17 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
         ui.end_row();
     }
     match object {
+        Object::Group(g) => {
+            ed.text(ui, "Name", "name", &g.name);
+            Ed::label(ui, "Objects");
+            ui.label(format!("{}", g.members.len()));
+            ui.end_row();
+            ui.label("");
+            if ui.button("Explode").on_hover_text("Ungroup: the objects stay where they are").clicked() {
+                ed.out.push(Command::ExplodeGroup { id });
+            }
+            ui.end_row();
+        }
         Object::Wall(w) => {
             ed.pick::<WallType>(ui, "Wall Type", "wall_type", Some(w.wall_type), None);
             if let Some(t) = doc.get::<WallType>(w.wall_type) {

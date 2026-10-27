@@ -1145,6 +1145,15 @@ pub enum Command {
     /// Delete objects. Floors take their contents with them; walls take their
     /// doors and windows. Objects still referenced elsewhere cannot be deleted.
     Delete { ids: Vec<Id> },
+    /// Make Architectural Block: group objects on one floor so they select,
+    /// move, copy and delete as one.
+    MakeGroup {
+        ids: Vec<Id>,
+        #[serde(default)]
+        name: Option<String>,
+    },
+    /// Explode an architectural block: the objects stay, ungrouped.
+    ExplodeGroup { id: Id },
     /// Delete Objects: every object of the given kinds on `floor` (every
     /// floor when `None`), optionally only those inside `room`.
     DeleteObjects {
@@ -1468,6 +1477,8 @@ impl Command {
             Command::InsertObjects { .. } => "insert_objects",
             Command::Delete { .. } => "delete",
             Command::DeleteObjects { .. } => "delete_objects",
+            Command::MakeGroup { .. } => "make_group",
+            Command::ExplodeGroup { .. } => "explode_group",
             Command::DeleteDimensions { .. } => "delete_dimensions",
             Command::ReverseWallLayers { .. } => "reverse_wall_layers",
             Command::AutoRoomDimension { .. } => "auto_room_dimension",
@@ -3928,6 +3939,32 @@ impl Command {
                 dy,
             } => ops::insert_objects(doc, objects, *floor, *dx, *dy, &mut out)?,
             Command::Delete { ids } => ops::delete(doc, ids, &mut out)?,
+            Command::MakeGroup { ids, name } => {
+                // Grouping groups merges them.
+                let mut members: Vec<Id> = Vec::new();
+                for id in ids {
+                    match doc.get::<Group>(*id) {
+                        Some(g) => members.extend(g.members.iter().copied()),
+                        None => members.push(*id),
+                    }
+                }
+                members.sort();
+                members.dedup();
+                let floor = members.first().and_then(|m| doc.floor_of(*m)).ok_or_else(|| ApiError::Invalid("select objects on a floor to group".into()))?;
+                let old: Vec<Id> = ids.iter().copied().filter(|id| doc.get::<Group>(*id).is_some()).collect();
+                for g in old {
+                    doc.objects.remove(&g);
+                    out.deleted.push(g);
+                }
+                let n = doc.iter::<Group>().count() + 1;
+                let name = name.clone().unwrap_or_else(|| format!("Architectural Block {n}"));
+                out.created.push(doc.insert(Group { id: Id(0), floor, name, members }));
+            }
+            Command::ExplodeGroup { id } => {
+                expect::<Group>(doc, *id)?;
+                doc.objects.remove(id);
+                out.deleted.push(*id);
+            }
             Command::DeleteObjects { floor, kinds, room } => {
                 let inside = match room {
                     Some(r) => {

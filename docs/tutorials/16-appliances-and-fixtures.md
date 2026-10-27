@@ -22,8 +22,8 @@ cabinet fronts.
 
 ## Range and hood in the island (pages 282–286)
 
-1. *Not in HouseCraft yet:* architectural blocks, so there's no block to explode. The island cabinets are already
-   separate.
+1. Our island's cabinets aren't a block, so there's nothing to explode first. (To try it: select the island cabinets,
+   **Edit › Make Architectural Block**, then **Edit › Explode Architectural Block**.)
 2. Click the middle island cabinet and press **Delete**.
 3. **Range**: click where it was. Open it and set **Facing** to 180° so it faces the same way as the island.
 4. **Range Hood**: click over the range and give it the same **Facing**.
@@ -57,7 +57,6 @@ cabinet fronts.
 | Missing | FEATURES row |
 |---|---|
 | Cabinet partitions | CB-30 |
-| Architectural blocks (explode, re-block) | CB-27 |
 | Faucets, tub spouts, shower heads | EL-10 |
 | Reverse Symbol (mirror a fixture) | CB-31 |
 | Extension-line handles on dimensions | DIM-28 |

@@ -30,10 +30,10 @@ has two files:
 | 10 | Custom Ceilings (177) | 6 | 6 | [10-custom-ceilings.md](10-custom-ceilings.md) |
 | 11 | Finish Materials (191) | 10 | 5 | [11-finish-materials.md](11-finish-materials.md) |
 | 12 | Room Moldings (211) | 6 | 3 | [12-room-moldings.md](12-room-moldings.md) |
-| 13 | Interior Furnishings (222) | 9 | 6 | [13-interior-furnishings.md](13-interior-furnishings.md) |
+| 13 | Interior Furnishings (222) | 10 | 6 | [13-interior-furnishings.md](13-interior-furnishings.md) |
 | 14 | Cabinet Styles (237) | 8 | 4 | [14-cabinet-styles.md](14-cabinet-styles.md) |
 | 15 | Cabinet Layout (260) | 7 | 4 | [15-cabinet-layout.md](15-cabinet-layout.md) |
-| 16 | Appliances and Fixtures (277) | 10 | 6 | [16-appliances-and-fixtures.md](16-appliances-and-fixtures.md) |
+| 16 | Appliances and Fixtures (277) | 12 | 5 | [16-appliances-and-fixtures.md](16-appliances-and-fixtures.md) |
 | 17 | Light Fixtures (298) | 22 | 8 | [17-light-fixtures.md](17-light-fixtures.md) |
 | 18 | Electrical Objects (317) | 21 | 5 | [18-electrical-objects.md](18-electrical-objects.md) |
 | 19 | Floor Framing (331) | 19 | 8 | [19-floor-framing.md](19-floor-framing.md) |
@@ -42,7 +42,7 @@ has two files:
 | 22 | Plot Plans (382) | 10 | 6 | [22-plot-plans.md](22-plot-plans.md) |
 | 23 | Terrain Elevation (403) | 12 | 7 | [23-terrain-elevation.md](23-terrain-elevation.md) |
 | 24 | Driveways, Sidewalks, and Roads (420) | 6 | 7 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
-| 25 | Landscaping Design (433) | 14 | 8 | [25-landscaping-design.md](25-landscaping-design.md) |
+| 25 | Landscaping Design (433) | 15 | 7 | [25-landscaping-design.md](25-landscaping-design.md) |
 | 26 | Layout Page Templates (451) | 7 | 4 | [26-layout-page-templates.md](26-layout-page-templates.md) |
 | 27 | Title Blocks and Borders (460) | 10 | 6 | [27-title-blocks-and-borders.md](27-title-blocks-and-borders.md) |
 | 28 | Sending Views to Layout (483) | 9 | 7 | [28-sending-views-to-layout.md](28-sending-views-to-layout.md) |

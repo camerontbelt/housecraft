@@ -349,6 +349,16 @@ pub struct Block {
     pub name: String,
 }
 
+/// An architectural block: objects on a floor grouped so they select, move,
+/// copy and delete as one. Exploding it leaves the objects as they are.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Group {
+    pub id: Id,
+    pub floor: Id,
+    pub name: String,
+    pub members: Vec<Id>,
+}
+
 /// A placed copy of a block on a floor plan, view or CAD detail.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct BlockRef {

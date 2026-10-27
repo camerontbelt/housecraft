@@ -1004,6 +1004,23 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 c.non_negative(id, "elevation", s.elevation);
                 c.finite(id, "position", &s.position.mm());
             }
+            Object::Group(g) => {
+                c.reference(id, "floor", g.floor, K::Floor);
+                if g.members.len() < 2 {
+                    c.issue(id, "a group needs at least two objects");
+                }
+                for m in &g.members {
+                    match c.doc.kind_of(*m) {
+                        None => c.issue(id, format!("member {m} does not exist")),
+                        Some(k) if !k.is_placed() || k == K::Group => c.issue(id, format!("member {m} is a {k}, which can't be grouped")),
+                        Some(_) if c.doc.floor_of(*m) != Some(g.floor) => c.issue(id, format!("member {m} is on another floor")),
+                        Some(_) => {}
+                    }
+                    if c.doc.iter::<Group>().any(|o| o.id != g.id && o.members.contains(m)) {
+                        c.issue(id, format!("member {m} is in another group too"));
+                    }
+                }
+            }
             Object::BlockRef(b) => {
                 c.sheet(id, b.floor, false);
                 c.reference(id, "layer", b.layer, K::Layer);

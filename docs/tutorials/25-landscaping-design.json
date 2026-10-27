@@ -390,8 +390,28 @@
       ]
     },
     {
-      "step": "(Make / Explode Architectural Block)",
-      "gap": "No architectural blocks. Row: CB-27"
+      "step": "(Select the three rhododendrons, Edit > Make Architectural Block, so they move and copy as one)",
+      "commands": [
+        {
+          "op": "make_group",
+          "ids": [
+            "$rh.0",
+            "$rh.1",
+            "$rh.2"
+          ],
+          "name": "Rhododendrons"
+        }
+      ],
+      "save": {
+        "rhblock": "group"
+      },
+      "expect": [
+        {
+          "get": "$rhblock",
+          "path": "/name",
+          "is": "Rhododendrons"
+        }
+      ]
     },
     {
       "step": "Plant schedule",
