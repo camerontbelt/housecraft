@@ -2909,6 +2909,44 @@ fn any_selection_moves_by_typing_on_a_dimension() {
 }
 
 #[test]
+fn light_fixtures_have_styles_and_sizes() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_electrical", "electrical_kind": "ceiling_light", "at": ["10'","15'"]},
+            {"op": "add_electrical", "electrical_kind": "ceiling_light", "at": ["5'","5'"]},
+            {"op": "add_electrical", "electrical_kind": "ceiling_light", "at": ["15'","5'"]}]"#,
+    );
+    let (chandelier, table, floor_lamp) = (out.created[0], out.created[1], out.created[2]);
+    let set = |id: Id, v: serde_json::Value| Command::Update { id, set: patch(v) };
+    s.apply(&[
+        set(chandelier, serde_json::json!({"fixture": {"style": "chandelier", "width": "26\"", "drop": "30\""}})),
+        set(table, serde_json::json!({"fixture": {"style": "table_lamp", "width": "16\"", "drop": "26\""}, "height": "30\""})),
+        set(floor_lamp, serde_json::json!({"fixture": Fixture::new(FixtureStyle::FloorLamp)})),
+    ])
+    .unwrap();
+    let doc = s.document();
+    let mesh = housecraft_api::geom::mesh::build(doc, None);
+    let span = |id: Id| {
+        let pts: Vec<_> = mesh.faces.iter().filter(|f| mesh.parts[f.part].object == id).flat_map(|f| f.points.clone()).collect();
+        let lo = pts.iter().fold(housecraft_api::geom::DVec3::MAX, |a, p| a.min(*p));
+        let hi = pts.iter().fold(housecraft_api::geom::DVec3::MIN, |a, p| a.max(*p));
+        (lo, hi)
+    };
+    let (lo, hi) = span(chandelier);
+    assert!(((hi.x - lo.x) / 25.4 - 26.0).abs() < 1.0, "26\" across: {}", (hi.x - lo.x) / 25.4);
+    let ceiling = doc.get::<Floor>(doc.get::<Electrical>(chandelier).unwrap().floor).unwrap().ceiling_height.mm();
+    assert!(((ceiling - lo.z) / 25.4 - 30.0).abs() < 1.0, "hangs 30\": {}", (ceiling - lo.z) / 25.4);
+    let (lo, hi) = span(table);
+    assert!((lo.z / 25.4 - 30.0).abs() < 0.5 && (hi.z / 25.4 - 56.0).abs() < 0.5, "on the table: {lo} {hi}");
+    let (lo, hi) = span(floor_lamp);
+    assert!(lo.z.abs() < 1.0 && (hi.z / 25.4 - 60.0).abs() < 0.5, "on the floor: {lo} {hi}");
+    let light = housecraft_api::geom::mesh::light_position(doc, doc.get::<Electrical>(table).unwrap()).unwrap();
+    assert!(light.z > 30.0 * 25.4 && light.z < 56.0 * 25.4, "lit from inside the shade");
+    assert_eq!(doc.get::<Electrical>(chandelier).unwrap().display_name(), "Chandelier");
+}
+
+#[test]
 fn deck_stairs_go_down_to_grade_through_the_railing() {
     let mut s = boxed();
     let out = apply(

@@ -754,6 +754,11 @@ pub fn light_position(doc: &Document, e: &housecraft_model::Electrical) -> Optio
         .height
         .or(e.electrical_kind.default_height())
         .map(|h| z0 + h.mm());
+    if let Some(f) = e.fixture
+        && e.electrical_kind.takes_fixture()
+    {
+        return Some(fixture_light(f, p, out, z0, ceiling, z));
+    }
     let (q, zz) = match e.electrical_kind {
         K::CeilingLight => (p, ceiling - 150.0),
         K::RecessedLight => (p, ceiling - 40.0),
@@ -762,6 +767,82 @@ pub fn light_position(doc: &Document, e: &housecraft_model::Electrical) -> Optio
         _ => return None,
     };
     Some(q.extend(zz))
+}
+
+/// Where a styled fixture's light comes from: inside its shade or globe.
+fn fixture_light(f: housecraft_model::Fixture, p: DVec2, out: DVec2, z0: f64, ceiling: f64, z: Option<f64>) -> DVec3 {
+    use housecraft_model::FixtureStyle as S;
+    let (w, d) = (f.width.mm(), f.drop.mm());
+    match f.style {
+        S::FlushMount => p.extend(ceiling - d - 20.0),
+        S::Pendant | S::Lantern => p.extend(ceiling - d + w * 0.3),
+        S::Chandelier => p.extend(ceiling - d + 150.0),
+        S::Sconce => (p + out * (20.0 + d / 2.0)).extend(z.unwrap_or(z0 + 1800.0) + w * 0.2),
+        S::TableLamp => p.extend(z.unwrap_or(z0 + 762.0) + d * 0.75),
+        S::FloorLamp => p.extend(z0 + d - 150.0),
+    }
+}
+
+/// A styled light fixture: shades and globes are lit glass, rods, canopies
+/// and bases are fittings.
+fn fixture_mesh(f: housecraft_model::Fixture, p: DVec2, out: DVec2, z0: f64, ceiling: f64, z: Option<f64>, mesh: &mut Mesh) {
+    use housecraft_model::FixtureStyle as S;
+    let (w, d) = (f.width.mm().max(50.0), f.drop.mm().max(30.0));
+    let r = w / 2.0;
+    let rod = |mesh: &mut Mesh, top: f64, bottom: f64| {
+        mesh.prism(&disc(p, 60.0, 12), ceiling - 25.0, ceiling, Surface::Device);
+        if top > bottom {
+            mesh.prism(&disc(p, 6.0, 8), bottom, top, Surface::Device);
+        }
+    };
+    match f.style {
+        S::FlushMount => mesh.prism(&disc(p, r, 24), ceiling - d, ceiling, Surface::Lamp),
+        S::Pendant => {
+            let shade = (w * 0.6).min(d);
+            rod(mesh, ceiling - 25.0, ceiling - d + shade);
+            // A bell: wide at the bottom, narrowing up.
+            mesh.prism(&disc(p, r, 24), ceiling - d, ceiling - d + shade * 0.5, Surface::Lamp);
+            mesh.prism(&disc(p, r * 0.6, 24), ceiling - d + shade * 0.5, ceiling - d + shade, Surface::Lamp);
+        }
+        S::Lantern => {
+            let body = (w * 1.4).min(d);
+            rod(mesh, ceiling - 25.0, ceiling - d + body);
+            mesh.prism(&rect(p, DVec2::X, w, w), ceiling - d, ceiling - d + body, Surface::Lamp);
+            mesh.prism(&rect(p, DVec2::X, w * 1.1, w * 1.1), ceiling - d + body, ceiling - d + body + 30.0, Surface::Device);
+        }
+        S::Chandelier => {
+            // The hub's finial is the lowest point.
+            let hub = ceiling - d + 60.0;
+            rod(mesh, ceiling - 25.0, hub + 150.0);
+            mesh.prism(&disc(p, 50.0, 12), hub - 60.0, hub + 150.0, Surface::Device);
+            for i in 0..6 {
+                let c = p + DVec2::from_angle(i as f64 * std::f64::consts::TAU / 6.0) * (r - 40.0);
+                // Arm, cup and candle.
+                mesh.prism(&rect((p + c) / 2.0, (c - p).normalize_or_zero(), (r - 40.0).max(10.0), 12.0), hub, hub + 12.0, Surface::Device);
+                mesh.prism(&disc(c, 35.0, 10), hub, hub + 30.0, Surface::Device);
+                mesh.prism(&disc(c, 12.0, 8), hub + 30.0, hub + 130.0, Surface::Lamp);
+            }
+        }
+        S::Sconce => {
+            let zc = z.unwrap_or(z0 + 1800.0);
+            let along = crate::math::perp(out);
+            mesh.prism(&rect(p + out * 10.0, along, w * 0.5, 20.0), zc - w * 0.6, zc + w * 0.4, Surface::Device);
+            mesh.prism(&rect(p + out * (20.0 + d / 2.0), along, w, d), zc - w * 0.3, zc + w * 0.7, Surface::Lamp);
+        }
+        S::TableLamp => {
+            let base = z.unwrap_or(z0 + 762.0);
+            let shade = d * 0.4;
+            mesh.prism(&disc(p, r * 0.4, 16), base, base + d * 0.35, Surface::Device);
+            mesh.prism(&disc(p, 8.0, 8), base + d * 0.35, base + d - shade, Surface::Device);
+            mesh.prism(&disc(p, r, 24), base + d - shade, base + d, Surface::Lamp);
+        }
+        S::FloorLamp => {
+            let shade = (w * 0.6).min(d * 0.3);
+            mesh.prism(&disc(p, r * 0.6, 16), z0, z0 + 30.0, Surface::Device);
+            mesh.prism(&disc(p, 12.0, 8), z0 + 30.0, z0 + d - shade, Surface::Device);
+            mesh.prism(&disc(p, r, 24), z0 + d - shade, z0 + d, Surface::Lamp);
+        }
+    }
 }
 
 fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut Mesh) {
@@ -778,6 +859,12 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
         .height
         .or(e.electrical_kind.default_height())
         .map(|h| z0 + h.mm());
+    if let Some(f) = e.fixture
+        && e.electrical_kind.takes_fixture()
+    {
+        fixture_mesh(f, p, out, z0, ceiling, z, mesh);
+        return;
+    }
     match e.electrical_kind {
         K::Outlet | K::GfciOutlet | K::Outlet240 | K::Switch | K::Dimmer => {
             // Cover plate standing proud of the wall face.

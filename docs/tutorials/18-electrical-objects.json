@@ -139,7 +139,7 @@
       "expect": [
         {
           "count": "electrical",
-          "is": 52
+          "is": 55
         }
       ]
     },
@@ -160,7 +160,7 @@
       "expect": [
         {
           "count": "electrical",
-          "is": 53
+          "is": 56
         }
       ]
     },
@@ -180,7 +180,7 @@
       "expect": [
         {
           "count": "electrical",
-          "is": 54
+          "is": 57
         }
       ]
     },
@@ -253,7 +253,7 @@
       "expect": [
         {
           "count": "electrical",
-          "is": 58
+          "is": 61
         }
       ]
     },
@@ -333,7 +333,7 @@
       "expect": [
         {
           "count": "electrical",
-          "is": 59
+          "is": 62
         }
       ]
     },

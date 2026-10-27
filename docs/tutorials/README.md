@@ -34,7 +34,7 @@ has two files:
 | 14 | Cabinet Styles (237) | 8 | 4 | [14-cabinet-styles.md](14-cabinet-styles.md) |
 | 15 | Cabinet Layout (260) | 7 | 4 | [15-cabinet-layout.md](15-cabinet-layout.md) |
 | 16 | Appliances and Fixtures (277) | 10 | 6 | [16-appliances-and-fixtures.md](16-appliances-and-fixtures.md) |
-| 17 | Light Fixtures (298) | 18 | 11 | [17-light-fixtures.md](17-light-fixtures.md) |
+| 17 | Light Fixtures (298) | 22 | 8 | [17-light-fixtures.md](17-light-fixtures.md) |
 | 18 | Electrical Objects (317) | 14 | 10 | [18-electrical-objects.md](18-electrical-objects.md) |
 | 19 | Floor Framing (331) | 17 | 10 | [19-floor-framing.md](19-floor-framing.md) |
 | 20 | Wall Framing (349) | 12 | 8 | [20-wall-framing.md](20-wall-framing.md) |

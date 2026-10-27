@@ -10,7 +10,8 @@ of light you want.
 
 ## Defaults and the electrical plan view (pages 299–301)
 
-1. *Not in HouseCraft yet:* Electrical Defaults that choose which library fixture each tool places. Skip it.
+1. *Not in HouseCraft yet:* Electrical Defaults that choose which fixture style each tool places. You set the style
+   on each light instead (below).
 2. If the plan view list on the top toolbar has no **Electrical Plan**, choose **View › Add Standard Plan Views**
    once. Then pick **Electrical Plan** from the list. Labels, furniture and the section camera are hidden in it.
 
@@ -19,8 +20,9 @@ of light you want.
 1. **Recessed Light**: click in the Kitchen between the island and the dishwasher.
 2. **Ceiling Light**: one in the Dining room, one in the Foyer near the front door, one on the Deck.
    **Recessed Light**: one in the Foyer in line with the Garage door.
-3. *Not in HouseCraft yet:* chandeliers, pendants, flush mounts and lanterns. Every ceiling light is the same
-   fixture.
+3. Give them styles: double-click the Dining light, set **Fixture** to **Chandelier**. Do the same for the Foyer
+   light (**Flush Mount**) and the Deck light (**Lantern**). Each style shows at its real size in plan and in 3D.
+   **Fixture Width** is how wide it is; **Drop** is how far it hangs below the ceiling.
 
 ## Positioning the can light (pages 302–304)
 
@@ -57,11 +59,15 @@ Select the light, then use the edit toolbar:
 2. Two more **Wall Lights** on the Bath's right wall, either side of the vanity.
 3. Open the Kitchen sconce: **Height** `86"`. Use **Center Object** and click the left window to centre it. Copy
    it over the other two windows the same way.
-4. *Not in HouseCraft yet:* light fixture sizes (Retain Aspect Ratio, Width).
+4. Open the chandelier and set **Fixture Width** `30"`. *Not in HouseCraft yet:* Retain Aspect Ratio, so set the
+   **Drop** yourself if you want it to grow taller too.
 
 ## Table and floor lamps (pages 312–313)
 
-*Not in HouseCraft yet:* table and floor lamps.
+1. **Ceiling Light**: click either side of the bed in the Bedroom, and once in a corner of the Living room.
+2. Open each Bedroom one: **Fixture** **Table Lamp**, **Height** `26"` (the end table's top).
+3. Open the Living room one: **Fixture** **Floor Lamp**. Lamps stand on the table or floor instead of hanging from
+   the ceiling.
 
 ## Lighting schedule (pages 313–314)
 
@@ -79,7 +85,7 @@ HouseCraft yet:* a schedule for one room, lighting only, or with your own title.
 
 | Missing | FEATURES row |
 |---|---|
-| Light fixture library and sizes; lamps; Electrical Defaults | EL-11 |
+| More fixture styles (bollards, track) and Electrical Defaults choosing a style | EL-11 |
 | One context-sensitive Light tool; path lights | EL-12 |
 | Locate settings for manual dimensions | DIM-29 |
 | Multiple Copy interval and 2D array | CAD-08 |

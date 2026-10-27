@@ -2331,12 +2331,40 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             if let Some(n) = ed.number(ui, "Facing (deg)", "rotation", e.rotation) {
                 ed.out.push(patch(id, json!({ "rotation": n })));
             }
-            match e.electrical_kind.default_height() {
+            // A table lamp stands on a table top at its height.
+            let table = e.fixture.is_some_and(|f| f.style == FixtureStyle::TableLamp);
+            match e.electrical_kind.default_height().or(table.then(|| Length::from_inches(30.0))) {
                 Some(h) => ed.opt_length(ui, "Height", "height", e.height, Some(h)),
                 None => {
                     Ed::label(ui, "Height");
                     ui.weak("At the ceiling");
                     ui.end_row();
+                }
+            }
+            if e.electrical_kind.takes_fixture() {
+                Ed::label(ui, "Fixture");
+                let now = e.fixture.map(|f| f.style);
+                let mut style = now;
+                egui::ComboBox::from_id_salt(ed.key("fixture"))
+                    .selected_text(style.map_or("Plain symbol", |s| s.name()))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut style, None, "Plain symbol");
+                        for s in FixtureStyle::ALL {
+                            ui.selectable_value(&mut style, Some(s), s.name());
+                        }
+                    });
+                if style != now {
+                    ed.out.push(patch(id, json!({ "fixture": style.map(Fixture::new) })));
+                }
+                ui.end_row();
+                if let Some(f) = e.fixture {
+                    if let Some(l) = ed.length(ui, "Fixture Width", "fixture_width", f.width) {
+                        ed.out.push(patch(id, json!({ "fixture": Fixture { width: l, ..f } })));
+                    }
+                    let label = if f.style.is_lamp() { "Lamp Height" } else if f.style == FixtureStyle::Sconce { "Projection" } else { "Drop" };
+                    if let Some(l) = ed.length(ui, label, "fixture_drop", f.drop) {
+                        ed.out.push(patch(id, json!({ "fixture": Fixture { drop: l, ..f } })));
+                    }
                 }
             }
             if e.electrical_kind.emits_light() {

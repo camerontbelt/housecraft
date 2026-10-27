@@ -261,7 +261,7 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
                 e.controls.len()
             )
         }
-        Object::Electrical(e) => e.electrical_kind.name().to_string(),
+        Object::Electrical(e) => e.display_name().to_string(),
         Object::Schedule(s) => format!("{} on {}", s.schedule_kind.name(), name_of(s.floor)),
         Object::SectionView(v) => v.name.clone(),
         Object::Layout(l) => format!(

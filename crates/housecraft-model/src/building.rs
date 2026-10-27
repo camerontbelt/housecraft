@@ -331,6 +331,11 @@ impl ElectricalKind {
         }
     }
 
+    /// Ceiling and wall lights can take a fixture style and size.
+    pub fn takes_fixture(self) -> bool {
+        matches!(self, ElectricalKind::CeilingLight | ElectricalKind::WallLight)
+    }
+
     pub fn is_switch(self) -> bool {
         matches!(self, ElectricalKind::Switch | ElectricalKind::Dimmer)
     }
@@ -395,6 +400,89 @@ pub struct Electrical {
     /// output, on.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub light: Option<LightSettings>,
+    /// A light fixture's style and size; `None` draws the kind's plain symbol.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fixture: Option<Fixture>,
+}
+
+/// What a light fixture looks like and how big it is.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Fixture {
+    pub style: FixtureStyle,
+    /// Across the fixture (its shade, canopy or arms).
+    pub width: Length,
+    /// How far it hangs below the ceiling or stands out from the wall; a
+    /// lamp's overall height.
+    pub drop: Length,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum FixtureStyle {
+    FlushMount,
+    Pendant,
+    Chandelier,
+    Lantern,
+    Sconce,
+    /// Stands on a table or counter (at the fixture's height).
+    TableLamp,
+    /// Stands on the floor.
+    FloorLamp,
+}
+
+impl FixtureStyle {
+    pub const ALL: [FixtureStyle; 7] = [
+        FixtureStyle::FlushMount,
+        FixtureStyle::Pendant,
+        FixtureStyle::Chandelier,
+        FixtureStyle::Lantern,
+        FixtureStyle::Sconce,
+        FixtureStyle::TableLamp,
+        FixtureStyle::FloorLamp,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            FixtureStyle::FlushMount => "Flush Mount",
+            FixtureStyle::Pendant => "Pendant",
+            FixtureStyle::Chandelier => "Chandelier",
+            FixtureStyle::Lantern => "Lantern",
+            FixtureStyle::Sconce => "Sconce",
+            FixtureStyle::TableLamp => "Table Lamp",
+            FixtureStyle::FloorLamp => "Floor Lamp",
+        }
+    }
+
+    /// Lamps stand on something rather than hanging from the ceiling.
+    pub fn is_lamp(self) -> bool {
+        matches!(self, FixtureStyle::TableLamp | FixtureStyle::FloorLamp)
+    }
+}
+
+impl Electrical {
+    /// What it is called in lists and schedules: a fixture's style, or the kind.
+    pub fn display_name(&self) -> &'static str {
+        match self.fixture {
+            Some(f) if self.electrical_kind.takes_fixture() => f.style.name(),
+            _ => self.electrical_kind.name(),
+        }
+    }
+}
+
+impl Fixture {
+    /// A fixture of `style` at a typical size.
+    pub fn new(style: FixtureStyle) -> Self {
+        let (w, d) = match style {
+            FixtureStyle::FlushMount => (14.0, 4.0),
+            FixtureStyle::Pendant => (12.0, 24.0),
+            FixtureStyle::Chandelier => (26.0, 30.0),
+            FixtureStyle::Lantern => (10.0, 18.0),
+            FixtureStyle::Sconce => (8.0, 7.0),
+            FixtureStyle::TableLamp => (16.0, 26.0),
+            FixtureStyle::FloorLamp => (18.0, 60.0),
+        };
+        Fixture { style, width: Length::from_inches(w), drop: Length::from_inches(d) }
+    }
 }
 
 /// A light fixture's output.

@@ -1809,6 +1809,35 @@ fn electrical_symbol(
                 c - t * r * 0.6 + n * r * 0.6,
             );
         }
+        // A styled fixture is drawn at its true size seen from below.
+        K::CeilingLight if e.fixture.is_some() => {
+            use housecraft_model::FixtureStyle as S;
+            let Some(f) = e.fixture else { return };
+            let fr = (f.width.mm() / 2.0).max(r);
+            match f.style {
+                S::Lantern => {
+                    let (a, b) = (DVec2::new(fr, fr), DVec2::new(fr, -fr));
+                    out.push(id, Prim::Polyline { points: vec![p - a, p + b, p + a, p - b], closed: true, stroke });
+                }
+                S::Chandelier => {
+                    circle(out, p, fr);
+                    for i in 0..6 {
+                        circle(out, p + DVec2::from_angle(i as f64 * std::f64::consts::TAU / 6.0) * (fr - r * 0.6), r * 0.4);
+                    }
+                }
+                S::Pendant | S::TableLamp | S::FloorLamp => {
+                    circle(out, p, fr);
+                    circle(out, p, r * 0.4);
+                }
+                S::FlushMount | S::Sconce => {
+                    circle(out, p, fr);
+                    for d in [DVec2::new(1.0, 1.0), DVec2::new(1.0, -1.0)] {
+                        let d = d.normalize() * fr;
+                        line(out, p - d, p + d);
+                    }
+                }
+            }
+        }
         K::CeilingLight => {
             circle(out, p, r * 1.5);
             for d in [DVec2::new(1.0, 1.0), DVec2::new(1.0, -1.0)] {

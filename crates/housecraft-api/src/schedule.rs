@@ -362,8 +362,8 @@ fn kind_rows(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> Vec<
             let labels = doc.switch_labels();
             for e in doc.iter::<Electrical>().filter(|e| on_floor(e.floor)) {
                 let item = match labels.get(&e.id) {
-                    Some(l) => format!("{} ({l})", e.electrical_kind.name()),
-                    None => e.electrical_kind.name().to_string(),
+                    Some(l) => format!("{} ({l})", e.display_name()),
+                    None => e.display_name().to_string(),
                 };
                 let mut row = BTreeMap::new();
                 row.insert("Trade", e.electrical_kind.trade().to_string());

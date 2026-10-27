@@ -383,7 +383,7 @@ pub fn materials(doc: &Document, opts: &MaterialsOptions) -> MaterialsList {
         if on_floor(e.floor) && shown(e.id) && e.renovation != Renovation::Demolish {
             t.add(
                 e.electrical_kind.trade(),
-                e.electrical_kind.name(),
+                e.display_name(),
                 Measure::Count,
                 1.0,
                 e.id,

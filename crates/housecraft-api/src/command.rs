@@ -1693,6 +1693,7 @@ impl Command {
                     renovation: Default::default(),
                     layer: d.layers.electrical.unwrap_or(d.layers.cad),
                     light: None,
+                    fixture: None,
                 }));
             }
             Command::ConnectSwitch {
