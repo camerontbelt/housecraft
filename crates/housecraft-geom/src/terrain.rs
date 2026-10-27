@@ -148,6 +148,12 @@ pub fn surface(doc: &Document, t: &Terrain) -> Option<Surface> {
         }
     }
     let base = t.base_elevation.mm();
+    // The reference point holds the ground at the base elevation there,
+    // like a spot height, unless elevation data close by already set it.
+    let reference = t.reference.map(v2).filter(|r| samples.iter().all(|(q, _)| q.distance(*r) > cell * 3.0));
+    if let Some(r) = reference {
+        samples.push((r, base));
+    }
     let mut heights = vec![base; (nx + 1) * (ny + 1)];
     if !samples.is_empty() {
         // A tilted plane through the data carries the overall slope;
@@ -226,6 +232,20 @@ pub fn surface(doc: &Document, t: &Terrain) -> Option<Surface> {
                 }
             }
             _ => {}
+        }
+    }
+    // Smoothing softens the reference point's spot height; ease the ground
+    // back to it over a few cells round it.
+    if let Some(c) = reference {
+        let rad = cell * 3.0;
+        let miss = t.base_elevation.mm() - s.height_at(c);
+        for j in 0..=ny {
+            for i in 0..=nx {
+                let dist = (lo + DVec2::new(i as f64, j as f64) * cell).distance(c);
+                if dist < rad {
+                    s.heights[j * (nx + 1) + i] += miss * 0.5 * (1.0 + (std::f64::consts::PI * dist / rad).cos());
+                }
+            }
         }
     }
     Some(s)

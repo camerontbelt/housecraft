@@ -47,8 +47,26 @@
       ]
     },
     {
-      "step": "(Reference point)",
-      "gap": "No terrain reference point; the terrain's base elevation is the height where there's no data. Row: SITE-27"
+      "step": "(Reference point: open the terrain, tick Reference Point, Reference At the centre of the Garage door. Elevation data drawn right beside it later take over there)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$terrain",
+          "set": {
+            "reference": [
+              10769.6,
+              -11684.0
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$terrain",
+          "path": "/base_elevation",
+          "is": "-28\""
+        }
+      ]
     },
     {
       "step": "Elevation Line across the whole terrain at the front of the Garage, 1\" off the wall, at 0\"",

@@ -51,8 +51,9 @@ extension-line / add-segment handles. Draw manual dimensions to the deck and por
 ## Terrain (pages 115–118)
 
 1. **Terrain › Terrain Perimeter**: click four corners round the house, about 60' deep. Double-click to finish.
-2. **Terrain › Terrain Specification**: set the base elevation to `-28"`. *Not in HouseCraft yet:* the terrain
-   reference point. The base elevation applies wherever there's no elevation data.
+2. **Terrain › Terrain Specification**: set the base elevation to `-28"`. Tick **Reference Point** and set
+   **Reference At** to the Garage's front corner. The ground is held at `-28"` there and slopes to any elevation
+   data you add later.
 3. *Not in HouseCraft yet:* porch stem walls with the Straight Foundation Wall tool, and a room's stem-wall
    height. You can draw walls on the Foundation floor under the porch and set their height.
 
@@ -72,7 +73,9 @@ extension-line / add-segment handles. Draw manual dimensions to the deck and por
 1. **Text** tool: `CONCRETE STEPS TO GRADE` below the porch and `FRAMED STEPS TO GRADE` by the deck.
 2. **Callout** by the deck: `EXTERIOR LANDING 36" MINIMUM IN DIRECTION OF TRAVEL`, tick **Numbered Note**,
    and copy it to the porch.
-3. *Not in HouseCraft yet:* reordering schedule rows.
+3. **Tools › Schedules › Place in Plan › Note Schedule** beside the plan. To change the order, open it and use the
+   **▲** / **▼** buttons under **Row Order** (Move Up / Move Down in Schedule). **Usual Order** puts it back.
+   *Not in HouseCraft yet:* dragging rows in the schedule itself.
 
 ## Revisions and folders (page 124)
 
@@ -88,9 +91,8 @@ Shift+click to pick several first). They move on disk too.
 | Half Wall / Railing / Deck Railing tools and defaults | WL-29 |
 | Decks as rooms; a footing layer | SITE-26 |
 | Moving automatic dimensions; extension-line handles | DIM-27, DIM-28 |
-| Terrain reference point | SITE-27 |
 | Foundation wall tool; per-room stem walls | FD-09 |
-| Reordering schedule rows | EST-28 |
+| Dragging schedule rows | EST-28 |
 
 Fixed for this tutorial: **porches are left out of the foundation** (Porch and Deck room types are "outdoor"),
 and basement walls rebuilt along the same line keep the type you gave them.

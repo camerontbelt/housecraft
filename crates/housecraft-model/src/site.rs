@@ -37,6 +37,10 @@ pub struct Terrain {
     pub extend_to_horizon: bool,
     #[serde(default = "grass")]
     pub color: Color,
+    /// The reference point: the ground here is at `base_elevation`, and the
+    /// surface slopes from it to the elevation data (data right beside it win).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference: Option<Point2>,
 }
 
 fn default_base() -> Length {
@@ -73,6 +77,7 @@ impl Terrain {
             major_every: five(),
             extend_to_horizon: false,
             color: grass(),
+            reference: None,
         }
     }
 }

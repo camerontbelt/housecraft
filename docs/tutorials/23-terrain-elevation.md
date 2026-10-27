@@ -17,7 +17,7 @@ the left). An elevation line takes several clicks: click along it, then double-c
 ## Building pad (pages 406–407)
 
 **Terrain › Terrain Specification**: **Base Elevation** `-28"`. That's the ground height wherever there's no
-elevation data, about 1" below the Garage slab. *Not in HouseCraft yet:* a reference point you drag to the Garage door.
+elevation data, about 1" below the Garage slab. In the terrain's dialog tick **Reference Point** and set **Reference At** to the centre of the Garage door; elevation data drawn right beside it take over there.
 
 ## A slope (pages 407–410)
 
@@ -63,7 +63,6 @@ elevation data, about 1" below the Garage slab. *Not in HouseCraft yet:* a refer
 |---|---|
 | Additional allowed angles | CAD-33 |
 | Duplicate a saved plan view | PRJ-12 |
-| Terrain reference point | SITE-27 |
 | Elevation line angle, Add Break, continue drawing | SITE-30 |
 | Curved elevation lines | SITE-29 |
 | Retaining walls separating the terrain | SITE-31 |

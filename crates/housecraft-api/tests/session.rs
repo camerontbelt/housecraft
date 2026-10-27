@@ -2909,6 +2909,43 @@ fn any_selection_moves_by_typing_on_a_dimension() {
 }
 
 #[test]
+fn terrain_reference_point_and_schedule_row_order() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_terrain", "points": [["-30'","-30'"],["60'","-30'"],["60'","60'"],["-30'","60'"]]},
+            {"op": "add_elevation_data", "shape": {"type": "line", "points": [["-40'","-20'"],["70'","-20'"]], "elevation": "0\""}},
+            {"op": "add_elevation_data", "shape": {"type": "line", "points": [["-40'","50'"],["70'","50'"]], "elevation": "6'"}}]"#,
+    );
+    let terrain = out.created[0];
+    let ground = |s: &Session, p: (f64, f64)| {
+        let doc = s.document();
+        let t = doc.get::<Terrain>(terrain).unwrap();
+        housecraft_api::geom::terrain::surface(doc, t).unwrap().height_at(housecraft_api::geom::DVec2::new(p.0 * 304.8, p.1 * 304.8))
+    };
+    let before = ground(&s, (10.0, 15.0));
+    s.apply(&[Command::Update { id: terrain, set: patch(serde_json::json!({"base_elevation": "-28\"", "reference": ["10'", "15'"]})) }]).unwrap();
+    let at = ground(&s, (10.0, 15.0));
+    assert!((at + 28.0 * 25.4).abs() < 30.0, "about -28\" at the reference point: {at} (was {before})");
+    assert!((ground(&s, (40.0, 50.0)) - 6.0 * 304.8).abs() < 30.0, "elevation data keep their heights");
+
+    // Schedule rows moved by hand.
+    let wall = s.document().iter::<Wall>().next().unwrap().id;
+    let wins = apply(
+        &mut s,
+        &format!(r#"[{{"op": "add_window", "wall": {w}, "position": "4'", "width": "2'"}}, {{"op": "add_window", "wall": {w}, "position": "12'", "width": "3'"}}, {{"op": "add_window", "wall": {w}, "position": "20'", "width": "4'"}}]"#, w = wall.0),
+    )
+    .created;
+    use housecraft_api::schedule::{ScheduleOptions, schedule};
+    let firsts = |opts: &ScheduleOptions| schedule(s.document(), ScheduleKind::Windows, opts).rows.iter().map(|r| r.ids[0]).collect::<Vec<_>>();
+    let usual = firsts(&ScheduleOptions::default());
+    assert_eq!(usual.len(), 3);
+    let moved = firsts(&ScheduleOptions { order: vec![wins[2], wins[0]], ..Default::default() });
+    assert_eq!(&moved[..2], &[wins[2], wins[0]], "listed rows first, in order");
+    assert_eq!(moved[2], wins[1], "the rest after");
+}
+
+#[test]
 fn reverse_layers_and_delete_objects_in_a_room() {
     let mut s = boxed();
     let wall = s.document().iter::<Wall>().next().unwrap().clone();

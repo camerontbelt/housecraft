@@ -23,7 +23,7 @@ has two files:
 | 3 | Multiple Floors (45) | 11 | 7 | [03-multiple-floors.md](03-multiple-floors.md) |
 | 4 | Interior Stairs (60) | 13 | 10 | [04-interior-stairs.md](04-interior-stairs.md) |
 | 5 | Doors and Windows (82) | 22 | 8 | [05-doors-and-windows.md](05-doors-and-windows.md) |
-| 6 | Decks and Porches (105) | 14 | 12 | [06-decks-and-porches.md](06-decks-and-porches.md) |
+| 6 | Decks and Porches (105) | 17 | 10 | [06-decks-and-porches.md](06-decks-and-porches.md) |
 | 7 | Roof styles: hip, gable, Dutch gable, shed, offset gable, gambrel, gull wing, half hip, mansard (127) | 12 | 3 | [07-roof-styles.md](07-roof-styles.md) |
 | 8 | Chic Cottage Roof (136) | 12 | 7 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
 | 9 | Dormers (159) | 11 | 6 | [09-dormers.md](09-dormers.md) |
@@ -40,7 +40,7 @@ has two files:
 | 20 | Wall Framing (349) | 12 | 8 | [20-wall-framing.md](20-wall-framing.md) |
 | 21 | Roof and Ceiling Framing (364) | 11 | 7 | [21-roof-and-ceiling-framing.md](21-roof-and-ceiling-framing.md) |
 | 22 | Plot Plans (382) | 10 | 6 | [22-plot-plans.md](22-plot-plans.md) |
-| 23 | Terrain Elevation (403) | 11 | 8 | [23-terrain-elevation.md](23-terrain-elevation.md) |
+| 23 | Terrain Elevation (403) | 12 | 7 | [23-terrain-elevation.md](23-terrain-elevation.md) |
 | 24 | Driveways, Sidewalks, and Roads (420) | 6 | 7 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
 | 25 | Landscaping Design (433) | 14 | 8 | [25-landscaping-design.md](25-landscaping-design.md) |
 | 26 | Layout Page Templates (451) | 7 | 4 | [26-layout-page-templates.md](26-layout-page-templates.md) |

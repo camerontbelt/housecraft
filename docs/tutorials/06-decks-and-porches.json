@@ -219,8 +219,26 @@
       ]
     },
     {
-      "step": "(Terrain elevation reference point dragged to the Garage corner)",
-      "gap": "No terrain reference point; the base elevation is the terrain's height everywhere without elevation data. Row: SITE-27"
+      "step": "(Terrain reference point at the Garage's front corner: open the terrain, tick Reference Point and set Reference At)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$terrain",
+          "set": {
+            "reference": [
+              12801.6,
+              -11684.0
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$terrain",
+          "path": "/base_elevation",
+          "is": "-28\""
+        }
+      ]
     },
     {
       "step": "Turn on the Footings, Deck Post layer",
@@ -400,8 +418,49 @@
       ]
     },
     {
-      "step": "Reorder the Note Schedule by dragging rows; Move Up/Down in Schedule buttons",
-      "gap": "Schedule rows can't be reordered. Row: EST-28"
+      "step": "Note Schedule beside the plan",
+      "commands": [
+        {
+          "op": "add_schedule",
+          "floor": "$floor1",
+          "schedule_kind": "notes",
+          "position": [
+            15240.0,
+            0.0
+          ]
+        }
+      ],
+      "save": {
+        "notes": "schedule"
+      },
+      "expect": [
+        {
+          "get": "$notes",
+          "path": "/schedule_kind",
+          "is": "notes"
+        }
+      ]
+    },
+    {
+      "step": "Reorder the Note Schedule: open it and use the ▲ / ▼ (Move Up / Move Down in Schedule) buttons under Row Order",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$notes",
+          "set": {
+            "order": [
+              "$landing"
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$notes",
+          "path": "/order/0",
+          "is": "$landing"
+        }
+      ]
     },
     {
       "step": "Save a copy; organise the archive plans in a Project Browser folder"

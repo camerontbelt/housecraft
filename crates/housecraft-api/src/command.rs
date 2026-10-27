@@ -1875,6 +1875,7 @@ impl Command {
                     renovation: None,
                     start_number: None,
                     thumbnails: false,
+                    order: Vec::new(),
                 }));
             }
             Command::SetMaterialPrice { item, price } => match price {

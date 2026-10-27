@@ -1701,6 +1701,19 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "major_every": v.round() as u32 })));
             }
             ed.check(ui, "Horizon", "extend_to_horizon", "Extend flat ground to the horizon in 3D", t.extend_to_horizon);
+            // The reference point: Base Elevation is the surface height there.
+            Ed::label(ui, "Reference Point");
+            let mut on = t.reference.is_some();
+            if ui.checkbox(&mut on, "Base Elevation is the ground height at a point").changed() {
+                let at = on.then(|| t.perimeter.first().copied()).flatten();
+                ed.out.push(patch(id, json!({ "reference": at })));
+            }
+            ui.end_row();
+            if let Some(r) = t.reference
+                && let Some(p) = ed.point(ui, "Reference At", "reference", r)
+            {
+                ed.out.push(patch(id, json!({ "reference": p })));
+            }
             Ed::label(ui, "Colour");
             let mut c32 = to_color32(t.color);
             if ui.color_edit_button_srgba(&mut c32).changed() {
@@ -2325,6 +2338,48 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             }
             ui.end_row();
             ed.check(ui, "Thumbnails", "thumbnails", "A small plan picture on each row", s.thumbnails);
+            // Move Up / Move Down: the rows as the schedule lists them now.
+            let table = housecraft_api::schedule::schedule(
+                doc,
+                s.schedule_kind,
+                &housecraft_api::schedule::ScheduleOptions {
+                    floor: (!s.all_floors).then_some(s.floor),
+                    columns: s.columns.clone(),
+                    also: s.also.clone(),
+                    renovation: s.renovation,
+                    start: s.start_number,
+                    order: s.order.clone(),
+                },
+            );
+            let firsts: Vec<Id> = table.rows.iter().filter_map(|r| r.ids.first().copied()).collect();
+            Ed::label(ui, "Row Order");
+            let mut swap = None;
+            ui.vertical(|ui| {
+                egui::ScrollArea::vertical().max_height(160.0).show(ui, |ui| {
+                    for (i, row) in table.rows.iter().enumerate() {
+                        ui.horizontal(|ui| {
+                            if ui.add_enabled(i > 0, egui::Button::new("▲").small()).on_hover_text("Move Up in Schedule").clicked() {
+                                swap = Some(i - 1);
+                            }
+                            if ui.add_enabled(i + 1 < table.rows.len(), egui::Button::new("▼").small()).on_hover_text("Move Down in Schedule").clicked() {
+                                swap = Some(i);
+                            }
+                            ui.label(row.cells.iter().take(2).cloned().collect::<Vec<_>>().join("  "));
+                        });
+                    }
+                });
+                if !s.order.is_empty() && ui.small_button("Usual Order").clicked() {
+                    ed.out.push(patch(id, json!({ "order": [] })));
+                }
+            });
+            ui.end_row();
+            if let Some(i) = swap
+                && i + 1 < firsts.len()
+            {
+                let mut order = firsts.clone();
+                order.swap(i, i + 1);
+                ed.out.push(patch(id, json!({ "order": order })));
+            }
             ed.pick::<Layer>(ui, "Layer", "layer", Some(s.layer), None);
         }
         Object::Electrical(e) => {

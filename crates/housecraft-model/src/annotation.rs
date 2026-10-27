@@ -262,6 +262,10 @@ pub struct Schedule {
     /// A small plan picture of each row's object.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub thumbnails: bool,
+    /// Rows put in order by hand (Move Up / Move Down): their objects, first
+    /// to last; other rows follow.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub order: Vec<Id>,
 }
 
 /// Shape drawn around a marker's text.

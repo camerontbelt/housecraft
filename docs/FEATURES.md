@@ -538,7 +538,7 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-23 | Plant growth over time | P3 | M8 |
 | SITE-24 | 3D plants with shadows | P2 | M7 ✓ plants cast sun shadows in 3D |
 | SITE-26 | Decks as rooms enclosed by Deck Railings (Deck room type defaults: planking, framing, post footing depth and layer) | P2 | M9 ◐ each deck has a Footing Depth; decks as rooms and a footing layer later |
-| SITE-27 | Terrain elevation reference point (surface height set at a chosen point) | P3 | M9 |
+| SITE-27 | Terrain elevation reference point (surface height set at a chosen point) | P3 | M9 ✓ Reference Point in the terrain dialog: the ground is held at the base elevation there and slopes to the elevation data |
 | SITE-28 | North Pointer object that rotates with the lot; a separate site north for plot plans vs the house | P3 | M9 |
 | SITE-29 | Plot plan lines: decimal-feet lengths and quadrant-bearing angles on CAD lines; curved lot sides by radius and arc length | P2 | M9 |
 | SITE-30 | Elevation line editing: angle with a locked start point, Add Break, continue drawing from an end | P3 | M9 |
@@ -640,7 +640,7 @@ These come from reading the whole list and change the architecture, not just the
 | EST-25 | Wall schedule construction columns (layers of the upper and lower wall) | P3 | M9 |
 | EST-26 | Schedules placed in CAD details (legends) | P2 | M9 |
 | EST-27 | Door/window schedules: show objects' own labels instead of schedule-number callouts | P3 | M9 |
-| EST-28 | Reorder schedule rows (drag rows; Move Up/Down in Schedule) | P3 | M9 |
+| EST-28 | Reorder schedule rows (drag rows; Move Up/Down in Schedule) | P3 | M9 ◐ Row Order ▲/▼ (Move Up/Down in Schedule) in the schedule dialog; dragging rows in the table later |
 | EST-29 | Room moldings schedule (profiles and lengths by room) | P3 | M9 |
 | EST-30 | Furniture schedule (pictures, dimensions; blocks as one line; leave accessories out) | P3 | M9 |
 | EST-31 | Schedule from a room; category filter (lighting only); custom schedule title | P2 | M9 |

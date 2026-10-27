@@ -42,6 +42,10 @@ pub struct ScheduleOptions {
     /// The first label number (D01 when 1).
     #[serde(default)]
     pub start: Option<u32>,
+    /// Rows whose objects are listed here come first, in this order (rows
+    /// moved up or down by hand); the rest follow in the usual order.
+    #[serde(default)]
+    pub order: Vec<Id>,
 }
 
 /// Every column a schedule of `kind` can show, in default order.
@@ -192,6 +196,10 @@ pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> S
                 status == want
             })
         });
+    }
+    if !opts.order.is_empty() {
+        let rank = |ids: &[Id]| ids.iter().filter_map(|id| opts.order.iter().position(|o| o == id)).min().unwrap_or(usize::MAX);
+        raw.sort_by_key(|(ids, _)| rank(ids));
     }
     let columns: Vec<&str> = if opts.columns.is_empty() {
         all.clone()

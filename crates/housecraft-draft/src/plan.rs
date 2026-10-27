@@ -1184,6 +1184,7 @@ fn schedule_table(
             also: s.also.clone(),
             renovation: s.renovation,
             start: s.start_number,
+            order: s.order.clone(),
         },
     );
     let thumbs = if s.thumbnails { thumbnails(doc, &table) } else { Vec::new() };
