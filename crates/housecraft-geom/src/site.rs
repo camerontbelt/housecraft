@@ -3,7 +3,7 @@
 //! ground.
 
 use glam::{DVec2, DVec3};
-use housecraft_model::{Color, Document, FenceStyle, Plant, PlantForm, SiteFeature, SiteKind, Terrain};
+use housecraft_model::{Color, Document, FenceStyle, GateStyle, Plant, PlantForm, SiteFeature, SiteKind, Terrain};
 
 use crate::math::{perp, signed_area, v2};
 use crate::mesh::{Category, Look, Mesh};
@@ -151,7 +151,8 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, mes
             let s = along(&pts, false, 300.0);
             strip(&s, width.mm() / 2.0, -150.0, height.mm(), z, concrete, mesh);
         }
-        SiteKind::Fence { style, height, post_spacing, gates } => {
+        SiteKind::Fence { style, height, post_spacing, gates, post_size, rail_size } => {
+            let (post_half, rail_half) = (post_size.mm() / 2.0, rail_size.mm() / 2.0);
             let h = height.mm();
             let s = along(&pts, false, 100.0);
             let in_gate = |d: f64| gates.iter().any(|g| d > g.at.mm() && d < g.at.mm() + g.width.mm());
@@ -174,7 +175,7 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, mes
             };
             for d in &post_at {
                 let p = point_at(*d);
-                post(p, 45.0, z(p) - 300.0, z(p) + h + 50.0, wood, mesh);
+                post(p, post_half, z(p) - 300.0, z(p) + h + 50.0, wood, mesh);
             }
             match style {
                 FenceStyle::Picket => {
@@ -205,19 +206,38 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, mes
                     if in_gate((w[0].1 + w[1].1) / 2.0) {
                         continue;
                     }
-                    strip(w, 20.0, h * frac - 45.0, h * frac + 45.0, z, wood, mesh);
+                    strip(w, 20.0, h * frac - rail_half, h * frac + rail_half, z, wood, mesh);
                 }
             }
-            // Gates: a darker panel in each opening.
+            // Gates: a darker panel, pickets or an arched panel in each opening.
             let gate_look = look(Color::rgb(150, 130, 100), 1.0, 0.7);
             for g in gates {
-                let span: Vec<(DVec2, f64)> = s
-                    .iter()
-                    .copied()
-                    .filter(|(_, d)| *d >= g.at.mm() && *d <= g.at.mm() + g.width.mm())
-                    .collect();
-                if span.len() >= 2 {
-                    strip(&span, 18.0, 75.0, h - 25.0, z, gate_look, mesh);
+                let gh = g.height.map_or(h, |l| l.mm()).max(200.0);
+                let lo = g.clearance.mm().clamp(0.0, gh - 100.0);
+                let (g0, g1) = (g.at.mm(), g.at.mm() + g.width.mm());
+                let span: Vec<(DVec2, f64)> = s.iter().copied().filter(|(_, d)| *d >= g0 && *d <= g1).collect();
+                if span.len() < 2 {
+                    continue;
+                }
+                match g.style {
+                    GateStyle::Panel => strip(&span, 18.0, lo, gh - 25.0, z, gate_look, mesh),
+                    GateStyle::Picket => {
+                        for frac in [0.2, 0.8] {
+                            strip(&span, 18.0, gh * frac - 40.0, gh * frac + 40.0, z, gate_look, mesh);
+                        }
+                        for (p, _) in &span {
+                            post(*p, 18.0, z(*p) + lo, z(*p) + gh - 25.0, gate_look, mesh);
+                        }
+                    }
+                    GateStyle::Arched => {
+                        // Rises a sixth of the width at the middle.
+                        let rise = (g1 - g0) / 6.0;
+                        for w in span.windows(2) {
+                            let mid = ((w[0].1 + w[1].1) / 2.0 - g0) / (g1 - g0).max(1.0);
+                            let top = gh - 25.0 + rise * (std::f64::consts::PI * mid).sin();
+                            strip(w, 18.0, lo, top, z, gate_look, mesh);
+                        }
+                    }
                 }
             }
         }

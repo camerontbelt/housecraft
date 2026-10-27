@@ -32,12 +32,14 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
 
 ## Fencing and a gate (pages 440–443)
 
-1. *Not in HouseCraft yet:* fencing defaults (panel styles, rail and post sizes).
+1. *Not in HouseCraft yet:* fencing defaults and a library of fence panels (such as iron poles). You set the sizes
+   on each fence instead.
 2. **Fence**: click along the left setback line from the sidewalk to the back, along the back, and down the right
-   angled setback line. Press Enter. Open it: **Style** Privacy, **Height** `6'`.
+   angled setback line. Press Enter. Open it: **Style** Privacy, **Height** `6'`, **Post Spacing** `72"`,
+   **Post Size** `5 1/2"`, **Rail Size** `5 1/2"`.
 3. HouseCraft fences don't replace retaining walls, so there's nothing to undo.
-4. In the fence's dialog, click **Add Gate** under **Gates** and set where it starts along the fence and its width.
-   *Not in HouseCraft yet:* gate styles from the library and a separate gate height.
+4. In the fence's dialog, click **Add Gate** under **Gates**. Set where it starts along the fence (**at**), its
+   width (**wide**), **tall** `72"`, **off ground** `4"`, and pick a style: **Panel**, **Picket** or **Arched**.
 
 ## Plants (pages 443–447)
 
@@ -59,7 +61,7 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
 
 | Missing | FEATURES row |
 |---|---|
-| Dirt material default; fence panels, rails, posts; gate styles | SITE-34 |
+| Dirt material default; fencing defaults and panel library | SITE-34 |
 | Add Break, edge moves and arcs on garden beds | SITE-30 |
 | Plant Chooser and encyclopedia | SITE-20, SITE-21 |
 | Architectural blocks | CB-27 |

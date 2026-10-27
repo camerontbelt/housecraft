@@ -2909,6 +2909,36 @@ fn any_selection_moves_by_typing_on_a_dimension() {
 }
 
 #[test]
+fn fences_size_their_posts_and_rails_and_gates_have_a_height_and_style() {
+    let mut s = boxed();
+    let fence = apply(
+        &mut s,
+        r#"[{"op": "add_site_feature", "points": [["30'",0],["50'",0]], "feature": {"type": "fence", "style": "privacy", "height": "4'", "post_spacing": "8'"}}]"#,
+    )
+    .created[0];
+    let extent = |s: &Session| {
+        let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+        let pts: Vec<_> = mesh.faces.iter().filter(|f| mesh.parts[f.part].object == fence).flat_map(|f| f.points.clone()).collect();
+        let lo = pts.iter().fold(housecraft_api::geom::DVec3::MAX, |a, p| a.min(*p));
+        let hi = pts.iter().fold(housecraft_api::geom::DVec3::MIN, |a, p| a.max(*p));
+        (lo, hi)
+    };
+    let (lo0, hi0) = extent(&s);
+    assert!((lo0.y + 3.5 * 25.4 / 2.0).abs() < 1.0, "3 1/2\" posts by default: {}", lo0.y);
+    s.apply(&[Command::Update {
+        id: fence,
+        set: patch(serde_json::json!({"feature": {"type": "fence", "style": "privacy", "height": "4'", "post_spacing": "8'", "post_size": "6\"", "rail_size": "5 1/2\"",
+            "gates": [{"at": "6'", "width": "4'", "height": "6'", "style": "arched"}]}})),
+    }])
+    .unwrap();
+    let (lo, hi) = extent(&s);
+    assert!((lo.y + 3.0 * 25.4).abs() < 1.0, "6\" posts: {}", lo.y);
+    assert!(hi.z > hi0.z + 600.0, "the gate stands above the fence and arches: {} vs {}", hi.z, hi0.z);
+    let SiteKind::Fence { gates, .. } = &s.document().get::<SiteFeature>(fence).unwrap().feature else { panic!() };
+    assert_eq!(gates[0].style, GateStyle::Arched);
+}
+
+#[test]
 fn outlets_go_in_the_floor_in_the_open_and_weatherproof_outside() {
     let mut s = boxed();
     let out = apply(

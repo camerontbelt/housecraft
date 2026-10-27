@@ -813,12 +813,17 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                         c.positive(id, "width", *width);
                         c.positive(id, "thickness", *thickness);
                     }
-                    SiteKind::Fence { height, post_spacing, gates, .. } => {
+                    SiteKind::Fence { height, post_spacing, gates, post_size, rail_size, .. } => {
                         c.positive(id, "height", *height);
                         c.positive(id, "post_spacing", *post_spacing);
+                        c.positive(id, "post_size", *post_size);
+                        c.positive(id, "rail_size", *rail_size);
                         for g in gates {
                             c.positive(id, "gate width", g.width);
                             c.non_negative(id, "gate position", g.at);
+                            if let Some(h) = g.height {
+                                c.positive(id, "gate height", h);
+                            }
                         }
                     }
                     SiteKind::GardenBed { height } => c.non_negative(id, "height", *height),

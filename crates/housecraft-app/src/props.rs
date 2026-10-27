@@ -1543,7 +1543,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     len(ui, ed, "Height", "feature.height", height);
                     len(ui, ed, "Width", "feature.width", width);
                 }
-                SiteKind::Fence { style, height, post_spacing, gates } => {
+                SiteKind::Fence { style, height, post_spacing, gates, post_size, rail_size } => {
                     Ed::label(ui, "Style");
                     ui.horizontal(|ui| {
                         for s in FenceStyle::ALL {
@@ -1553,6 +1553,8 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     ui.end_row();
                     len(ui, ed, "Height", "feature.height", height);
                     len(ui, ed, "Post Spacing", "feature.post_spacing", post_spacing);
+                    len(ui, ed, "Post Size", "feature.post_size", post_size);
+                    len(ui, ed, "Rail Size", "feature.rail_size", rail_size);
                     Ed::label(ui, "Gates");
                     ui.vertical(|ui| {
                         let mut remove = None;
@@ -1564,6 +1566,20 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                                         *v = Length::from_inches(x);
                                     }
                                 }
+                                // Gate height: 0 means as tall as the fence.
+                                let mut gh = g.height.map_or(0.0, |l| l.inches());
+                                if ui.add(egui::DragValue::new(&mut gh).range(0.0..=240.0).prefix("tall ").suffix("\"")).on_hover_text("0: as tall as the fence").changed() {
+                                    g.height = (gh > 0.0).then(|| Length::from_inches(gh));
+                                }
+                                let mut off = g.clearance.inches();
+                                if ui.add(egui::DragValue::new(&mut off).range(0.0..=48.0).prefix("off ground ").suffix("\"")).changed() {
+                                    g.clearance = Length::from_inches(off);
+                                }
+                                egui::ComboBox::from_id_salt(("gate_style", i)).selected_text(g.style.name()).show_ui(ui, |ui| {
+                                    for s in GateStyle::ALL {
+                                        ui.selectable_value(&mut g.style, s, s.name());
+                                    }
+                                });
                                 if ui.small_button("×").clicked() {
                                     remove = Some(i);
                                 }
@@ -1573,7 +1589,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                             gates.remove(i);
                         }
                         if ui.small_button("Add Gate").clicked() {
-                            gates.push(Gate { at: Length::from_feet(2.0), width: Length::from_feet(4.0) });
+                            gates.push(Gate::new(Length::from_feet(2.0), Length::from_feet(4.0)));
                         }
                     });
                     ui.end_row();

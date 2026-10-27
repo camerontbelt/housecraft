@@ -129,7 +129,7 @@
     },
     {
       "step": "Fencing defaults: 72\" rail, 5 1/2\" posts 74\" high, iron pole panels, top and bottom rails 5 1/2\" x 1 1/2\"",
-      "gap": "Fences are picket, privacy or rail with a height and post spacing; no panel library, rail sizes or post size. Row: SITE-34"
+      "gap": "No fencing defaults or panel library (iron poles); post and rail sizes are set on each fence (below). Row: SITE-34"
     },
     {
       "step": "Straight Fencing along the left setback, the back and the right angled setback",
@@ -159,7 +159,9 @@
             "type": "fence",
             "style": "privacy",
             "height": "6'",
-            "post_spacing": "8'"
+            "post_spacing": "72\"",
+            "post_size": "5 1/2\"",
+            "rail_size": "5 1/2\""
           }
         }
       ],
@@ -171,6 +173,11 @@
           "get": "$fence",
           "path": "/feature/height",
           "is": "6'"
+        },
+        {
+          "get": "$fence",
+          "path": "/feature/post_size",
+          "is": "5 1/2\""
         }
       ]
     },
@@ -189,13 +196,18 @@
               "type": "fence",
               "style": "privacy",
               "height": "6'",
-              "post_spacing": "8'",
+              "post_spacing": "72\"",
               "gates": [
                 {
                   "at": "86'",
-                  "width": "4'"
+                  "width": "4'",
+                  "height": "72\"",
+                  "style": "picket",
+                  "clearance": "4\""
                 }
-              ]
+              ],
+              "post_size": "5 1/2\"",
+              "rail_size": "5 1/2\""
             }
           }
         }
@@ -205,12 +217,21 @@
           "get": "$fence",
           "path": "/feature/gates/0/width",
           "is": "4'"
+        },
+        {
+          "get": "$fence",
+          "path": "/feature/gates/0/height",
+          "is": "72\""
+        },
+        {
+          "get": "$fence",
+          "path": "/feature/gates/0/clearance",
+          "is": "4\""
         }
       ]
     },
     {
-      "step": "(Gates from the library; gate height and floor-to-bottom)",
-      "gap": "Gates are openings in the fence as tall as the fence; no gate styles or height. Row: SITE-34"
+      "step": "(Open the fence: under Gates set the gate's style, tall 72\" and off ground 4\")"
     },
     {
       "step": "Plant Chooser: search 'fir', place a Balsam Fir at the top right corner of the lot",

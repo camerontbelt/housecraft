@@ -172,6 +172,56 @@ impl FenceStyle {
 pub struct Gate {
     pub at: Length,
     pub width: Length,
+    /// The gate's own height above the ground; `None` is as tall as the fence.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height: Option<Length>,
+    #[serde(default)]
+    pub style: GateStyle,
+    /// Gap between the ground and the gate's bottom.
+    #[serde(default = "gate_clearance")]
+    pub clearance: Length,
+}
+
+fn gate_clearance() -> Length {
+    Length::from_inches(3.0)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum GateStyle {
+    /// Solid boards.
+    #[default]
+    Panel,
+    /// Spaced pickets between two rails.
+    Picket,
+    /// Solid boards with a top that arches up in the middle.
+    Arched,
+}
+
+impl GateStyle {
+    pub const ALL: [GateStyle; 3] = [GateStyle::Panel, GateStyle::Picket, GateStyle::Arched];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            GateStyle::Panel => "Panel",
+            GateStyle::Picket => "Picket",
+            GateStyle::Arched => "Arched",
+        }
+    }
+}
+
+impl Gate {
+    pub fn new(at: Length, width: Length) -> Self {
+        Gate { at, width, height: None, style: GateStyle::Panel, clearance: gate_clearance() }
+    }
+}
+
+fn fence_post_size() -> Length {
+    Length::from_inches(3.5)
+}
+
+fn fence_rail_size() -> Length {
+    Length::from_inches(3.5)
 }
 
 /// What a site feature is.
@@ -204,6 +254,12 @@ pub enum SiteKind {
         post_spacing: Length,
         #[serde(default)]
         gates: Vec<Gate>,
+        /// Posts are this square.
+        #[serde(default = "fence_post_size")]
+        post_size: Length,
+        /// Rails are this deep (1 1/2" thick).
+        #[serde(default = "fence_rail_size")]
+        rail_size: Length,
     },
     /// A garden bed (closed outline): raised by `height`, or a flat mulch
     /// bed on the ground when 0.
@@ -270,6 +326,8 @@ impl SiteKind {
             height: Length::from_feet(4.0),
             post_spacing: Length::from_feet(8.0),
             gates: Vec::new(),
+            post_size: fence_post_size(),
+            rail_size: fence_rail_size(),
         }
     }
     pub fn garden_bed() -> Self {
