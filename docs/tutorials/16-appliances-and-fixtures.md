@@ -50,7 +50,7 @@ cabinet fronts.
    left wall.
 2. Rename it `Kitchen Elevation` in the Project Browser under **Elevations and Sections**, and open it.
 3. **CAD › Dimensions › Elevation Dimensions**: cabinet, appliance and ceiling heights are dimensioned for you.
-4. *Not in HouseCraft yet:* handles for dragging extension lines, and a fill colour for those handles.
+4. Drag an extension line by its small square handle. *Not in HouseCraft yet:* a fill colour for those handles.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -59,4 +59,4 @@ cabinet fronts.
 | Cabinet partitions | CB-30 |
 | Faucets, tub spouts, shower heads | EL-10 |
 | Reverse Symbol (mirror a fixture) | CB-31 |
-| Extension-line handles on dimensions | DIM-28 |
+| Handle fill colour preference | UI-39 |

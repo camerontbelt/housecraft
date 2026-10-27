@@ -331,7 +331,7 @@
     },
     {
       "step": "(Wall Elevation dimension defaults; move extension lines; handle fill colour)",
-      "gap": "No extension-line handles or handle colour preference. Row: DIM-28"
+      "gap": "No handle fill colour preference (extension lines move by their handles). Row: UI-39"
     }
   ]
 }

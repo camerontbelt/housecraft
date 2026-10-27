@@ -23,7 +23,7 @@ has two files:
 | 3 | Multiple Floors (45) | 13 | 6 | [03-multiple-floors.md](03-multiple-floors.md) |
 | 4 | Interior Stairs (60) | 13 | 10 | [04-interior-stairs.md](04-interior-stairs.md) |
 | 5 | Doors and Windows (82) | 24 | 8 | [05-doors-and-windows.md](05-doors-and-windows.md) |
-| 6 | Decks and Porches (105) | 17 | 10 | [06-decks-and-porches.md](06-decks-and-porches.md) |
+| 6 | Decks and Porches (105) | 20 | 9 | [06-decks-and-porches.md](06-decks-and-porches.md) |
 | 7 | Roof styles: hip, gable, Dutch gable, shed, offset gable, gambrel, gull wing, half hip, mansard (127) | 12 | 3 | [07-roof-styles.md](07-roof-styles.md) |
 | 8 | Chic Cottage Roof (136) | 12 | 7 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
 | 9 | Dormers (159) | 11 | 6 | [09-dormers.md](09-dormers.md) |
@@ -34,7 +34,7 @@ has two files:
 | 14 | Cabinet Styles (237) | 8 | 4 | [14-cabinet-styles.md](14-cabinet-styles.md) |
 | 15 | Cabinet Layout (260) | 7 | 4 | [15-cabinet-layout.md](15-cabinet-layout.md) |
 | 16 | Appliances and Fixtures (277) | 12 | 5 | [16-appliances-and-fixtures.md](16-appliances-and-fixtures.md) |
-| 17 | Light Fixtures (298) | 22 | 8 | [17-light-fixtures.md](17-light-fixtures.md) |
+| 17 | Light Fixtures (298) | 23 | 7 | [17-light-fixtures.md](17-light-fixtures.md) |
 | 18 | Electrical Objects (317) | 21 | 5 | [18-electrical-objects.md](18-electrical-objects.md) |
 | 19 | Floor Framing (331) | 19 | 8 | [19-floor-framing.md](19-floor-framing.md) |
 | 20 | Wall Framing (349) | 12 | 8 | [20-wall-framing.md](20-wall-framing.md) |

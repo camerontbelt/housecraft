@@ -29,8 +29,8 @@ of light you want.
 1. *Not in HouseCraft yet:* dimension defaults that choose what a manual dimension snaps to. Dimensions snap to any
    object edge already.
 2. A **Manual Dimension** from the refrigerator to the island shows the 42" gap.
-3. Draw the dimension from the refrigerator to the light (HouseCraft has no extension lines to add to an existing
-   one). Select the light, click the dimension's number, type `1'9"` and press Enter: the light moves and the
+3. Draw the dimension from the Kitchen's left wall to the light. Then select it, choose **Edit › Add Extension Line**
+   and click the Kitchen's right wall: one dimension now measures both gaps. Select the light, click the dimension's number, type `1'9"` and press Enter: the light moves and the
    dimension follows it. Do the same with a dimension from the dishwasher, typing `21"`.
 
 ## Spacing the lights (pages 305–307)

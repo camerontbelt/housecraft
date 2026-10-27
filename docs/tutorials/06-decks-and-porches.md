@@ -45,8 +45,14 @@ these on each wall or deck instead.
 
 ## Dimensioning exterior rooms (pages 112–115)
 
-*Not in HouseCraft yet:* moving the automatic dimensions out of the deck (they're rebuilt automatically), and the
-extension-line / add-segment handles. Draw manual dimensions to the deck and porch instead.
+*Not in HouseCraft yet:* moving the automatic dimensions out of the deck (they're rebuilt automatically). Draw a
+manual dimension along the deck's outer edge instead.
+
+1. Select it and choose **Edit › Add Extension Line**, then click the middle of the edge: the dimension now
+   measures to that point too. Each extension line has a small square handle you can drag.
+2. **Edit › Remove Extension Line**, then click that extension line to take it away again.
+3. To extend the dimension (Add Segment), use **Add Extension Line** and click past its end, at the house's right
+   side.
 
 ## Terrain (pages 115–118)
 
@@ -90,7 +96,7 @@ Shift+click to pick several first). They move on disk too.
 | Stairs opening half walls; concrete stair material | ST-20, ST-12 |
 | Half Wall / Railing / Deck Railing tools and defaults | WL-29 |
 | Decks as rooms; a footing layer | SITE-26 |
-| Moving automatic dimensions; extension-line handles | DIM-27, DIM-28 |
+| Moving automatic dimensions | DIM-27 |
 | Foundation wall tool; per-room stem walls | FD-09 |
 | Dragging schedule rows | EST-28 |
 

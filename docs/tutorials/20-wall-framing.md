@@ -48,9 +48,9 @@ HouseCraft always keeps hand edits.
 
 ## Dimensioning the detail (pages 357–362)
 
-Draw **End to End** dimensions in the detail for the wall's height and length and the window openings. *Not in
-HouseCraft yet:* a per-view default set for details, a secondary (feet) label, a running dimension style, and
-dragging extension lines to add or remove them.
+Draw **End to End** dimensions in the detail for the wall's height and length and the window openings. Select one
+and use **Edit › Add Extension Line** / **Remove Extension Line**, or drag an extension line's handle. *Not in
+HouseCraft yet:* a per-view default set for details, a secondary (feet) label, and a running dimension style.
 
 ## Revision (page 362)
 
@@ -65,7 +65,6 @@ dragging extension lines to add or remove them.
 | Stud spacing per wall type | FR-39 |
 | Detail default sets; framing locate | DIM-29, DIM-30 |
 | Secondary dimension format | DIM-12 |
-| Extension-line handles | DIM-28 |
 
 **Fixed while following this tutorial:**
 

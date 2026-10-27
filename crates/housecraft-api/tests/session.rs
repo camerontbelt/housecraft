@@ -2912,6 +2912,36 @@ fn any_selection_moves_by_typing_on_a_dimension() {
 }
 
 #[test]
+fn extension_lines_add_and_remove_on_a_dimension() {
+    let mut s = boxed();
+    let dim = apply(
+        &mut s,
+        r#"[{"op": "add_dimension", "geometry": {"type": "linear", "points": [["2'","5'"],["10'","5'"]], "orientation": "horizontal", "offset": "-2'"}}]"#,
+    )
+    .created[0];
+    let geo = |s: &Session| match &s.document().get::<Dimension>(dim).unwrap().geometry {
+        DimensionGeometry::Linear { points, offset, .. } => (points.iter().map(|p| (p.0.mm() / 304.8, p.1.mm() / 304.8)).collect::<Vec<_>>(), offset.mm() / 304.8),
+        _ => panic!(),
+    };
+    let ft = |x: f64, y: f64| housecraft_api::units::Point2(Length::from_mm(x * 304.8), Length::from_mm(y * 304.8));
+    // An extension line in the middle, and a segment added past the start.
+    s.apply(&[Command::AddDimensionPoint { id: dim, at: ft(6.0, 8.0) }]).unwrap();
+    s.apply(&[Command::AddDimensionPoint { id: dim, at: ft(0.0, 9.0) }]).unwrap();
+    let (pts, offset) = geo(&s);
+    let xs: Vec<f64> = pts.iter().map(|p| p.0).collect();
+    assert_eq!(xs, vec![0.0, 2.0, 6.0, 10.0], "in order along the dimension");
+    assert!((pts[0].1 + offset - 3.0).abs() < 1e-9, "the dimension line stays at y = 3': {}", pts[0].1 + offset);
+    assert!(s.apply(&[Command::AddDimensionPoint { id: dim, at: ft(6.0, 1.0) }]).is_err(), "one there already");
+    // Removing the first keeps the line where it was too.
+    s.apply(&[Command::RemoveDimensionPoint { id: dim, index: 0 }]).unwrap();
+    let (pts, offset) = geo(&s);
+    assert_eq!(pts.len(), 3);
+    assert!((pts[0].1 + offset - 3.0).abs() < 1e-9);
+    s.apply(&[Command::RemoveDimensionPoint { id: dim, index: 1 }]).unwrap();
+    assert!(s.apply(&[Command::RemoveDimensionPoint { id: dim, index: 0 }]).is_err(), "two stay");
+}
+
+#[test]
 fn architectural_blocks_move_copy_delete_and_explode_as_one() {
     let mut s = boxed();
     let out = apply(

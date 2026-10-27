@@ -486,7 +486,7 @@ These come from reading the whole list and change the architecture, not just the
 | DIM-25 | Delete Dimensions (automatic, manual or all, by floor) | P2 | M9 ✓ Edit › Delete Dimensions: automatic, manual or all on this floor (`delete_dimensions`, any floor or all) |
 | DIM-26 | Auto Room Dimension: dimension every wall of a selected room | P2 | M9 ✓ Auto Room Dimension in the room dialog (`auto_room_dimension`): one dimension along each inside wall face |
 | DIM-27 | Moving or editing automatic dimensions keeps them (they become manual) | P2 | M9 |
-| DIM-28 | Dimension extension-line and add-segment handles | P2 | M9 |
+| DIM-28 | Dimension extension-line and add-segment handles | P2 | M9 ✓ each extension line of a linear dimension has a handle to drag it; Edit › Add / Remove Extension Line (`add_dimension_point`, `remove_dimension_point`), adding past an end extends the dimension (Add Segment) |
 | DIM-29 | Dimension defaults choosing what manual dimensions locate (cabinet sides, fixture corners, electrical, blocks) | P3 | M9 |
 | DIM-30 | Per-view default sets for CAD and wall details (dimension units, fractions, framing locate) | P3 | M9 |
 
@@ -744,3 +744,4 @@ These come from reading the whole list and change the architecture, not just the
 | UI-36 | Edit toolbar: context buttons for the current selection | P1 | GUI |
 | UI-37 | Help menu: open manual, report a problem (logs, system information) | P3 | GUI |
 | UI-38 | Select by type: a drawing tool's marquee selects only its own kind of object | P3 | GUI |
+| UI-39 | Preferences: edit handle fill colour and size | P3 | GUI |

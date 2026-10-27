@@ -160,8 +160,77 @@
       "gap": "Automatic dimensions can't be moved or edited without being rebuilt. Row: DIM-27"
     },
     {
-      "step": "Add and remove extension lines; extend a dimension with Add Segments",
-      "gap": "No extension-line or add-segment handles on dimensions. Row: DIM-28"
+      "step": "A dimension along the deck's outer edge, then add and remove extension lines",
+      "commands": [
+        {
+          "op": "add_dimension",
+          "floor": "$floor1",
+          "geometry": {
+            "type": "linear",
+            "points": [
+              [
+                914.4,
+                2468.562
+              ],
+              [
+                11887.2,
+                2468.562
+              ]
+            ],
+            "orientation": "horizontal",
+            "offset": "2'"
+          }
+        }
+      ],
+      "save": {
+        "deckdim": "dimension"
+      },
+      "expect": []
+    },
+    {
+      "step": "(Select it, Edit > Add Extension Line and click the middle of the edge; Edit > Remove Extension Line and click it again)",
+      "commands": [
+        {
+          "op": "add_dimension_point",
+          "id": "$deckdim",
+          "at": [
+            6400.8,
+            2468.562
+          ]
+        },
+        {
+          "op": "remove_dimension_point",
+          "id": "$deckdim",
+          "index": 1
+        }
+      ],
+      "expect": [
+        {
+          "get": "$deckdim",
+          "path": "/geometry/points/1/0",
+          "is": 11887.2
+        }
+      ]
+    },
+    {
+      "step": "(Add Segment: one more extension line past the end, to the house's right side)",
+      "commands": [
+        {
+          "op": "add_dimension_point",
+          "id": "$deckdim",
+          "at": [
+            12801.6,
+            2468.562
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$deckdim",
+          "path": "/geometry/points/2/0",
+          "is": 12801.6
+        }
+      ]
     },
     {
       "step": "Terrain perimeter, 60' deep, centred on the house's right side; surface 28\" below the subfloor at the Garage's front corner",

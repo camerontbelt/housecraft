@@ -229,8 +229,24 @@
       ]
     },
     {
-      "step": "(Add an extension line to an existing dimension)",
-      "gap": "No extension lines to add to an existing dimension; draw one to the light. Row: DIM-28"
+      "step": "(Add an extension line to the dimension: select it, Edit > Add Extension Line, click the Kitchen's right wall)",
+      "commands": [
+        {
+          "op": "add_dimension_point",
+          "id": "$candim",
+          "at": [
+            4089.4,
+            -3810.0
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$candim",
+          "path": "/geometry/points/2/0",
+          "is": 4089.4
+        }
+      ]
     },
     {
       "step": "Copy/Paste the can light 40\" up (Tab for Enter Coordinates)",

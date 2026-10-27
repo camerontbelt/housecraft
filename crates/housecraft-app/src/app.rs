@@ -2449,6 +2449,20 @@ impl App {
                         self.run1(Command::ExtendTo { id, boundary });
                     }
                     ui.separator();
+                    let dim = match self.selection.as_slice() {
+                        [id] if matches!(self.doc().get::<Dimension>(*id).map(|d| &d.geometry), Some(DimensionGeometry::Linear { .. })) => Some(*id),
+                        _ => None,
+                    };
+                    if item(ui, "Add Extension Line", "", dim.is_some())
+                        && let Some(id) = dim
+                    {
+                        self.start_pick(crate::canvas::Pick::DimAdd(id));
+                    }
+                    if item(ui, "Remove Extension Line", "", dim.is_some())
+                        && let Some(id) = dim
+                    {
+                        self.start_pick(crate::canvas::Pick::DimRemove(id));
+                    }
                     if item(ui, "Make Architectural Block", "", self.selection.len() >= 2) {
                         let ids = self.selection.clone();
                         if let Some(out) = self.run1(Command::MakeGroup { ids, name: None }) {

@@ -1154,6 +1154,11 @@ pub enum Command {
     },
     /// Explode an architectural block: the objects stay, ungrouped.
     ExplodeGroup { id: Id },
+    /// Add an extension line to a linear dimension at `at`: the chain gains
+    /// a point there, in order along the dimension (Add Segment beyond an end).
+    AddDimensionPoint { id: Id, at: Point2 },
+    /// Remove one of a linear dimension's extension lines (at least two stay).
+    RemoveDimensionPoint { id: Id, index: usize },
     /// Delete Objects: every object of the given kinds on `floor` (every
     /// floor when `None`), optionally only those inside `room`.
     DeleteObjects {
@@ -1478,6 +1483,8 @@ impl Command {
             Command::Delete { .. } => "delete",
             Command::DeleteObjects { .. } => "delete_objects",
             Command::MakeGroup { .. } => "make_group",
+            Command::AddDimensionPoint { .. } => "add_dimension_point",
+            Command::RemoveDimensionPoint { .. } => "remove_dimension_point",
             Command::ExplodeGroup { .. } => "explode_group",
             Command::DeleteDimensions { .. } => "delete_dimensions",
             Command::ReverseWallLayers { .. } => "reverse_wall_layers",
@@ -3959,6 +3966,48 @@ impl Command {
                 let n = doc.iter::<Group>().count() + 1;
                 let name = name.clone().unwrap_or_else(|| format!("Architectural Block {n}"));
                 out.created.push(doc.insert(Group { id: Id(0), floor, name, members }));
+            }
+            Command::AddDimensionPoint { id, at } => {
+                let dm = doc.get_mut::<Dimension>(*id).ok_or(ApiError::NotFound(*id))?;
+                let DimensionGeometry::Linear { points, orientation, offset } = &mut dm.geometry else {
+                    return invalid("extension lines go on linear dimensions");
+                };
+                let first = points[0];
+                let v2 = housecraft_geom::v2;
+                let axis = match orientation {
+                    DimOrientation::Horizontal => housecraft_geom::DVec2::X,
+                    DimOrientation::Vertical => housecraft_geom::DVec2::Y,
+                    DimOrientation::Aligned => (v2(points[points.len() - 1]) - v2(points[0])).normalize_or(housecraft_geom::DVec2::X),
+                };
+                // Keep the chain running one way along the axis.
+                let along = |p: Point2| v2(p).dot(axis);
+                let rising = along(points[points.len() - 1]) >= along(points[0]);
+                let t = along(*at);
+                if points.iter().any(|p| (along(*p) - t).abs() < 1.0) {
+                    return invalid("there is already an extension line there");
+                }
+                let i = points.iter().position(|p| if rising { along(*p) > t } else { along(*p) < t }).unwrap_or(points.len());
+                points.insert(i, *at);
+                ops::keep_dim_line(*orientation, offset, first, points[0]);
+                dm.auto = false;
+                out.modified.push(*id);
+            }
+            Command::RemoveDimensionPoint { id, index } => {
+                let dm = doc.get_mut::<Dimension>(*id).ok_or(ApiError::NotFound(*id))?;
+                let DimensionGeometry::Linear { points, orientation, offset } = &mut dm.geometry else {
+                    return invalid("extension lines go on linear dimensions");
+                };
+                if points.len() <= 2 {
+                    return invalid("a dimension keeps at least two extension lines");
+                }
+                if *index >= points.len() {
+                    return invalid("no such extension line");
+                }
+                let first = points[0];
+                points.remove(*index);
+                ops::keep_dim_line(*orientation, offset, first, points[0]);
+                dm.auto = false;
+                out.modified.push(*id);
             }
             Command::ExplodeGroup { id } => {
                 expect::<Group>(doc, *id)?;

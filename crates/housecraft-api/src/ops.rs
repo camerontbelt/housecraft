@@ -1380,6 +1380,18 @@ fn offset_polyline(points: &[DVec2], closed: bool, dist: f64) -> Vec<DVec2> {
         .collect()
 }
 
+/// A horizontal or vertical dimension's line is placed from its first
+/// point: when the first point changes from `was` to `now`, adjust `offset`
+/// so the line stays where it was.
+pub(crate) fn keep_dim_line(orientation: DimOrientation, offset: &mut Length, was: Point2, now: Point2) {
+    let shift = match orientation {
+        DimOrientation::Horizontal => was.1.mm() - now.1.mm(),
+        DimOrientation::Vertical => was.0.mm() - now.0.mm(),
+        DimOrientation::Aligned => 0.0,
+    };
+    *offset = Length::from_mm(offset.mm() + shift);
+}
+
 /// Where an object is in plan, for picking objects inside a room: its
 /// position or anchor, the middle of a wall or line, or the middle of its
 /// outline. `None` for objects with no place in plan (types, floors…).

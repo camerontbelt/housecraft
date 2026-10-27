@@ -46,6 +46,8 @@ enum Handle {
     Radius,
     TextPosition,
     DimOffset,
+    /// A linear dimension's extension line (its `i`th point).
+    DimPoint(usize),
 }
 
 pub struct PlanState {
@@ -361,6 +363,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     app.plan.snap = app.plan.cursor.map(|c| {
         let point_pick = match &app.plan.pick {
             Some(Pick::PointMove { from, .. }) => Some(*from),
+            Some(Pick::DimAdd(_)) => Some(None),
             _ => None,
         };
         let from = app.plan.pending.last().copied().or(match &app.plan.drag {
@@ -602,10 +605,12 @@ fn handles(doc: &Document, id: Id) -> Vec<(Handle, DVec2)> {
                 orientation,
                 offset,
             } if points.len() >= 2 => {
-                vec![(
+                let mut hs = vec![(
                     Handle::DimOffset,
                     dim_line_mid(points, *orientation, offset.mm()),
-                )]
+                )];
+                hs.extend(points.iter().enumerate().map(|(i, p)| (Handle::DimPoint(i), v2(*p))));
+                hs
             }
             _ => Vec::new(),
         },
@@ -709,6 +714,24 @@ fn handle_command(doc: &Document, id: Id, handle: Handle, p: DVec2) -> Option<Co
                 *o = Length::from_mm(offset);
             }
             Some(patch(serde_json::json!({ "geometry": g })))
+        }
+        (Object::Dimension(d), Handle::DimPoint(i)) => {
+            let mut g = d.geometry.clone();
+            let DimensionGeometry::Linear { points, orientation, offset } = &mut g else {
+                return None;
+            };
+            let was = *points.get(i)?;
+            points[i] = pt(p);
+            if i == 0 {
+                // The line is placed from the first point: keep it put.
+                let shift = match orientation {
+                    DimOrientation::Horizontal => was.1.mm() - p.y,
+                    DimOrientation::Vertical => was.0.mm() - p.x,
+                    DimOrientation::Aligned => 0.0,
+                };
+                *offset = Length::from_mm(offset.mm() + shift);
+            }
+            Some(patch(serde_json::json!({ "geometry": g, "auto": false })))
         }
         _ => None,
     }
@@ -885,6 +908,24 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
                 }
                 return;
             }
+            Pick::DimAdd(dim) => {
+                commands.push(Command::AddDimensionPoint { id: dim, at: pt(at) });
+                return;
+            }
+            Pick::DimRemove(dim) => {
+                if let Some(Object::Dimension(d)) = doc.object(dim)
+                    && let DimensionGeometry::Linear { points, .. } = &d.geometry
+                    && let Some((index, _)) = points
+                        .iter()
+                        .enumerate()
+                        .map(|(i, q)| (i, v2(*q).distance(c)))
+                        .filter(|(_, dist)| *dist < tol * 2.0)
+                        .min_by(|a, b| a.1.total_cmp(&b.1))
+                {
+                    commands.push(Command::RemoveDimensionPoint { id: dim, index });
+                }
+                return;
+            }
             Pick::Parallel { ids, reference: Some(r) } => {
                 if let Some(e) = nearest_edge(cache, c, tol, |o| o.is_some_and(|o| ids.contains(&o))) {
                     commands.push(Command::MakeParallel { ids, edge: [pt(e[0]), pt(e[1])], reference: [pt(r[0]), pt(r[1])] });
@@ -903,7 +944,7 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
                         app.plan.pick = None;
                     }
                 }
-                Pick::PointMove { .. } | Pick::Parallel { .. } => {}
+                Pick::PointMove { .. } | Pick::Parallel { .. } | Pick::DimAdd(_) | Pick::DimRemove(_) => {}
                 Pick::Match(from) => {
                     if doc.kind_of(target) == doc.kind_of(from) {
                         let fields = app.match_fields.iter().filter(|(_, on)| *on).map(|(f, _)| f.clone()).collect();
@@ -1072,12 +1113,18 @@ pub enum Pick {
     Reflect(Vec<Id>),
     /// Make Parallel: click a reference line, then an edge of these.
     Parallel { ids: Vec<Id>, reference: Option<[DVec2; 2]> },
+    /// Add Extension Line: each click adds a point to this dimension.
+    DimAdd(Id),
+    /// Remove Extension Line: click near the one to take away.
+    DimRemove(Id),
 }
 
 impl Pick {
     /// Status-bar instructions while waiting for the click.
     pub fn hint(&self) -> &'static str {
         match self {
+            Pick::DimAdd(_) => "Add Extension Line: click points to dimension to (they snap). Esc ends.",
+            Pick::DimRemove(_) => "Remove Extension Line: click the extension line to take away. Esc ends.",
             Pick::PointMove { from: None, .. } => "Point to Point Move: click the point to move from (it snaps to corners and ends). Esc cancels.",
             Pick::PointMove { from: Some(_), .. } => "Point to Point Move: click where that point goes. Ctrl+click moves a copy. Esc cancels.",
             Pick::Reflect(_) => "Reflect About Object: click a wall, line, door or window to mirror across. Ctrl+click keeps the original. Esc cancels.",
