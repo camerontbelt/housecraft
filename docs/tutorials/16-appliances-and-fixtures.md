@@ -13,7 +13,8 @@ their back to the nearest wall.
 1. **Refrigerator**: click against the wall between the Kitchen and Dining room, beside the full-height cabinet.
 2. **Wall Cabinet**: click over the refrigerator. Open it: **Width** `36"`, **Depth** `24"`, **Height** `15"`, and
    **Elevation** `70"` so it sits on top of the refrigerator.
-3. *Not in HouseCraft yet:* the cabinet **Partition** (a finished panel beside the refrigerator, with crown).
+3. **Cabinet Partition** (Appliances tools): click beside the refrigerator. It's a full-height finished panel with
+   crown molding on top; open it to change its height or depth.
 
 ## Dishwasher (pages 281–282)
 
@@ -38,7 +39,8 @@ cabinet fronts.
 
 1. **Sink Base Cabinet**: against the Bath's right wall, **Width** `30"`. Add a
    **Vanity Sink** in it.
-2. *Not in HouseCraft yet:* faucets, tub spouts and shower heads.
+2. **Faucet** (Appliances tools) on the sink: it sits on the counter at 36". Later, put a **Tub Spout** and a **Shower
+   Head** on the tub's end wall, select both and **Edit › Make Architectural Block** so they move together.
 3. **Bathtub** along the Bath's left wall. Use **Center Object** (edit toolbar) and click the wall to centre it.
 4. **Toilet** between the tub and the vanity.
 5. Open the tub and tick **Reverse**: the drain moves to the other end.
@@ -49,12 +51,9 @@ cabinet fronts.
    left wall.
 2. Rename it `Kitchen Elevation` in the Project Browser under **Elevations and Sections**, and open it.
 3. **CAD › Dimensions › Elevation Dimensions**: cabinet, appliance and ceiling heights are dimensioned for you.
-4. Drag an extension line by its small square handle. *Not in HouseCraft yet:* a fill colour for those handles.
+4. Drag an extension line by its small square handle. The handles' fill colour is in **Edit › Preferences…** ›
+   **Edit handle fill**.
 
 ## What this tutorial showed HouseCraft still needs
 
-| Missing | FEATURES row |
-|---|---|
-| Cabinet partitions | CB-30 |
-| Faucets, tub spouts, shower heads | EL-10 |
-| Handle fill colour preference | UI-39 |
+Nothing: every step replays.

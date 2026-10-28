@@ -517,10 +517,19 @@ pub enum ApplianceKind {
     DiningChair,
     Vase,
     PictureFrame,
+    /// A deck-mounted faucet on a sink or countertop.
+    Faucet,
+    /// A bathtub spout on the wall.
+    TubSpout,
+    /// A shower head on the wall.
+    ShowerHead,
+    /// A cabinet partition: a full-height panel between cabinets and an
+    /// appliance, with crown molding on top.
+    Partition,
 }
 
 impl ApplianceKind {
-    pub const ALL: [ApplianceKind; 25] = [
+    pub const ALL: [ApplianceKind; 29] = [
         ApplianceKind::Refrigerator,
         ApplianceKind::Range,
         ApplianceKind::Cooktop,
@@ -546,6 +555,10 @@ impl ApplianceKind {
         ApplianceKind::DiningChair,
         ApplianceKind::Vase,
         ApplianceKind::PictureFrame,
+        ApplianceKind::Faucet,
+        ApplianceKind::TubSpout,
+        ApplianceKind::ShowerHead,
+        ApplianceKind::Partition,
     ];
 
     /// Furniture and accessories (rather than appliances and fixtures).
@@ -580,6 +593,10 @@ impl ApplianceKind {
             ApplianceKind::DiningChair => "Dining Chair",
             ApplianceKind::Vase => "Vase",
             ApplianceKind::PictureFrame => "Picture Frame",
+            ApplianceKind::Faucet => "Faucet",
+            ApplianceKind::TubSpout => "Tub Spout",
+            ApplianceKind::ShowerHead => "Shower Head",
+            ApplianceKind::Partition => "Cabinet Partition",
         }
     }
 
@@ -633,12 +650,16 @@ impl ApplianceKind {
             ApplianceKind::DiningChair => (18.0, 20.0, 38.0, 0.0),
             ApplianceKind::Vase => (6.0, 6.0, 18.0, 34.0),
             ApplianceKind::PictureFrame => (24.0, 1.5, 30.0, 50.0),
+            ApplianceKind::Faucet => (2.5, 8.0, 10.0, 36.0),
+            ApplianceKind::TubSpout => (3.0, 6.0, 2.5, 18.0),
+            ApplianceKind::ShowerHead => (3.5, 8.0, 3.5, 78.0),
+            ApplianceKind::Partition => (1.5, 24.0, 84.0, 0.0),
         }
     }
 
     /// Stands against a wall with its back to it.
     pub fn against_wall(self) -> bool {
-        !matches!(self, ApplianceKind::Cooktop | ApplianceKind::CoffeeTable | ApplianceKind::DiningTable | ApplianceKind::DiningChair | ApplianceKind::Vase )
+        !matches!(self, ApplianceKind::Cooktop | ApplianceKind::CoffeeTable | ApplianceKind::DiningTable | ApplianceKind::DiningChair | ApplianceKind::Vase | ApplianceKind::Faucet)
     }
 }
 

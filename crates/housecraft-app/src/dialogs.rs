@@ -562,6 +562,14 @@ fn prefs_dialog(app: &mut App, ctx: &Context) {
                 ui.label("copies (0 minutes turns archiving off)");
             });
             ui.weak("Copies go in a \"<plan> Archive\" folder beside the plan.");
+            ui.horizontal(|ui| {
+                ui.label("Edit handle fill");
+                let [r, g, b] = app.prefs.handle_fill;
+                let mut c = egui::Color32::from_rgb(r, g, b);
+                if ui.color_edit_button_srgba(&mut c).changed() {
+                    app.prefs.handle_fill = [c.r(), c.g(), c.b()];
+                }
+            });
             ui.separator();
             ui.heading("Snapping");
             let s = &mut app.prefs.snap;

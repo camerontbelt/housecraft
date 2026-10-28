@@ -75,7 +75,27 @@
     },
     {
       "step": "A partition beside the refrigerator with crown molding",
-      "gap": "No cabinet Partition tool. Row: CB-30"
+      "commands": [
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "partition",
+          "at": [
+            3416.3,
+            -4857.75
+          ]
+        }
+      ],
+      "save": {
+        "partition": "appliance"
+      },
+      "expect": [
+        {
+          "get": "$partition",
+          "path": "/appliance_kind",
+          "is": "partition"
+        }
+      ]
     },
     {
       "step": "A dishwasher in the 24\" gap beside the sink base; nudge it forward with the arrow keys",
@@ -93,7 +113,7 @@
       "expect": [
         {
           "count": "appliance",
-          "is": 18
+          "is": 19
         }
       ]
     },
@@ -248,7 +268,27 @@
     },
     {
       "step": "A deck-mounted faucet on the sink",
-      "gap": "No faucet, tub spout or shower head fixtures. Row: EL-10"
+      "commands": [
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "faucet",
+          "at": [
+            10737.85,
+            -4064.0
+          ]
+        }
+      ],
+      "save": {
+        "faucet": "appliance"
+      },
+      "expect": [
+        {
+          "get": "$faucet",
+          "path": "/appliance_kind",
+          "is": "faucet"
+        }
+      ]
     },
     {
       "step": "A 60\" x 30\" bathtub centred along the Bath's left wall; a standard toilet between the tub and the cabinet",
@@ -284,8 +324,57 @@
       ]
     },
     {
-      "step": "Tub spout and shower head over the tub, blocked together and centred",
-      "gap": "No tub/shower trim fixtures to block together. Row: EL-10"
+      "step": "Tub spout and shower head over the tub",
+      "commands": [
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "tub_spout",
+          "at": [
+            8210.55,
+            -4064.0
+          ]
+        },
+        {
+          "op": "add_appliance",
+          "floor": "$floor1",
+          "appliance_kind": "shower_head",
+          "at": [
+            8210.55,
+            -4064.0
+          ]
+        }
+      ],
+      "save": {
+        "trim": "appliance"
+      },
+      "expect": [
+        {
+          "get": "$trim.1",
+          "path": "/appliance_kind",
+          "is": "shower_head"
+        }
+      ]
+    },
+    {
+      "step": "(blocked together)",
+      "commands": [
+        {
+          "op": "make_group",
+          "ids": [
+            "$trim.0",
+            "$trim.1"
+          ],
+          "name": "Tub and Shower Trim"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:group:Tub and Shower Trim",
+          "path": "/members/1",
+          "is": "$trim.1"
+        }
+      ]
     },
     {
       "step": "Reverse the bathtub symbol so the drain is at the other end",
@@ -345,8 +434,7 @@
       ]
     },
     {
-      "step": "(Wall Elevation dimension defaults; move extension lines; handle fill colour)",
-      "gap": "No handle fill colour preference (extension lines move by their handles). Row: UI-39"
+      "step": "(Wall Elevation dimension defaults; move extension lines by their handles; the handle fill colour is in Edit › Preferences)"
     }
   ]
 }

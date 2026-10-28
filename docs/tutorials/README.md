@@ -33,7 +33,7 @@ has two files:
 | 13 | Interior Furnishings (222) | 10 | 6 | [13-interior-furnishings.md](13-interior-furnishings.md) |
 | 14 | Cabinet Styles (237) | 8 | 4 | [14-cabinet-styles.md](14-cabinet-styles.md) |
 | 15 | Cabinet Layout (260) | 7 | 4 | [15-cabinet-layout.md](15-cabinet-layout.md) |
-| 16 | Appliances and Fixtures (277) | 13 | 4 | [16-appliances-and-fixtures.md](16-appliances-and-fixtures.md) |
+| 16 | Appliances and Fixtures (277) | 18 | 0 | [16-appliances-and-fixtures.md](16-appliances-and-fixtures.md) |
 | 17 | Light Fixtures (298) | 28 | 4 | [17-light-fixtures.md](17-light-fixtures.md) |
 | 18 | Electrical Objects (317) | 22 | 4 | [18-electrical-objects.md](18-electrical-objects.md) |
 | 19 | Floor Framing (331) | 25 | 3 | [19-floor-framing.md](19-floor-framing.md) |

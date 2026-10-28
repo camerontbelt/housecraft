@@ -2577,12 +2577,13 @@ fn paint(app: &App, ui: &Ui, painter: &Painter, view: &View) {
     // Handles and temporary dimension for a single selection.
     if app.selection.len() == 1 && app.plan.tool == Tool::Select {
         let id = app.selection[0];
+        let [r, g, b] = app.prefs.handle_fill;
         for (_, p) in handles(app.doc(), id) {
             let s = view.to_screen(p);
             painter.rect(
                 Rect::from_center_size(s, vec2(8.0, 8.0)),
                 1.0,
-                Color32::WHITE,
+                Color32::from_rgb(r, g, b),
                 Stroke::new(1.5, accent),
                 egui::StrokeKind::Middle,
             );

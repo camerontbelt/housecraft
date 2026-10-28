@@ -1173,6 +1173,26 @@ pub fn appliance_mesh(doc: &Document, a: &Appliance, mesh: &mut Mesh) {
                 b.prism(&rect(u - IN, d / 2.0 - IN, u + IN, d / 2.0 + IN), 2.0 * IN, 2.2 * IN, Surface::Hardware);
             }
         }
+        K::Faucet => {
+            // A round-ish riser and a spout reaching forward over the bowl.
+            b.prism(&rect(-hw.min(1.25 * IN), 0.0, hw.min(1.25 * IN), 2.5 * IN), 0.0, h, steel);
+            b.prism(&rect(-0.5 * IN, 0.0, 0.5 * IN, d), h - 2.0 * IN, h, steel);
+        }
+        K::TubSpout => {
+            b.prism(&rect(-hw, 0.0, hw, d), 0.0, h, steel);
+        }
+        K::Partition => {
+            b.prism(&rect(-hw, 0.0, hw, d), 0.0, h, Surface::CabinetBox);
+            // Crown molding stepping out on the top.
+            b.prism(&rect(-hw - IN, 0.0, hw + IN, d + IN), h - 3.0 * IN, h, Surface::Trim);
+        }
+        K::ShowerHead => {
+            // An arm out of the wall, dropping to a round head.
+            b.prism(&rect(-0.5 * IN, 0.0, 0.5 * IN, d * 0.7), h - IN, h, steel);
+            let c = DVec2::new(0.0, d * 0.75);
+            let ring: Vec<DVec2> = (0..12).map(|i| c + DVec2::from_angle(i as f64 / 12.0 * std::f64::consts::TAU) * hw).collect();
+            b.prism(&ring, 0.0, IN, steel);
+        }
         K::VanitySink => {
             // An oval bowl rim at counter height.
             let c = DVec2::new(0.0, d / 2.0);

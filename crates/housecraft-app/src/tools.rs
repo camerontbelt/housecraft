@@ -416,6 +416,10 @@ impl Family {
                 Tool::Appliance(ApplianceKind::VanitySink),
                 Tool::Appliance(ApplianceKind::Pedestal),
                 Tool::Appliance(ApplianceKind::WaterHeater),
+                Tool::Appliance(ApplianceKind::Faucet),
+                Tool::Appliance(ApplianceKind::TubSpout),
+                Tool::Appliance(ApplianceKind::ShowerHead),
+                Tool::Appliance(ApplianceKind::Partition),
             ],
             Family::Cameras => &[],
         }

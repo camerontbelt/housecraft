@@ -55,6 +55,8 @@ pub struct Prefs {
     pub archive_keep: u32,
     /// The folder the Plan Portfolio lists.
     pub portfolio_folder: Option<String>,
+    /// Fill colour of edit handles (RGB).
+    pub handle_fill: [u8; 3],
 }
 
 /// A user-assigned shortcut: `keys` is one stroke ("G", "Ctrl+Shift+L") or
@@ -111,6 +113,7 @@ impl Default for Prefs {
             archive_minutes: 15,
             archive_keep: 5,
             portfolio_folder: None,
+            handle_fill: [255, 255, 255],
         }
     }
 }

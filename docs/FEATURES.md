@@ -259,7 +259,7 @@ These come from reading the whole list and change the architecture, not just the
 | CB-27 | Architectural blocks in the plan: group objects to move/edit/schedule as one; explode | P2 | M9 ◐ Edit › Make / Explode Architectural Block (`make_group`, `explode_group`): grouped objects pick, move, copy, paste and delete as one; editing a piece in place and block schedules later |
 | CB-28 | Cabinet door panels and handles from the library; handle position; cabinet elevation measured from the ceiling | P2 | M9 |
 | CB-29 | Automatic diagonal corner cabinets; countertop overhang set per side (island backs) | P2 | M9 |
-| CB-30 | Cabinet partitions (finished end panels between cabinets and appliances, with crown) | P2 | M9 |
+| CB-30 | Cabinet partitions (finished end panels between cabinets and appliances, with crown) | P2 | M9 ✓ Cabinet Partition: a full-height panel with crown molding |
 | CB-31 | Reverse Symbol: mirror a fixture or appliance (tub drain end, fridge hinge side) | P3 | M9 ◐ Reverse on appliances (a bathtub's drain end); other asymmetric fixtures later |
 
 ## 8. Doors & windows
@@ -503,7 +503,7 @@ These come from reading the whole list and change the architecture, not just the
 | EL-07 | Kelvin color temperature (X18+) | P2 | M5 ✓ |
 | EL-08 | Lighting sets per view/camera | P2 | M7 ✓ each camera can turn individual lights off (a lighting set) |
 | EL-09 | Ganged electrical blocks (outlets/switches combined in one box) | P3 | M9 |
-| EL-10 | Plumbing trim fixtures: faucets, tub spouts, shower heads | P2 | M9 |
+| EL-10 | Plumbing trim fixtures: faucets, tub spouts, shower heads | P2 | M9 ✓ Faucet, Tub Spout and Shower Head |
 | EL-11 | Light fixture library: chandeliers, pendants, flush mounts, lanterns, sconce styles, table and floor lamps, bollards; fixture size; Electrical Defaults choosing each tool's symbol | P2 | M9 ◐ ceiling and wall lights take a Fixture style (flush mount, pendant, chandelier, lantern, sconce, table lamp, floor lamp) with a width and drop, drawn at size in plan and 3D; bollards and Electrical Defaults choosing a style later |
 | EL-12 | One Light tool: sconce on a wall, ceiling fixture in a room, path light outside | P3 | M9 |
 | EL-13 | Electrical library: data jacks, alarms and security symbols, air switches, appliance (disposal) and floor-mounted outlets | P2 | M9 ✓ Floor Outlet (and 240V), Disposal Outlet, Air Switch (a switch), Data, Phone and TV Jacks, CO Detector, Motion Sensor, Alarm Keypad, Doorbell Button |
@@ -744,4 +744,4 @@ These come from reading the whole list and change the architecture, not just the
 | UI-36 | Edit toolbar: context buttons for the current selection | P1 | GUI |
 | UI-37 | Help menu: open manual, report a problem (logs, system information) | P3 | GUI |
 | UI-38 | Select by type: a drawing tool's marquee selects only its own kind of object | P3 | GUI |
-| UI-39 | Preferences: edit handle fill colour and size | P3 | GUI |
+| UI-39 | Preferences: edit handle fill colour and size | P3 | GUI ◐ handle fill colour in Preferences; size later |
