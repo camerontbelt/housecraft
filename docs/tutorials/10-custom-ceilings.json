@@ -48,8 +48,25 @@
       ]
     },
     {
-      "step": "Hat channel: a steel framing type and member for ceiling joists",
-      "gap": "No custom framing types or framing member defaults. Row: FR-07"
+      "step": "Hat channel: a steel framing type for the ceiling joists",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "framing": {
+              "ceiling_joist_material": "hat_channel"
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/framing/ceiling_joist_material",
+          "is": "hat_channel"
+        }
+      ]
     },
     {
       "step": "A 'Hat Channel' material (grey, not in the materials list), added to the library",

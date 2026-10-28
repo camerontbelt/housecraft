@@ -17,8 +17,9 @@ first, each as a name and a thickness, separated by semicolons, such as `Drywall
 1. Plan default: **Edit › Default Settings…** › **Ceiling Finish**: `Drywall 1/2"; Paint 1/32"`.
 2. Garage: open the Garage room type (Project Browser › Room Types) and set its **Ceiling Finish** to
    `Rigid insulation 1 1/2"; Fire-rated drywall 5/8"`.
-3. **Tools › Plan Materials…**: make a new material `Hat Channel`, grey. *Not in HouseCraft yet:* custom framing
-   types such as a steel hat channel member.
+3. **Tools › Plan Materials…**: make a new material `Hat Channel`, grey. For the framing, **Edit › Default
+   Settings…** › **Framing** › **Ceiling joists**: **Hat Channel**. Ceiling joists built from then on are steel hat
+   channel.
 4. **Lowered basement ceiling:** open the basement room on the Foundation floor. In **Ceiling Finish** type
    `Hat Channel 1"; Drywall 1/2"; Paint 1/32"`. The ceiling drops by the hat channel. The dialog shows where the
    finished ceiling now sits.
@@ -44,5 +45,4 @@ the roof. On a room, **Ceiling: Vaulted** does the same under the house roof.
 
 | Missing | FEATURES row |
 |---|---|
-| Custom framing types (hat channel) | FR-07 |
 | Soffit tool | CB-26 |

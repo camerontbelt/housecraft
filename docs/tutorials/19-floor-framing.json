@@ -4,8 +4,25 @@
   "include": "18-electrical-objects.json",
   "steps": [
     {
-      "step": "Framing Type defaults: I-Joist, Lumber (nominal sizes), LVL",
-      "gap": "Members are lumber, LVL, PSL, VSL or steel; no editable framing types or nominal-size setting. Row: FR-07"
+      "step": "Framing Type defaults: I-joists for the floor joists (lumber and LVL are built in)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "framing": {
+              "floor_joist_material": "i_joist"
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/framing/floor_joist_material",
+          "is": "i_joist"
+        }
+      ]
     },
     {
       "step": "Switch to the Framing, Floor Plan View",

@@ -365,7 +365,7 @@ These come from reading the whole list and change the architecture, not just the
 | FR-04 | Build All Framing / subsets | P2 | M6 ✓ Build All Framing, or walls / floors and ceilings / roofs separately |
 | FR-05 | Manual framing members with info panel | P2 | M6 ✓ add_framing_member; members show size, role and length in their specification |
 | FR-06 | Retain manual framing across auto rebuilds (X18+) | P2 | M6 ✓ members placed, moved or edited by hand are kept when framing is rebuilt |
-| FR-07 | Framing materials: lumber, steel, LVL, PSL, VSL; custom types and shapes | P2 | M6 ◐ lumber, LVL, PSL, VSL and steel members; no custom section shapes |
+| FR-07 | Framing materials: lumber, steel, LVL, PSL, VSL; custom types and shapes | P2 | M6 ◐ lumber, LVL, PSL, VSL, steel, I-joist and hat channel members; floor and ceiling joist types in the framing defaults; named custom section shapes later |
 | FR-08 | EasyFrame panelization export (.EZF) | P3 | M8 |
 | FR-09 | Roof framing: rafters, ridges, lookouts, blocking, valley fill, rafter tails | P2 | M6 ◐ rafters and ridges, lookouts at rakes, eave (frieze) blocking, purlins, square/plumb/bevelled tails; no valley fill |
 | FR-10 | Auto-build trusses; auto-fit floor/ceiling/roof trusses (scissor, attic, girder, hip, energy heel…) | P2 | M6 ◐ trusses fitted under the roof (stepped down at hips): common (Fink), scissor and attic types, doubled girder trusses at the ends; no energy-heel type |

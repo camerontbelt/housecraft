@@ -10,8 +10,9 @@ basement's lowered-ceiling joists are on the **Foundation** floor.
 
 ## Defaults (pages 331–335)
 
-1. *Not in HouseCraft yet:* editable Framing Types (I-Joist, Lumber, LVL). Each member is lumber, LVL, PSL, VSL or
-   steel; pick it in the member's dialog.
+1. Framing types: **Edit › Default Settings…** › **Framing** › **Floor joists**: **I-Joist**. Members can be lumber,
+   LVL, PSL, VSL, steel, I-joist or steel hat channel; change one in its own dialog. *Not in HouseCraft yet:* your
+   own named framing types with custom section shapes.
 2. Snaps: **Tools › Snap Settings**. Turn grid snaps off and object snaps on.
 3. Pick **Framing Plan** from the plan view list on the top toolbar (added by **View › Add Standard Plan Views** in
    Tutorial 17).
@@ -82,6 +83,6 @@ basement's lowered-ceiling joists are on the **Foundation** floor.
 | Post/beam defaults, Post with Footing | FR-34 |
 | Automatic framing rebuild | FR-35 |
 | Sticky Mode for trimming many joists | FR-36 |
-| Editable framing types | FR-07 |
+| Named framing types with custom section shapes | FR-07 |
 | Bumping and pushing | CAD-28 |
 | Text uppercase, margins, partial underline | TXT-24 |

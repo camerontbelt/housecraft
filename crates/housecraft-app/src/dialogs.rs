@@ -1477,6 +1477,17 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                             }
                         });
                         ui.end_row();
+                        for (label, key, cur) in [("Floor joists", "floor_joist_material", f.floor_joist_material), ("Ceiling joists", "ceiling_joist_material", f.ceiling_joist_material)] {
+                            ui.label(label);
+                            egui::ComboBox::from_id_salt(("joist_material", key)).selected_text(cur.name()).show_ui(ui, |ui| {
+                                for m in FramingMaterial::ALL {
+                                    if ui.selectable_label(cur == m, m.name()).clicked() {
+                                        commands.push(p(json!({"framing": {key: m}})));
+                                    }
+                                }
+                            });
+                            ui.end_row();
+                        }
                         ui.label("Rafter tails");
                         ui.horizontal(|ui| {
                             for c in TailCut::ALL {

@@ -3791,3 +3791,14 @@ fn ceiling_finish_layers_lower_the_finished_ceiling() {
     let r = s.document().get::<Room>(room.id).unwrap().clone();
     assert_eq!(s.document().finished_ceiling_height(&r).unwrap().mm(), h);
 }
+
+#[test]
+fn joists_take_their_framing_type() {
+    let mut s = boxed();
+    let set = s.document().settings.active_default_set;
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "framing": { "ceiling_joist_material": "hat_channel" } })) }]).unwrap();
+    apply(&mut s, r#"[{"op": "build_framing", "parts": {"walls": false, "floors": false, "ceilings": true, "roofs": false}}]"#);
+    let joists: Vec<FramingMember> = s.document().iter::<FramingMember>().filter(|m| m.role == FramingRole::CeilingJoist).cloned().collect();
+    assert!(!joists.is_empty() && joists.iter().all(|m| m.material == FramingMaterial::HatChannel));
+    assert_eq!(FramingMaterial::IJoist.name(), "I-Joist");
+}

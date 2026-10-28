@@ -983,7 +983,8 @@ pub fn member_mesh(m: &FramingMember, mesh: &mut Mesh) {
     let c = corners(m);
     let center = c.iter().copied().sum::<DVec3>() / 8.0;
     let wood = mesh.painted_whole().unwrap_or(match m.material {
-        FramingMaterial::Steel => Look { color: [0.72, 0.74, 0.76, 1.0], pbr: [0.35, 0.9, 0.0, 1.0], surface: None, tex: None },
+        FramingMaterial::Steel | FramingMaterial::HatChannel => Look { color: [0.72, 0.74, 0.76, 1.0], pbr: [0.35, 0.9, 0.0, 1.0], surface: None, tex: None },
+        FramingMaterial::IJoist => Look { color: [0.82, 0.7, 0.48, 1.0], pbr: [0.85, 0.0, 0.0, 1.0], surface: None, tex: None },
         FramingMaterial::Lumber => Look { color: [0.86, 0.72, 0.5, 1.0], pbr: [0.8, 0.0, 0.0, 1.0], surface: None, tex: None },
         _ => Look { color: [0.78, 0.6, 0.38, 1.0], pbr: [0.7, 0.0, 0.0, 1.0], surface: None, tex: None },
     });

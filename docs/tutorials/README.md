@@ -27,7 +27,7 @@ has two files:
 | 7 | Roof styles: hip, gable, Dutch gable, shed, offset gable, gambrel, gull wing, half hip, mansard (127) | 12 | 3 | [07-roof-styles.md](07-roof-styles.md) |
 | 8 | Chic Cottage Roof (136) | 13 | 6 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
 | 9 | Dormers (159) | 11 | 6 | [09-dormers.md](09-dormers.md) |
-| 10 | Custom Ceilings (177) | 10 | 2 | [10-custom-ceilings.md](10-custom-ceilings.md) |
+| 10 | Custom Ceilings (177) | 11 | 1 | [10-custom-ceilings.md](10-custom-ceilings.md) |
 | 11 | Finish Materials (191) | 10 | 5 | [11-finish-materials.md](11-finish-materials.md) |
 | 12 | Room Moldings (211) | 6 | 3 | [12-room-moldings.md](12-room-moldings.md) |
 | 13 | Interior Furnishings (222) | 10 | 6 | [13-interior-furnishings.md](13-interior-furnishings.md) |
@@ -36,7 +36,7 @@ has two files:
 | 16 | Appliances and Fixtures (277) | 12 | 5 | [16-appliances-and-fixtures.md](16-appliances-and-fixtures.md) |
 | 17 | Light Fixtures (298) | 23 | 7 | [17-light-fixtures.md](17-light-fixtures.md) |
 | 18 | Electrical Objects (317) | 21 | 5 | [18-electrical-objects.md](18-electrical-objects.md) |
-| 19 | Floor Framing (331) | 22 | 5 | [19-floor-framing.md](19-floor-framing.md) |
+| 19 | Floor Framing (331) | 23 | 4 | [19-floor-framing.md](19-floor-framing.md) |
 | 20 | Wall Framing (349) | 15 | 5 | [20-wall-framing.md](20-wall-framing.md) |
 | 21 | Roof and Ceiling Framing (364) | 17 | 1 | [21-roof-and-ceiling-framing.md](21-roof-and-ceiling-framing.md) |
 | 22 | Plot Plans (382) | 11 | 5 | [22-plot-plans.md](22-plot-plans.md) |

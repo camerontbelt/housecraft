@@ -108,6 +108,10 @@ fn insert(doc: &mut Document, layer: Id, m: Member, d: &FramingDefaults, out: &m
         && let Some(rim) = doc.get::<Floor>(m.host).and_then(|f| f.rim_material)
     {
         rim
+    } else if m.role == FramingRole::FloorJoist {
+        d.floor_joist_material
+    } else if m.role == FramingRole::CeilingJoist {
+        d.ceiling_joist_material
     } else {
         FramingMaterial::Lumber
     };

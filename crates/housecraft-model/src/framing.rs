@@ -196,15 +196,21 @@ pub enum FramingMaterial {
     Vsl,
     /// Light-gauge steel (C or U channel).
     Steel,
+    /// Engineered I-joist: lumber flanges on an OSB web.
+    IJoist,
+    /// Light-gauge steel hat channel (furring under a ceiling).
+    HatChannel,
 }
 
 impl FramingMaterial {
-    pub const ALL: [FramingMaterial; 5] = [
+    pub const ALL: [FramingMaterial; 7] = [
         FramingMaterial::Lumber,
         FramingMaterial::Lvl,
         FramingMaterial::Psl,
         FramingMaterial::Vsl,
         FramingMaterial::Steel,
+        FramingMaterial::IJoist,
+        FramingMaterial::HatChannel,
     ];
 
     pub fn name(self) -> &'static str {
@@ -214,6 +220,8 @@ impl FramingMaterial {
             FramingMaterial::Psl => "PSL",
             FramingMaterial::Vsl => "VSL",
             FramingMaterial::Steel => "Steel",
+            FramingMaterial::IJoist => "I-Joist",
+            FramingMaterial::HatChannel => "Hat Channel",
         }
     }
 }
@@ -389,6 +397,12 @@ pub struct FramingDefaults {
     /// The ridge board's depth; 2" deeper than the rafters when `None`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ridge_depth: Option<Length>,
+    /// What floor joists are made of (I-joists, lumber, LVL…).
+    #[serde(default)]
+    pub floor_joist_material: FramingMaterial,
+    /// What ceiling joists are made of (steel hat channel under a ceiling…).
+    #[serde(default)]
+    pub ceiling_joist_material: FramingMaterial,
     /// How members of each role look in plan: a fill and a label.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub member_styles: Vec<MemberStyle>,
@@ -484,6 +498,8 @@ impl Default for FramingDefaults {
             combine_headers: combine_headers(),
             ridge_width: None,
             ridge_depth: None,
+            floor_joist_material: FramingMaterial::Lumber,
+            ceiling_joist_material: FramingMaterial::Lumber,
             member_styles: Vec::new(),
         }
     }
