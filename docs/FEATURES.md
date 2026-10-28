@@ -541,7 +541,7 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-27 | Terrain elevation reference point (surface height set at a chosen point) | P3 | M9 ✓ Reference Point in the terrain dialog: the ground is held at the base elevation there and slopes to the elevation data |
 | SITE-28 | North Pointer object that rotates with the lot; a separate site north for plot plans vs the house | P3 | M9 |
 | SITE-29 | Plot plan lines: decimal-feet lengths and quadrant-bearing angles on CAD lines; curved lot sides by radius and arc length | P2 | M9 |
-| SITE-30 | Elevation line editing: angle with a locked start point, Add Break, continue drawing from an end | P3 | M9 |
+| SITE-30 | Elevation line editing: angle with a locked start point, Add Break, continue drawing from an end | P3 | M9 ✓ Edit › Add Break, Move Edge, Edge Angle… and Continue Drawing on elevation lines and regions, site features (garden beds) and CAD polylines; corner handles on elevation lines and site features |
 | SITE-31 | Retaining walls that separate the terrain on each side (heights from the terrain either side) | P2 | M9 |
 | SITE-32 | Roads: per-style defaults, curved (arc) roads and sidewalks, road stripes, flared driveway ends, curb cuts, Auto Generate Sidewalks, street-name labels, hardscape schedule | P2 | M9 |
 | SITE-33 | Terrain surface passes exactly through elevation data (smoothing pulls a line ~1.5' off where data is steep) | P2 | M9 |

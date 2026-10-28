@@ -279,7 +279,24 @@ pub enum Command {
     SetProjectInfo { info: ProjectInfo },
     /// Break a wall (or a framing member) in two at the point on it nearest
     /// `at` (Add Break): doors and windows go with the piece they are in.
+    /// On a path (an elevation line or region, a site feature such as a
+    /// garden bed, a CAD polyline) it adds a corner there instead.
     BreakWall { id: Id, at: Point2 },
+    /// Move one edge of a path sideways so it passes through `to`; its two
+    /// corners go with it and the edges either side stretch (Move Edge).
+    MoveEdge { id: Id, edge: usize, to: Point2 },
+    /// Turn one edge of a path about its first corner to `angle` degrees
+    /// (counter-clockwise from east), keeping its length: the start point
+    /// is locked and the end corner moves.
+    SetEdgeAngle { id: Id, edge: usize, angle: f64 },
+    /// Continue drawing a path from an end: `points` follow the last
+    /// corner, or run on outward from the first when `at_start`.
+    ExtendPath {
+        id: Id,
+        points: Vec<Point2>,
+        #[serde(default)]
+        at_start: bool,
+    },
     /// Move `wall` along a dimension so that segment `segment` (0 = the
     /// first pair of points) measures `length`, as when you click a
     /// dimension next to a selected wall and type a new value. Walls joined
@@ -1402,6 +1419,9 @@ impl Command {
             Command::ReflectAbout { .. } => "reflect_about",
             Command::MakeParallel { .. } => "make_parallel",
             Command::BreakWall { .. } => "break_wall",
+            Command::MoveEdge { .. } => "move_edge",
+            Command::SetEdgeAngle { .. } => "set_edge_angle",
+            Command::ExtendPath { .. } => "extend_path",
             Command::DeleteTime { .. } => "delete_time",
             Command::SetHatchPattern { .. } => "set_hatch_pattern",
             Command::DeleteHatchPattern { .. } => "delete_hatch_pattern",
@@ -2129,6 +2149,51 @@ impl Command {
             }
             Command::Scatter { source, region, count, seed, size_variation, rotate } => {
                 crate::convert::scatter(doc, *source, *region, *count, *seed, *size_variation, *rotate, &mut out)?
+            }
+            Command::BreakWall { id, at } if ops::path_mut(doc, *id).is_some() => {
+                let (points, closed) = ops::path_mut(doc, *id).ok_or(ApiError::NotFound(*id))?;
+                let p = housecraft_geom::v2(*at);
+                let (edge, q) = ops::nearest_path_edge(points, closed, p).ok_or_else(|| ApiError::Invalid("the path has no edges".into()))?;
+                let (a, b) = ops::path_edges(points.len(), closed)[edge];
+                let (pa, pb) = (housecraft_geom::v2(points[a]), housecraft_geom::v2(points[b]));
+                if q.distance(pa) < 1.0 || q.distance(pb) < 1.0 {
+                    return invalid("break the edge away from its corners");
+                }
+                points.insert(a + 1, housecraft_geom::pt(q));
+                out.modified.push(*id);
+            }
+            Command::MoveEdge { id, edge, to } => {
+                let (points, closed) = ops::path_mut(doc, *id).ok_or_else(|| ApiError::Invalid("move edges of lines, regions, beds and polylines".into()))?;
+                let &(a, b) = ops::path_edges(points.len(), closed).get(*edge).ok_or_else(|| ApiError::Invalid("no such edge".into()))?;
+                let (pa, pb) = (housecraft_geom::v2(points[a]), housecraft_geom::v2(points[b]));
+                let n = housecraft_geom::math::perp((pb - pa).normalize_or_zero());
+                let shift = n * (housecraft_geom::v2(*to) - pa).dot(n);
+                points[a] = housecraft_geom::pt(pa + shift);
+                points[b] = housecraft_geom::pt(pb + shift);
+                out.modified.push(*id);
+            }
+            Command::SetEdgeAngle { id, edge, angle } => {
+                let (points, closed) = ops::path_mut(doc, *id).ok_or_else(|| ApiError::Invalid("set angles on lines, regions, beds and polylines".into()))?;
+                let &(a, b) = ops::path_edges(points.len(), closed).get(*edge).ok_or_else(|| ApiError::Invalid("no such edge".into()))?;
+                let (pa, pb) = (housecraft_geom::v2(points[a]), housecraft_geom::v2(points[b]));
+                let r = angle.to_radians();
+                points[b] = housecraft_geom::pt(pa + housecraft_geom::DVec2::new(r.cos(), r.sin()) * pa.distance(pb));
+                out.modified.push(*id);
+            }
+            Command::ExtendPath { id, points: more, at_start } => {
+                let (points, closed) = ops::path_mut(doc, *id).ok_or_else(|| ApiError::Invalid("continue drawing lines, beds and polylines".into()))?;
+                if closed {
+                    return invalid("a closed outline has no end to draw from; use Add Break");
+                }
+                if more.is_empty() {
+                    return invalid("give at least one point");
+                }
+                if *at_start {
+                    points.splice(0..0, more.iter().rev().copied());
+                } else {
+                    points.extend(more.iter().copied());
+                }
+                out.modified.push(*id);
             }
             Command::BreakWall { id, at } if doc.get::<FramingMember>(*id).is_some() => {
                 let m = expect::<FramingMember>(doc, *id)?.clone();

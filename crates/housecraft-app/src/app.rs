@@ -2463,6 +2463,30 @@ impl App {
                     {
                         self.start_pick(crate::canvas::Pick::DimRemove(id));
                     }
+                    let path = match self.selection.as_slice() {
+                        [id] => crate::canvas::path_of(self.doc(), *id).map(|(_, closed)| (*id, closed)),
+                        _ => None,
+                    };
+                    if item(ui, "Add Break", "", path.is_some())
+                        && let Some((id, _)) = path
+                    {
+                        self.start_pick(crate::canvas::Pick::PathBreak(id));
+                    }
+                    if item(ui, "Move Edge", "", path.is_some())
+                        && let Some((id, _)) = path
+                    {
+                        self.start_pick(crate::canvas::Pick::MoveEdge { id, edge: None });
+                    }
+                    if item(ui, "Edge Angle…", "", path.is_some())
+                        && let Some((id, _)) = path
+                    {
+                        self.start_pick(crate::canvas::Pick::EdgeAngle(id));
+                    }
+                    if item(ui, "Continue Drawing", "", path.is_some_and(|(_, closed)| !closed))
+                        && let Some((id, _)) = path
+                    {
+                        self.start_pick(crate::canvas::Pick::ContinuePath { id, at_start: None });
+                    }
                     if item(ui, "Make Architectural Block", "", self.selection.len() >= 2) {
                         let ids = self.selection.clone();
                         if let Some(out) = self.run1(Command::MakeGroup { ids, name: None }) {

@@ -363,7 +363,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
     app.plan.snap = app.plan.cursor.map(|c| {
         let point_pick = match &app.plan.pick {
             Some(Pick::PointMove { from, .. }) => Some(*from),
-            Some(Pick::DimAdd(_)) => Some(None),
+            Some(Pick::DimAdd(_) | Pick::PathBreak(_) | Pick::MoveEdge { .. } | Pick::ContinuePath { .. }) => Some(None),
             _ => None,
         };
         let from = app.plan.pending.last().copied().or(match &app.plan.drag {
@@ -599,6 +599,9 @@ fn handles(doc: &Document, id: Id) -> Vec<(Handle, DVec2)> {
             _ => Vec::new(),
         },
         Some(Object::Text(t)) => vec![(Handle::TextPosition, v2(t.position))],
+        Some(Object::ElevationData(_) | Object::SiteFeature(_)) => path_of(doc, id)
+            .map(|(points, _)| points.iter().enumerate().map(|(i, p)| (Handle::Vertex(i), v2(*p))).collect())
+            .unwrap_or_default(),
         Some(Object::Dimension(d)) => match &d.geometry {
             DimensionGeometry::Linear {
                 points,
@@ -632,8 +635,39 @@ fn handle_anchor(doc: &Document, id: Id, handle: Handle) -> Option<DVec2> {
             Shape::Circle { center, .. } | Shape::Arc { center, .. } => Some(v2(*center)),
             _ => None,
         },
+        (Object::ElevationData(_) | Object::SiteFeature(_), Handle::Vertex(i)) if i > 0 => {
+            path_of(doc, id).map(|(points, _)| v2(points[i - 1]))
+        }
         _ => None,
     }
+}
+
+/// The corner path of an object whose outline is a list of points
+/// (elevation lines and regions, site features, CAD polylines and splines),
+/// and whether it closes on itself.
+pub fn path_of(doc: &Document, id: Id) -> Option<(&[Point2], bool)> {
+    match doc.object(id)? {
+        Object::ElevationData(e) => match &e.shape {
+            ElevationShape::Line { points, .. } => Some((points, false)),
+            ElevationShape::Region { points, .. } => Some((points, true)),
+            _ => None,
+        },
+        Object::SiteFeature(f) => Some((&f.points, f.feature.closed())),
+        Object::Cad(c) => match &c.shape {
+            Shape::Polyline { points, closed } | Shape::Spline { points, closed } => Some((points, *closed)),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// The edge of a path nearest `p` (its index) and how far off it is.
+fn nearest_path_edge(points: &[Point2], closed: bool, p: DVec2) -> Option<(usize, f64)> {
+    let n = points.len();
+    let ends = (1..n).map(|i| (i - 1, i)).chain((closed && n > 2).then_some((n - 1, 0)));
+    ends.enumerate()
+        .map(|(i, (a, b))| (i, housecraft_api::geom::math::closest_on_segment(p, v2(points[a]), v2(points[b])).0.distance(p)))
+        .min_by(|x, y| x.1.total_cmp(&y.1))
 }
 
 fn dim_line_mid(points: &[Point2], orientation: DimOrientation, offset: f64) -> DVec2 {
@@ -689,6 +723,19 @@ fn handle_command(doc: &Document, id: Id, handle: Handle, p: DVec2) -> Option<Co
         }
         (Object::Text(_), Handle::TextPosition) => {
             Some(patch(serde_json::json!({ "position": pt(p) })))
+        }
+        (Object::ElevationData(e), Handle::Vertex(i)) => {
+            let mut shape = e.shape.clone();
+            match &mut shape {
+                ElevationShape::Line { points, .. } | ElevationShape::Region { points, .. } => *points.get_mut(i)? = pt(p),
+                _ => return None,
+            }
+            Some(patch(serde_json::json!({ "shape": shape })))
+        }
+        (Object::SiteFeature(f), Handle::Vertex(i)) => {
+            let mut points = f.points.clone();
+            *points.get_mut(i)? = pt(p);
+            Some(patch(serde_json::json!({ "points": points })))
         }
         (Object::Dimension(d), Handle::DimOffset) => {
             let DimensionGeometry::Linear {
@@ -912,6 +959,46 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
                 commands.push(Command::AddDimensionPoint { id: dim, at: pt(at) });
                 return;
             }
+            Pick::PathBreak(id) => {
+                commands.push(Command::BreakWall { id, at: pt(at) });
+                return;
+            }
+            Pick::MoveEdge { id, edge: None } => {
+                if let Some((points, closed)) = path_of(doc, id)
+                    && let Some((edge, d)) = nearest_path_edge(points, closed, c)
+                    && d < tol * 2.0
+                {
+                    app.plan.pick = Some(Pick::MoveEdge { id, edge: Some(edge) });
+                }
+                return;
+            }
+            Pick::EdgeAngle(id) => {
+                if let Some((points, closed)) = path_of(doc, id)
+                    && let Some((edge, d)) = nearest_path_edge(points, closed, c)
+                    && d < tol * 2.0
+                {
+                    let n = points.len();
+                    let (a, b) = (v2(points[edge]), v2(points[(edge + 1) % n]));
+                    app.dialogs.edge_angle = Some((id, edge, (b - a).y.atan2((b - a).x).to_degrees()));
+                    app.plan.pick = None;
+                }
+                return;
+            }
+            Pick::MoveEdge { id, edge: Some(edge) } => {
+                commands.push(Command::MoveEdge { id, edge, to: pt(at) });
+                app.plan.pick = None;
+                return;
+            }
+            Pick::ContinuePath { id, at_start } => {
+                let Some((points, _)) = path_of(doc, id) else { return };
+                let at_start = at_start.unwrap_or_else(|| {
+                    let (first, last) = (v2(points[0]), v2(points[points.len() - 1]));
+                    first.distance(c) < last.distance(c)
+                });
+                commands.push(Command::ExtendPath { id, points: vec![pt(at)], at_start });
+                app.plan.pick = Some(Pick::ContinuePath { id, at_start: Some(at_start) });
+                return;
+            }
             Pick::DimRemove(dim) => {
                 if let Some(Object::Dimension(d)) = doc.object(dim)
                     && let DimensionGeometry::Linear { points, .. } = &d.geometry
@@ -944,7 +1031,14 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
                         app.plan.pick = None;
                     }
                 }
-                Pick::PointMove { .. } | Pick::Parallel { .. } | Pick::DimAdd(_) | Pick::DimRemove(_) => {}
+                Pick::PointMove { .. }
+                | Pick::Parallel { .. }
+                | Pick::DimAdd(_)
+                | Pick::DimRemove(_)
+                | Pick::PathBreak(_)
+                | Pick::MoveEdge { .. }
+                | Pick::ContinuePath { .. }
+                | Pick::EdgeAngle(_) => {}
                 Pick::Match(from) => {
                     if doc.kind_of(target) == doc.kind_of(from) {
                         let fields = app.match_fields.iter().filter(|(_, on)| *on).map(|(f, _)| f.clone()).collect();
@@ -1117,6 +1211,15 @@ pub enum Pick {
     DimAdd(Id),
     /// Remove Extension Line: click near the one to take away.
     DimRemove(Id),
+    /// Add Break on a path (elevation line, garden bed, polyline): each
+    /// click adds a corner on the nearest edge.
+    PathBreak(Id),
+    /// Move Edge: click the edge, then where it goes.
+    MoveEdge { id: Id, edge: Option<usize> },
+    /// Continue drawing a path from the end nearer the first click.
+    ContinuePath { id: Id, at_start: Option<bool> },
+    /// Edge Angle: click the edge whose angle to type.
+    EdgeAngle(Id),
 }
 
 impl Pick {
@@ -1125,6 +1228,11 @@ impl Pick {
         match self {
             Pick::DimAdd(_) => "Add Extension Line: click points to dimension to (they snap). Esc ends.",
             Pick::DimRemove(_) => "Remove Extension Line: click the extension line to take away. Esc ends.",
+            Pick::PathBreak(_) => "Add Break: click on an edge to put a corner there. Esc ends.",
+            Pick::MoveEdge { edge: None, .. } => "Move Edge: click the edge to move. Esc cancels.",
+            Pick::MoveEdge { edge: Some(_), .. } => "Move Edge: click where the edge goes; the edges either side stretch. Esc cancels.",
+            Pick::ContinuePath { .. } => "Continue Drawing: click new corners from the nearer end. Esc ends.",
+            Pick::EdgeAngle(_) => "Edge Angle: click the edge to turn about its start. Esc cancels.",
             Pick::PointMove { from: None, .. } => "Point to Point Move: click the point to move from (it snaps to corners and ends). Esc cancels.",
             Pick::PointMove { from: Some(_), .. } => "Point to Point Move: click where that point goes. Ctrl+click moves a copy. Esc cancels.",
             Pick::Reflect(_) => "Reflect About Object: click a wall, line, door or window to mirror across. Ctrl+click keeps the original. Esc cancels.",

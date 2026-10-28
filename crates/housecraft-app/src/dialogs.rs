@@ -201,6 +201,8 @@ pub struct Dialogs {
     pub portfolio: Portfolio,
     /// Scatter: count, size variation, seed.
     pub scatter: Option<(u32, f64, u64)>,
+    /// Edge Angle: the path, its edge and the angle being typed (degrees).
+    pub edge_angle: Option<(Id, usize, f64)>,
     pub plan_check: bool,
     pub hatch: HatchDialog,
     /// Auto Dimension Tiers being chosen, and a preset name being typed.
@@ -286,6 +288,7 @@ pub fn show(app: &mut App, ctx: &Context) {
     crate::project_tools::time_tracker_window(app, ctx);
     match_properties_window(app, ctx);
     scatter_dialog(app, ctx);
+    edge_angle_dialog(app, ctx);
     plan_check_dialog(app, ctx);
     hatch_dialog(app, ctx);
     auto_dims_dialog(app, ctx);
@@ -2237,6 +2240,28 @@ fn scatter_dialog(app: &mut App, ctx: &Context) {
     {
         app.info(format!("{} copies scattered", out.created.len()));
         app.selection = out.created;
+    }
+}
+
+/// Edge Angle: the edge's start corner stays put and its end swings round.
+fn edge_angle_dialog(app: &mut App, ctx: &Context) {
+    let Some((id, edge, mut angle)) = app.dialogs.edge_angle.take() else {
+        return;
+    };
+    let mut open = true;
+    let mut apply = false;
+    egui::Window::new("Edge Angle").open(&mut open).resizable(false).show(ctx, |ui| {
+        ui.label("The start of the edge is locked; its end moves to this angle (degrees, counter-clockwise from east).");
+        ui.horizontal(|ui| {
+            ui.label("Angle");
+            ui.add(egui::DragValue::new(&mut angle).speed(0.5).range(-360.0..=360.0).suffix("°"));
+        });
+        apply = ui.button("OK").clicked();
+    });
+    if apply {
+        app.run1(Command::SetEdgeAngle { id, edge, angle });
+    } else if open {
+        app.dialogs.edge_angle = Some((id, edge, angle));
     }
 }
 

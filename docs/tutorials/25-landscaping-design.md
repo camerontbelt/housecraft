@@ -20,15 +20,17 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
    Enter to close it.
 2. Open it and set **Height** `0`. That makes a flat mulch bed lying on the ground, like Chief's. A height above 0
    makes a raised bed with edging.
-3. *Not in HouseCraft yet:* Add Break, moving a single edge, and curved edges on a bed. Drag its corners into place.
+3. Shape the bed: select it and choose **Edit › Add Break**, then click on an edge to give it a new corner (Esc
+   when done). **Edit › Move Edge** moves one edge: click the edge, then click where it should go; the edges either
+   side stretch to follow. You can also drag any corner's handle. *Not in HouseCraft yet:* curved bed edges.
 
 ## Planting border (pages 437–440)
 
 1. Draw a CAD polyline round the border you want (or copy the lot outline and **Edit › Paste Hold Position**).
 2. Select it, then **CAD › Convert CAD To › Garden Bed**. Open the bed and set **Height** `0`.
-3. To line an edge up with a setback line, select the bed, choose **Edit › Make Parallel / Perpendicular**, click
-   the setback line, then click the bed's edge. The whole bed turns. *Not in HouseCraft yet:* moving a single edge,
-   so drag the corners onto the setback lines with object snaps on.
+3. To line up one edge, select the bed and use **Edit › Edge Angle…**: click the edge, type the angle of the setback
+   line and click **OK**. The edge's start corner stays put. Then **Edit › Move Edge** slides that edge onto the
+   line. (**Edit › Make Parallel / Perpendicular** turns the whole bed instead.)
 
 ## Fencing and a gate (pages 440–443)
 
@@ -63,10 +65,11 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
 | Missing | FEATURES row |
 |---|---|
 | Dirt material default; fencing defaults and panel library | SITE-34 |
-| Add Break, edge moves and arcs on garden beds | SITE-30 |
+| Curved garden bed edges | SITE-29 |
 | Plant Chooser and encyclopedia | SITE-20, SITE-21 |
 
 **New while following this tutorial:**
 
 - Garden beds can be flat (height 0), lying on the ground like a mulch bed.
 - **CAD › Convert CAD To › Garden Bed**.
+- **Edit › Add Break**, **Move Edge**, **Edge Angle…** and **Continue Drawing** on garden beds and elevation lines.

@@ -2311,3 +2311,42 @@ pub(crate) fn repoint_user_patterns(v: &mut serde_json::Value, index: u32) -> bo
     }
     changed
 }
+
+/// The editable corner path of an object (elevation lines and regions, site
+/// features, CAD polylines and splines), and whether it closes on itself.
+pub fn path_mut(doc: &mut Document, id: Id) -> Option<(&mut Vec<Point2>, bool)> {
+    match doc.object(id)? {
+        Object::ElevationData(_) => match &mut doc.get_mut::<ElevationData>(id)?.shape {
+            ElevationShape::Line { points, .. } => Some((points, false)),
+            ElevationShape::Region { points, .. } => Some((points, true)),
+            _ => None,
+        },
+        Object::SiteFeature(f) => {
+            let closed = f.feature.closed();
+            Some((&mut doc.get_mut::<SiteFeature>(id)?.points, closed))
+        }
+        Object::Cad(_) => match &mut doc.get_mut::<Cad>(id)?.shape {
+            Shape::Polyline { points, closed } | Shape::Spline { points, closed } => Some((points, *closed)),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// The edges of a path as index pairs (the closing edge last).
+pub fn path_edges(n: usize, closed: bool) -> Vec<(usize, usize)> {
+    let mut e: Vec<_> = (1..n).map(|i| (i - 1, i)).collect();
+    if closed && n > 2 {
+        e.push((n - 1, 0));
+    }
+    e
+}
+
+/// The edge of a path nearest `p`, and the point on it nearest `p`.
+pub fn nearest_path_edge(points: &[Point2], closed: bool, p: DVec2) -> Option<(usize, DVec2)> {
+    path_edges(points.len(), closed)
+        .into_iter()
+        .enumerate()
+        .map(|(i, (a, b))| (i, closest_on_segment(p, v2(points[a]), v2(points[b])).0))
+        .min_by(|x, y| x.1.distance(p).total_cmp(&y.1.distance(p)))
+}

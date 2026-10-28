@@ -3502,3 +3502,44 @@ fn foundations_leave_out_porches() {
     assert!(ys.iter().all(|y| *y > -100.0), "the basement stays under the house: {ys:?}");
     assert_eq!(count(&s), 4);
 }
+
+#[test]
+fn paths_take_breaks_edge_moves_locked_angles_and_more_drawing() {
+    let mut s = boxed();
+    let ft = |x: f64, y: f64| housecraft_api::units::Point2(Length::from_mm(x * 304.8), Length::from_mm(y * 304.8));
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_elevation_data", "shape": {"type": "line", "points": [["0'","0'"],["20'","0'"]], "elevation": "0\""}},
+            {"op": "add_site_feature", "points": [["40'","10'"],["50'","10'"],["50'","20'"],["40'","20'"]], "feature": {"type": "garden_bed", "height": "0\""}}]"#,
+    );
+    let (line, bed) = (out.created[0], out.created[1]);
+    let line_pts = |s: &Session| match &s.document().get::<ElevationData>(line).unwrap().shape {
+        ElevationShape::Line { points, .. } => points.iter().map(|p| (p.0.mm() / 304.8, p.1.mm() / 304.8)).collect::<Vec<_>>(),
+        _ => panic!(),
+    };
+    let bed_pts = |s: &Session| s.document().get::<SiteFeature>(bed).unwrap().points.iter().map(|p| (p.0.mm() / 304.8, p.1.mm() / 304.8)).collect::<Vec<_>>();
+    let close = |a: (f64, f64), b: (f64, f64)| (a.0 - b.0).abs() < 1e-6 && (a.1 - b.1).abs() < 1e-6;
+
+    // Add Break: a corner on the line where clicked.
+    s.apply(&[Command::BreakWall { id: line, at: ft(8.0, 1.0) }]).unwrap();
+    assert_eq!(line_pts(&s).len(), 3);
+    assert!(close(line_pts(&s)[1], (8.0, 0.0)));
+    assert!(s.apply(&[Command::BreakWall { id: line, at: ft(0.0, 0.0) }]).is_err(), "not on a corner");
+    // Lock the start of the second segment and set its angle to 90°.
+    s.apply(&[Command::SetEdgeAngle { id: line, edge: 1, angle: 90.0 }]).unwrap();
+    assert!(close(line_pts(&s)[2], (8.0, 12.0)), "{:?}", line_pts(&s));
+    // Continue drawing from either end.
+    s.apply(&[Command::ExtendPath { id: line, points: vec![ft(14.0, 12.0)], at_start: false }]).unwrap();
+    s.apply(&[Command::ExtendPath { id: line, points: vec![ft(-5.0, 0.0), ft(-5.0, -5.0)], at_start: true }]).unwrap();
+    let p = line_pts(&s);
+    assert_eq!(p.len(), 6);
+    assert!(close(p[0], (-5.0, -5.0)) && close(p[1], (-5.0, 0.0)) && close(p[5], (14.0, 12.0)), "{p:?}");
+
+    // The bed: break the closing edge, then move the east edge out 3'.
+    s.apply(&[Command::BreakWall { id: bed, at: ft(39.0, 15.0) }]).unwrap();
+    assert!(close(bed_pts(&s)[4], (40.0, 15.0)), "{:?}", bed_pts(&s));
+    s.apply(&[Command::MoveEdge { id: bed, edge: 1, to: ft(53.0, 0.0) }]).unwrap();
+    let b = bed_pts(&s);
+    assert!(close(b[1], (53.0, 10.0)) && close(b[2], (53.0, 20.0)) && close(b[0], (40.0, 10.0)), "{b:?}");
+    assert!(s.apply(&[Command::ExtendPath { id: bed, points: vec![ft(0.0, 0.0)], at_start: false }]).is_err(), "closed beds have no ends");
+}

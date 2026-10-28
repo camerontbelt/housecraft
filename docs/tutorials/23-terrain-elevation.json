@@ -247,8 +247,27 @@
       ]
     },
     {
-      "step": "(Lock the start point and type the line's angle)",
-      "gap": "Elevation lines have no angle field; rotate them or move their ends. Row: SITE-30"
+      "step": "Lock the start point of the top line and type its angle: -13 degrees",
+      "commands": [
+        {
+          "op": "set_edge_angle",
+          "id": "$back.0",
+          "edge": 0,
+          "angle": -13.0
+        }
+      ],
+      "expect": [
+        {
+          "get": "$back.0",
+          "path": "/shape/points/0/0",
+          "is": -20035.785
+        },
+        {
+          "get": "$back.0",
+          "path": "/shape/points/1/1",
+          "is": 11250.995
+        }
+      ]
     },
     {
       "step": "The front line parallel to the curved lot edge's chord (Make Parallel), then an arc of 450' radius",
@@ -328,8 +347,39 @@
       ]
     },
     {
-      "step": "(Add Break on an elevation line; Same Line Type handle to continue drawing)",
-      "gap": "Elevation lines take new corners by editing their points, not Add Break or a continue-drawing handle. Row: SITE-30"
+      "step": "Add Break on the 0\" polyline's first segment, then continue drawing from its end (Same Line Type handle)",
+      "commands": [
+        {
+          "op": "break_wall",
+          "id": "$poly",
+          "at": [
+            33528.0,
+            6000.0
+          ]
+        },
+        {
+          "op": "extend_path",
+          "id": "$poly",
+          "points": [
+            [
+              10972.8,
+              9784.08
+            ]
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$poly",
+          "path": "/shape/points/1/0",
+          "is": "110'"
+        },
+        {
+          "get": "$poly",
+          "path": "/shape/points/4/0",
+          "is": "36'"
+        }
+      ]
     },
     {
       "step": "Straight Retaining Wall down the right setback line, then an angled one at 15 degrees up to the back setback",

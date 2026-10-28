@@ -59,8 +59,47 @@
       ]
     },
     {
-      "step": "(Add Break, Move Edge, curved edge along the sidewalk)",
-      "gap": "Garden bed outlines are edited by their corners; no Add Break, edge moves or arcs. Row: SITE-30"
+      "step": "Add Break on the bed's sidewalk edge, then Move Edge to pull the left half 1' toward the sidewalk",
+      "commands": [
+        {
+          "op": "break_wall",
+          "id": "$bed",
+          "at": [
+            7620.0,
+            -14935.2
+          ]
+        },
+        {
+          "op": "move_edge",
+          "id": "$bed",
+          "edge": 3,
+          "to": [
+            7000.0,
+            -15240.0
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$bed",
+          "path": "/points/3/1",
+          "is": "-50'"
+        },
+        {
+          "get": "$bed",
+          "path": "/points/4/1",
+          "is": "-50'"
+        },
+        {
+          "get": "$bed",
+          "path": "/points/2/1",
+          "is": -14935.2
+        }
+      ]
+    },
+    {
+      "step": "(Make the sidewalk edge curved)",
+      "gap": "Garden bed edges are straight; no arc edges. Row: SITE-29"
     },
     {
       "step": "Planting border: copy the plot plan polyline in place, Convert Polyline > Garden Bed",
@@ -124,8 +163,27 @@
       ]
     },
     {
-      "step": "(Align the border's inside edges with the setback lines and retaining walls: Make Parallel)",
-      "gap": "Make Parallel turns the whole bed; no Add Break or single-edge moves on garden beds. Row: SITE-30"
+      "step": "Align the border's inside edge with its outside edge: lock its start and set the angle (one edge, not the whole bed)",
+      "commands": [
+        {
+          "op": "set_edge_angle",
+          "id": "$border",
+          "edge": 2,
+          "angle": 208.9797077
+        }
+      ],
+      "expect": [
+        {
+          "get": "$border",
+          "path": "/points/2/0",
+          "is": "80'"
+        },
+        {
+          "get": "$border",
+          "path": "/points/3/0",
+          "is": -14515.684
+        }
+      ]
     },
     {
       "step": "Fencing defaults: 72\" rail, 5 1/2\" posts 74\" high, iron pole panels, top and bottom rails 5 1/2\" x 1 1/2\"",

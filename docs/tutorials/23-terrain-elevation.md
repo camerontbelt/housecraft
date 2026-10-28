@@ -33,18 +33,20 @@ elevation data, about 1" below the Garage slab. In the terrain's dialog tick **R
 2. Copy another near the back of the lot at `6'`. Move it to about 2' inside the back setback line. Add one more 3' in
    front of it at `5'`. The slope is gentle behind the Deck and steeper at the back.
 3. Select the back two lines and rotate them 15° clockwise (rotate handle, or **Move / Copy / Rotate / Reflect…** ›
-   **Rotate** `-15`). *Not in HouseCraft yet:* typing an elevation line's angle with its start point locked, and
-   curved elevation lines. To set a line parallel to the lot edge, select it, choose **Edit › Make Parallel /
-   Perpendicular**, click the lot edge, then click the line.
+   **Rotate** `-15`). To give the top line its own angle with its start point locked, select it, choose
+   **Edit › Edge Angle…**, click the line, type `-13` and click **OK**: the left end stays put and the right end
+   swings round. To set a line parallel to the lot edge, select it, choose **Edit › Make Parallel /
+   Perpendicular**, click the lot edge, then click the line. *Not in HouseCraft yet:* curved elevation lines.
 
 ## Elevation polyline (pages 413–415)
 
 1. Turn off the contours layer for a clearer view.
 2. **Elevation Line**: click on the right side of the lot, click in the middle, then click up and to the left through
    the edge of the terrain (165°). Press Enter. That's one polyline of two segments. Open it and set **Elevation** `0"`.
-3. Chief adds a break to the Deck line and drags the new corner down. *Not in HouseCraft yet:* Add Break on elevation
-   lines. Delete the Deck line and draw it again with the extra corner: across the lot behind the Deck, then down to
-   the middle of the house. Set it to `0"`.
+3. Add a break to the Deck line and drag the new corner down: select the line, choose **Edit › Add Break**, click on
+   the line where the corner goes, press Esc, then drag the new corner's handle down to the middle of the house.
+4. To carry on drawing an elevation line from one of its ends, select it, choose **Edit › Continue Drawing**, and
+   click the new corners starting near the end you want to extend from. Press Esc when done.
 
 ## Retaining wall (pages 415–417)
 
@@ -63,6 +65,5 @@ elevation data, about 1" below the Garage slab. In the terrain's dialog tick **R
 |---|---|
 | Additional allowed angles | CAD-33 |
 | Duplicate a saved plan view | PRJ-12 |
-| Elevation line angle, Add Break, continue drawing | SITE-30 |
 | Curved elevation lines | SITE-29 |
 | Retaining walls separating the terrain | SITE-31 |
