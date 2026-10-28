@@ -171,6 +171,10 @@ pub enum Command {
     /// Auto Stairwell: cut the floor above the stair and put railings round
     /// the opening there, leaving the top end open as the way off the stair.
     AutoStairwell { stair: Id },
+    /// Open the railings and half walls (4' or lower) a stair passes
+    /// through at its top: each is broken either side of the stair and the
+    /// piece in front of it becomes a room divider.
+    OpenWallsAtStair { stair: Id },
     /// Wire a switch to fixtures (or unwire with `disconnect`). Switches that
     /// share a fixture become 3-way and 4-way automatically.
     ConnectSwitch {
@@ -1452,6 +1456,7 @@ impl Command {
             Command::MoveWallByDimension { .. } => "move_wall_by_dimension",
             Command::MoveByDimension { .. } => "move_by_dimension",
             Command::AutoStairwell { .. } => "auto_stairwell",
+            Command::OpenWallsAtStair { .. } => "open_walls_at_stair",
             Command::PointToPointMove { .. } => "point_to_point_move",
             Command::ReflectAbout { .. } => "reflect_about",
             Command::MakeParallel { .. } => "make_parallel",
@@ -2365,6 +2370,69 @@ impl Command {
                 {
                     *p = pt(housecraft_geom::v2(*p) + shift);
                     out.modified.push(*dimension);
+                }
+            }
+            Command::OpenWallsAtStair { stair } => {
+                let st = ops::expect::<Stair>(doc, *stair)?.clone();
+                let v2 = housecraft_geom::v2;
+                let u = housecraft_geom::DVec2::from_angle(st.direction.to_radians());
+                // The stair's top: its start when it goes down to grade.
+                let top = if st.extras.to_grade {
+                    v2(st.start)
+                } else {
+                    let g = housecraft_geom::stairs::geometry(doc, &st);
+                    g.walk.last().map_or(v2(st.start), |p| p.truncate())
+                };
+                let half = st.width.mm() / 2.0;
+                let low = Length::from_feet(4.0).mm() + 1.0;
+                let walls: Vec<Wall> = doc
+                    .walls_on(st.floor)
+                    .filter(|w| {
+                        let railing = doc.get::<WallType>(w.wall_type).is_some_and(|t| t.railing.is_some());
+                        railing || doc.wall_height(w).is_some_and(|h| h.mm() <= low)
+                    })
+                    .cloned()
+                    .collect();
+                let mut opened = 0;
+                for w in walls {
+                    let (a, b) = (v2(w.start), v2(w.end));
+                    let len = a.distance(b);
+                    let dir = (b - a) / len.max(1e-9);
+                    // Across the stair's path, close to its top.
+                    if dir.dot(u).abs() > 0.5 {
+                        continue;
+                    }
+                    let along = (top - a).dot(dir);
+                    if (top - a).dot(housecraft_geom::math::perp(dir)).abs() > 300.0 || along < -half || along > len + half {
+                        continue;
+                    }
+                    let (c0, c1) = ((along - half).max(0.0), (along + half).min(len));
+                    let mut piece = w.id;
+                    if c1 < len - 1.0 {
+                        Command::BreakWall { id: piece, at: housecraft_geom::pt(a + dir * c1) }.apply(doc)?;
+                    }
+                    if c0 > 1.0 {
+                        let more = Command::BreakWall { id: piece, at: housecraft_geom::pt(a + dir * c0) }.apply(doc)?;
+                        // The second piece starts at the break: it's the one in front of the stair.
+                        if let Some(p) = more.created.iter().copied().find(|id| doc.get::<Wall>(*id).is_some()) {
+                            piece = p;
+                        }
+                    }
+                    let in_front = doc.get::<Wall>(piece).is_some_and(|pw| {
+                        let m = (v2(pw.start) + v2(pw.end)) / 2.0;
+                        ((m - a).dot(dir) - along).abs() < half + 1.0
+                    });
+                    // The piece in front becomes a room divider: open, but the
+                    // room (and any roof over it) still sees it.
+                    if in_front && let Some(pw) = doc.get_mut::<Wall>(piece) {
+                        pw.invisible = true;
+                        out.modified.push(piece);
+                        opened += 1;
+                    }
+                    out.modified.push(w.id);
+                }
+                if opened == 0 {
+                    return invalid("no railing or half wall crosses the stair's top");
                 }
             }
             Command::AutoStairwell { stair } => {

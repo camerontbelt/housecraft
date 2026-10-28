@@ -3842,3 +3842,23 @@ fn stair_defaults_give_newels_and_part_materials() {
     let caps = mesh.faces.iter().filter(|f| mesh.parts[f.part].object == stair).flat_map(|f| f.points.iter()).filter(|p| p.z > 36.0 * 25.4).count();
     assert!(caps > 0);
 }
+
+#[test]
+fn stairs_open_the_half_wall_at_their_top() {
+    let mut s = boxed();
+    // A 36" half wall along the porch front, 10' out from the box's south wall.
+    let wall = apply(&mut s, r#"[{"op": "add_wall", "start": ["0'","-10'"], "end": ["20'","-10'"], "height": "36\""}]"#).created[0];
+    let stair = apply(&mut s, r#"[{"op": "add_stair", "start": ["10'","-10'"], "direction": 90, "width": "6'"}]"#).created[0];
+    s.apply(&[Command::Update { id: stair, set: patch(serde_json::json!({ "extras": { "to_grade": true } })) }]).unwrap();
+    s.apply(&[Command::OpenWallsAtStair { stair }]).unwrap();
+    let pieces: Vec<(f64, f64)> = s
+        .document()
+        .iter::<Wall>()
+        .filter(|w| !w.invisible && (w.start.1.mm() - (-10.0 * 304.8)).abs() < 1.0 && (w.end.1.mm() - (-10.0 * 304.8)).abs() < 1.0)
+        .map(|w| (w.start.0.mm().min(w.end.0.mm()) / 304.8, w.start.0.mm().max(w.end.0.mm()) / 304.8))
+        .collect();
+    assert_eq!(pieces.len(), 2, "{pieces:?}");
+    assert!(pieces.iter().any(|p| (p.1 - 7.0).abs() < 1e-6) && pieces.iter().any(|p| (p.0 - 13.0).abs() < 1e-6), "a 6' gap: {pieces:?}");
+    assert!(s.document().get::<Wall>(wall).is_some());
+    assert!(s.apply(&[Command::OpenWallsAtStair { stair }]).is_err(), "nothing left to open");
+}

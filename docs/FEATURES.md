@@ -339,7 +339,7 @@ These come from reading the whole list and change the architecture, not just the
 | ST-17 | Handrail returns & extensions | P2 | M3 ✓ handrail extensions past the top and bottom, and returns turning the rail ends down |
 | ST-18 | Auto Stairwell makes an Open Below room on the floor above, enclosed by railings with a doorway at the top | P2 | M9 ◐ Auto Stairwell button (`auto_stairwell`) cuts the floor above and rails the opening's sides and bottom end, open at the top; the Open Below room type later |
 | ST-19 | Stair Lock Top / Lock Bottom / Lock Number of Treads and a Make Best Fit button | P2 | M9 |
-| ST-20 | Exterior stairs that go down to the terrain (DN), cutting a doorway in the railing; solid concrete stair style | P1 | M9 ◐ straight stairs tick Down to grade (`extras.to_grade`): they start at the floor or the deck they touch, step down to the terrain, read DN and open the deck railing; untick Stringers for solid steps; opening half walls and a concrete material later |
+| ST-20 | Exterior stairs that go down to the terrain (DN), cutting a doorway in the railing; solid concrete stair style | P1 | M9 ✓ straight stairs tick Down to grade (`extras.to_grade`): they start at the floor or the deck they touch, step down to the terrain, read DN and open the deck railing; untick Stringers for solid steps; Open Walls at Top opens a railing or half wall across a stair's top; concrete steps by painting the treads |
 
 ## 11. Foundations
 

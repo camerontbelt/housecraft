@@ -505,8 +505,13 @@
       "expect": []
     },
     {
-      "step": "(the stairs opening the porch's front half wall)",
-      "gap": "Stairs only open deck railings; break the half wall (Add Break) and delete the piece in front of the stairs. Row: ST-20"
+      "step": "The stairs open the porch's front half wall (Open Walls at Top)",
+      "commands": [
+        {
+          "op": "open_walls_at_stair",
+          "stair": "$porch_stairs"
+        }
+      ]
     },
     {
       "step": "Notes: 'CONCRETE STEPS TO GRADE', 'FRAMED STEPS TO GRADE', and numbered note 'EXTERIOR LANDING 36\" MINIMUM IN DIRECTION OF TRAVEL' (copied to both stairs)",

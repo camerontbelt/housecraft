@@ -2767,6 +2767,11 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "stringers": st })));
             }
             ui.end_row();
+            Ed::label(ui, "");
+            if ui.button("Open Walls at Top").on_hover_text("Break the railing or half wall (4' or lower) across the stair's top and remove the piece in front of it").clicked() {
+                ed.out.push(Command::OpenWallsAtStair { stair: id });
+            }
+            ui.end_row();
             if s.newel.is_none() {
                 let styles: Vec<(NewelStyle, &str)> = NewelStyle::ALL.iter().map(|n| (*n, n.name())).collect();
                 ed.choice(ui, "Newel Posts", "newel_style", s.newel_style, &styles);
