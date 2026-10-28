@@ -643,7 +643,7 @@ These come from reading the whole list and change the architecture, not just the
 | EST-28 | Reorder schedule rows (drag rows; Move Up/Down in Schedule) | P3 | M9 ◐ Row Order ▲/▼ (Move Up/Down in Schedule) in the schedule dialog; dragging rows in the table later |
 | EST-29 | Room moldings schedule (profiles and lengths by room) | P3 | M9 |
 | EST-30 | Furniture schedule (pictures, dimensions; blocks as one line; leave accessories out) | P3 | M9 |
-| EST-31 | Schedule from a room; category filter (lighting only); custom schedule title | P2 | M9 |
+| EST-31 | Schedule from a room; category filter (lighting only); custom schedule title | P2 | M9 ✓ Only in Room, Only Rows With (text filter) and Title on schedules |
 
 ## 21. Text, annotation & scripting
 
@@ -671,8 +671,8 @@ These come from reading the whole list and change the architecture, not just the
 | TXT-20 | Macro management (create, test) | P2 | M4 ✓ Tools > Text Macros: your own macros, built-in list with values, a try-it box |
 | TXT-21 | Scripting console (CA: Ruby → ours: Rhai/Lua over the command API) | P2 | M8 |
 | TXT-22 | Revision clouds with defaults | P1 | M4 ✓ |
-| TXT-23 | Referenced-object macros: text with an arrow shows the comment/size of what it points at | P3 | M9 |
-| TXT-24 | Text formatting: uppercase option in defaults, border margins, underline/case per character | P3 | M9 |
+| TXT-23 | Referenced-object macros: text with an arrow shows the comment/size of what it points at | P3 | M9 ✓ {ref_comment}, {ref_description}, {ref_code}, {ref_name} read the object the first arrow points at |
+| TXT-24 | Text formatting: uppercase option in defaults, border margins, underline/case per character | P3 | M9 ◐ Uppercase text styles, border margins; underline within a line later |
 
 ## 22. Printing
 

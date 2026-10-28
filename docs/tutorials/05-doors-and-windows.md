@@ -81,8 +81,9 @@ and the interior door material defaults. Skip these steps.
 
 1. Open the Foyer/Garage door › **Object Information** › Comment: `20 minute` / `self-closing`. It shows in
    the door schedule's Comment column.
-2. *Not in HouseCraft yet:* a leader line whose text picks up the comment of the door it points at. Type the
-   text yourself with the **Text with Arrow** tool.
+2. **Text with Arrow** from the Garage door: type `{ref_comment}`. The text shows the comment of whatever its
+   arrow points at (here "20 minute self-closing"), and follows it if the comment changes. The other referenced-object
+   macros are `{ref_comment}`, `{ref_description}`, `{ref_code}` and `{ref_name}`.
 3. **Callout** by the sliding door: `TEMPERED GLASS`, tick **Numbered Note**. It gets the next number. Copy it
    beside the front door's side lite.
 
@@ -96,7 +97,6 @@ and the interior door material defaults. Skip these steps.
 | Height change keeps the top | DW-22 |
 | Make Mulled Unit from separate windows | DW-11 |
 | Labels instead of schedule numbers | EST-27 |
-| Text that shows the pointed-at object's comment | TXT-23 |
 
 Fixed for this tutorial: the default garage door (16', too wide for the Chic Cottage's 13'4" garage, so it
 couldn't be placed) is now 9' × 7'. Doors and windows can also be copied along their wall with Multiple Copy.

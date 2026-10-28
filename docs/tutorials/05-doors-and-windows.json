@@ -660,7 +660,35 @@
     },
     {
       "step": "Leader line with the Referenced Object > Comment macro, pointing at the Garage door",
-      "gap": "Text doesn't pick up the comment of the object its arrow points at. Row: TXT-23"
+      "commands": [
+        {
+          "op": "add_text",
+          "floor": "$floor1",
+          "position": [
+            9900.0,
+            -6600.0
+          ],
+          "text": "{ref_comment}",
+          "leaders": [
+            [
+              8798.719,
+              -5715.0
+            ]
+          ]
+        }
+      ],
+      "save": {
+        "refnote": "text"
+      }
+    },
+    {
+      "step": "(it reads the door's comment)",
+      "expect": [
+        {
+          "text_reads": "$refnote",
+          "is": "20 minute\nself-closing"
+        }
+      ]
     },
     {
       "step": "Note 'TEMPERED GLASS' by the sliding door; copy it beside the front door's side lite",

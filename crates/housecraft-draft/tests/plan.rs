@@ -1050,3 +1050,28 @@ fn callout_captions_fill_number_view_scale_and_link() {
     let caption = d.items.iter().find_map(|i| match &i.prim { Prim::Text { text, .. } if text.contains("SEE") => Some(text.clone()), _ => None }).unwrap();
     assert!(caption.starts_with("1/") && caption.contains("1/4\" = 1'-0\"") && caption.ends_with("SEE A-3"), "{caption}");
 }
+
+#[test]
+fn text_reads_what_its_arrow_points_at_and_styles_capitalise() {
+    let mut s = house();
+    let door = s.document().iter::<housecraft_api::model::Opening>().next().unwrap().id;
+    let wall = s.document().get::<housecraft_api::model::Opening>(door).unwrap().wall;
+    let w = s.document().get::<housecraft_api::model::Wall>(wall).unwrap().clone();
+    let o = s.document().get::<housecraft_api::model::Opening>(door).unwrap().clone();
+    let dir = housecraft_api::geom::DVec2::new(w.end.0.mm() - w.start.0.mm(), w.end.1.mm() - w.start.1.mm()).normalize();
+    let tip = housecraft_api::geom::DVec2::new(w.start.0.mm(), w.start.1.mm()) + dir * o.position.mm();
+    let style = s.apply(&[serde_json::from_value(serde_json::json!({"op": "add_text_style", "name": "Caps", "height": "6\""})).unwrap()]).unwrap().created[0];
+    let cmds: Vec<Command> = serde_json::from_value(serde_json::json!([
+        {"op": "set_object_info", "id": door.0, "info": {"comment": "20 minute self-closing"}},
+        {"op": "update", "id": style.0, "set": {"uppercase": true}},
+        {"op": "add_text", "position": [tip.x + 1500.0, tip.y - 1500.0], "text": "note: {ref_comment}", "leaders": [[tip.x, tip.y]]}
+    ]))
+    .unwrap();
+    let made = s.apply(&cmds).unwrap().created;
+    let text = made.into_iter().find(|id| s.document().get::<housecraft_api::model::Text>(*id).is_some()).unwrap();
+    s.apply(&[serde_json::from_value(serde_json::json!({"op": "update", "id": text.0, "set": {"style": style.0}})).unwrap()]).unwrap();
+    let doc = s.document();
+    let d = plan(doc, &PlanOptions::first(doc).unwrap());
+    let all: Vec<String> = d.items.iter().filter_map(|i| match &i.prim { Prim::Text { text, .. } => Some(text.clone()), _ => None }).collect();
+    assert!(all.iter().any(|t| t == "NOTE: 20 MINUTE SELF-CLOSING"), "{all:?}");
+}

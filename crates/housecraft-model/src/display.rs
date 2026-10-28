@@ -205,6 +205,9 @@ pub struct TextStyle {
     pub italic: bool,
     /// `None` uses the layer colour.
     pub color: Option<Color>,
+    /// Show text in capitals, whatever was typed.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub uppercase: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]

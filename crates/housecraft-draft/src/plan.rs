@@ -146,6 +146,7 @@ impl Ctx<'_> {
                 bold: false,
                 italic: false,
                 color: None,
+                uppercase: false,
             })
     }
 }
@@ -1050,6 +1051,7 @@ fn object_labels(ctx: &Ctx, floor: Id, out: &mut Drawing) {
                 ink,
                 stroke: Stroke { ink, ..look.stroke },
                 border: l.border && l.shape.is_none(),
+                margin: None,
                 wrap: l.wrap.map(|w| w.mm()),
                 leaders: &[],
             },
@@ -1136,12 +1138,18 @@ fn notes(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
         let style = ctx.text_style(text.style, &look);
         let leaders: Vec<DVec2> = text.leaders.iter().map(|p| v2(*p)).collect();
         let ink = text.color.or(style.color).map_or(look.ink, Ink::Color);
+        // Referenced-object macros read what the first arrow points at.
+        let mut shown = crate::macros::expand(doc, &housecraft_api::query::text_with_references(doc, text));
+        // Capitals by style, leaving link targets alone.
+        if style.uppercase && !shown.contains("](") {
+            shown = shown.to_uppercase();
+        }
         crate::rich::text_block(
             out,
             Some(text.id),
             &crate::rich::TextBlock {
                 at: v2(text.position),
-                text: &crate::macros::expand(doc, &text.text),
+                text: &shown,
                 height: text.height.unwrap_or(style.height).mm(),
                 rotation: text.rotation,
                 justify: text.justify,
@@ -1150,6 +1158,7 @@ fn notes(ctx: &Ctx, sheet: Id, out: &mut Drawing) {
                 ink,
                 stroke: Stroke { ink, ..look.stroke },
                 border: text.border,
+                margin: text.border_margin.map(|m| m.mm()),
                 wrap: text.wrap.map(|w| w.mm()),
                 leaders: &leaders,
             },
@@ -1264,15 +1273,7 @@ fn schedule_table(
     let table = housecraft_api::schedule::schedule(
         doc,
         s.schedule_kind,
-        &housecraft_api::schedule::ScheduleOptions {
-            // On a floor plan, that floor unless it lists all; in a detail, all.
-            floor: (!s.all_floors && doc.get::<Floor>(s.floor).is_some()).then_some(s.floor),
-            columns: s.columns.clone(),
-            also: s.also.clone(),
-            renovation: s.renovation,
-            start: s.start_number,
-            order: s.order.clone(),
-        },
+        &housecraft_api::schedule::ScheduleOptions::of(doc, s),
     );
     let thumbs = if s.thumbnails { thumbnails(doc, &table) } else { Vec::new() };
     table_drawing(&table, v2(s.position), h, stroke, ink, Some(s.id), &thumbs, out);

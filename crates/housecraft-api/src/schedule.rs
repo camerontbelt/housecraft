@@ -42,10 +42,37 @@ pub struct ScheduleOptions {
     /// The first label number (D01 when 1).
     #[serde(default)]
     pub start: Option<u32>,
+    /// Only objects inside this room.
+    #[serde(default)]
+    pub room: Option<Id>,
+    /// Only rows with this text in a cell (any case).
+    #[serde(default)]
+    pub filter: String,
+    /// The table's title instead of the kind's.
+    #[serde(default)]
+    pub title: Option<String>,
     /// Rows whose objects are listed here come first, in this order (rows
     /// moved up or down by hand); the rest follow in the usual order.
     #[serde(default)]
     pub order: Vec<Id>,
+}
+
+impl ScheduleOptions {
+    /// How schedule `s` lists its rows: its floor unless it lists every
+    /// floor (in a detail, every floor), its columns, filters and order.
+    pub fn of(doc: &Document, s: &Schedule) -> Self {
+        ScheduleOptions {
+            floor: (!s.all_floors && doc.get::<Floor>(s.floor).is_some()).then_some(s.floor),
+            columns: s.columns.clone(),
+            also: s.also.clone(),
+            renovation: s.renovation,
+            start: s.start_number,
+            room: s.room,
+            filter: s.filter.clone(),
+            title: s.title.clone().filter(|t| !t.trim().is_empty()),
+            order: s.order.clone(),
+        }
+    }
 }
 
 /// Every column a schedule of `kind` can show, in default order.
@@ -199,6 +226,23 @@ pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> S
             })
         });
     }
+    // From a room: objects whose plan position falls inside it.
+    if let Some(room) = opts.room.and_then(|r| doc.get::<Room>(r)) {
+        let regions = housecraft_geom::rooms::detect(doc, room.floor);
+        if let Some(i) = regions.room_at(housecraft_geom::v2(room.anchor)) {
+            let poly = regions.rooms[i].polygon.clone();
+            raw.retain(|(ids, _)| {
+                ids.iter().any(|id| {
+                    doc.floor_of(*id) == Some(room.floor)
+                        && crate::ops::position_of(doc, *id).is_some_and(|p| housecraft_geom::math::point_in_polygon(p, &poly))
+                })
+            });
+        }
+    }
+    if !opts.filter.trim().is_empty() {
+        let f = opts.filter.trim().to_lowercase();
+        raw.retain(|(_, row)| row.values().any(|v| v.to_lowercase().contains(&f)));
+    }
     if !opts.order.is_empty() {
         let rank = |ids: &[Id]| ids.iter().filter_map(|id| opts.order.iter().position(|o| o == id)).min().unwrap_or(usize::MAX);
         raw.sort_by_key(|(ids, _)| rank(ids));
@@ -212,7 +256,7 @@ pub fn schedule(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> S
             .collect()
     };
     ScheduleTable {
-        title: if mixed { "Schedule".to_string() } else { title(kind).to_string() },
+        title: opts.title.clone().unwrap_or_else(|| if mixed { "Schedule".to_string() } else { title(kind).to_string() }),
         columns: columns.iter().map(|c| c.to_string()).collect(),
         rows: raw
             .into_iter()

@@ -2530,18 +2530,27 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             }
             ui.end_row();
             ed.check(ui, "Thumbnails", "thumbnails", "A small plan picture on each row", s.thumbnails);
+            let title = s.title.clone().unwrap_or_default();
+            ed.text(ui, "Title (empty: the kind's)", "title", &title);
+            ed.text(ui, "Only Rows With", "filter", &s.filter);
+            Ed::label(ui, "Only in Room");
+            let mut chosen = s.room;
+            let name = |r: Option<Id>| r.and_then(|r| doc.get::<Room>(r)).map_or("Any".to_string(), |r| doc.room_name(r));
+            egui::ComboBox::from_id_salt(ed.key("sched_room")).selected_text(name(chosen)).show_ui(ui, |ui| {
+                ui.selectable_value(&mut chosen, None, "Any");
+                for r in doc.iter::<Room>().filter(|r| r.floor == s.floor) {
+                    ui.selectable_value(&mut chosen, Some(r.id), doc.room_name(r));
+                }
+            });
+            if chosen != s.room {
+                ed.out.push(patch(id, json!({ "room": chosen })));
+            }
+            ui.end_row();
             // Move Up / Move Down: the rows as the schedule lists them now.
             let table = housecraft_api::schedule::schedule(
                 doc,
                 s.schedule_kind,
-                &housecraft_api::schedule::ScheduleOptions {
-                    floor: (!s.all_floors && doc.get::<Floor>(s.floor).is_some()).then_some(s.floor),
-                    columns: s.columns.clone(),
-                    also: s.also.clone(),
-                    renovation: s.renovation,
-                    start: s.start_number,
-                    order: s.order.clone(),
-                },
+                &housecraft_api::schedule::ScheduleOptions::of(doc, s),
             );
             let firsts: Vec<Id> = table.rows.iter().filter_map(|r| r.ids.first().copied()).collect();
             Ed::label(ui, "Row Order");
@@ -3487,6 +3496,9 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             }
             ed.color(ui, "Color", "color", t.color, "By style / layer");
             ed.check(ui, "Border", "border", "Box around the text", t.border);
+            if t.border {
+                ed.opt_length(ui, "Border Margin", "border_margin", t.border_margin, None);
+            }
             ed.opt_length(ui, "Wrap width", "wrap", t.wrap, Some(Length::from_feet(4.0)));
             Ed::label(ui, "Arrows");
             ui.horizontal(|ui| {
@@ -3545,6 +3557,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "bold": b, "italic": i })));
             }
             ui.end_row();
+            ed.check(ui, "Uppercase", "uppercase", "Show text in capitals", s.uppercase);
             ed.color(ui, "Color", "color", s.color, "By layer");
         }
         Object::PlanView(v) => {

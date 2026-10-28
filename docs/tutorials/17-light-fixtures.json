@@ -674,12 +674,57 @@
       ]
     },
     {
-      "step": "(Schedule from a room; only lighting; own title; moved to a CAD detail)",
-      "gap": "Schedules cover a floor, not one room; no category filter or custom title. Row: EST-31"
+      "step": "Schedule from the Kitchen: only lighting, titled Kitchen Lighting",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$sched",
+          "set": {
+            "room": "$room_at:2032.0,-2540.0",
+            "filter": "light",
+            "title": "Kitchen Lighting"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$sched",
+          "path": "/title",
+          "is": "Kitchen Lighting"
+        }
+      ]
     },
     {
       "step": "Electrical rich text defaults: uppercase",
-      "gap": "No uppercase setting in text defaults. Row: TXT-24"
+      "commands": [
+        {
+          "op": "add_text_style",
+          "name": "Electrical Notes",
+          "height": "6\""
+        }
+      ],
+      "save": {
+        "caps": "text_style"
+      }
+    },
+    {
+      "step": "(capitals)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$caps",
+          "set": {
+            "uppercase": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$caps",
+          "path": "/uppercase",
+          "is": true
+        }
+      ]
     },
     {
       "step": "Leader to the Deck light with the %description% macro",
@@ -707,8 +752,36 @@
       ]
     },
     {
-      "step": "(the macro reads the light it points at)",
-      "gap": "Text doesn't read the object its arrow points at. Row: TXT-23"
+      "step": "The macro reads the light it points at",
+      "commands": [
+        {
+          "op": "add_text",
+          "floor": "$floor1",
+          "position": [
+            5588.0,
+            2000.0
+          ],
+          "text": "{ref_name}",
+          "leaders": [
+            [
+              6350.0,
+              1219.2
+            ]
+          ]
+        }
+      ],
+      "save": {
+        "lightref": "text"
+      }
+    },
+    {
+      "step": "(what it reads)",
+      "expect": [
+        {
+          "text_reads": "$lightref",
+          "is": "Lantern"
+        }
+      ]
     },
     {
       "step": "File > Make a Copy as Chic Cottage-Lighting"

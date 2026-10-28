@@ -150,6 +150,7 @@ pub(crate) fn new_document(name: String) -> Document {
             bold,
             italic: false,
             color: None,
+            uppercase: false,
         })
     };
     let default_text = style(&mut doc, "Default", inch(6.0), false);

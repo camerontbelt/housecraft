@@ -3889,3 +3889,25 @@ fn upper_pitch_breaks_measured_from_the_floor_and_roof_resets() {
     s.apply(&[Command::ResetRoofEdges { ids: Vec::new(), floor: None }]).unwrap();
     assert!(walls(&s).iter().all(|w| w.roof == RoofEdge::default()));
 }
+
+#[test]
+fn schedules_from_a_room_filtered_and_titled() {
+    let mut s = boxed();
+    // Split the box into two rooms; a light and an outlet in the south one, a light in the north.
+    apply(
+        &mut s,
+        r#"[{"op": "add_wall", "start": [0, "15'"], "end": ["20'", "15'"], "interior": true},
+            {"op": "add_electrical", "electrical_kind": "recessed_light", "at": ["5'", "5'"]},
+            {"op": "add_electrical", "electrical_kind": "outlet", "at": ["10'", "5'"]},
+            {"op": "add_electrical", "electrical_kind": "recessed_light", "at": ["5'", "25'"]}]"#,
+    );
+    let south = s.document().iter::<Room>().find(|r| r.anchor.1.mm() < 15.0 * 304.8).unwrap().id;
+    let opts = |room: Option<Id>, filter: &str| housecraft_api::schedule::ScheduleOptions { room, filter: filter.into(), title: Some("Kitchen Lighting".into()), ..Default::default() };
+    let t = housecraft_api::schedule::schedule(s.document(), ScheduleKind::Fixtures, &opts(Some(south), "light"));
+    assert_eq!(t.title, "Kitchen Lighting");
+    let csv = t.export(housecraft_api::schedule::TableFormat::Csv);
+    assert_eq!(t.rows.len(), 1, "{csv}");
+    assert!(csv.contains("Light") && !csv.contains("Outlet"), "{csv}");
+    let all = housecraft_api::schedule::schedule(s.document(), ScheduleKind::Fixtures, &opts(None, ""));
+    assert!(all.rows.len() >= 2);
+}

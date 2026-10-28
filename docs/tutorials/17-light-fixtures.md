@@ -71,14 +71,15 @@ Select the light, then use the edit toolbar:
 
 ## Lighting schedule (pages 313–314)
 
-**Tools › Schedules › Place in Plan › Electrical, Plumbing and HVAC Schedule**, then click beside the plan. *Not in
-HouseCraft yet:* a schedule for one room, lighting only, or with your own title. It lists the whole floor.
+**Tools › Schedules › Place in Plan › Electrical, Plumbing and HVAC Schedule**, then click beside the plan. Open it:
+**Only in Room** the Kitchen, **Only Rows With** `light`, and **Title** `Kitchen Lighting`.
 
 ## Annotations (pages 314–316)
 
-1. *Not in HouseCraft yet:* an uppercase setting in text defaults. Type the caps yourself.
-2. **Text with Arrow**: from the Deck light, type `CEILING LIGHT`. *Not in HouseCraft yet:* the `%description%`
-   macro reading the object the arrow points at.
+1. Make a text style `Electrical Notes` (**Tools › Text Styles…**) and tick **Uppercase**: text using it shows in
+   capitals whatever you type.
+2. **Text with Arrow**: from the Deck light, type `CEILING LIGHT`, or `{ref_name}` to show the name of the light the
+   arrow points at (Lantern here). `{ref_description}` shows its description.
 3. **File › Make a Copy…** `Chic Cottage-Lighting`. You keep working in CHIC COTTAGE-CURRENT.
 
 ## What this tutorial showed HouseCraft still needs
@@ -89,6 +90,3 @@ HouseCraft yet:* a schedule for one room, lighting only, or with your own title.
 | One context-sensitive Light tool; path lights | EL-12 |
 | Locate settings for manual dimensions | DIM-29 |
 | Multiple Copy interval and 2D array | CAD-08 |
-| Schedule from a room, category filter, title | EST-31 |
-| Uppercase text defaults | TXT-24 |
-| Text reading the object its arrow points at | TXT-23 |

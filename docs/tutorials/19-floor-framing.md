@@ -67,9 +67,10 @@ basement's lowered-ceiling joists are on the **Foundation** floor.
 
 ## Annotations (pages 344–346)
 
-1. *Not in HouseCraft yet:* uppercase text defaults, border margins, and underlining part of a line.
+1. Make a text style `Framing Notes` with **Uppercase** ticked. *Not in HouseCraft yet:* underlining part of a line.
 2. **CAD › Text** on the Foundation floor, near the front left corner. Type `ALL FLOOR JOISTS ARE U.N.O.:`, press
-   Enter, then `2x12s SPF #2 OR BETTER @16" O.C.`. Centre it, and tick **Border** in its dialog.
+   Enter, then `2x12s SPF #2 OR BETTER @16" O.C.`. Centre it, give it the Framing Notes style, tick **Border** in its
+   dialog and set **Border Margin** `6"`.
 3. Copy it beside the deck joists. Change it to `DECK` and `2x10s`.
 
 ## Revision (page 346)
@@ -85,4 +86,4 @@ basement's lowered-ceiling joists are on the **Foundation** floor.
 | Sticky Mode for trimming many joists | FR-36 |
 | Named framing types with custom section shapes | FR-07 |
 | Bumping and pushing | CAD-28 |
-| Text uppercase, margins, partial underline | TXT-24 |
+| Underlining part of a line | TXT-24 |

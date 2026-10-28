@@ -430,7 +430,35 @@
     },
     {
       "step": "Framing rich text defaults: uppercase, centred, border with 6\" margins",
-      "gap": "Text has a border but no margin, uppercase or per-character underline. Row: TXT-24"
+      "commands": [
+        {
+          "op": "add_text_style",
+          "name": "Framing Notes",
+          "height": "6\""
+        }
+      ],
+      "save": {
+        "fcaps": "text_style"
+      }
+    },
+    {
+      "step": "(capitals)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$fcaps",
+          "set": {
+            "uppercase": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$fcaps",
+          "path": "/uppercase",
+          "is": true
+        }
+      ]
     },
     {
       "step": "Rich Text on Floor 0: ALL FLOOR JOISTS ARE U.N.O.: 2x12s SPF #2 OR BETTER @16\" O.C.",
@@ -456,21 +484,23 @@
       ]
     },
     {
-      "step": "(border)",
+      "step": "(border with 6\" margins)",
       "commands": [
         {
           "op": "update",
           "id": "$note",
           "set": {
-            "border": true
+            "border": true,
+            "border_margin": "6\"",
+            "style": "$fcaps"
           }
         }
       ],
       "expect": [
         {
           "get": "$note",
-          "path": "/border",
-          "is": true
+          "path": "/border_margin",
+          "is": "6\""
         }
       ]
     },

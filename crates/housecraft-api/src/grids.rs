@@ -246,6 +246,7 @@ pub(crate) fn story_pole(doc: &mut Document, view: Id, out: &mut Outcome) -> Res
             color: None,
             leaders: Vec::new(),
             border: false,
+            border_margin: None,
             wrap: None,
         }));
     }
@@ -317,6 +318,7 @@ pub(crate) fn framing_markers(doc: &mut Document, view: Id, out: &mut Outcome) -
             color: None,
             leaders: Vec::new(),
             border: false,
+            border_margin: None,
             wrap: None,
         }));
     }

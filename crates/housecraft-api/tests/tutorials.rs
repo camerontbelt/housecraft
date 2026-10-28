@@ -406,6 +406,14 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
         }
         return Ok(());
     }
+    if let Some(target) = e.get("text_reads") {
+        // {"text_reads": text, "is": "..."}: its referenced-object macros filled.
+        let id = target.as_u64().map(Id).ok_or("text_reads needs a text")?;
+        let t = doc.get::<Text>(id).ok_or("no such text")?;
+        let shown = query::text_with_references(doc, t);
+        let want = e["is"].as_str().unwrap_or_default();
+        return if shown == want { Ok(()) } else { Err(format!("the text reads {shown:?}, expected {want:?}")) };
+    }
     if let Some(text) = e.get("text_exists").and_then(Value::as_str) {
         if doc.iter::<Text>().any(|t| t.text == text) {
             return Ok(());

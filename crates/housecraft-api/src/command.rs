@@ -2002,6 +2002,9 @@ impl Command {
                     start_number: None,
                     thumbnails: false,
                     order: Vec::new(),
+                    title: None,
+                    room: None,
+                    filter: String::new(),
                 }));
             }
             Command::SetMaterialPrice { item, price } => match price {
@@ -3175,6 +3178,7 @@ impl Command {
                         color: None,
                         leaders: Vec::new(),
                         border: false,
+                        border_margin: None,
                         wrap: None,
                     }));
                     pts.push(next);
@@ -3587,6 +3591,7 @@ impl Command {
                         color: None,
                         leaders: Vec::new(),
                         border: false,
+                        border_margin: None,
                         wrap: None,
                     });
                 }
@@ -3729,6 +3734,7 @@ impl Command {
                     bold: *bold,
                     italic: *italic,
                     color: *color,
+                    uppercase: false,
                 }));
             }
             Command::AddRoomType {
@@ -3991,6 +3997,7 @@ impl Command {
                     color: None,
                     leaders: leaders.clone(),
                     border: false,
+                    border_margin: None,
                     wrap: None,
                 }));
             }
@@ -4206,6 +4213,7 @@ impl Command {
                         color: None,
                         leaders: Vec::new(),
                         border: false,
+                        border_margin: None,
                         wrap: None,
                     }));
                 }

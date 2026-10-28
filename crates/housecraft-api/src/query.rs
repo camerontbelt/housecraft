@@ -389,3 +389,58 @@ pub fn describe(doc: &Document, obj: &Object) -> ObjectInfo {
         label,
     }
 }
+
+/// The object on `floor` an arrow tip at `p` points at: the nearest door,
+/// window, fixture, cabinet or other placed object within `within` mm.
+pub fn object_near(doc: &Document, floor: Id, p: housecraft_geom::DVec2, within: f64) -> Option<Id> {
+    let skip = |k: ObjectKind| {
+        matches!(
+            k,
+            ObjectKind::Text | ObjectKind::Callout | ObjectKind::Dimension | ObjectKind::Cad | ObjectKind::Room | ObjectKind::Wall | ObjectKind::Schedule
+        )
+    };
+    let at = |id: Id| -> Option<housecraft_geom::DVec2> {
+        match doc.object(id)? {
+            // Doors and windows: their middle along the wall.
+            Object::Opening(o) => {
+                let w = doc.get::<Wall>(o.wall)?;
+                let (a, b) = (housecraft_geom::v2(w.start), housecraft_geom::v2(w.end));
+                Some(a + (b - a).normalize_or_zero() * o.position.mm())
+            }
+            _ => crate::ops::position_of(doc, id),
+        }
+    };
+    doc.objects
+        .keys()
+        .copied()
+        .filter(|id| doc.kind_of(*id).is_some_and(|k| !skip(k)))
+        .filter(|id| doc.floor_of(*id) == Some(floor))
+        .filter_map(|id| at(id).map(|q| (id, q.distance(p))))
+        .filter(|(_, d)| *d <= within)
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(id, _)| id)
+}
+
+/// A text's words with its referenced-object macros filled from what its
+/// first arrow points at (other macros are left for the drawing).
+pub fn text_with_references(doc: &Document, t: &Text) -> String {
+    let mut shown = t.text.clone();
+    if shown.contains("{ref_")
+        && let Some(tip) = t.leaders.first()
+        && let Some(target) = object_near(doc, t.floor, housecraft_geom::v2(*tip), 600.0)
+    {
+        for (key, value) in referenced_fields(doc, target) {
+            shown = shown.replace(&format!("{{{key}}}"), &value);
+        }
+    }
+    shown
+}
+
+/// Referenced-object macros for text whose arrow points at `id`:
+/// `{ref_comment}`, `{ref_description}`, `{ref_code}` and `{ref_name}`.
+pub fn referenced_fields(doc: &Document, id: Id) -> Vec<(&'static str, String)> {
+    let info = doc.settings.object_info.get(&id).cloned().unwrap_or_default();
+    let name = doc.object(id).map_or(String::new(), |o| describe(doc, o).label);
+    let description = if info.description.is_empty() { name.clone() } else { info.description.clone() };
+    vec![("ref_comment", info.comment), ("ref_description", description), ("ref_code", info.code), ("ref_name", name)]
+}

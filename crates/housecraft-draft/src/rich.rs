@@ -111,6 +111,8 @@ pub struct TextBlock<'a> {
     pub ink: Ink,
     pub stroke: Stroke,
     pub border: bool,
+    /// Space inside the border (model mm); a third of the height when `None`.
+    pub margin: Option<f64>,
     /// Wrap lines wider than this (model mm).
     pub wrap: Option<f64>,
     /// Arrow tips (model mm): a leader from the nearer side to each.
@@ -223,7 +225,7 @@ pub fn text_block(out: &mut Drawing, id: Option<Id>, b: &TextBlock) {
     if minx > maxx {
         (minx, maxx) = (0.0, 0.0);
     }
-    let pad = h * 0.35;
+    let pad = b.margin.unwrap_or(h * 0.35);
     let top = y0 + h + pad;
     let bottom = y0 - (n - 1.0) * line_h - h * 0.3 - pad;
     let (left, right) = (minx - pad, maxx + pad);
@@ -288,6 +290,7 @@ mod tests {
                 ink: Ink::Default,
                 stroke,
                 border: true,
+                margin: None,
                 wrap: Some(600.0),
                 leaders: &[DVec2::new(-2000.0, 0.0)],
             },

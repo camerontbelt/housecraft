@@ -167,6 +167,10 @@ pub struct Text {
     /// Draw a box around the text.
     #[serde(default)]
     pub border: bool,
+    /// Space between the text and its border; a third of the letter height
+    /// when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border_margin: Option<Length>,
     /// Wrap lines wider than this.
     #[serde(default)]
     pub wrap: Option<Length>,
@@ -242,6 +246,15 @@ pub struct Schedule {
     pub id: Id,
     pub floor: Id,
     pub layer: Id,
+    /// The table's title; the kind's name when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Only objects inside this room (Create Schedule from Room).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub room: Option<Id>,
+    /// Only rows with this text in a cell (any case), e.g. "light".
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub filter: String,
     /// Top-left corner of the table.
     pub position: Point2,
     pub schedule_kind: ScheduleKind,

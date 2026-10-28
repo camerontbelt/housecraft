@@ -512,8 +512,23 @@
       ]
     },
     {
-      "step": "(Title the schedule Electrical Legend)",
-      "gap": "Schedules have the kind's title. Row: EST-31"
+      "step": "Title the schedule Electrical Legend",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$legend",
+          "set": {
+            "title": "Electrical Legend"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$legend",
+          "path": "/title",
+          "is": "Electrical Legend"
+        }
+      ]
     },
     {
       "step": "Make a Copy as Chic Cottage-Electrical; Project Browser folder Kitchen and Bath Tutorials holding the revisions"

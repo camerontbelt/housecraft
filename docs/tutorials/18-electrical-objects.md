@@ -60,7 +60,7 @@ the Bedroom and an alarm keypad by the Deck door.
 
 **Tools › Schedules › Place in Plan › Electrical, Plumbing and HVAC Schedule**, then click beside the plan. Open it
 and tick **Thumbnails** for a picture on each row. To keep it off the plan, make a CAD detail named `Legends and Notes`, open it
-and place the schedule there instead. *Not in HouseCraft yet:* renaming it "Electrical Legend".
+and place the schedule there instead. Open it and set **Title** `Electrical Legend`.
 
 ## Revisions and folders (page 329)
 
@@ -74,4 +74,3 @@ and place the schedule there instead. *Not in HouseCraft yet:* renaming it "Elec
 | Counter-height outlets; recessing into the wall | EL-14 |
 | Ganged electrical blocks | EL-09 |
 | Wiring splines | EL-01 |
-| Schedule title | EST-31 |

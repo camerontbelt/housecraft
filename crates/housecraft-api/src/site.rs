@@ -307,6 +307,7 @@ pub(crate) fn subdivide(doc: &mut Document, lot: Id, count: u32, angle: Option<f
             color: None,
             leaders: Vec::new(),
             border: false,
+            border_margin: None,
             wrap: None,
         }));
     }

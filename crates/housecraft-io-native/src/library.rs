@@ -450,6 +450,7 @@ pub fn builtin() -> Vec<LibraryItem> {
                 color: None,
                 leaders: Vec::new(),
                 border: false,
+                border_margin: None,
                 wrap: None,
             })
         };
