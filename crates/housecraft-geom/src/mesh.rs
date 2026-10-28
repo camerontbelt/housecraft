@@ -895,6 +895,12 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
             let plate = rect(p + out * 4.0, along, w, 8.0);
             mesh.prism(&plate, zc - h / 2.0, zc + h / 2.0, Surface::Device);
         }
+        K::PathLight | K::Light => {
+            // A slim post with a lamp hood, standing on the ground.
+            let ground = crate::site::ground(doc)(p).max(z0 - 3000.0);
+            mesh.prism(&rect(p, along, 50.0, 50.0), ground, ground + 400.0, Surface::Hardware);
+            mesh.prism(&rect(p, along, 140.0, 140.0), ground + 400.0, ground + 460.0, Surface::Lamp);
+        }
         K::AlarmKeypad | K::MotionSensor => {
             let zc = z.unwrap_or(z0 + 1400.0);
             mesh.prism(&rect(p + out * 15.0, along, 130.0, 30.0), zc - 60.0, zc + 60.0, Surface::Device);

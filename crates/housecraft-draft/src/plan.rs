@@ -2011,6 +2011,12 @@ fn electrical_symbol(
             circle(out, p, r * 1.2);
             circle(out, p, r * 0.6);
         }
+        K::PathLight | K::Light => {
+            // A post light: a small circle with a cross.
+            circle(out, p, r * 0.7);
+            line(out, p - DVec2::X * r, p + DVec2::X * r);
+            line(out, p - DVec2::Y * r, p + DVec2::Y * r);
+        }
         K::CeilingFan => {
             circle(out, p, r * 0.8);
             for i in 0..4 {

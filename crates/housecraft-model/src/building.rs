@@ -280,10 +280,15 @@ pub enum ElectricalKind {
     MotionSensor,
     AlarmKeypad,
     Doorbell,
+    /// A low post light along a path outside.
+    PathLight,
+    /// The Light tool: placed as a wall light on a wall, a ceiling light in
+    /// a room and a path light outside (never kept as itself).
+    Light,
 }
 
 impl ElectricalKind {
-    pub const ALL: [ElectricalKind; 29] = [
+    pub const ALL: [ElectricalKind; 31] = [
         ElectricalKind::Outlet,
         ElectricalKind::GfciOutlet,
         ElectricalKind::Outlet240,
@@ -313,6 +318,8 @@ impl ElectricalKind {
         ElectricalKind::MotionSensor,
         ElectricalKind::AlarmKeypad,
         ElectricalKind::Doorbell,
+        ElectricalKind::PathLight,
+        ElectricalKind::Light,
     ];
 
     pub fn name(self) -> &'static str {
@@ -346,6 +353,8 @@ impl ElectricalKind {
             ElectricalKind::MotionSensor => "Motion Sensor",
             ElectricalKind::AlarmKeypad => "Alarm Keypad",
             ElectricalKind::Doorbell => "Doorbell Button",
+            ElectricalKind::PathLight => "Path Light",
+            ElectricalKind::Light => "Light",
         }
     }
 
@@ -371,6 +380,8 @@ impl ElectricalKind {
                 | ElectricalKind::RecessedLight
                 | ElectricalKind::WallLight
                 | ElectricalKind::CeilingFan
+                | ElectricalKind::PathLight
+                | ElectricalKind::Light
         )
     }
 
@@ -457,6 +468,8 @@ impl ElectricalKind {
             ElectricalKind::MotionSensor => 84.0,
             ElectricalKind::AlarmKeypad => 54.0,
             ElectricalKind::Doorbell => 48.0,
+            // A post standing on the ground.
+            ElectricalKind::PathLight => 0.0,
             // On the countertop.
             ElectricalKind::AirSwitch => 36.0,
             _ => return None,
@@ -1635,5 +1648,23 @@ impl WallType {
     /// Total R-value of the layers.
     pub fn r_value(&self) -> f64 {
         self.layers.iter().map(|l| l.r_value).sum()
+    }
+}
+
+/// What the light tools place by default.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct ElectricalDefaults {
+    /// Ceiling lights are this kind (a ceiling light or a recessed can).
+    pub ceiling_light: ElectricalKind,
+    /// The fixture ceiling lights get (none: the plain symbol).
+    pub ceiling_fixture: Option<FixtureStyle>,
+    /// The fixture wall lights get.
+    pub wall_fixture: Option<FixtureStyle>,
+}
+
+impl Default for ElectricalDefaults {
+    fn default() -> Self {
+        ElectricalDefaults { ceiling_light: ElectricalKind::CeilingLight, ceiling_fixture: None, wall_fixture: None }
     }
 }

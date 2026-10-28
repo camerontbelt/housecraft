@@ -5,7 +5,25 @@
   "steps": [
     {
       "step": "Electrical defaults: recessed can for ceiling lights, a sconce for wall lights",
-      "gap": "Each light tool places its own fixture; no Electrical Defaults choosing the style a tool places. Set the style on each light. Row: EL-11"
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "electrical": {
+              "ceiling_light": "recessed_light",
+              "wall_fixture": "sconce"
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/electrical/wall_fixture",
+          "is": "sconce"
+        }
+      ]
     },
     {
       "step": "Switch to the Electrical Plan View",
@@ -47,8 +65,54 @@
       ]
     },
     {
-      "step": "(One Light tool that places a sconce on a wall, a ceiling light in a room, a path light outside)",
-      "gap": "Separate tools for ceiling, recessed and wall lights; no context-sensitive Light tool or path lights. Row: EL-12"
+      "step": "One Light tool: a sconce on a wall, a ceiling light in a room, a path light outside",
+      "commands": [
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "light",
+          "at": [
+            2000.0,
+            -4000.0
+          ]
+        },
+        {
+          "op": "add_electrical",
+          "floor": "$floor1",
+          "electrical_kind": "light",
+          "at": [
+            3000.0,
+            -20000.0
+          ]
+        }
+      ],
+      "save": {
+        "lt": "electrical"
+      },
+      "expect": [
+        {
+          "get": "$lt.0",
+          "path": "/electrical_kind",
+          "is": "recessed_light"
+        },
+        {
+          "get": "$lt.1",
+          "path": "/electrical_kind",
+          "is": "path_light"
+        }
+      ]
+    },
+    {
+      "step": "(Undo the two trial lights)",
+      "commands": [
+        {
+          "op": "delete",
+          "ids": [
+            "$lt.0",
+            "$lt.1"
+          ]
+        }
+      ]
     },
     {
       "step": "Library lights: a bowl chandelier in the Dining room, a half-dome flush mount and an eyeball recessed light in the Foyer, a caged lantern pendant on the Deck",

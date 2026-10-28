@@ -1349,6 +1349,34 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                         commands.push(p(json!({"ceiling_finish": crate::util::parse_finish(doc, &t)})));
                     }
                 });
+                egui::CollapsingHeader::new("Electrical").show(ui, |ui| {
+                    let ed = &d.electrical;
+                    egui::Grid::new("electrical_defaults").num_columns(2).show(ui, |ui| {
+                        ui.label("Ceiling lights");
+                        ui.horizontal(|ui| {
+                            for k in [ElectricalKind::CeilingLight, ElectricalKind::RecessedLight] {
+                                if ui.selectable_label(ed.ceiling_light == k, k.name()).clicked() {
+                                    commands.push(p(json!({"electrical": {"ceiling_light": k}})));
+                                }
+                            }
+                        });
+                        ui.end_row();
+                        for (label, key, cur) in [("Ceiling fixture", "ceiling_fixture", ed.ceiling_fixture), ("Wall fixture", "wall_fixture", ed.wall_fixture)] {
+                            ui.label(label);
+                            egui::ComboBox::from_id_salt(("elec_fixture", key)).selected_text(cur.map_or("Plain symbol", |f| f.name())).show_ui(ui, |ui| {
+                                if ui.selectable_label(cur.is_none(), "Plain symbol").clicked() {
+                                    commands.push(p(json!({"electrical": {key: null}})));
+                                }
+                                for f in FixtureStyle::ALL {
+                                    if ui.selectable_label(cur == Some(f), f.name()).clicked() {
+                                        commands.push(p(json!({"electrical": {key: f}})));
+                                    }
+                                }
+                            });
+                            ui.end_row();
+                        }
+                    });
+                });
                 egui::CollapsingHeader::new("Dormers").show(ui, |ui| {
                     let dd = &d.dormer;
                     egui::Grid::new("dormer_defaults").num_columns(2).show(ui, |ui| {

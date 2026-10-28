@@ -4003,3 +4003,20 @@ fn ganged_electrical_blocks_line_up_on_one_plate() {
     assert!(xs.iter().all(|x| (x - xs[0]).abs() < 1e-6), "on the one wall");
     assert!(s.apply(&[Command::MakeGangedBlock { ids: vec![out.created[0]] }]).is_err());
 }
+
+#[test]
+fn the_light_tool_places_by_context_with_the_defaults_fixtures() {
+    let mut s = boxed();
+    let set = s.document().settings.active_default_set;
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "electrical": { "ceiling_light": "recessed_light", "wall_fixture": "sconce" } })) }]).unwrap();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_electrical", "electrical_kind": "light", "at": ["0.5'", "10'"]},
+            {"op": "add_electrical", "electrical_kind": "light", "at": ["10'", "15'"]},
+            {"op": "add_electrical", "electrical_kind": "light", "at": ["30'", "15'"]}]"#,
+    );
+    let kinds: Vec<ElectricalKind> = out.created.iter().map(|id| s.document().get::<Electrical>(*id).unwrap().electrical_kind).collect();
+    assert_eq!(kinds, vec![ElectricalKind::WallLight, ElectricalKind::RecessedLight, ElectricalKind::PathLight]);
+    let wall = s.document().get::<Electrical>(out.created[0]).unwrap();
+    assert_eq!(wall.fixture.map(|f| f.style), Some(FixtureStyle::Sconce));
+}

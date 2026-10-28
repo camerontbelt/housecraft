@@ -301,6 +301,7 @@ pub(crate) fn new_document(name: String) -> Document {
         fence: Default::default(),
         ceiling_finish: Vec::new(),
         dormer: Default::default(),
+        electrical: Default::default(),
         materials,
         labels: Default::default(),
         wall_reference: Default::default(),

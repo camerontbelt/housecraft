@@ -10,14 +10,16 @@ of light you want.
 
 ## Defaults and the electrical plan view (pages 299–301)
 
-1. *Not in HouseCraft yet:* Electrical Defaults that choose which fixture style each tool places. You set the style
-   on each light instead (below).
+1. **Edit › Default Settings…** › **Electrical**: **Ceiling lights** `Recessed Light`, **Wall fixture** `Sconce`. The
+   light tools place these from now on.
 2. If the plan view list on the top toolbar has no **Electrical Plan**, choose **View › Add Standard Plan Views**
    once. Then pick **Electrical Plan** from the list. Labels, furniture and the section camera are hidden in it.
 
 ## Ceiling lights (pages 301–302)
 
-1. **Recessed Light**: click in the Kitchen between the island and the dishwasher.
+1. **Light** (the first tool in the electrical list) places what fits where you click: a wall light with the default
+   fixture on a wall, the default ceiling light in a room, a path light outside. **Recessed Light**: click in the
+   Kitchen between the island and the dishwasher.
 2. **Ceiling Light**: one in the Dining room, one in the Foyer near the front door, one on the Deck.
    **Recessed Light**: one in the Foyer in line with the Garage door.
 3. Give them styles: double-click the Dining light, set **Fixture** to **Chandelier**. Do the same for the Foyer
@@ -86,7 +88,6 @@ Select the light, then use the edit toolbar:
 
 | Missing | FEATURES row |
 |---|---|
-| More fixture styles (bollards, track) and Electrical Defaults choosing a style | EL-11 |
-| One context-sensitive Light tool; path lights | EL-12 |
+| More fixture styles (bollards, track) | EL-11 |
 | Locate settings for manual dimensions | DIM-29 |
 | Multiple Copy interval and 2D array | CAD-08 |

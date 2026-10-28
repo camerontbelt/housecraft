@@ -1880,6 +1880,18 @@ impl Command {
                 let mut angle = rotation.unwrap_or(0.0);
                 let mut kind = *electrical_kind;
                 let mut weatherproof = false;
+                let ed = d.electrical.clone();
+                // The Light tool: on a wall, in a room, or out on the site.
+                if kind == ElectricalKind::Light {
+                    let p = housecraft_geom::v2(*at);
+                    let wall = housecraft_geom::electrical::snap_to_wall(doc, floor, p, Length::from_feet(1.0).mm());
+                    let inside = housecraft_geom::rooms::detect(doc, floor).footprints.iter().any(|f| housecraft_geom::math::point_in_polygon(p, f));
+                    kind = match (wall, inside) {
+                        (Some(_), _) => ElectricalKind::WallLight,
+                        (None, true) => ed.ceiling_light,
+                        (None, false) => ElectricalKind::PathLight,
+                    };
+                }
                 if (kind.on_wall() || kind.in_floor().is_some()) && rotation.is_none() {
                     match housecraft_geom::electrical::snap_to_wall(doc, floor, housecraft_geom::v2(*at), Length::from_feet(2.0).mm()) {
                         Some((q, a)) => {
@@ -1932,7 +1944,12 @@ impl Command {
                     renovation: Default::default(),
                     layer: d.layers.electrical.unwrap_or(d.layers.cad),
                     light: None,
-                    fixture: None,
+                    // The defaults' fixture for ceiling and wall lights.
+                    fixture: match kind {
+                        ElectricalKind::CeilingLight => ed.ceiling_fixture.map(Fixture::new),
+                        ElectricalKind::WallLight => ed.wall_fixture.map(Fixture::new),
+                        _ => None,
+                    },
                     weatherproof,
                     landscape: false,
                     wall_offset: Length::ZERO,
