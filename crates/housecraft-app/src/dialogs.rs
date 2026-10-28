@@ -930,6 +930,18 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                     d.window.head_height,
                                     |v| commands.push(p(json!({"window": {"head_height": v}}))),
                                 );
+                                ui.label("Lites (across × up)");
+                                ui.horizontal(|ui| {
+                                    let (mut a, mut u) = d.window.muntins.as_ref().map_or((1, 1), |m| (m.across, m.up));
+                                    let ca = ui.add(egui::DragValue::new(&mut a).range(1..=12)).changed();
+                                    ui.label("×");
+                                    let cu = ui.add(egui::DragValue::new(&mut u).range(1..=12)).changed();
+                                    if ca || cu {
+                                        let v = if a <= 1 && u <= 1 { serde_json::Value::Null } else { json!({"across": a, "up": u}) };
+                                        commands.push(p(json!({"window": {"muntins": v}})));
+                                    }
+                                });
+                                ui.end_row();
                             });
                     });
                 egui::CollapsingHeader::new("Roofs")

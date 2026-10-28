@@ -2998,12 +2998,33 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "opening_kind": kind })));
             }
             ui.end_row();
-            for (label, field, value) in
-                [("Width", "width", o.width), ("Height", "height", o.height)]
-            {
-                if let Some(l) = ed.length(ui, label, field, value) {
-                    ed.out.push(patch(id, json!({ field: l })));
-                }
+            if let Some(l) = ed.length(ui, "Width", "width", o.width) {
+                ed.out.push(patch(id, json!({ "width": l })));
+            }
+            // A new height keeps the top where it is (the sill moves).
+            if let Some(l) = ed.length(ui, "Height", "height", o.height) {
+                ed.out.push(Command::SetOpeningHeight { id, height: l });
+            }
+            if o.opening_kind == OpeningKind::Door(DoorStyle::Hinged) {
+                Ed::label(ui, "Hardware");
+                ui.horizontal(|ui| {
+                    let mut hw = o.details.hardware;
+                    let mut on = hw.is_some();
+                    ui.checkbox(&mut on, "");
+                    if on {
+                        let h = hw.get_or_insert_with(Default::default);
+                        for s in HandleStyle::ALL {
+                            ui.selectable_value(&mut h.handle, s, s.name());
+                        }
+                        ui.checkbox(&mut h.deadbolt, "Deadbolt");
+                    } else {
+                        hw = None;
+                    }
+                    if hw != o.details.hardware {
+                        ed.out.push(patch(id, json!({ "details": { "hardware": hw } })));
+                    }
+                });
+                ui.end_row();
             }
             if !o.opening_kind.is_door()
                 && let Some(l) = ed.length(ui, "Floor to Sill", "sill", o.sill)

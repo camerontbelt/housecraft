@@ -1395,6 +1395,39 @@ pub struct OpeningDetails {
     /// Framing: this opening's header, when not the automatic one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub header: Option<HeaderSpec>,
+    /// Door hardware: the handle on both faces, and a deadbolt above it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hardware: Option<DoorHardware>,
+}
+
+/// A hinged door's handle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum HandleStyle {
+    #[default]
+    Knob,
+    Lever,
+    /// An entry handleset: a long plate with a grip.
+    Handleset,
+}
+
+impl HandleStyle {
+    pub const ALL: [HandleStyle; 3] = [HandleStyle::Knob, HandleStyle::Lever, HandleStyle::Handleset];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            HandleStyle::Knob => "Knob",
+            HandleStyle::Lever => "Lever",
+            HandleStyle::Handleset => "Handleset",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+pub struct DoorHardware {
+    pub handle: HandleStyle,
+    #[serde(default)]
+    pub deadbolt: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

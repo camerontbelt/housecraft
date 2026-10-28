@@ -231,8 +231,28 @@
       ]
     },
     {
-      "step": "Front door hardware from the library: Exterior Handle 2, dead bolts",
-      "gap": "Doors have no handle/lock hardware choices. Row: DW-19"
+      "step": "Front door hardware: a handleset with a deadbolt",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$front",
+          "set": {
+            "details": {
+              "hardware": {
+                "handle": "handleset",
+                "deadbolt": true
+              }
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$front",
+          "path": "/details/hardware/handle",
+          "is": "handleset"
+        }
+      ]
     },
     {
       "step": "Door style from the library for the Garage door; interior door and molding materials set to white in Material Defaults; casing like the interior side",
@@ -262,8 +282,28 @@
       ]
     },
     {
-      "step": "(Lites 3 across, 4 high in the window defaults)",
-      "gap": "Window defaults have no lites; set them per window. Row: DW-21"
+      "step": "Lites 3 across, 4 high in the window defaults",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "window": {
+              "muntins": {
+                "across": 3,
+                "up": 4
+              }
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/window/muntins/up",
+          "is": 4
+        }
+      ]
     },
     {
       "step": "Place 11 windows round the house",
@@ -451,8 +491,21 @@
       ]
     },
     {
-      "step": "(Changing a window's height keeps its top: Floor to Top stays 80\")",
-      "gap": "Changing the height in the window's specification keeps the bottom, not the top; set the sill too. Row: DW-22"
+      "step": "Changing a window's height keeps its top: the garage window 44\" high, Floor to Top stays 80\"",
+      "commands": [
+        {
+          "op": "set_opening_height",
+          "id": "$win.7",
+          "height": "44\""
+        }
+      ],
+      "expect": [
+        {
+          "get": "$win.7",
+          "path": "/sill",
+          "is": "36\""
+        }
+      ]
     },
     {
       "step": "Center Object: the front door on the Living/Foyer room divider (placed there above), the Garage door, windows in their rooms",

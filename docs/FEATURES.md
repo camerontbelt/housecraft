@@ -284,10 +284,10 @@ These come from reading the whole list and change the architecture, not just the
 | DW-16 | Shutters (parametric or symbol, own layer) | P2 | M5 ✓ louvered, raised-panel and board shutters in plan and 3D, on the window's layer or one of their own |
 | DW-17 | Lintels, sills, aprons | P2 | M3 ✓ opening Trim: exterior lintel and sill, interior apron (3D) |
 | DW-18 | Glazing area and U-factor | P2 | M4 ✓ U-factor and SHGC per door/window; Glass Area, U-Factor, SHGC schedule columns |
-| DW-19 | Door hardware from the library (handles, locks, dead bolts per side) | P3 | M9 |
+| DW-19 | Door hardware from the library (handles, locks, dead bolts per side) | P3 | M9 ◐ hinged doors take a knob, lever or handleset and a deadbolt (both faces); a hardware library and per-side choices later |
 | DW-20 | Door styles from the library; casing profile and size per side; interior/exterior door material defaults | P2 | M9 |
-| DW-21 | Lites (muntins) in the window and door defaults | P3 | M9 |
-| DW-22 | Changing a window's height in its specification keeps its top (Floor to Top) | P2 | M9 |
+| DW-21 | Lites (muntins) in the window and door defaults | P3 | M9 ◐ window defaults carry lites; door defaults later |
+| DW-22 | Changing a window's height in its specification keeps its top (Floor to Top) | P2 | M9 ✓ the dialog's Height keeps the top (`set_opening_height`) |
 
 ## 9. Roofs & ceilings
 

@@ -339,6 +339,9 @@ pub struct WindowDefaults {
     pub height: Length,
     /// Height of the top of the window above the floor.
     pub head_height: Length,
+    /// Lites new windows get (none: plain glass).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub muntins: Option<crate::Muntins>,
 }
 
 /// A named bundle of defaults for new objects. Plan views pick one, so a

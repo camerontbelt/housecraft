@@ -182,6 +182,9 @@ pub enum Command {
     /// by side on the first one's wall, at its height, 2 3/4" apart, and
     /// keep them together as one block with a shared plate.
     MakeGangedBlock { ids: Vec<Id> },
+    /// Change a door's or window's height keeping its top where it is (the
+    /// sill moves).
+    SetOpeningHeight { id: Id, height: Length },
     /// Same Wall Type: wall `id` takes the type of the wall joined to its
     /// end (or its start).
     SameWallType {
@@ -1519,6 +1522,7 @@ impl Command {
             Command::SetLayoutScale { .. } => "set_layout_scale",
             Command::SetAllowedAngles { .. } => "set_allowed_angles",
             Command::SameWallType { .. } => "same_wall_type",
+            Command::SetOpeningHeight { .. } => "set_opening_height",
             Command::MakeGangedBlock { .. } => "make_ganged_block",
             Command::CabinetsToCeiling { .. } => "cabinets_to_ceiling",
             Command::DuplicatePlanView { .. } => "duplicate_plan_view",
@@ -2526,6 +2530,16 @@ impl Command {
                 let members: Vec<Id> = order.iter().map(|(_, id)| *id).collect();
                 let n = doc.iter::<Group>().filter(|g| g.ganged).count() + 1;
                 out.created.push(doc.insert(Group { id: Id(0), floor: first.floor, name: format!("Ganged Block {n}"), members, ganged: true }));
+            }
+            Command::SetOpeningHeight { id, height } => {
+                if height.mm() <= 0.0 {
+                    return invalid("the height must be positive");
+                }
+                let o = doc.get_mut::<Opening>(*id).ok_or(ApiError::NotFound(*id))?;
+                let top = o.sill.mm() + o.height.mm();
+                o.height = *height;
+                o.sill = Length::from_mm((top - height.mm()).max(0.0));
+                out.modified.push(*id);
             }
             Command::SameWallType { id, at_start } => {
                 let w = expect::<Wall>(doc, *id)?.clone();
@@ -4107,7 +4121,7 @@ impl Command {
                     plan_swing: 90.0,
                     renovation: Default::default(),
                     layer: d.layers.windows,
-                    details: Default::default(),
+                    details: OpeningDetails { muntins: d.window.muntins.clone(), ..Default::default() },
                 }));
             }
             Command::AddCad {

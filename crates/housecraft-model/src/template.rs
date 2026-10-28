@@ -289,6 +289,7 @@ pub(crate) fn new_document(name: String) -> Document {
             width: inch(36.0),
             height: inch(48.0),
             head_height: inch(80.0),
+            muntins: None,
         },
         roof: RoofDefaults::default(),
         stair: StairDefaults::default(),

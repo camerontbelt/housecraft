@@ -4020,3 +4020,24 @@ fn the_light_tool_places_by_context_with_the_defaults_fixtures() {
     let wall = s.document().get::<Electrical>(out.created[0]).unwrap();
     assert_eq!(wall.fixture.map(|f| f.style), Some(FixtureStyle::Sconce));
 }
+
+#[test]
+fn window_default_lites_keep_top_heights_and_door_hardware() {
+    let mut s = boxed();
+    let set = s.document().settings.active_default_set;
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "window": { "muntins": { "across": 3, "up": 4 } } })) }]).unwrap();
+    let wall = walls(&s)[0].id;
+    let win = apply(&mut s, &format!(r#"[{{"op": "add_window", "wall": {}, "position": "5'"}}]"#, wall.0)).created[0];
+    let o = s.document().get::<Opening>(win).unwrap().clone();
+    assert_eq!(o.details.muntins.as_ref().map(|m| (m.across, m.up)), Some((3, 4)));
+    let top = o.sill.mm() + o.height.mm();
+    s.apply(&[Command::SetOpeningHeight { id: win, height: Length::from_inches(36.0) }]).unwrap();
+    let o = s.document().get::<Opening>(win).unwrap();
+    assert!((o.sill.mm() + o.height.mm() - top).abs() < 1e-6, "the top stays put");
+    let door = apply(&mut s, &format!(r#"[{{"op": "add_door", "wall": {}, "position": "15'"}}]"#, wall.0)).created[0];
+    s.apply(&[Command::Update { id: door, set: patch(serde_json::json!({ "details": { "hardware": { "handle": "lever", "deadbolt": true } } })) }]).unwrap();
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    let hardware = mesh.faces.iter().filter(|f| mesh.parts[f.part].object == door).count();
+    assert!(hardware > 0);
+    assert_eq!(s.document().get::<Opening>(door).unwrap().details.hardware.map(|h| h.handle), Some(HandleStyle::Lever));
+}

@@ -37,17 +37,16 @@ It carries on from [Tutorial 4](04-interior-stairs.md). The steps also run as th
 
 ## Library content (pages 88–91)
 
-*Not in HouseCraft yet:* door hardware (handles, locks), door styles from the library, casing profiles per side,
-and the interior door material defaults. Skip these steps.
+Front door hardware: open the front door and tick **Hardware**, pick **Handleset** and tick **Deadbolt**. *Not in
+HouseCraft yet:* door styles from the library, casing profiles per side, and the interior door material defaults.
 
 ## Windows (pages 91–92)
 
 1. **Edit › Default Settings… › Windows**: type **Casement**, width `30"`, height `54"`.
-   *Not in HouseCraft yet:* lites in the defaults; set the grille per window.
+   Set **Lites (across × up)** to `3` × `4`: new windows get that grille.
 2. **Window** tool: click on the walls to place 11 windows (see the tutorial's picture).
 3. Foyer window: **Fixed**, width `12"`, height `77"`, **Sill** `3"` (top at 80"), grille 1 × 5.
-4. Kitchen window: height `36"` **and Sill `44"`**. *Not in HouseCraft yet:* changing the height keeping the top
-   where it was, so set the sill as well.
+4. Kitchen window: height `36"`. Changing a window's height keeps its top where it was, so the sill rises to 44".
 5. Garage window: **Fixed**, height `48"`, sill `32"` (top at 80").
 
 ## Positioning (pages 92–96)
@@ -92,9 +91,6 @@ and the interior door material defaults. Skip these steps.
 | Missing | FEATURES row |
 |---|---|
 | Door styles from the library, casing per side, door material defaults | DW-20 |
-| Door hardware | DW-19 |
-| Lites in the window defaults | DW-21 |
-| Height change keeps the top | DW-22 |
 | Make Mulled Unit from separate windows | DW-11 |
 | Labels instead of schedule numbers | EST-27 |
 

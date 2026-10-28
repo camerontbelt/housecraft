@@ -2148,6 +2148,30 @@ fn door_mesh(
                 o.details.glass,
                 mesh,
             );
+            // Handles on both faces near the free edge, a deadbolt above.
+            if style == D::Hinged
+                && let Some(hw) = o.details.hardware
+            {
+                let d = closed * angle.cos() + swing.side * angle.sin();
+                let n = -swing.side * angle.cos() + closed * angle.sin();
+                let at = inset(swing.hinge_u) + d * (w - 65.0) + n * (DOOR_THICKNESS / 2.0);
+                let zh = bottom + 914.0;
+                let (half_w, half_h, reach) = match hw.handle {
+                    housecraft_model::HandleStyle::Knob => (30.0, 30.0, 60.0),
+                    housecraft_model::HandleStyle::Lever => (60.0, 12.0, 60.0),
+                    housecraft_model::HandleStyle::Handleset => (25.0, 150.0, 55.0),
+                };
+                for face in [1.0, -1.0] {
+                    let c = at + n * face * (DOOR_THICKNESS / 2.0 + reach / 2.0);
+                    let quad = vec![c - d * half_w - n * reach / 2.0, c + d * half_w - n * reach / 2.0, c + d * half_w + n * reach / 2.0, c - d * half_w + n * reach / 2.0];
+                    mesh.prism(&ccw(quad), zh - half_h, zh + half_h, Surface::Hardware);
+                    if hw.deadbolt {
+                        let c = at + n * face * (DOOR_THICKNESS / 2.0 + 10.0);
+                        let quad = vec![c - d * 25.0 - n * 10.0, c + d * 25.0 - n * 10.0, c + d * 25.0 + n * 10.0, c - d * 25.0 + n * 10.0];
+                        mesh.prism(&ccw(quad), zh + 140.0, zh + 190.0, Surface::Hardware);
+                    }
+                }
+            }
             if style == D::Shower {
                 let glass = mesh.look(Surface::Glass);
                 mesh.colors[start..].fill(glass.color);
