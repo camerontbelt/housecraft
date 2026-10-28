@@ -1895,13 +1895,34 @@ impl Command {
                 if !controls.is_empty() && !electrical_kind.is_switch() {
                     return invalid("only switches control fixtures");
                 }
+                // An outlet over a countertop starts 7" above the counter.
+                let mut height = *height;
+                if height.is_none() && kind.is_outlet() && kind.on_wall() {
+                    let front = housecraft_geom::v2(position) + housecraft_geom::DVec2::from_angle(angle.to_radians()) * 300.0;
+                    let cabinet_tops = doc
+                        .iter::<Cabinet>()
+                        .filter(|c| c.floor == floor)
+                        .filter_map(|c| {
+                            let top = c.countertop.as_ref()?;
+                            let outline = housecraft_geom::cabinets::countertop_outline(c)?;
+                            housecraft_geom::math::point_in_polygon(front, &outline).then(|| c.elevation.mm() + c.height.mm() + top.thickness.mm())
+                        });
+                    let custom_tops = doc
+                        .iter::<Countertop>()
+                        .filter(|t| t.floor == floor)
+                        .filter(|t| housecraft_geom::math::point_in_polygon(front, &t.points.iter().map(|p| housecraft_geom::v2(*p)).collect::<Vec<_>>()))
+                        .map(|t| t.height.mm());
+                    if let Some(top) = cabinet_tops.chain(custom_tops).reduce(f64::max) {
+                        height = Some(Length::from_mm(top + 7.0 * 25.4));
+                    }
+                }
                 out.created.push(doc.insert(Electrical {
                     id: Id(0),
                     floor,
                     electrical_kind: kind,
                     position,
                     rotation: angle,
-                    height: *height,
+                    height,
                     controls: controls.clone(),
                     renovation: Default::default(),
                     layer: d.layers.electrical.unwrap_or(d.layers.cad),
@@ -1909,6 +1930,7 @@ impl Command {
                     fixture: None,
                     weatherproof,
                     landscape: false,
+                    wall_offset: Length::ZERO,
                 }));
             }
             Command::ConnectSwitch {

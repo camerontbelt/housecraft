@@ -80,8 +80,27 @@
       ]
     },
     {
-      "step": "Recess the Deck outlet into the wall (distance from wall -4\", cuts the wall 4\")",
-      "gap": "Electrical objects sit on the wall face; no distance from wall or wall cut. Row: EL-14"
+      "step": "Recess the Deck outlet into the wall (distance from wall -4\")",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$out.2",
+          "set": {
+            "wall_offset": "-4\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$out.2",
+          "path": "/wall_offset",
+          "is": "-4\""
+        }
+      ]
+    },
+    {
+      "step": "(the outlet cuts the wall 4\")",
+      "gap": "A recessed outlet sits into the wall but doesn't cut a hole in the wall's surface. Row: EL-14"
     },
     {
       "step": "GFCI outlet under the left Kitchen window: placed over the counter it starts at 43\"; set 39\"",
@@ -98,7 +117,14 @@
       ],
       "save": {
         "gfci": "electrical"
-      }
+      },
+      "expect": [
+        {
+          "get": "$gfci",
+          "path": "/height",
+          "is": "42 3/4\""
+        }
+      ]
     },
     {
       "step": "(height)",
@@ -120,8 +146,7 @@
       ]
     },
     {
-      "step": "(Outlets over a countertop start at counter height)",
-      "gap": "New outlets don't notice the countertop; set the height yourself. Row: EL-14"
+      "step": "(Outlets over a countertop start 7\" above it: here 42 3/4\" over the 35 3/4\" counter, as placed above)"
     },
     {
       "step": "Wall Elevation: turn the outlet horizontal: open it and tick Plate > On its side (landscape)",

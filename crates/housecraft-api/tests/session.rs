@@ -3964,3 +3964,20 @@ fn diagonal_corner_cabinets_overhangs_handles_and_tops_to_the_ceiling() {
     let ceiling = s.document().finished_ceiling_height(&room).unwrap();
     assert!((u.elevation.mm() + u.height.mm() - ceiling.mm()).abs() < 1e-6);
 }
+
+#[test]
+fn outlets_over_counters_start_above_them_and_recess_into_walls() {
+    let mut s = boxed();
+    apply(&mut s, r#"[{"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'", "10'"], "width": "36\""}]"#);
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_electrical", "electrical_kind": "gfci_outlet", "at": ["0.5'", "10'"]},
+            {"op": "add_electrical", "electrical_kind": "outlet", "at": ["0.5'", "20'"]}]"#,
+    );
+    let doc = s.document();
+    let over = doc.get::<Electrical>(out.created[0]).unwrap();
+    assert_eq!(over.height, Some(Length::from_inches(36.0 + 7.0)), "7\" over the 36\" counter");
+    assert_eq!(doc.get::<Electrical>(out.created[1]).unwrap().height, None, "elsewhere, the usual height");
+    s.apply(&[Command::Update { id: out.created[1], set: patch(serde_json::json!({ "wall_offset": "-4\"" })) }]).unwrap();
+    assert_eq!(s.document().get::<Electrical>(out.created[1]).unwrap().wall_offset, Length::from_inches(-4.0));
+}

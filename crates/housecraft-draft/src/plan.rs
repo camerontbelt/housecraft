@@ -1824,8 +1824,8 @@ fn electrical_symbol(
 ) {
     use ElectricalKind as K;
     let id = Some(e.id);
-    let p = v2(e.position);
     let n = DVec2::from_angle(e.rotation.to_radians());
+    let p = v2(e.position) + n * e.wall_offset.mm();
     let t = perp(n);
     let line = |out: &mut Drawing, a: DVec2, b: DVec2| {
         out.push(

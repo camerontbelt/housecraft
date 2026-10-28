@@ -17,14 +17,13 @@ they face out.
    has a **Weatherproof** box if you need to change that. An outlet clicked out in a room, more than 2' from any
    wall, becomes a **Floor Outlet**.
 4. Open the inside outlet: **Height** `11 1/2"`.
-5. *Not in HouseCraft yet:* recessing an outlet into the wall (distance from wall, wall cut). Our outlet sits on the
-   wall's face.
+5. Open the Deck outlet and set **Distance From Wall (− recesses)** `-4"`: it sits 4" into the wall. *Not in HouseCraft
+   yet:* the hole it would cut in the wall's surface.
 
 ## Counter outlets (pages 321–323)
 
-1. **GFCI Outlet** on the Kitchen's left wall, under a window. Open it and set **Height** `39"`. To turn it sideways, tick
-   **Plate** › **On its side (landscape)**. *Not in HouseCraft yet:* outlets starting at counter height by themselves
-   when they're over a countertop.
+1. **GFCI Outlet** on the Kitchen's left wall, under a window. Placed over a countertop, it starts 7" above the counter
+   (42 3/4" here). Open it and set **Height** `39"`. To turn it sideways, tick **Plate** › **On its side (landscape)**.
 2. **Center Object**, then click the sink base: the outlet centres on it.
 3. Select it and open the edit toolbar's **Move / Copy / Rotate / Reflect…** › **Move**. Move it `72"` along the
    wall without a copy. Then copy it three times `-48"` with **Multiple Copy…** (**Number of copies** `3`).
@@ -71,6 +70,6 @@ and place the schedule there instead. Open it and set **Title** `Electrical Lege
 
 | Missing | FEATURES row |
 |---|---|
-| Counter-height outlets; recessing into the wall | EL-14 |
+| A recessed outlet cutting the wall surface | EL-14 |
 | Ganged electrical blocks | EL-09 |
 | Wiring splines | EL-01 |

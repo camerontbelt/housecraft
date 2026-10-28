@@ -864,8 +864,9 @@ fn electrical_mesh(doc: &Document, e: &housecraft_model::Electrical, mesh: &mut 
     };
     let z0 = floor.elevation.mm();
     let ceiling = z0 + floor.ceiling_height.mm();
-    let p = v2(e.position);
     let out = DVec2::from_angle(e.rotation.to_radians());
+    // Out from the wall face, or recessed into it.
+    let p = v2(e.position) + out * e.wall_offset.mm();
     let along = crate::math::perp(out);
     let z = e
         .height

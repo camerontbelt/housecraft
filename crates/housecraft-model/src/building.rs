@@ -495,6 +495,9 @@ pub struct Electrical {
     /// Weatherproof (an outlet outdoors): drawn with WP.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub weatherproof: bool,
+    /// Distance out from the wall face (negative: recessed into the wall).
+    #[serde(default, skip_serializing_if = "is_zero_length")]
+    pub wall_offset: Length,
     /// The cover plate turned on its side (horizontal).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub landscape: bool,
@@ -1569,6 +1572,10 @@ pub struct Dormer {
 
 fn one_u32() -> u32 {
     1
+}
+
+fn is_zero_length(v: &Length) -> bool {
+    v.mm() == 0.0
 }
 
 fn is_no_newel(s: &NewelStyle) -> bool {

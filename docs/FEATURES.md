@@ -507,7 +507,7 @@ These come from reading the whole list and change the architecture, not just the
 | EL-11 | Light fixture library: chandeliers, pendants, flush mounts, lanterns, sconce styles, table and floor lamps, bollards; fixture size; Electrical Defaults choosing each tool's symbol | P2 | M9 ◐ ceiling and wall lights take a Fixture style (flush mount, pendant, chandelier, lantern, sconce, table lamp, floor lamp) with a width and drop, drawn at size in plan and 3D; bollards and Electrical Defaults choosing a style later |
 | EL-12 | One Light tool: sconce on a wall, ceiling fixture in a room, path light outside | P3 | M9 |
 | EL-13 | Electrical library: data jacks, alarms and security symbols, air switches, appliance (disposal) and floor-mounted outlets | P2 | M9 ✓ Floor Outlet (and 240V), Disposal Outlet, Air Switch (a switch), Data, Phone and TV Jacks, CO Detector, Motion Sensor, Alarm Keypad, Doorbell Button |
-| EL-14 | Electrical placement: WP outlets outside, floor outlet symbol in the open, counter-height outlets over countertops, distance from wall / wall cut, portrait or landscape on the wall | P2 | M9 ◐ outlets facing outdoors are marked WP, outlets placed in the open become floor outlets, plates can turn landscape; counter-height placement and recessing later |
+| EL-14 | Electrical placement: WP outlets outside, floor outlet symbol in the open, counter-height outlets over countertops, distance from wall / wall cut, portrait or landscape on the wall | P2 | M9 ◐ outlets facing outdoors are marked WP, outlets placed in the open become floor outlets, plates can turn landscape, outlets over a countertop start 7" above it, and a distance from the wall recesses them; the wall cut later |
 
 ## 17. Terrain, site & landscape
 

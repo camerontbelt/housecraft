@@ -2621,6 +2621,9 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             }
             if e.electrical_kind.on_wall() {
                 ed.check(ui, "Plate", "landscape", "On its side (landscape)", e.landscape);
+                if let Some(l) = ed.length(ui, "Distance From Wall (− recesses)", "wall_offset", e.wall_offset) {
+                    ed.out.push(patch(id, json!({ "wall_offset": l })));
+                }
             }
             if e.electrical_kind.is_outlet() {
                 ed.check(ui, "Weatherproof", "weatherproof", "Outdoors: marked WP", e.weatherproof);
