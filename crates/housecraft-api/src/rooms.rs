@@ -1,7 +1,7 @@
 //! Keep `Room` objects in step with the regions enclosed by walls.
 
 use housecraft_geom::{pt, rooms, v2};
-use housecraft_model::{Document, Floor, Id, Room, RoomType, Stair};
+use housecraft_model::{Document, Floor, Id, Room, RoomType, Stair, Wall};
 
 use crate::command::Outcome;
 
@@ -14,8 +14,29 @@ use crate::command::Outcome;
 pub(crate) fn sync(doc: &mut Document, before: Option<&Document>, out: &mut Outcome) {
     let floors: Vec<Id> = doc.ids::<Floor>();
     let d = doc.active_defaults().clone();
+    let open_type = doc.iter::<RoomType>().find(|t| t.name == "Open Below").map(|t| t.id);
     for floor in floors {
         let regions = rooms::detect(doc, floor);
+        // Stairwell openings cut in this floor (only worked out when the
+        // plan has an Open Below room type to give them).
+        let holes: std::cell::OnceCell<Vec<Vec<housecraft_geom::DVec2>>> = std::cell::OnceCell::new();
+        let doc_ref: &Document = doc;
+        let open_below = |region: &rooms::Region| {
+            // Only spaces closed in part by a room divider (Auto Stairwell's).
+            let divided = region.walls.iter().any(|w| doc_ref.get::<Wall>(*w).is_some_and(|w| w.invisible));
+            if open_type.is_none() || !divided {
+                return None;
+            }
+            let holes = holes.get_or_init(|| {
+                doc_ref
+                    .iter::<Stair>()
+                    .filter(|s| s.stairwell && doc_ref.floor_above(s.floor).map(|f| f.id) == Some(floor))
+                    .flat_map(|s| housecraft_geom::stairs::geometry(doc_ref, s).footprint())
+                    .collect()
+            });
+            open_type.filter(|_| holes.iter().any(|h| housecraft_geom::math::point_in_polygon(region.label_point, h)))
+        };
+        let opens: Vec<Option<Id>> = regions.rooms.iter().map(open_below).collect();
         let old = before.map(|b| rooms::detect(b, floor));
         // The room that was at a point before, and its area then.
         let was_at = |p: housecraft_geom::DVec2| -> Option<(Room, f64)> {
@@ -65,9 +86,9 @@ pub(crate) fn sync(doc: &mut Document, before: Option<&Document>, out: &mut Outc
         }
         // A room left holding a stairwell opening becomes Open Below
         // (unless it was given a type of its own).
-        for (i, region) in regions.rooms.iter().enumerate() {
-            if let Some(id) = owner[i]
-                && let Some(t) = open_below(doc, floor, region.label_point)
+        for (owned, open) in owner.iter().zip(&opens) {
+            if let Some(id) = *owned
+                && let Some(t) = *open
                 && let Some(r) = doc.get_mut::<Room>(id)
                 && r.room_type == d.room_type
             {
@@ -86,7 +107,7 @@ pub(crate) fn sync(doc: &mut Document, before: Option<&Document>, out: &mut Outc
                         name: None,
                         label_hidden: false,
                         label_rotation: 0.0,
-                        room_type: open_below(doc, floor, region.label_point).unwrap_or(p.room_type),
+                        room_type: opens[i].unwrap_or(p.room_type),
                         ..p
                     },
                     None => Room {
@@ -94,7 +115,7 @@ pub(crate) fn sync(doc: &mut Document, before: Option<&Document>, out: &mut Outc
                         floor,
                         anchor: pt(region.label_point),
                         name: None,
-                        room_type: open_below(doc, floor, region.label_point).unwrap_or(d.room_type),
+                        room_type: opens[i].unwrap_or(d.room_type),
                         ceiling_height: None,
                         floor_finish: None,
                         layer: d.layers.rooms,
@@ -109,18 +130,4 @@ pub(crate) fn sync(doc: &mut Document, before: Option<&Document>, out: &mut Outc
             }
         }
     }
-}
-
-/// The Open Below room type for a space over a stairwell (its label point
-/// over the footprint of a stair below that cuts this floor), if the plan
-/// has that type.
-fn open_below(doc: &Document, floor: Id, label: housecraft_geom::DVec2) -> Option<Id> {
-    let over_stair = doc
-        .iter::<Stair>()
-        .filter(|s| s.stairwell && doc.floor_above(s.floor).map(|f| f.id) == Some(floor))
-        .any(|s| housecraft_geom::stairs::geometry(doc, s).footprint().iter().any(|f| housecraft_geom::math::point_in_polygon(label, f)));
-    if !over_stair {
-        return None;
-    }
-    doc.iter::<RoomType>().find(|t| t.name == "Open Below").map(|t| t.id)
 }
