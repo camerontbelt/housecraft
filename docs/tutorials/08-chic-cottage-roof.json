@@ -4,8 +4,23 @@
   "include": "06-decks-and-porches.json",
   "steps": [
     {
-      "step": "Open the Roof Plan View and tile it with a 3D overview",
-      "gap": "No separate Roof Plan View with its own layer set out of the box, and no tiled views. Rows: PRJ-13, UI-32"
+      "step": "Open the Roof Plan View (View › Add Standard Plan Views makes it, with its own layer set)",
+      "commands": [
+        {
+          "op": "add_standard_plan_views"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:plan_view:Roof Plan",
+          "path": "/name",
+          "is": "Roof Plan"
+        }
+      ]
+    },
+    {
+      "step": "(Tile it with a 3D overview)",
+      "gap": "No tiled views. Row: UI-32"
     },
     {
       "step": "Roof defaults: 12 in 12, rafters, Auto Rebuild Roofs",

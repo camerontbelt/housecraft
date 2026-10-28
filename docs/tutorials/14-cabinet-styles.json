@@ -5,7 +5,18 @@
   "steps": [
     {
       "step": "Switch to the Kitchen & Bath Plan View",
-      "gap": "No ready-made Kitchen & Bath plan view; View > Add Standard Plan Views adds one. Row: PRJ-13"
+      "commands": [
+        {
+          "op": "add_standard_plan_views"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:plan_view:Kitchen & Bath Plan",
+          "path": "/name",
+          "is": "Kitchen & Bath Plan"
+        }
+      ]
     },
     {
       "step": "A base cabinet against the Kitchen wall under the windows; door style 'Beaded Recessed Panel'",

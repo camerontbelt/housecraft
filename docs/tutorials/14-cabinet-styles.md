@@ -6,8 +6,8 @@ test [14-cabinet-styles.json](14-cabinet-styles.json).
 
 ## Plan view (page 239)
 
-*Not in HouseCraft yet:* a ready-made Kitchen & Bath Plan View. **View › Add Standard Plan Views** adds one (with its
-own layer set), and you can switch to it from the plan view list on the top toolbar.
+**View › Add Standard Plan Views** adds the Kitchen & Bath Plan View (with its own layer set) if the plan doesn't have
+it yet. Switch to it from the plan view list on the top toolbar.
 
 ## Door, drawer and handle styles (pages 239–242)
 
@@ -41,6 +41,5 @@ Open the base cabinet. Under **Countertop**: thickness `1 1/4"`, overhang `1 1/2
 | Missing | FEATURES row |
 |---|---|
 | Library door panels and handle shapes | CB-28 |
-| Ready-made Kitchen & Bath plan view | PRJ-13 |
 
 Fixed for this tutorial: **Match Properties copies only what you tick**.

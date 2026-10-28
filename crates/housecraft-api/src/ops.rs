@@ -1854,7 +1854,7 @@ pub(crate) fn standard_plan_views(doc: &mut Document, out: &mut Outcome) -> Resu
             set.layers.entry(layer).or_default().visible = visible;
         }
     };
-    for name in ["Electrical Plan", "Framing Plan", "Kitchen & Bath Plan", "Construction Plan", "Site Plan"] {
+    for name in ["Electrical Plan", "Framing Plan", "Kitchen & Bath Plan", "Construction Plan", "Site Plan", "Roof Plan"] {
         if doc.iter::<PlanView>().any(|v| v.name == name) {
             continue;
         }
@@ -1878,6 +1878,13 @@ pub(crate) fn standard_plan_views(doc: &mut Document, out: &mut Outcome) -> Resu
                 hide(&mut set, l.cabinets, true);
                 d.labels.cabinets = "{code}".into();
                 d.labels.fixtures = "{type}".into();
+            }
+            "Roof Plan" => {
+                hide(&mut set, l.roofs, true);
+                hide(&mut set, Some(l.rooms), false);
+                hide(&mut set, l.electrical, false);
+                hide(&mut set, l.cabinets, false);
+                hide(&mut set, Some(l.dimensions), false);
             }
             "Construction Plan" => {
                 hide(&mut set, Some(l.dimensions), true);

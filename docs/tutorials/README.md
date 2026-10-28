@@ -25,13 +25,13 @@ has two files:
 | 5 | Doors and Windows (82) | 26 | 7 | [05-doors-and-windows.md](05-doors-and-windows.md) |
 | 6 | Decks and Porches (105) | 27 | 4 | [06-decks-and-porches.md](06-decks-and-porches.md) |
 | 7 | Roof styles: hip, gable, Dutch gable, shed, offset gable, gambrel, gull wing, half hip, mansard (127) | 15 | 1 | [07-roof-styles.md](07-roof-styles.md) |
-| 8 | Chic Cottage Roof (136) | 14 | 5 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
+| 8 | Chic Cottage Roof (136) | 15 | 5 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
 | 9 | Dormers (159) | 15 | 3 | [09-dormers.md](09-dormers.md) |
 | 10 | Custom Ceilings (177) | 11 | 1 | [10-custom-ceilings.md](10-custom-ceilings.md) |
 | 11 | Finish Materials (191) | 10 | 5 | [11-finish-materials.md](11-finish-materials.md) |
 | 12 | Room Moldings (211) | 6 | 3 | [12-room-moldings.md](12-room-moldings.md) |
 | 13 | Interior Furnishings (222) | 10 | 6 | [13-interior-furnishings.md](13-interior-furnishings.md) |
-| 14 | Cabinet Styles (237) | 11 | 2 | [14-cabinet-styles.md](14-cabinet-styles.md) |
+| 14 | Cabinet Styles (237) | 12 | 1 | [14-cabinet-styles.md](14-cabinet-styles.md) |
 | 15 | Cabinet Layout (260) | 9 | 2 | [15-cabinet-layout.md](15-cabinet-layout.md) |
 | 16 | Appliances and Fixtures (277) | 18 | 0 | [16-appliances-and-fixtures.md](16-appliances-and-fixtures.md) |
 | 17 | Light Fixtures (298) | 28 | 4 | [17-light-fixtures.md](17-light-fixtures.md) |

@@ -130,7 +130,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-10 | Pin items in Project Browser (X18+) | P3 | M8 ✓ Edit > Pin Selected; Pinned section at the top of the Project Browser (right-click to unpin); `pin_objects` command |
 | PRJ-11 | Saved Plan Views (layer set + default set + active defaults; zoom/floor optional); tabs/windows | P0 | M1 ✓ (multiple view tabs: later) |
 | PRJ-12 | Duplicate saved view copies its active layer set (X18+) | P2 | M1 ✓ Duplicate (with its layer set) on saved plan views |
-| PRJ-13 | Default Sets per drawing type (kitchen, framing, electrical…) | P1 | M1 ✓ View > Add Standard Plan Views: Electrical, Framing, Kitchen & Bath, Construction and Site, each with its own default set and layer set |
+| PRJ-13 | Default Sets per drawing type (kitchen, framing, electrical…) | P1 | M1 ✓ View > Add Standard Plan Views: Electrical, Framing, Kitchen & Bath, Construction, Site and Roof, each with its own default set and layer set |
 | PRJ-14 | Multi-floor structures | P0 | M0 ✓ |
 | PRJ-15 | Insert/exchange floors above/below | P1 | M3 ✓ |
 | PRJ-16 | Layers: create, assign, style, group into Layer Sets | P0 | M1 ✓ |
