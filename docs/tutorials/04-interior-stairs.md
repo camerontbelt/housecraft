@@ -48,7 +48,9 @@ It carries on from [Tutorial 3](03-multiple-floors.md). The steps also run as th
    Look at Floor 2 in 3D or in the section to see the opening.
 2. Double-click the stair and click **Auto Stairwell**. On Floor 2, railings now run along both sides and the
    bottom end of the opening. The top end stays open, because that's where you step off the stair.
-3. *Not in HouseCraft yet:* an Open Below room inside the railings, with its own label.
+3. Auto Stairwell also closes the top of the opening with a room divider, so an opening enclosed by railings (and
+   walls) becomes a room of type **Open Below**. *Not in HouseCraft yet:* here the railings don't close the opening
+   against Floor 2's walls, so it stays part of the hall.
 
 ## Headroom (pages 69–71)
 
@@ -62,8 +64,8 @@ the point markers at the dimension's ends.
 2. **Tape Measure** (Dimension tools) the clearance at the bottom of the basement stair: two clicks, read it in the
    status bar.
 3. Hide stairs while you work round them: **Layer Display** tab (right side), untick **Stairs**.
-4. To turn a railing into a wall, double-click it and change its **Wall Type** to an interior wall type.
-   *Not in HouseCraft yet:* the Same Wall Type handle, so do each railing in turn.
+4. To turn a railing into a wall, double-click it and change its **Wall Type** to an interior wall type. For the next
+   railing, open it and click **Same Wall Type › As at Start** (or **End**): it takes the type of the wall joined there.
 
 ## Clipping the section (pages 75–77)
 
@@ -90,7 +92,7 @@ lines you can drag.
 | A library of named newel and baluster styles | ST-12 |
 | Lower garage floor (garage steps) | FD-07 |
 | Lock top/bottom/treads; Make Best Fit | ST-19 |
-| Open Below room; Same Wall Type handle | ST-18 |
+| Railings closing a stairwell opening against existing walls | ST-18 |
 | Movable dimension point markers in sections | SEC-06 |
 | Top/bottom clip planes in sections | SEC-01 |
 | Note types, capsule markers | TXT-16 |

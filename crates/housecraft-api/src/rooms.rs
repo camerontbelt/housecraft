@@ -1,7 +1,7 @@
 //! Keep `Room` objects in step with the regions enclosed by walls.
 
 use housecraft_geom::{pt, rooms, v2};
-use housecraft_model::{Document, Floor, Id, Room};
+use housecraft_model::{Document, Floor, Id, Room, RoomType, Stair};
 
 use crate::command::Outcome;
 
@@ -63,18 +63,38 @@ pub(crate) fn sync(doc: &mut Document, before: Option<&Document>, out: &mut Outc
                 }
             }
         }
+        // A room left holding a stairwell opening becomes Open Below
+        // (unless it was given a type of its own).
+        for (i, region) in regions.rooms.iter().enumerate() {
+            if let Some(id) = owner[i]
+                && let Some(t) = open_below(doc, floor, region.label_point)
+                && let Some(r) = doc.get_mut::<Room>(id)
+                && r.room_type == d.room_type
+            {
+                r.room_type = t;
+                out.modified.push(id);
+            }
+        }
         for (i, region) in regions.rooms.iter().enumerate() {
             if owner[i].is_none() {
                 // Split off an existing room: it inherits that room's settings.
                 let parent = was_at(region.label_point).map(|(r, _)| r);
                 out.created.push(doc.insert(match parent {
-                    Some(p) => Room { id: Id(0), anchor: pt(region.label_point), name: None, label_hidden: false, label_rotation: 0.0, ..p },
+                    Some(p) => Room {
+                        id: Id(0),
+                        anchor: pt(region.label_point),
+                        name: None,
+                        label_hidden: false,
+                        label_rotation: 0.0,
+                        room_type: open_below(doc, floor, region.label_point).unwrap_or(p.room_type),
+                        ..p
+                    },
                     None => Room {
                         id: Id(0),
                         floor,
                         anchor: pt(region.label_point),
                         name: None,
-                        room_type: d.room_type,
+                        room_type: open_below(doc, floor, region.label_point).unwrap_or(d.room_type),
                         ceiling_height: None,
                         floor_finish: None,
                         layer: d.layers.rooms,
@@ -89,4 +109,18 @@ pub(crate) fn sync(doc: &mut Document, before: Option<&Document>, out: &mut Outc
             }
         }
     }
+}
+
+/// The Open Below room type for a space over a stairwell (its label point
+/// over the footprint of a stair below that cuts this floor), if the plan
+/// has that type.
+fn open_below(doc: &Document, floor: Id, label: housecraft_geom::DVec2) -> Option<Id> {
+    let over_stair = doc
+        .iter::<Stair>()
+        .filter(|s| s.stairwell && doc.floor_above(s.floor).map(|f| f.id) == Some(floor))
+        .any(|s| housecraft_geom::stairs::geometry(doc, s).footprint().iter().any(|f| housecraft_geom::math::point_in_polygon(label, f)));
+    if !over_stair {
+        return None;
+    }
+    doc.iter::<RoomType>().find(|t| t.name == "Open Below").map(|t| t.id)
 }

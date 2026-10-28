@@ -176,7 +176,7 @@
     },
     {
       "step": "(The opening on Floor 2 as an Open Below room)",
-      "gap": "The opening isn't a room of its own (no Open Below room type), so it has no label. Row: ST-18"
+      "gap": "Auto Stairwell closes the top with a room divider and an enclosed opening becomes an Open Below room, but here the railings don't close the opening against Floor 2's walls, so it stays part of the hall. Row: ST-18"
     },
     {
       "step": "Headroom: an end-to-end dimension in the section from the nosing to the ceiling; move its point marker",
@@ -222,8 +222,28 @@
       "expect": []
     },
     {
-      "step": "(Turn railings into walls; Same Wall Type handle)",
-      "gap": "No Same Wall Type handle; open each railing and change its wall type. Row: ST-18"
+      "step": "Turn railings into walls: change one railing's wall type, then Same Wall Type on the next",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$rails.0",
+          "set": {
+            "wall_type": "$named:wall_type:Interior 2x4"
+          }
+        },
+        {
+          "op": "same_wall_type",
+          "id": "$rails.1",
+          "at_start": true
+        }
+      ],
+      "expect": [
+        {
+          "get": "$rails.1",
+          "path": "/wall_type",
+          "is": "$named:wall_type:Interior 2x4"
+        }
+      ]
     },
     {
       "step": "Section view clip planes: Clip Sides and Clip Elevation, moved to frame the stairs",

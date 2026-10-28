@@ -178,6 +178,13 @@ pub enum Command {
         #[serde(default)]
         gap: Length,
     },
+    /// Same Wall Type: wall `id` takes the type of the wall joined to its
+    /// end (or its start).
+    SameWallType {
+        id: Id,
+        #[serde(default)]
+        at_start: bool,
+    },
     /// Allowed Angles: extra directions (degrees from east) that drawing
     /// snaps to beside the angle step.
     SetAllowedAngles { angles: Vec<f64> },
@@ -1507,6 +1514,7 @@ impl Command {
             Command::ResetRoofEdges { .. } => "reset_roof_edges",
             Command::SetLayoutScale { .. } => "set_layout_scale",
             Command::SetAllowedAngles { .. } => "set_allowed_angles",
+            Command::SameWallType { .. } => "same_wall_type",
             Command::CabinetsToCeiling { .. } => "cabinets_to_ceiling",
             Command::DuplicatePlanView { .. } => "duplicate_plan_view",
             Command::PointToPointMove { .. } => "point_to_point_move",
@@ -2445,6 +2453,20 @@ impl Command {
                     }
                 }
             }
+            Command::SameWallType { id, at_start } => {
+                let w = expect::<Wall>(doc, *id)?.clone();
+                let p = housecraft_geom::v2(if *at_start { w.start } else { w.end });
+                let other = doc
+                    .walls_on(w.floor)
+                    .filter(|o| o.id != w.id)
+                    .find(|o| housecraft_geom::v2(o.start).distance(p) < 10.0 || housecraft_geom::v2(o.end).distance(p) < 10.0)
+                    .map(|o| o.wall_type)
+                    .ok_or_else(|| ApiError::Invalid("no wall is joined to that end".into()))?;
+                if let Some(w) = doc.get_mut::<Wall>(*id) {
+                    w.wall_type = other;
+                    out.modified.push(*id);
+                }
+            }
             Command::SetAllowedAngles { angles } => {
                 if angles.iter().any(|a| !a.is_finite()) {
                     return invalid("angles must be numbers of degrees");
@@ -2573,16 +2595,65 @@ impl Command {
                     s.stairwell = true;
                     out.modified.push(*stair);
                 }
-                let walls = Command::AddWalls {
+                // Railings round three sides, except where a wall upstairs
+                // already runs along a side.
+                let v2 = housecraft_geom::v2;
+                let covered = |p: Point2, q: Point2| {
+                    let (p, q) = (v2(p), v2(q));
+                    let mid = (p + q) / 2.0;
+                    let dir = (q - p).normalize_or_zero();
+                    doc.walls_on(above).find_map(|w| {
+                        let (a, b) = (v2(w.start), v2(w.end));
+                        let along = (b - a).normalize_or_zero().dot(dir).abs() > 0.99;
+                        let (c, _) = housecraft_geom::math::closest_on_segment(mid, a, b);
+                        (along && c.distance(mid) < 300.0).then_some((a, b))
+                    })
+                };
+                let mut corners = [at(a1, b0), at(a0, b0), at(a0, b1), at(a1, b1)];
+                let lines: Vec<_> = (0..3).map(|k| covered(corners[k], corners[k + 1])).collect();
+                // A side along a wall moves onto the wall's centre line; a
+                // side the wall runs the whole length of gets no railing.
+                // Each side's railing, less any stretch a wall already runs
+                // along (that stretch moves onto the wall's centre line and
+                // the railing carries on from the wall's end, never over it).
+                let mut pieces: Vec<(Point2, Point2)> = Vec::new();
+                for (k, line) in lines.iter().enumerate() {
+                    let (p, q) = (corners[k], corners[k + 1]);
+                    let Some((a, b)) = line else {
+                        pieces.push((p, q));
+                        continue;
+                    };
+                    let d = (*b - *a).normalize_or_zero();
+                    let wall_end = (*b - *a).dot(d);
+                    let on = |t: f64| housecraft_geom::pt(*a + d * t);
+                    let (tp, tq) = ((v2(p) - *a).dot(d), (v2(q) - *a).dot(d));
+                    corners[k] = on(tp);
+                    corners[k + 1] = on(tq);
+                    let (lo, hi) = (tp.min(tq), tp.max(tq));
+                    // Beyond the wall's ends, a railing on its line.
+                    for (s0, s1) in [(lo, lo.max(0.0).min(hi)), (hi.min(wall_end).max(lo), hi)] {
+                        if s1 - s0 > 10.0 {
+                            pieces.push((on(s0), on(s1)));
+                        }
+                    }
+                }
+                for (p, q) in pieces {
+                    let wall = Command::AddWall { floor: Some(above), start: p, end: q, wall_type: Some(railing), interior: true, height: None, invisible: false }.apply(doc)?;
+                    out.merge(wall);
+                }
+                // A room divider across the open top makes the opening a room
+                // of its own (Open Below).
+                let divider = Command::AddWall {
                     floor: Some(above),
-                    points: vec![at(a1, b0), at(a0, b0), at(a0, b1), at(a1, b1)],
-                    closed: false,
+                    start: corners[3],
+                    end: corners[0],
                     wall_type: Some(railing),
                     interior: true,
                     height: None,
+                    invisible: true,
                 }
                 .apply(doc)?;
-                out.merge(walls);
+                out.merge(divider);
             }
             Command::PointToPointMove { ids, from, to, copy } => {
                 let d = housecraft_geom::v2(*to) - housecraft_geom::v2(*from);

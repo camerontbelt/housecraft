@@ -3163,8 +3163,12 @@ fn auto_stairwell_rails_the_opening_but_not_the_top() {
     let out = s.apply(&[Command::AutoStairwell { stair }]).unwrap();
     let doc = s.document();
     assert!(doc.get::<Stair>(stair).unwrap().stairwell);
-    let rails: Vec<&Wall> = out.created.iter().filter_map(|id| doc.get::<Wall>(*id)).collect();
+    let rails: Vec<&Wall> = out.created.iter().filter_map(|id| doc.get::<Wall>(*id)).filter(|w| !w.invisible).collect();
     assert_eq!(rails.len(), 3, "both sides and the bottom end");
+    // A room divider closes the top, so the opening is an Open Below room.
+    assert_eq!(out.created.iter().filter_map(|id| doc.get::<Wall>(*id)).filter(|w| w.invisible).count(), 1);
+    let open_below = doc.iter::<RoomType>().find(|t| t.name == "Open Below").unwrap().id;
+    assert!(doc.iter::<Room>().any(|r| r.room_type == open_below), "the opening is labelled Open Below");
     let above = doc.floor_above(floor1).unwrap().id;
     assert!(rails.iter().all(|w| w.floor == above && doc.get::<WallType>(w.wall_type).unwrap().railing.is_some()));
     let g = housecraft_api::geom::stairs::geometry(doc, doc.get::<Stair>(stair).unwrap());

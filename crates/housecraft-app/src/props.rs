@@ -909,6 +909,16 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             renovation_row(ui, ed, w.renovation);
             wall_shape_rows(ui, ed, w);
             ed.pick::<Layer>(ui, "Layer", "layer", Some(w.layer), None);
+            Ed::label(ui, "Same Wall Type");
+            ui.horizontal(|ui| {
+                if ui.small_button("As at Start").on_hover_text("Take the type of the wall joined to this wall's start").clicked() {
+                    ed.out.push(Command::SameWallType { id, at_start: true });
+                }
+                if ui.small_button("As at End").on_hover_text("Take the type of the wall joined to this wall's end").clicked() {
+                    ed.out.push(Command::SameWallType { id, at_start: false });
+                }
+            });
+            ui.end_row();
             let d = doc.active_defaults();
             Ed::label(ui, "Roof");
             let mut gable = w.roof.gable;
