@@ -12,8 +12,8 @@ lies on the terrain. Roads also have **End Flare**, **Stripes** and **Street Nam
 
 1. *Not in HouseCraft yet:* road defaults. A new road is 24' wide; open it and set **Width** `28'`.
 2. **Road**: click the bottom-right corner of the terrain, then the lower-left corner. Press Enter.
-3. *Not in HouseCraft yet:* curved roads (Change Line/Arc). For a gentle curve, draw the road with more corners. To
-   snap the road onto the lot edge, use **Edit › Point to Point Move**.
+3. To curve the road along the lot's curved edge, select it, choose **Edit › Change Line/Arc…**, click the edge, type the **Radius** and click **OK** (tick **Bow to the other side** to curve it the other way). Use `450'`. To snap the road onto the lot
+   edge, use **Edit › Point to Point Move**.
 4. Road stripes for a bike lane: open the road and type `8', -8'` in **Stripes**. Each number is how far a painted
    line sits from the road's centre line (+ is to the left as drawn, − to the right). On a 28' road, 8' is 6' in from
    each edge. Painted stripes replace the dashed centre line.
@@ -39,7 +39,7 @@ lies on the terrain. Roads also have **End Flare**, **Stripes** and **Street Nam
 1. Open the road and click **Auto Generate Sidewalks**. You get a 5' sidewalk down each side, 5' (60") beyond the curb.
 2. **Sidewalk**: click at the foot of the porch stairs, down a few feet, then across to the driveway. Press Enter.
    Open it: **Width** `5'`.
-3. *Not in HouseCraft yet:* curved sidewalks. Add a few extra corners to round the bend.
+3. For a curved sidewalk, select it, choose **Edit › Change Line/Arc…**, click the edge, type the **Radius** and click **OK** (tick **Bow to the other side** to curve it the other way).
 
 ## Annotations and revision (pages 431–432)
 
@@ -50,5 +50,5 @@ right. *Not in HouseCraft yet:* a hardscaping schedule. Then **File › Make a C
 
 | Missing | FEATURES row |
 |---|---|
-| Road defaults, curved roads and sidewalks, curb cuts, hardscaping schedule | SITE-32 |
+| Road defaults, curb cuts, hardscaping schedule | SITE-32 |
 | Terrain passing exactly through elevation data | SITE-33 |

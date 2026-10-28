@@ -972,6 +972,19 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
                 }
                 return;
             }
+            Pick::CurveEdge(id) => {
+                if let Some((points, closed)) = path_of(doc, id)
+                    && let Some((edge, d)) = nearest_path_edge(points, closed, c)
+                    && d < tol * 2.0
+                {
+                    let n = points.len();
+                    let chord = v2(points[edge]).distance(v2(points[(edge + 1) % n]));
+                    let text = housecraft_api::units::Length::from_mm(chord).format(doc.settings.display_unit);
+                    app.dialogs.curve_edge = Some((id, edge, text, false));
+                    app.plan.pick = None;
+                }
+                return;
+            }
             Pick::EdgeAngle(id) => {
                 if let Some((points, closed)) = path_of(doc, id)
                     && let Some((edge, d)) = nearest_path_edge(points, closed, c)
@@ -1038,7 +1051,8 @@ fn select_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: &
                 | Pick::PathBreak(_)
                 | Pick::MoveEdge { .. }
                 | Pick::ContinuePath { .. }
-                | Pick::EdgeAngle(_) => {}
+                | Pick::EdgeAngle(_)
+                | Pick::CurveEdge(_) => {}
                 Pick::Match(from) => {
                     if doc.kind_of(target) == doc.kind_of(from) {
                         let fields = app.match_fields.iter().filter(|(_, on)| *on).map(|(f, _)| f.clone()).collect();
@@ -1220,6 +1234,8 @@ pub enum Pick {
     ContinuePath { id: Id, at_start: Option<bool> },
     /// Edge Angle: click the edge whose angle to type.
     EdgeAngle(Id),
+    /// Change Line/Arc: click the edge to curve.
+    CurveEdge(Id),
 }
 
 impl Pick {
@@ -1233,6 +1249,7 @@ impl Pick {
             Pick::MoveEdge { edge: Some(_), .. } => "Move Edge: click where the edge goes; the edges either side stretch. Esc cancels.",
             Pick::ContinuePath { .. } => "Continue Drawing: click new corners from the nearer end. Esc ends.",
             Pick::EdgeAngle(_) => "Edge Angle: click the edge to turn about its start. Esc cancels.",
+            Pick::CurveEdge(_) => "Change Line/Arc: click the edge to curve. Esc cancels.",
             Pick::PointMove { from: None, .. } => "Point to Point Move: click the point to move from (it snaps to corners and ends). Esc cancels.",
             Pick::PointMove { from: Some(_), .. } => "Point to Point Move: click where that point goes. Ctrl+click moves a copy. Esc cancels.",
             Pick::Reflect(_) => "Reflect About Object: click a wall, line, door or window to mirror across. Ctrl+click keeps the original. Esc cancels.",

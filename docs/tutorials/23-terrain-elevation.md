@@ -36,7 +36,7 @@ elevation data, about 1" below the Garage slab. In the terrain's dialog tick **R
    **Rotate** `-15`). To give the top line its own angle with its start point locked, select it, choose
    **Edit › Edge Angle…**, click the line, type `-13` and click **OK**: the left end stays put and the right end
    swings round. To set a line parallel to the lot edge, select it, choose **Edit › Make Parallel /
-   Perpendicular**, click the lot edge, then click the line. *Not in HouseCraft yet:* curved elevation lines.
+   Perpendicular**, click the lot edge, then click the line. To curve the front line like the lot edge, select it, choose **Edit › Change Line/Arc…**, click the edge, type the **Radius** and click **OK** (tick **Bow to the other side** to curve it the other way). Use `450'`.
 
 ## Elevation polyline (pages 413–415)
 
@@ -65,5 +65,4 @@ elevation data, about 1" below the Garage slab. In the terrain's dialog tick **R
 |---|---|
 | Additional allowed angles | CAD-33 |
 | Duplicate a saved plan view | PRJ-12 |
-| Curved elevation lines | SITE-29 |
 | Retaining walls separating the terrain | SITE-31 |

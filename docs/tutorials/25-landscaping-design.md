@@ -22,7 +22,7 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
    makes a raised bed with edging.
 3. Shape the bed: select it and choose **Edit › Add Break**, then click on an edge to give it a new corner (Esc
    when done). **Edit › Move Edge** moves one edge: click the edge, then click where it should go; the edges either
-   side stretch to follow. You can also drag any corner's handle. *Not in HouseCraft yet:* curved bed edges.
+   side stretch to follow. You can also drag any corner's handle. To curve the edge along the sidewalk, select it, choose **Edit › Change Line/Arc…**, click the edge, type the **Radius** and click **OK** (tick **Bow to the other side** to curve it the other way).
 
 ## Planting border (pages 437–440)
 
@@ -65,7 +65,6 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
 | Missing | FEATURES row |
 |---|---|
 | Dirt material default; fencing defaults and panel library | SITE-34 |
-| Curved garden bed edges | SITE-29 |
 | Plant Chooser and encyclopedia | SITE-20, SITE-21 |
 
 **New while following this tutorial:**

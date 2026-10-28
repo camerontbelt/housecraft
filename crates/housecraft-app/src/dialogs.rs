@@ -203,6 +203,9 @@ pub struct Dialogs {
     pub scatter: Option<(u32, f64, u64)>,
     /// Edge Angle: the path, its edge and the angle being typed (degrees).
     pub edge_angle: Option<(Id, usize, f64)>,
+    /// Change Line/Arc: the path, its edge, the radius being typed and
+    /// whether it bows to the right instead of the left.
+    pub curve_edge: Option<(Id, usize, String, bool)>,
     pub plan_check: bool,
     pub hatch: HatchDialog,
     /// Auto Dimension Tiers being chosen, and a preset name being typed.
@@ -289,6 +292,7 @@ pub fn show(app: &mut App, ctx: &Context) {
     match_properties_window(app, ctx);
     scatter_dialog(app, ctx);
     edge_angle_dialog(app, ctx);
+    curve_edge_dialog(app, ctx);
     plan_check_dialog(app, ctx);
     hatch_dialog(app, ctx);
     auto_dims_dialog(app, ctx);
@@ -2262,6 +2266,34 @@ fn edge_angle_dialog(app: &mut App, ctx: &Context) {
         app.run1(Command::SetEdgeAngle { id, edge, angle });
     } else if open {
         app.dialogs.edge_angle = Some((id, edge, angle));
+    }
+}
+
+/// Change Line/Arc: the clicked edge becomes an arc through its two corners.
+fn curve_edge_dialog(app: &mut App, ctx: &Context) {
+    let Some((id, edge, mut text, mut right)) = app.dialogs.curve_edge.take() else {
+        return;
+    };
+    let mut open = true;
+    let mut apply = None;
+    egui::Window::new("Change Line/Arc").open(&mut open).resizable(false).show(ctx, |ui| {
+        ui.label("The edge becomes an arc through its two corners.");
+        ui.horizontal(|ui| {
+            ui.label("Radius");
+            ui.add(egui::TextEdit::singleline(&mut text).desired_width(90.0));
+        });
+        ui.checkbox(&mut right, "Bow to the other side");
+        let radius = parse(app.doc(), &text);
+        if ui.add_enabled(radius.is_some(), egui::Button::new("OK")).clicked()
+            && let Some(r) = radius
+        {
+            apply = Some(if right { Length::from_mm(-r.mm()) } else { r });
+        }
+    });
+    if let Some(radius) = apply {
+        app.run1(Command::CurveEdge { id, edge, radius });
+    } else if open {
+        app.dialogs.curve_edge = Some((id, edge, text, right));
     }
 }
 

@@ -29,8 +29,9 @@ HouseCraft draws a whole lot from its description in one dialog.
 
    The third side is typed reversed (S…W), as in the tutorial. The lot starts at the plan's origin (Chief's Input
    Point at 0,0).
-2. *Not in HouseCraft yet:* curved lot sides. The fourth side is a 450' radius arc, 150' long. Type its chord
-   instead: `N 30 11 36 W, 149.31'`. Then the lot closes.
+2. The fourth side is a 450' radius arc, 150' long. Type its chord first: `N 30 11 36 W, 149.31'`. Then the lot
+   closes. After you draw the lot, curve that side: select it, choose **Edit › Change Line/Arc…**, click the edge, type the **Radius** and click **OK** (tick **Bow to the other side** to curve it the other way). Use `450'`. *Not in HouseCraft yet:* typing a
+   curved side by its arc length in the lot description.
 3. **Building setback** `10'` draws the setback line inside the lot. Click **Draw Lot**. Each side is labelled with
    its bearing and length.
 
@@ -73,7 +74,7 @@ selection from one corner onto another, use **Edit › Point to Point Move**.
 | Missing | FEATURES row |
 |---|---|
 | Separate site north; north pointer that rotates with the lot | SITE-28 |
-| Decimal feet and bearings on CAD lines; curved lot sides | SITE-29 |
+| Decimal feet and bearings on CAD lines; curved sides typed by arc length | SITE-29 |
 | Concentric edit behaviour | CAD-32 |
 | Point markers | CAD-31 |
 

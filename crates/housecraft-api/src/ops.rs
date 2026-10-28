@@ -2350,3 +2350,25 @@ pub fn nearest_path_edge(points: &[Point2], closed: bool, p: DVec2) -> Option<(u
         .map(|(i, (a, b))| (i, closest_on_segment(p, v2(points[a]), v2(points[b])).0))
         .min_by(|x, y| x.1.distance(p).total_cmp(&y.1.distance(p)))
 }
+
+/// The corners strictly between `a` and `b` on the shorter arc of radius
+/// `|r|` through both, bowing left of a→b when `r` is positive; at most 5°
+/// apart. `None` when the radius is shorter than half the chord.
+pub fn arc_between(a: DVec2, b: DVec2, r: f64) -> Option<Vec<DVec2>> {
+    let chord = a.distance(b);
+    let half = chord / 2.0;
+    if chord < EPS || r.abs() < half {
+        return None;
+    }
+    let dir = (b - a) / chord;
+    let left = perp(dir);
+    // The centre sits on the side away from the bow.
+    let rise = (r * r - half * half).max(0.0).sqrt();
+    let sign = r.signum();
+    let center = (a + b) / 2.0 - left * sign * rise;
+    let (start, sweep) = ((a - center).to_angle(), 2.0 * (half / r.abs()).min(1.0).asin());
+    // Positive r bows left: travelling a→b clockwise about the centre.
+    let sweep = -sign * sweep;
+    let steps = (sweep.abs().to_degrees() / 5.0).ceil().max(2.0) as usize;
+    Some((1..steps).map(|i| center + DVec2::from_angle(start + sweep * i as f64 / steps as f64) * r.abs()).collect())
+}

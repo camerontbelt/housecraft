@@ -39,10 +39,10 @@ has two files:
 | 19 | Floor Framing (331) | 19 | 8 | [19-floor-framing.md](19-floor-framing.md) |
 | 20 | Wall Framing (349) | 12 | 8 | [20-wall-framing.md](20-wall-framing.md) |
 | 21 | Roof and Ceiling Framing (364) | 11 | 7 | [21-roof-and-ceiling-framing.md](21-roof-and-ceiling-framing.md) |
-| 22 | Plot Plans (382) | 10 | 6 | [22-plot-plans.md](22-plot-plans.md) |
-| 23 | Terrain Elevation (403) | 14 | 5 | [23-terrain-elevation.md](23-terrain-elevation.md) |
-| 24 | Driveways, Sidewalks, and Roads (420) | 9 | 5 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
-| 25 | Landscaping Design (433) | 17 | 6 | [25-landscaping-design.md](25-landscaping-design.md) |
+| 22 | Plot Plans (382) | 11 | 5 | [22-plot-plans.md](22-plot-plans.md) |
+| 23 | Terrain Elevation (403) | 15 | 4 | [23-terrain-elevation.md](23-terrain-elevation.md) |
+| 24 | Driveways, Sidewalks, and Roads (420) | 11 | 3 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
+| 25 | Landscaping Design (433) | 18 | 5 | [25-landscaping-design.md](25-landscaping-design.md) |
 | 26 | Layout Page Templates (451) | 7 | 4 | [26-layout-page-templates.md](26-layout-page-templates.md) |
 | 27 | Title Blocks and Borders (460) | 10 | 6 | [27-title-blocks-and-borders.md](27-title-blocks-and-borders.md) |
 | 28 | Sending Views to Layout (483) | 9 | 7 | [28-sending-views-to-layout.md](28-sending-views-to-layout.md) |

@@ -2482,6 +2482,11 @@ impl App {
                     {
                         self.start_pick(crate::canvas::Pick::EdgeAngle(id));
                     }
+                    if item(ui, "Change Line/Arc…", "", path.is_some())
+                        && let Some((id, _)) = path
+                    {
+                        self.start_pick(crate::canvas::Pick::CurveEdge(id));
+                    }
                     if item(ui, "Continue Drawing", "", path.is_some_and(|(_, closed)| !closed))
                         && let Some((id, _)) = path
                     {

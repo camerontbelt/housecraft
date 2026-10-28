@@ -98,8 +98,22 @@
       ]
     },
     {
-      "step": "(Make the sidewalk edge curved)",
-      "gap": "Garden bed edges are straight; no arc edges. Row: SITE-29"
+      "step": "Change Line/Arc: curve the bed's edge along the sidewalk (6' radius)",
+      "commands": [
+        {
+          "op": "curve_edge",
+          "id": "$bed",
+          "edge": 3,
+          "radius": "6'"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$bed",
+          "path": "/points",
+          "len_at_least": 7
+        }
+      ]
     },
     {
       "step": "Planting border: copy the plot plan polyline in place, Convert Polyline > Garden Bed",

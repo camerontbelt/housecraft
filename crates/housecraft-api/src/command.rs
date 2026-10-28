@@ -289,6 +289,10 @@ pub enum Command {
     /// (counter-clockwise from east), keeping its length: the start point
     /// is locked and the end corner moves.
     SetEdgeAngle { id: Id, edge: usize, angle: f64 },
+    /// Change Line/Arc on a path edge: it becomes an arc of `radius` through
+    /// its two corners, bowing left of the edge's direction (or right when
+    /// `radius` is negative), stored as corners no more than 5° apart.
+    CurveEdge { id: Id, edge: usize, radius: Length },
     /// Continue drawing a path from an end: `points` follow the last
     /// corner, or run on outward from the first when `at_start`.
     ExtendPath {
@@ -1432,6 +1436,7 @@ impl Command {
             Command::MoveEdge { .. } => "move_edge",
             Command::SetEdgeAngle { .. } => "set_edge_angle",
             Command::ExtendPath { .. } => "extend_path",
+            Command::CurveEdge { .. } => "curve_edge",
             Command::DeleteTime { .. } => "delete_time",
             Command::SetHatchPattern { .. } => "set_hatch_pattern",
             Command::DeleteHatchPattern { .. } => "delete_hatch_pattern",
@@ -2188,6 +2193,16 @@ impl Command {
                 let (pa, pb) = (housecraft_geom::v2(points[a]), housecraft_geom::v2(points[b]));
                 let r = angle.to_radians();
                 points[b] = housecraft_geom::pt(pa + housecraft_geom::DVec2::new(r.cos(), r.sin()) * pa.distance(pb));
+                out.modified.push(*id);
+            }
+            Command::CurveEdge { id, edge, radius } => {
+                let (points, closed) = ops::path_mut(doc, *id).ok_or_else(|| ApiError::Invalid("curve edges of lines, regions, beds and polylines".into()))?;
+                let &(a, b) = ops::path_edges(points.len(), closed).get(*edge).ok_or_else(|| ApiError::Invalid("no such edge".into()))?;
+                let arc = ops::arc_between(housecraft_geom::v2(points[a]), housecraft_geom::v2(points[b]), radius.mm())
+                    .ok_or_else(|| ApiError::Invalid("the radius must be at least half the edge's length".into()))?;
+                let inner: Vec<Point2> = arc.into_iter().map(housecraft_geom::pt).collect();
+                // The closing edge's new corners go after the last one.
+                points.splice(a + 1..a + 1, inner);
                 out.modified.push(*id);
             }
             Command::ExtendPath { id, points: more, at_start } => {

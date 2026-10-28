@@ -44,8 +44,22 @@
       ]
     },
     {
-      "step": "(Change Line/Arc to curve it along the lot's curved edge; Point to Point Move onto the edge)",
-      "gap": "Roads are straight-segment paths; no arcs. Row: SITE-32"
+      "step": "Change Line/Arc: curve the road to follow the lot's curved edge (450' radius)",
+      "commands": [
+        {
+          "op": "curve_edge",
+          "id": "$road",
+          "edge": 0,
+          "radius": "450'"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$road",
+          "path": "/points",
+          "len_at_least": 5
+        }
+      ]
     },
     {
       "step": "Road Stripe for a bike lane, 6' from the road's edge (both sides)",
@@ -225,8 +239,22 @@
       ]
     },
     {
-      "step": "Curved sidewalk instead: one segment at 315 degrees, made into an arc",
-      "gap": "No curved sidewalks; add more corners to round it off. Row: SITE-32"
+      "step": "Curved sidewalk: Change Line/Arc on the segment over to the driveway (10' radius)",
+      "commands": [
+        {
+          "op": "curve_edge",
+          "id": "$walk",
+          "edge": 1,
+          "radius": "10'"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$walk",
+          "path": "/points",
+          "len_at_least": 5
+        }
+      ]
     },
     {
       "step": "Annotations: street name label on the road",

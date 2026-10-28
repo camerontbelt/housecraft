@@ -3571,3 +3571,32 @@ fn road_stripes_flares_labels_and_auto_sidewalks() {
     let json = query::get_object(s.document(), road).unwrap();
     assert_eq!(json.pointer("/feature/label").and_then(|v| v.as_str()), Some("Elm Street"));
 }
+
+#[test]
+fn path_edges_curve_into_arcs() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_site_feature", "points": [["0'","-40'"],["100'","-40'"]], "feature": {"type": "road", "style": "sidewalk", "width": "5'", "thickness": "4\""}},
+            {"op": "add_cad", "shape": {"shape": "polyline", "points": [["0'","0'"],["10'","0'"],["10'","10'"],["0'","10'"]], "closed": true}}]"#,
+    );
+    let (walk, lot) = (out.created[0], out.created[1]);
+    // Bow the walk left (north) on a 100' radius: every corner is 100' from the centre below.
+    s.apply(&[Command::CurveEdge { id: walk, edge: 0, radius: Length::from_feet(100.0) }]).unwrap();
+    let pts: Vec<(f64, f64)> = s.document().get::<SiteFeature>(walk).unwrap().points.iter().map(|p| (p.0.mm() / 304.8, p.1.mm() / 304.8)).collect();
+    assert!(pts.len() > 6, "{pts:?}");
+    let rise = (100.0f64 * 100.0 - 50.0 * 50.0).sqrt();
+    for p in &pts {
+        let d = ((p.0 - 50.0).powi(2) + (p.1 - (-40.0 - rise)).powi(2)).sqrt();
+        assert!((d - 100.0).abs() < 1e-6, "{p:?} is {d} from the centre");
+        assert!(p.1 >= -40.0 - 1e-9, "bows north");
+    }
+    assert_eq!(pts[0], (0.0, -40.0));
+    assert!((pts[pts.len() - 1].0 - 100.0).abs() < 1e-9);
+    // The closing edge of a closed outline, bowed outward (right of 0,10 → 0,0, i.e. west).
+    s.apply(&[Command::CurveEdge { id: lot, edge: 3, radius: Length::from_feet(-5.0) }]).unwrap();
+    let Shape::Polyline { points, .. } = &s.document().get::<Cad>(lot).unwrap().shape else { panic!() };
+    assert!(points.len() > 4);
+    assert!(points[4..].iter().all(|p| p.0.mm() < 0.0), "the new corners lie west of the lot");
+    assert!(s.apply(&[Command::CurveEdge { id: lot, edge: 0, radius: Length::from_feet(2.0) }]).is_err(), "radius under half the edge");
+}

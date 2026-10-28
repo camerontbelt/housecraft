@@ -70,8 +70,22 @@
       ]
     },
     {
-      "step": "(The fourth side: an arc of 450' radius, 150' long)",
-      "gap": "Lot sides are straight; the curved side is entered as its chord (N 30 11 36 W, 149.31'). Row: SITE-29"
+      "step": "The fourth side: Change Line/Arc, an arc of 450' radius bowing out of the lot",
+      "commands": [
+        {
+          "op": "curve_edge",
+          "id": "$lot.0",
+          "edge": 3,
+          "radius": "450'"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$lot.0",
+          "path": "/shape/points",
+          "len_at_least": 6
+        }
+      ]
     },
     {
       "step": "Show Length and Show Angle on the lot lines",

@@ -270,8 +270,22 @@
       ]
     },
     {
-      "step": "The front line parallel to the curved lot edge's chord (Make Parallel), then an arc of 450' radius",
-      "gap": "No curved elevation lines. Row: SITE-29"
+      "step": "The front elevation line made into an arc of 450' radius (Change Line/Arc), bowing toward the street",
+      "commands": [
+        {
+          "op": "curve_edge",
+          "id": "$front",
+          "edge": 0,
+          "radius": "-450'"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$front",
+          "path": "/shape/points",
+          "len_at_least": 6
+        }
+      ]
     },
     {
       "step": "Elevation polyline: a line from the right side into the middle, then a second segment up and left at 165 degrees, at 0\"",

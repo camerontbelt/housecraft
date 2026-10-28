@@ -286,6 +286,11 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
         let obj = query::get_object(doc, id).ok_or("no such object")?;
         let path = e["path"].as_str().expect("get needs path");
         let actual = obj.pointer(path).ok_or(format!("{target} has no {path}"))?;
+        // {"get", "path", "len_at_least": n}: a list with at least n items.
+        if let Some(n) = e.get("len_at_least").and_then(Value::as_u64) {
+            let len = actual.as_array().map_or(0, Vec::len);
+            return if len as u64 >= n { Ok(()) } else { Err(format!("{target}{path} has {len} items, expected at least {n}")) };
+        }
         let want = &e["is"];
         let same = match (length(actual), length(want)) {
             (Some(a), Some(b)) if actual.is_number() => (a - b).abs() < tol,
