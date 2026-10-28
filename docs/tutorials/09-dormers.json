@@ -132,8 +132,27 @@
       ]
     },
     {
-      "step": "(Knee Wall roof setting; Ceiling Break Lines layer; Attic room)",
-      "gap": "No Knee Wall setting, ceiling break lines or Attic room type. Rows: RF-21, RM-18"
+      "step": "The space behind the knee wall is an Attic; ceiling break lines show on Floor 2 where the roof comes down to its ceiling",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:4000,-1200@Floor 2",
+          "set": {
+            "room_type": "$named:room_type:Attic"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:4000,-1200@Floor 2",
+          "path": "/room_type",
+          "is": "$named:room_type:Attic"
+        }
+      ]
+    },
+    {
+      "step": "(Knee Wall roof setting)",
+      "gap": "No Knee Wall setting: walls under a roof are trimmed to it, but the roof doesn't treat them differently. Row: RF-21"
     },
     {
       "step": "Structural Auto Dormer in the attic at the back, centred on the first one, its front 2' in from the back wall",

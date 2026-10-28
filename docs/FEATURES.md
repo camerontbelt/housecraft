@@ -188,7 +188,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-15 | Split rooms inherit the parent room's settings; merged rooms keep the larger room's | P1 | M9 ✓ rooms::sync compares with the plan before the change |
 | RM-16 | Floor/Ceiling Platform defaults shared by new floors (structure, finishes) | P2 | M9 |
 | RM-17 | Outdoor room types (Porch, Deck) are left out of the foundation | P1 | M9 ✓ RoomType.exterior; walls that only enclose outdoor rooms don't shape the foundation |
-| RM-18 | Attic room type (unfinished space under the roof) | P3 | M9 |
+| RM-18 | Attic room type (unfinished space under the roof) | P3 | M9 ✓ new plans have an Attic room type (not living area, no finishes) |
 | RM-19 | Ceiling finish definitions (layers, materials) for the plan, each floor, room types and rooms; lowered ceilings by finish | P2 | M9 ✓ ceiling finish layers on the default set, room types and rooms (or none); they lower the finished ceiling in 3D; per-floor finishes later |
 | RM-20 | Exterior Room (the band round each floor's outside) with Make Room Molding Polyline; molding on/off per polyline edge | P3 | M9 |
 
@@ -313,7 +313,7 @@ These come from reading the whole list and change the architecture, not just the
 | RF-18 | Roof plane editing: break an edge, drag corners, Join Roof Planes (valleys/ridges), curved roof planes | P1 | M9 |
 | RF-19 | Build Roof options: Raise/Lower All Roof Planes, Ignore Top Floor; Display On Floor Above | P2 | M9 |
 | RF-20 | Walls under a roof built on a lower floor stop at its underside (story-and-a-half knee and gable walls) | P1 | M9 ✓ 3D walls are trimmed to the roof's underside |
-| RF-21 | Knee Wall roof setting and ceiling break lines (where a flat ceiling meets the sloped roof underside) | P2 | M9 |
+| RF-21 | Knee Wall roof setting and ceiling break lines (where a flat ceiling meets the sloped roof underside) | P2 | M9 ◐ ceiling break lines drawn dotted on floors under a lower floor's roof; Knee Wall setting later |
 | RF-22 | Dormers: defaults (wall type, frieze), a real window inside (type, size, height), structural dormers that cut the roof and framing | P2 | M9 ◐ dormer defaults (width, wall height, overhang, frieze, structural), the window's width, height, top and sashes, structural dormers cut the roof plane; a dormer wall type and framing cut-outs later |
 
 ## 10. Stairs & ramps

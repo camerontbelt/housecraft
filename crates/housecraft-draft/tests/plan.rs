@@ -952,3 +952,20 @@ fn framing_members_take_role_fills_and_labels() {
     assert!(d.items.iter().any(|i| matches!(&i.prim, Prim::Text { text, .. } if text == "2-2x10 HDR")), "the header is labelled");
     assert!(d.items.iter().any(|i| matches!(&i.prim, Prim::Polygon { .. }) && doc.get::<housecraft_api::model::FramingMember>(i.object.unwrap_or(housecraft_api::model::Id(0))).is_some()));
 }
+
+#[test]
+fn ceiling_break_lines_show_under_a_lower_floors_roof() {
+    let mut s = house();
+    let cmds: Vec<Command> = serde_json::from_value(serde_json::json!([{"op": "build_roof"}, {"op": "add_floor"}])).unwrap();
+    s.apply(&cmds).unwrap();
+    // A low knee-height ceiling on the new floor, under the roof of the one below.
+    let upper = s.document().floors_by_elevation().last().unwrap().id;
+    let low: Command = serde_json::from_value(serde_json::json!({"op": "update", "id": upper.0, "set": {"ceiling_height": "4'"}})).unwrap();
+    s.apply(&[low]).unwrap();
+    let doc = s.document();
+    let mut opts = PlanOptions::first(doc).unwrap();
+    opts.floor = upper;
+    let d = plan(doc, &opts);
+    let roof_lines = d.items.iter().filter(|i| i.object.is_some_and(|o| doc.get::<housecraft_api::model::RoofPlane>(o).is_some()) && matches!(&i.prim, Prim::Polyline { points, stroke, .. } if points.len() == 2 && !stroke.dash.is_empty())).count();
+    assert!(roof_lines >= 2, "{roof_lines} ceiling break lines");
+}

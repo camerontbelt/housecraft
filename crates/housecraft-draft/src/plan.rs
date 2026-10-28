@@ -640,6 +640,35 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             }
         }
     }
+    // Ceiling break lines: where the underside of a roof above comes down to
+    // this floor's ceiling height (a flat ceiling meets the slope there).
+    if let Some(f) = doc.get::<Floor>(opts.floor) {
+        let cz = f.elevation.mm() + f.ceiling_height.mm();
+        // Only under roofs built from a lower floor (a story-and-a-half's upper floor).
+        let below = |r: &RoofPlane| doc.get::<Floor>(r.floor).is_some_and(|rf| rf.elevation.mm() < f.elevation.mm());
+        for r in doc.iter::<RoofPlane>().filter(|r| !r.gable && r.outline.len() >= 3 && below(r)) {
+            let look = ctx.look(r.layer);
+            if !look.visible {
+                continue;
+            }
+            let pts: Vec<housecraft_geom::DVec3> = r.outline.iter().map(|p| housecraft_geom::DVec3::from_array(p.mm())).collect();
+            // The underside sits the plane's thickness (measured square to it) below its top.
+            let drop = r.thickness.mm() / r.pitch.to_radians().cos().max(0.05);
+            let z = cz + drop;
+            let n = pts.len();
+            let mut cut = Vec::new();
+            for i in 0..n {
+                let (a, b) = (pts[i], pts[(i + 1) % n]);
+                if (a.z - z) * (b.z - z) < 0.0 {
+                    let t = (z - a.z) / (b.z - a.z);
+                    cut.push(a.truncate().lerp(b.truncate(), t));
+                }
+            }
+            if cut.len() == 2 && cut[0].distance(cut[1]) > 100.0 {
+                out.push(Some(r.id), Prim::Polyline { points: cut, closed: false, stroke: Stroke { dash: &[1.0, 1.0], ..look.stroke } });
+            }
+        }
+    }
     // Dormers and skylights, drawn dashed like the roof above.
     for d in doc.iter::<Dormer>().filter(|d| d.floor == opts.floor) {
         let look = ctx.look(d.layer);

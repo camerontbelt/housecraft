@@ -220,6 +220,7 @@ pub(crate) fn new_document(name: String) -> Document {
         ("Office", true, "Hardwood"),
         ("Garage", false, "Concrete"),
         ("Porch", false, "Concrete"),
+        ("Attic", false, ""),
         ("Deck", false, "Decking"),
     ] {
         let id = doc.insert(RoomType {

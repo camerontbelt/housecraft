@@ -22,8 +22,10 @@ both. **File › Make a Copy…** would leave you in the original.)
 
 ## Structural dormer (pages 163–165)
 
-1. Draw an interior wall on Floor 2, 8' in from the back wall. That's the knee wall. *Not in HouseCraft yet:* the
-   Knee Wall roof setting, ceiling break lines, and the Attic room type.
+1. Draw an interior wall on Floor 2, 8' in from the back wall. That's the knee wall; it's trimmed to the roof
+   above. Floor 2's plan shows dotted ceiling break lines where the roof built from Floor 1 comes down to Floor 2's
+   ceiling height. Open the room behind the knee wall and set its **Room Type** to **Attic**. *Not in HouseCraft
+   yet:* a Knee Wall roof setting.
 2. Place another **Gable Dormer** on the back slope, centred on the first, 2' in from the back wall.
    Open it and tick **Structural**: the main roof is cut away under it, so it opens into the attic. (Untick it for a
    floating dormer that just sits on the roof, like the front one. Tick **Structural** in the dormer defaults to make
@@ -55,7 +57,6 @@ Chic Cottage-Roof and Chic Cottage-Dormer Option, then drag them onto the new fo
 | Missing | FEATURES row |
 |---|---|
 | A wall type for dormer walls; framing cut round structural dormers | RF-22 |
-| Knee Wall setting, ceiling break lines | RF-21 |
-| Attic room type | RM-18 |
+| Knee Wall setting | RF-21 |
 | Roof Hole tool | RF-16 |
 | Join Roof Planes | RF-18 |

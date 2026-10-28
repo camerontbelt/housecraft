@@ -281,8 +281,23 @@
       ]
     },
     {
-      "step": "(Attic room type)",
-      "gap": "No Attic room type. Row: RM-18"
+      "step": "The little room over the Garage is an Attic",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:12200,-11300@Floor 2",
+          "set": {
+            "room_type": "$named:room_type:Attic"
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:12200,-11300@Floor 2",
+          "path": "/room_type",
+          "is": "$named:room_type:Attic"
+        }
+      ]
     },
     {
       "step": "Gull wing over the porch: half wall pitch 4 in 12, upper 12 in 12 from 7' in from the baseline",

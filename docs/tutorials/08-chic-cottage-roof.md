@@ -34,7 +34,7 @@ Chief builds the roof over Floor 1 (Ignore Top Floor) and raises it 18 1/8". In 
 4. Still on Floor 1: **Build › Roof › Build Roof**. The roof now sits on Floor 1's walls, 115 1/4" up.
 5. **New:** Floor 2's walls now stop under this roof in 3D, as in Chief. Before, they stuck up through it.
 6. Close the gap behind the Garage gable: on Floor 2, drag the end of the porch-front wall to the right wall.
-   *Not in HouseCraft yet:* the Attic room type for the little room it makes.
+   Open the little room it makes and set its **Room Type** to **Attic**.
 
 ## Curved roof and roof details (pages 148–154)
 
@@ -57,7 +57,6 @@ Chief builds the roof over Floor 1 (Ignore Top Floor) and raises it 18 1/8". In 
 | Edit roof planes: break edges, corners, join, curved planes | RF-18 |
 | Raise/Lower and Ignore Top Floor in Build Roof; Display On Floor Above | RF-19 |
 | Automatic roof returns; frieze per plane | RF-03, RF-12 |
-| Attic room type | RM-18 |
 | Roof Plan View; tiled views | PRJ-13, UI-32 |
 
 Added for this tutorial: **Break Wall** (Wall Tools), and **walls under a roof built on a lower floor stop at
