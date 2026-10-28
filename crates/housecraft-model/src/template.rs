@@ -91,6 +91,8 @@ pub(crate) fn new_document(name: String) -> Document {
         auto_roof: false,
         joist_spacing: None,
         rim_material: None,
+                framing_origin: None,
+                bearing_lines: Vec::new(),
         platform: Vec::new(),
     });
 

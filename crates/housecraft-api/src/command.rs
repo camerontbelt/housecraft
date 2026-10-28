@@ -671,6 +671,9 @@ pub enum Command {
         #[serde(default)]
         curved: bool,
     },
+    /// Draw a Bearing Line from `a` to `b` on `floor`: ceiling joists there
+    /// (and the floor joists above) bear and splice on it.
+    AddBearingLine { floor: Option<Id>, a: Point2, b: Point2 },
     /// A deck filling the room around `at`: the space enclosed by railing
     /// walls (and the house). The railings are walls, so the deck has none.
     DeckFromRoom { floor: Option<Id>, at: Point2, height: Option<Length> },
@@ -1396,6 +1399,7 @@ impl Command {
             Command::WallFramingDetail { .. } => "wall_framing_detail",
             Command::AddDeck { .. } => "add_deck",
             Command::DeckFromRoom { .. } => "deck_from_room",
+            Command::AddBearingLine { .. } => "add_bearing_line",
             Command::AddWalkthrough { .. } => "add_walkthrough",
             Command::AddAnnotation3d { .. } => "add_annotation3d",
             Command::OrbitWalkthrough { .. } => "orbit_walkthrough",
@@ -1599,6 +1603,8 @@ impl Command {
                             auto_roof: false,
                             joist_spacing: None,
                             rim_material: None,
+                            framing_origin: None,
+                            bearing_lines: Vec::new(),
                             platform: if floor_structure.is_none() {
                                 housecraft_model::default_platform()
                             } else {
@@ -1624,6 +1630,8 @@ impl Command {
                             auto_roof: false,
                             joist_spacing: None,
                             rim_material: None,
+                            framing_origin: None,
+                            bearing_lines: Vec::new(),
                             platform: if floor_structure.is_none() {
                                 housecraft_model::default_platform()
                             } else {
@@ -3168,6 +3176,12 @@ impl Command {
                 out.created.push(doc.insert(dk));
                 out.created.extend(made.created);
                 out.modified.extend(made.modified);
+            }
+            Command::AddBearingLine { floor, a, b } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                let f = doc.get_mut::<Floor>(floor).ok_or(ApiError::NotFound(floor))?;
+                f.bearing_lines.push([*a, *b]);
+                out.modified.push(floor);
             }
             Command::DeckFromRoom { floor, at, height } => {
                 let floor = ops::resolve_floor(doc, *floor)?;

@@ -276,6 +276,19 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
             Err(format!("{} {role} members mostly run along {found}, expected {want}", members.len()))
         };
     }
+    if let Some(at) = e.get("joist_ends_at_x").and_then(Value::as_f64) {
+        // {"joist_ends_at_x": mm, "floor": ref, "within": mm, "at_least": n}:
+        // that many floor joists on the floor end that close to x = mm.
+        let floor = e["floor"].as_u64().map(Id).ok_or("joist_ends_at_x needs a floor")?;
+        let within = e.get("within").and_then(Value::as_f64).unwrap_or(60.0);
+        let want = e.get("at_least").and_then(Value::as_u64).unwrap_or(3) as usize;
+        let n = doc
+            .iter::<FramingMember>()
+            .filter(|m| m.floor == floor && m.role == FramingRole::FloorJoist)
+            .filter(|m| (m.a.0.mm() - at).abs() <= within || (m.b.0.mm() - at).abs() <= within)
+            .count();
+        return if n >= want { Ok(()) } else { Err(format!("{n} floor joists end within {within} mm of x = {at}, expected {want}")) };
+    }
     if let Some(n) = e.get("rooms").and_then(Value::as_u64) {
         let floor = run.resolve("$floor1").unwrap();
         let found = housecraft_api::geom::rooms::detect(doc, floor).rooms.len();

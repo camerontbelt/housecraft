@@ -687,6 +687,24 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             }
         }
     }
+    // Bearing lines and the Framing Reference Marker, with the framing.
+    if let Some(fl) = doc.active_defaults().layers.framing
+        && let Some(f) = doc.get::<Floor>(opts.floor)
+    {
+        let look = ctx.look(fl);
+        if look.visible {
+            for [a, b] in &f.bearing_lines {
+                out.push(Some(f.id), Prim::Polyline { points: vec![v2(*a), v2(*b)], closed: false, stroke: Stroke { dash: &[6.0, 1.5, 1.0, 1.5], ..look.stroke } });
+            }
+            if let Some(o) = f.framing_origin {
+                let c = v2(o);
+                out.push(Some(f.id), Prim::Polyline { points: housecraft_geom::math::arc_points(c, 150.0, 0.0, 360.0), closed: true, stroke: look.stroke });
+                for d in [DVec2::X, DVec2::Y] {
+                    out.push(Some(f.id), Prim::Polyline { points: vec![c - d * 250.0, c + d * 250.0], closed: false, stroke: look.stroke });
+                }
+            }
+        }
+    }
     for j in doc.iter::<JoistDirection>().filter(|j| j.floor == opts.floor) {
         let look = ctx.look(j.layer);
         if look.visible {

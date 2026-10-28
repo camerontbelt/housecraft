@@ -61,7 +61,25 @@
     },
     {
       "step": "Framing Reference Marker at the outside corner of the framing, bottom left",
-      "gap": "Joist layout starts at each footprint's edge; no Framing Reference Marker to measure it from. Row: FR-33"
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:floor:Floor 1",
+          "set": {
+            "framing_origin": [
+              0.0,
+              -11887.2
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:floor:Floor 1",
+          "path": "/framing_origin/0",
+          "is": "0\""
+        }
+      ]
     },
     {
       "step": "Copy the Framing, Floor layer set as 'Framing Set - Working' and turn on ceiling joists",
@@ -239,7 +257,12 @@
     },
     {
       "step": "(Joists choose the shorter span between bearing walls and beams)",
-      "gap": "Joists run the short way across the whole floor and only splice over bearing walls; draw a Joist Direction line to turn them. Row: FR-33"
+      "expect": [
+        {
+          "joists": "floor_joist",
+          "floor": "$floor1"
+        }
+      ]
     },
     {
       "step": "Post and beam defaults: beams 12\" x 3 1/2\" with joists; 3 1/2\" posts with square footings",
@@ -359,8 +382,27 @@
       ]
     },
     {
-      "step": "(Rebuild: joists butt the first beam and lap over the second)",
-      "gap": "Joists don't stop at or bear on beams. Row: FR-33"
+      "step": "Rebuild: joists butt the first beam and lap over the second",
+      "commands": [
+        {
+          "op": "build_framing",
+          "floor": "$floor1",
+          "parts": {
+            "walls": false,
+            "floors": true,
+            "ceilings": false,
+            "roofs": false
+          }
+        }
+      ],
+      "expect": [
+        {
+          "joist_ends_at_x": 4146.55,
+          "floor": "$floor1",
+          "within": 60.0,
+          "at_least": 6
+        }
+      ]
     },
     {
       "step": "Move a ceiling joist; joists bump and push (Bumping/Pushing snap)",

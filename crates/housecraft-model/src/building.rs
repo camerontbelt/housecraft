@@ -35,6 +35,14 @@ pub struct Floor {
     /// `None` is lumber like the joists.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rim_material: Option<crate::FramingMaterial>,
+    /// Framing Reference Marker: joists (and studs' layout) are spaced from
+    /// this point instead of each footprint's edge.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub framing_origin: Option<Point2>,
+    /// Bearing lines: joists on this floor's ceiling (and the floor above's
+    /// floor joists) bear and splice here, as on a bearing wall.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub bearing_lines: Vec<[Point2; 2]>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

@@ -391,7 +391,7 @@ These come from reading the whole list and change the architecture, not just the
 | FR-30 | Deck framing: planks, borders, beams, joists, posts, footings, blocking; auto-rebuild | P2 | M6 ✓ decks rebuild themselves: planks, border, joists, rims, ledger, beams, posts, footings, railings, optional blocking rows |
 | FR-31 | Deck ledger controls (X18+) | P3 | M6 ✓ a ledger where a deck meets the house (on/off), with its own depth |
 | FR-32 | Deck beam controls | P3 | M6 ✓ beam inset and largest joist span, or beam positions typed by hand |
-| FR-33 | Joist layout by structure: shortest span between bearing walls and beams, joists butting flush beams and bearing on dropped ones; Framing Reference Marker as the layout origin | P2 | M9 |
+| FR-33 | Joist layout by structure: shortest span between bearing walls and beams, joists butting flush beams and bearing on dropped ones; Framing Reference Marker as the layout origin | P2 | M9 ✓ joists take the shorter span between supports, butt flush beams and splice over dropped beams, bearing walls and Bearing Lines; Framing Reference Marker sets the joist layout |
 | FR-34 | Framing defaults: joist spacing per floor, rim joist construction (LVL), Manual Framing defaults for beams/posts, Post with Footing | P3 | M9 ◐ each floor's dialog sets its Joist Spacing and Rim Joists material (LVL…); Manual Framing defaults and Post with Footing later |
 | FR-35 | Automatically rebuild framing when the model changes (per category) | P2 | M9 |
 | FR-36 | Trim/extend framing members to another member (with Sticky Mode); Add Break to split a member | P3 | M9 ◐ Trim / Extend to Second Object and Add Break (Break Wall tool, `break_wall`) work on joists, beams and rafters, keeping rafters on their pitch; Sticky Mode later |

@@ -3635,3 +3635,47 @@ fn deck_defaults_footing_layer_decks_from_railing_rooms_and_pitched_deck_roofs()
     let eave = s.document().get::<Deck>(dk.id).map(|d| housecraft_api::geom::deck::parts(s.document(), d).unwrap().top).unwrap() + 2700.0;
     assert!(top > eave + 300.0, "the ridge rises above the eaves: {top} vs {eave}");
 }
+
+#[test]
+fn joists_take_a_reference_point_short_spans_bearing_lines_and_beams() {
+    let joists = |s: &Session| -> Vec<FramingMember> { s.document().iter::<FramingMember>().filter(|m| m.role == FramingRole::CeilingJoist).cloned().collect() };
+    let build = r#"[{"op": "build_framing", "parts": {"walls": false, "floors": false, "ceilings": true, "roofs": false}}]"#;
+    let ft = |v: f64| v * 304.8;
+    // The 20' x 30' box: ceiling joists run the short way (x).
+    let mut s = boxed();
+    let floor = s.document().floors_by_elevation()[0].id;
+    let set = s.document().settings.active_default_set;
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "framing": { "joist_splice": "butt" } })) }]).unwrap();
+    apply(&mut s, build);
+    let along_x = |js: &[FramingMember]| js.iter().filter(|m| (m.b.0.mm() - m.a.0.mm()).abs() > (m.b.1.mm() - m.a.1.mm()).abs()).count() * 2 > js.len();
+    assert!(along_x(&joists(&s)));
+    // Framing Reference Marker: the joists between the end ones fall on 16" steps from it.
+    s.apply(&[Command::Update { id: floor, set: patch(serde_json::json!({ "framing_origin": ["1'", "1'"] })) }]).unwrap();
+    apply(&mut s, build);
+    let t = s.document().active_defaults().framing.lumber_width.mm();
+    let ys: Vec<f64> = joists(&s).iter().map(|m| m.a.1.mm()).collect();
+    let (lo, hi) = ys.iter().fold((f64::MAX, f64::MIN), |(a, b), y| (a.min(*y), b.max(*y)));
+    for y in ys.iter().filter(|y| **y > lo + 1.0 && **y < hi - 1.0) {
+        let k = (y - ft(1.0) - t / 2.0) / ft(16.0 / 12.0);
+        assert!((k - k.round()).abs() < 1e-6, "joist at {y} is off the 16\" layout from the marker");
+    }
+    // Two bearing lines across the long way make the y spans 10': the joists turn.
+    for y in [10.0, 20.0] {
+        s.apply(&[serde_json::from_value(serde_json::json!({"op": "add_bearing_line", "a": ["-1'", format!("{y}'")], "b": ["21'", format!("{y}'")]})).unwrap()]).unwrap();
+    }
+    apply(&mut s, build);
+    let js = joists(&s);
+    assert!(!along_x(&js), "joists now run y, spliced over the lines");
+    assert!(js.iter().any(|m| (m.b.1.mm() - ft(10.0)).abs() < 1.0 || (m.a.1.mm() - ft(10.0)).abs() < 1.0), "pieces meet over the line");
+    // A flush beam across them at y = 15': joists stop at its faces.
+    let f = s.document().get::<Floor>(floor).unwrap().clone();
+    let depth = s.document().active_defaults().framing.ceiling_joist_depth.mm();
+    let z = f.elevation.mm() + f.ceiling_height.mm() + depth / 2.0;
+    s.apply(&[serde_json::from_value(serde_json::json!({"op": "add_framing_member", "role": "beam", "a": ["-1'", "15'", z], "b": ["21'", "15'", z], "width": "3 1/2\"", "depth": "12\""})).unwrap()]).unwrap();
+    apply(&mut s, build);
+    let js = joists(&s);
+    let face = ft(15.0) - 1.75 * 25.4;
+    assert!(js.iter().any(|m| (m.a.1.mm() - face).abs() < 1.0 || (m.b.1.mm() - face).abs() < 1.0), "butts the beam's face");
+    let through: Vec<_> = js.iter().filter(|m| m.a.1.mm().min(m.b.1.mm()) < ft(15.0) - 10.0 && m.a.1.mm().max(m.b.1.mm()) > ft(15.0) + 10.0).map(|m| (m.a, m.b)).collect();
+    assert!(through.is_empty(), "none run through it: {through:?}");
+}

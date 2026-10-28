@@ -2018,6 +2018,21 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                     pending.push(p);
                 }
             }
+            Tool::BearingLine => {
+                if let Some(a) = pending.pop() {
+                    if a.distance(p) > 100.0 {
+                        commands.push(Command::AddBearingLine { floor, a: pt(a), b: pt(p) });
+                    }
+                } else {
+                    pending.push(p);
+                }
+            }
+            Tool::FramingReference => {
+                commands.push(Command::Update {
+                    id: app.plan.floor,
+                    set: serde_json::json!({ "framing_origin": pt(p) }).as_object().cloned().unwrap_or_default(),
+                });
+            }
             Tool::JoistDirection => {
                 if let Some(c) = pending.pop() {
                     if c.distance(p) > 10.0 {

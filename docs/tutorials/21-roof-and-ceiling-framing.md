@@ -35,7 +35,8 @@ rafter depth for one plane, and choosing which height stays put when it changes.
 
 ## Ceiling framing (pages 374–376)
 
-1. *Not in HouseCraft yet:* the Bearing Line. Ceiling joists bear on walls ticked **Bearing Wall**.
+1. **Build › Framing › Bearing Line**: click both ends of a line across the ceiling joists where they should
+   splice. Ceiling joists bear on it as on a wall ticked **Bearing Wall**.
 2. **Joist Direction** on Floor 2: a horizontal line in the lower part, a vertical one in the upper part. Open each and
    tick **Ceiling** so they steer the ceiling joists.
 3. Go to Floor 2 and choose **Build › Framing › Build Floor and Ceiling Framing (this floor)**.
@@ -63,7 +64,6 @@ rafter depth for one plane, and choosing which height stays put when it changes.
 |---|---|
 | Ridge size; rafter depth per roof plane; height reference | FR-40 |
 | Add Break on a framing member | FR-36 |
-| Bearing Line | FR-33 |
 | Framing fill and labels | FR-38 |
 | Select by type with a tool's marquee | UI-38 |
 | Reference display layer set | LY-07 |

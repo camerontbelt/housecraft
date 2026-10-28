@@ -472,8 +472,53 @@ fn minus_holes(segs: Vec<(f64, f64)>, holes: &[Vec<DVec2>], o: DVec2, dir: DVec2
     segs
 }
 
-/// The joist direction set for a region, or its short way.
-fn joist_axis(doc: &Document, floor: Id, ceiling: bool, poly: &[DVec2]) -> DVec2 {
+/// Something joists meet on their way across: a line in plan they bear and
+/// splice on (a bearing wall, a bearing line, a dropped beam), or a flush
+/// beam they butt into (`butt` is its width).
+#[derive(Debug, Clone, Copy)]
+struct Support {
+    a: DVec2,
+    b: DVec2,
+    butt: Option<f64>,
+}
+
+/// What joists at centre height `z`, `depth` deep, on `floor` meet.
+fn supports(doc: &Document, floor: Id, ceiling: bool, z: f64, depth: f64) -> Vec<Support> {
+    // Bearing walls and lines under the joists: this floor's (ceiling
+    // joists) or the floor below's (floor joists).
+    let wall_floor = if ceiling {
+        Some(floor)
+    } else {
+        let floors = doc.floors_by_elevation();
+        floors.iter().position(|f| f.id == floor).and_then(|i| i.checked_sub(1)).map(|i| floors[i].id)
+    };
+    let mut out = Vec::new();
+    if let Some(wf) = wall_floor {
+        out.extend(doc.walls_on(wf).filter(|w| w.shape.bearing).map(|w| Support { a: v2(w.start), b: v2(w.end), butt: None }));
+        if let Some(f) = doc.get::<Floor>(wf) {
+            out.extend(f.bearing_lines.iter().map(|[a, b]| Support { a: v2(*a), b: v2(*b), butt: None }));
+        }
+    }
+    // Beams placed by hand: flush ones (reaching into the joists' depth)
+    // are butted into; dropped ones (top at the joists' bottom) carry them.
+    let (bottom, top) = (z - depth / 2.0, z + depth / 2.0);
+    for m in doc.iter::<FramingMember>().filter(|m| m.role == FramingRole::Beam && m.manual) {
+        let beam_top = m.a.2.mm().max(m.b.2.mm()) + m.depth.mm() / 2.0;
+        let beam_bottom = m.a.2.mm().min(m.b.2.mm()) - m.depth.mm() / 2.0;
+        let line = (DVec2::new(m.a.0.mm(), m.a.1.mm()), DVec2::new(m.b.0.mm(), m.b.1.mm()));
+        if beam_top > bottom + 1.0 && beam_bottom < top - 1.0 {
+            out.push(Support { a: line.0, b: line.1, butt: Some(m.width.mm() * m.plies.max(1) as f64) });
+        } else if (beam_top - bottom).abs() <= 25.0 {
+            out.push(Support { a: line.0, b: line.1, butt: None });
+        }
+    }
+    out
+}
+
+/// The joist direction set for a region, or the way with the shorter
+/// spans between its edges and the supports across it (the short way
+/// when there are none).
+fn joist_axis(doc: &Document, floor: Id, ceiling: bool, poly: &[DVec2], supports: &[Support]) -> DVec2 {
     if let Some(j) = doc
         .iter::<JoistDirection>()
         .find(|j| j.floor == floor && j.ceiling == ceiling && point_in_polygon(v2(j.at), poly))
@@ -482,7 +527,22 @@ fn joist_axis(doc: &Document, floor: Id, ceiling: bool, poly: &[DVec2]) -> DVec2
     }
     let (lo, hi) = crate::math::bounds(poly.iter().copied()).unwrap_or((DVec2::ZERO, DVec2::ONE));
     let size = hi - lo;
-    if size.x <= size.y { DVec2::X } else { DVec2::Y }
+    let short = if size.x <= size.y { DVec2::X } else { DVec2::Y };
+    let longest_span = |axis: DVec2| {
+        let (a0, a1) = (lo.dot(axis), hi.dot(axis));
+        let mut stops: Vec<f64> = supports
+            .iter()
+            .filter(|s| (s.b - s.a).normalize_or_zero().dot(axis).abs() < 0.3)
+            .filter(|s| point_in_polygon((s.a + s.b) / 2.0, poly))
+            .map(|s| ((s.a + s.b) / 2.0).dot(axis))
+            .filter(|t| *t > a0 && *t < a1)
+            .collect();
+        stops.extend([a0, a1]);
+        stops.sort_by(f64::total_cmp);
+        stops.windows(2).map(|w| w[1] - w[0]).fold(0.0, f64::max)
+    };
+    let other = if short == DVec2::X { DVec2::Y } else { DVec2::X };
+    if longest_span(other) + 1.0 < longest_span(short) { other } else { short }
 }
 
 /// Joists across each building footprint at `z` (their centre), with rim
@@ -501,21 +561,12 @@ fn joists(
     out: &mut Vec<Member>,
 ) {
     let start = out.len();
-    joists_inner(doc, floor, ceiling, z, spacing, t, depth, holes, out);
-    if splice == JoistSplice::Continuous {
-        return;
-    }
-    // Bearing walls under the joists: this floor's (ceiling joists) or the
-    // floor below's (floor joists).
-    let wall_floor = if ceiling {
-        Some(floor)
-    } else {
-        let floors = doc.floors_by_elevation();
-        floors.iter().position(|f| f.id == floor).and_then(|i| i.checked_sub(1)).map(|i| floors[i].id)
-    };
-    let Some(wall_floor) = wall_floor else { return };
-    let bearing: Vec<(DVec2, DVec2)> = doc.walls_on(wall_floor).filter(|w| w.shape.bearing).map(|w| (v2(w.start), v2(w.end))).collect();
-    if bearing.is_empty() {
+    let supports = supports(doc, floor, ceiling, z, depth);
+    joists_inner(doc, floor, ceiling, z, spacing, t, depth, holes, &supports, out);
+    // Joists always stop at flush beams; they splice over bearing supports
+    // unless they run continuous.
+    let supports: Vec<Support> = supports.into_iter().filter(|s| s.butt.is_some() || splice != JoistSplice::Continuous).collect();
+    if supports.is_empty() {
         return;
     }
     let lap = 12.0 * IN;
@@ -525,35 +576,47 @@ fn joists(
         let (a, b) = (m.a.truncate(), m.b.truncate());
         let len = a.distance(b);
         let dir = (b - a) / len.max(1e-9);
-        // Where the joist crosses each bearing wall, along it.
-        let mut cuts: Vec<f64> = bearing
+        // Where the joist crosses each support, along it.
+        let mut cuts: Vec<(f64, Option<f64>)> = supports
             .iter()
-            .filter_map(|(p, q)| {
-                let e = *q - *p;
+            .filter_map(|sp| {
+                let e = sp.b - sp.a;
                 let den = dir.perp_dot(e);
                 if den.abs() < 1e-6 {
                     return None;
                 }
-                let s = (p - a).perp_dot(e) / den;
-                let u = (p - a).perp_dot(dir) / den;
-                (s > lap && s < len - lap && (0.0..=1.0).contains(&u)).then_some(s)
+                let s = (sp.a - a).perp_dot(e) / den;
+                let u = (sp.a - a).perp_dot(dir) / den;
+                let room = sp.butt.unwrap_or(lap);
+                (s > room && s < len - room && (0.0..=1.0).contains(&u)).then_some((s, sp.butt))
             })
             .collect();
         if !role_ok || cuts.is_empty() {
             spliced.push(m);
             continue;
         }
-        cuts.sort_by(f64::total_cmp);
+        cuts.sort_by(|x, y| x.0.total_cmp(&y.0));
         let at = |s: f64, side: f64| (a + dir * s + perp(dir) * side).extend(m.a.z);
-        let mut from = 0.0;
-        for (k, c) in cuts.iter().chain(std::iter::once(&len)).enumerate() {
-            let last = k == cuts.len();
-            let (s0, s1, side) = match splice {
-                JoistSplice::Lap => (if k == 0 { from } else { from - lap / 2.0 }, if last { *c } else { c + lap / 2.0 }, if k % 2 == 1 { t } else { 0.0 }),
-                _ => (from, *c, 0.0),
+        let (mut from, mut prev): (f64, Option<Option<f64>>) = (0.0, None);
+        let mut laps = 0;
+        for (c, butt) in cuts.iter().copied().map(|(c, b)| (c, Some(b))).chain(std::iter::once((len, None))) {
+            let lapping = splice == JoistSplice::Lap;
+            let s0 = match prev {
+                Some(Some(w)) => from + w / 2.0,
+                Some(None) if lapping => from - lap / 2.0,
+                _ => from,
             };
+            let s1 = match butt {
+                Some(Some(w)) => c - w / 2.0,
+                Some(None) if lapping => c + lap / 2.0,
+                _ => c,
+            };
+            let side = if lapping && laps % 2 == 1 { t } else { 0.0 };
             spliced.push(Member { a: at(s0, side), b: at(s1, side), ..m.clone() });
-            from = *c;
+            if butt == Some(None) {
+                laps += 1;
+            }
+            (from, prev) = (c, butt);
         }
     }
     out.extend(spliced);
@@ -569,9 +632,11 @@ fn joists_inner(
     t: f64,
     depth: f64,
     holes: &[Vec<DVec2>],
+    supports: &[Support],
     out: &mut Vec<Member>,
 ) {
     let role = if ceiling { FramingRole::CeilingJoist } else { FramingRole::FloorJoist };
+    let origin = doc.get::<Floor>(floor).and_then(|f| f.framing_origin).map(v2);
     for fp in crate::rooms::detect(doc, floor).footprints {
         let mut fp = fp;
         if signed_area(&fp) < 0.0 {
@@ -582,13 +647,27 @@ fn joists_inner(
         if inner.len() < 3 {
             continue;
         }
-        let axis = joist_axis(doc, floor, ceiling, &fp);
+        let axis = joist_axis(doc, floor, ceiling, &fp, supports);
         let n = perp(axis);
         let proj: Vec<f64> = inner.iter().map(|p| p.dot(n)).collect();
         let (lo, hi) = (proj.iter().copied().fold(f64::MAX, f64::min), proj.iter().copied().fold(f64::MIN, f64::max));
-        let mut s = lo + t / 2.0;
-        let mut k = 0;
-        while s <= hi - t / 2.0 + 1e-6 {
+        // Joist centres: one against each edge, and the rest on the
+        // spacing from the edge, or from the Framing Reference Marker.
+        let (first, last) = (lo + t / 2.0, hi - t / 2.0);
+        let base = origin.map_or(first, |o| o.dot(n) + t / 2.0);
+        let mut at = vec![first];
+        let mut k = ((first + t - base) / spacing).ceil();
+        while base + k * spacing < last - t {
+            let c = base + k * spacing;
+            if c > first + t {
+                at.push(c);
+            }
+            k += 1.0;
+        }
+        if last > first + 1.0 {
+            at.push(last);
+        }
+        for s in at {
             let o = n * s;
             let segs = minus_holes(clip_line(&inner, o, axis), holes, o, axis);
             for (t0, t1) in segs {
@@ -597,10 +676,6 @@ fn joists_inner(
                     out.push(Member { role, a: a.extend(z), b: b.extend(z), width: t, depth, rotation: 0.0, host: floor, floor });
                 }
             }
-            // The last joist sits against the far edge.
-            k += 1;
-            let next = lo + k as f64 * spacing;
-            s = if s < hi - t / 2.0 - 1.0 && next > hi - t / 2.0 { hi - t / 2.0 } else { next };
         }
         if !ceiling {
             let k = rim_line.len();

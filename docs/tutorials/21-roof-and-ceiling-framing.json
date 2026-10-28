@@ -236,8 +236,28 @@
       ]
     },
     {
-      "step": "(Bearing Line)",
-      "gap": "No Bearing Line; ceiling joists bear on walls marked Bearing. Row: FR-33"
+      "step": "Bearing Line across the ceiling joists, where they splice",
+      "commands": [
+        {
+          "op": "add_bearing_line",
+          "floor": "$named:floor:Floor 2",
+          "a": [
+            0.0,
+            -4572.0
+          ],
+          "b": [
+            12192.0,
+            -4572.0
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:floor:Floor 2",
+          "path": "/bearing_lines/0/1/1",
+          "is": -4572.0
+        }
+      ]
     },
     {
       "step": "Build Framing once: ceilings, Floor 2 (16\" OC)",
