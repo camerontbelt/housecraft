@@ -1513,7 +1513,8 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 width: None,
                 wall_height: None,
                 pitch: None,
-                style,
+                style: Some(style),
+                structural: None,
             }),
             Tool::Skylight => commands.push(Command::AddSkylight { at: pt(p), width: None, length: None }),
             Tool::BayWindow(_) | Tool::CornerWindow => {

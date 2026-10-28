@@ -1511,6 +1511,54 @@ pub struct Dormer {
     pub window: bool,
     pub overhang: Length,
     pub thickness: Length,
+    /// The window's size; fills the front wall when unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window_width: Option<Length>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window_height: Option<Length>,
+    /// The window's top above the dormer's floor (where its front wall
+    /// meets the roof); just under the eave when unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window_top: Option<Length>,
+    /// Side-by-side sashes (2 for a double casement).
+    #[serde(default = "one_u32")]
+    pub window_lites: u32,
+    /// A frieze board under the eaves.
+    #[serde(default)]
+    pub frieze: bool,
+    /// Structural: the main roof is cut away under it, opening it to the
+    /// attic (floating dormers just sit on the roof).
+    #[serde(default)]
+    pub structural: bool,
+}
+
+fn one_u32() -> u32 {
+    1
+}
+
+/// What new dormers start with.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct DormerDefaults {
+    pub width: Length,
+    pub wall_height: Length,
+    pub overhang: Length,
+    pub style: DormerStyle,
+    pub frieze: bool,
+    pub structural: bool,
+}
+
+impl Default for DormerDefaults {
+    fn default() -> Self {
+        DormerDefaults {
+            width: Length::from_feet(5.0),
+            wall_height: Length::from_feet(3.0),
+            overhang: Length::from_inches(8.0),
+            style: DormerStyle::Gable,
+            frieze: false,
+            structural: false,
+        }
+    }
 }
 
 /// A dormer's roof.

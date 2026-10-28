@@ -1519,6 +1519,16 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "facing": f })));
             }
             ed.check(ui, "Window", "window", "Window in the front", d.window);
+            if d.window {
+                ed.opt_length(ui, "Window Width", "window_width", d.window_width, None);
+                ed.opt_length(ui, "Window Height", "window_height", d.window_height, None);
+                ed.opt_length(ui, "Window Top", "window_top", d.window_top, None);
+                if let Some(n) = ed.number(ui, "Sashes Across", "window_lites", d.window_lites as f64) {
+                    ed.out.push(patch(id, json!({ "window_lites": n.clamp(1.0, 6.0).round() as u32 })));
+                }
+            }
+            ed.check(ui, "Frieze", "frieze", "Frieze board under the eave", d.frieze);
+            ed.check(ui, "Structural", "structural", "Cut the main roof under it (open to the attic)", d.structural);
             ed.pick::<Layer>(ui, "Layer", "layer", Some(d.layer), None);
         }
         Object::Deck(dk) => {

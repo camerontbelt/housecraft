@@ -3802,3 +3802,27 @@ fn joists_take_their_framing_type() {
     assert!(!joists.is_empty() && joists.iter().all(|m| m.material == FramingMaterial::HatChannel));
     assert_eq!(FramingMaterial::IJoist.name(), "I-Joist");
 }
+
+#[test]
+fn dormer_defaults_windows_frieze_and_structural_dormers() {
+    let mut s = boxed();
+    apply(&mut s, r#"[{"op": "build_roof"}]"#);
+    let set = s.document().settings.active_default_set;
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "dormer": { "width": "96\"", "frieze": true } })) }]).unwrap();
+    // On the box's long west slope.
+    let floating = apply(&mut s, r#"[{"op": "add_dormer", "at": ["3'", "15'"]}]"#).created[0];
+    let d = s.document().get::<Dormer>(floating).unwrap().clone();
+    assert_eq!(d.width, Length::from_inches(96.0));
+    assert!(d.frieze && !d.structural);
+    s.apply(&[Command::Update { id: floating, set: patch(serde_json::json!({ "window_width": "72\"", "window_height": "24\"", "window_lites": 2 })) }]).unwrap();
+    let roof_faces = |s: &Session| {
+        let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+        mesh.faces.iter().filter(|f| mesh.parts[f.part].category == housecraft_api::geom::mesh::Category::Roof && s.document().get::<RoofPlane>(mesh.parts[f.part].object).is_some()).count()
+    };
+    let before = roof_faces(&s);
+    s.apply(&[Command::Update { id: floating, set: patch(serde_json::json!({ "structural": true })) }]).unwrap();
+    let d = s.document().get::<Dormer>(floating).unwrap().clone();
+    let hole = housecraft_api::geom::dormer::opening(s.document(), &d).unwrap();
+    assert_eq!(hole.len(), 4);
+    assert!(roof_faces(&s) > before, "the plane under it is cut into pieces round the hole");
+}

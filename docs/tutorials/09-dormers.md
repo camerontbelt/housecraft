@@ -11,21 +11,23 @@ both. **File › Make a Copy…** would leave you in the original.)
 
 ## Auto floating dormer (pages 161–163)
 
-1. *Not in HouseCraft yet:* dormer defaults (wall type, frieze). The width is set on each dormer.
+1. Dormer defaults: **Edit › Default Settings…** › **Dormers**: **Width** `96"`, tick **Frieze**. The dormer's walls
+   look like the plan's exterior walls. *Not in HouseCraft yet:* picking a wall type for dormers.
 2. **Edit › Default Settings… › Windows**: width `72"`, height `48"`, head height `93 1/2"`.
 3. On **Floor 1** (the roof is built there), choose **Roof Tools › Gable Dormer** and click on the front slope,
-   left of the stairs. Open the dormer: width `96"`. Drag it so it's centred on the Dining room with its front
-   2' in from the front wall.
-4. *Not in HouseCraft yet:* opening the dormer's window to change its type, size or height. The window is part
-   of the dormer (tick or untick **Window**).
+   left of the stairs. It starts 96" wide. Drag it so it's centred on the Dining room with its front 2' in from the
+   front wall.
+4. Open the dormer to set its window: **Window Width** `72"`, **Window Height** `48"`, **Window Top** `56"` (above
+   the dormer's floor) and **Sashes Across** `2` for a double casement.
 
 ## Structural dormer (pages 163–165)
 
 1. Draw an interior wall on Floor 2, 8' in from the back wall. That's the knee wall. *Not in HouseCraft yet:* the
    Knee Wall roof setting, ceiling break lines, and the Attic room type.
 2. Place another **Gable Dormer** on the back slope, centred on the first, 2' in from the back wall.
-   *Not in HouseCraft yet:* structural dormers. HouseCraft's dormers sit on the roof like Chief's floating ones,
-   so they don't cut the roof or its framing.
+   Open it and tick **Structural**: the main roof is cut away under it, so it opens into the attic. (Untick it for a
+   floating dormer that just sits on the roof, like the front one. Tick **Structural** in the dormer defaults to make
+   new dormers structural.)
 
 ## Manual dormer (pages 166–171)
 
@@ -52,7 +54,7 @@ Chic Cottage-Roof and Chic Cottage-Dormer Option, then drag them onto the new fo
 
 | Missing | FEATURES row |
 |---|---|
-| Dormer defaults, a real dormer window, structural dormers | RF-22 |
+| A wall type for dormer walls; framing cut round structural dormers | RF-22 |
 | Knee Wall setting, ceiling break lines | RF-21 |
 | Attic room type | RM-18 |
 | Roof Hole tool | RF-16 |

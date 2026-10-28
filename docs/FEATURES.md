@@ -314,7 +314,7 @@ These come from reading the whole list and change the architecture, not just the
 | RF-19 | Build Roof options: Raise/Lower All Roof Planes, Ignore Top Floor; Display On Floor Above | P2 | M9 |
 | RF-20 | Walls under a roof built on a lower floor stop at its underside (story-and-a-half knee and gable walls) | P1 | M9 ✓ 3D walls are trimmed to the roof's underside |
 | RF-21 | Knee Wall roof setting and ceiling break lines (where a flat ceiling meets the sloped roof underside) | P2 | M9 |
-| RF-22 | Dormers: defaults (wall type, frieze), a real window inside (type, size, height), structural dormers that cut the roof and framing | P2 | M9 |
+| RF-22 | Dormers: defaults (wall type, frieze), a real window inside (type, size, height), structural dormers that cut the roof and framing | P2 | M9 ◐ dormer defaults (width, wall height, overhang, frieze, structural), the window's width, height, top and sashes, structural dormers cut the roof plane; a dormer wall type and framing cut-outs later |
 
 ## 10. Stairs & ramps
 

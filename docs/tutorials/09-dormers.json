@@ -7,8 +7,26 @@
       "step": "Make a copy of the plan as 'Chic Cottage-Dormer Option' and open it"
     },
     {
-      "step": "Dormer defaults: frieze, Shingle-6 walls, 96\" wide",
-      "gap": "No dormer defaults (wall type, frieze); each dormer gets its width when placed. Row: RF-22"
+      "step": "Dormer defaults: frieze, 96\" wide (the walls use the plan's exterior wall look)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "dormer": {
+              "width": "96\"",
+              "frieze": true
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/dormer/frieze",
+          "is": true
+        }
+      ]
     },
     {
       "step": "Window defaults for dormer windows: 72\" x 48\", top at 93 1/2\", 3 lites high",
@@ -63,7 +81,25 @@
     },
     {
       "step": "Dormer window: double casement, 72\" x 48\", top at 56\" (above the dormer's floor)",
-      "gap": "A dormer's window is part of the dormer (on or off), not a window you can open and change. Row: RF-22"
+      "commands": [
+        {
+          "op": "update",
+          "id": "$front",
+          "set": {
+            "window_width": "72\"",
+            "window_height": "48\"",
+            "window_top": "56\"",
+            "window_lites": 2
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$front",
+          "path": "/window_lites",
+          "is": 2
+        }
+      ]
     },
     {
       "step": "Knee wall 8' in from the back wall (Ceiling Break Lines show where it goes), the space behind it an Attic",
@@ -123,8 +159,28 @@
       ]
     },
     {
-      "step": "(Structural vs floating dormers)",
-      "gap": "HouseCraft dormers sit on the roof (like Chief's floating dormers); there's no structural dormer that cuts the roof and framing. Row: RF-22"
+      "step": "Structural dormer: it cuts the main roof under it and opens to the attic (the front one stays floating)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$back",
+          "set": {
+            "structural": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$back",
+          "path": "/structural",
+          "is": true
+        },
+        {
+          "get": "$front",
+          "path": "/frieze",
+          "is": true
+        }
+      ]
     },
     {
       "step": "Manual dormer: a roof hole drawn over the attic at the back right",

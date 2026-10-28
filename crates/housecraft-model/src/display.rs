@@ -371,6 +371,8 @@ pub struct DefaultSet {
     pub roads: crate::RoadDefaults,
     #[serde(default)]
     pub fence: crate::FenceDefaults,
+    #[serde(default)]
+    pub dormer: crate::DormerDefaults,
     /// Ceiling finish layers for rooms whose type has none.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub ceiling_finish: Vec<crate::WallLayer>,

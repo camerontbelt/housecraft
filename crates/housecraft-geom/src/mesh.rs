@@ -504,7 +504,18 @@ pub fn build(doc: &Document, only_floor: Option<Id>) -> Mesh {
         } else {
             Vec::new()
         };
-        roof_plane_mesh(plane, roof.fascia.mm(), roof.shadow_board.mm(), &bands, &mut mesh);
+        // Structural dormers cut the plane under them.
+        let holes: Vec<Vec<DVec2>> = doc
+            .iter::<housecraft_model::Dormer>()
+            .filter(|d| d.floor == plane.floor)
+            .filter_map(|d| crate::dormer::opening(doc, d))
+            .filter(|h| {
+                let top: Vec<DVec3> = plane.outline.iter().map(|p| DVec3::from_array(p.mm())).collect();
+                let c = h.iter().copied().sum::<DVec2>() / h.len() as f64;
+                crate::roof_extras::plane_z(&top, c).is_some()
+            })
+            .collect();
+        roof_plane_mesh(plane, roof.fascia.mm(), roof.shadow_board.mm(), &bands, &holes, &mut mesh);
         mesh.end();
     }
     for stair in doc.iter::<housecraft_model::Stair>() {
@@ -1212,7 +1223,7 @@ fn stairwell_holes(doc: &Document, floor: Id) -> (Vec<Vec<DVec2>>, Vec<Vec<DVec2
     (platform, ceiling)
 }
 
-fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, shadow: f64, bands: &[(f64, Surface)], mesh: &mut Mesh) {
+fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, shadow: f64, bands: &[(f64, Surface)], holes: &[Vec<DVec2>], mesh: &mut Mesh) {
     let top: Vec<DVec3> = plane
         .outline
         .iter()
@@ -1235,8 +1246,26 @@ fn roof_plane_mesh(plane: &housecraft_model::RoofPlane, fascia: f64, shadow: f64
     if crate::roof::newell(&up).z < 0.0 {
         up.reverse();
     }
-    mesh.polygon(&up, Surface::Roof);
-    mesh.polygon(&bottom, Surface::Soffit);
+    if holes.is_empty() {
+        mesh.polygon(&up, Surface::Roof);
+        mesh.polygon(&bottom, Surface::Soffit);
+    } else {
+        // Cut: the pieces left round the holes, top and underside.
+        let flat: Vec<DVec2> = up.iter().map(|p| p.truncate()).collect();
+        for piece in crate::math::minus_convex_holes(&flat, holes) {
+            let lift: Vec<DVec3> = piece.iter().filter_map(|p| crate::roof_extras::plane_z_any(&top, *p).map(|z| p.extend(z))).collect();
+            if lift.len() < 3 {
+                continue;
+            }
+            let mut lift = lift;
+            if crate::roof::newell(&lift).z < 0.0 {
+                lift.reverse();
+            }
+            let under: Vec<DVec3> = lift.iter().rev().map(|p| *p - DVec3::Z * drop).collect();
+            mesh.polygon(&lift, Surface::Roof);
+            mesh.polygon(&under, Surface::Soffit);
+        }
+    }
     let n = top.len();
     for i in 0..n {
         let (a, b) = (top[i], top[(i + 1) % n]);

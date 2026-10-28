@@ -86,6 +86,20 @@ pub fn plan(doc: &Document, d: &Dormer) -> Option<DormerPlan> {
     })
 }
 
+/// The hole a structural dormer cuts in the main roof, in plan: from its
+/// front wall back between its side walls to where they meet the roof.
+pub fn opening(doc: &Document, d: &Dormer) -> Option<Vec<DVec2>> {
+    if !d.structural {
+        return None;
+    }
+    let fr = frame(doc, d)?;
+    let back = match d.style {
+        DormerStyle::Gable => back_to(doc, d, fr.c + fr.s * fr.half, fr.f, fr.z_e),
+        DormerStyle::Shed => shed_back(doc, d, &fr),
+    };
+    Some(vec![fr.c - fr.s * fr.half, fr.c + fr.s * fr.half, fr.c + fr.s * fr.half - fr.f * back, fr.c - fr.s * fr.half - fr.f * back])
+}
+
 /// Where a shed dormer's roof meets the main roof.
 fn shed_back(doc: &Document, d: &Dormer, fr: &Frame) -> f64 {
     let tan = d.pitch.to_radians().tan();
@@ -144,15 +158,29 @@ pub fn mesh(doc: &Document, d: &Dormer, mesh: &mut Mesh) {
     }
     front.push(at(l, fr.z_e));
     two_sided(mesh, &front, Surface::Wall);
-    // The window.
+    // The window: its own size, or filling the front wall.
     if d.window && d.wall_height.mm() > 450.0 && fr.half > 300.0 {
-        let (wl, wr) = (fr.c - fr.s * (fr.half - 220.0) + fr.f * 15.0, fr.c + fr.s * (fr.half - 220.0) + fr.f * 15.0);
-        let (z0, z1) = (fr.z_b + 180.0, fr.z_e - 120.0);
+        let half_w = d.window_width.map_or(fr.half - 220.0, |w| (w.mm() / 2.0).min(fr.half - 60.0));
+        let (wl, wr) = (fr.c - fr.s * half_w + fr.f * 15.0, fr.c + fr.s * half_w + fr.f * 15.0);
+        let z1 = d.window_top.map_or(fr.z_e - 120.0, |t| fr.z_b + t.mm());
+        let z0 = d.window_height.map_or(fr.z_b + 180.0, |h| z1 - h.mm());
         two_sided(mesh, &[at(wl, z0), at(wr, z0), at(wr, z1), at(wl, z1)], Surface::Glass);
         let sill = [at(wl, z0 - 40.0), at(wr, z0 - 40.0), at(wr, z0), at(wl, z0)];
         two_sided(mesh, &sill, Surface::Frame);
         let head = [at(wl, z1), at(wr, z1), at(wr, z1 + 40.0), at(wl, z1 + 40.0)];
         two_sided(mesh, &head, Surface::Frame);
+        // Mullions between the sashes.
+        let lites = d.window_lites.max(1);
+        for k in 1..lites {
+            let p = wl.lerp(wr, k as f64 / lites as f64) + fr.f * 5.0;
+            let (a, b) = (p - fr.s * 25.0, p + fr.s * 25.0);
+            two_sided(mesh, &[at(a, z0), at(b, z0), at(b, z1), at(a, z1)], Surface::Frame);
+        }
+    }
+    // A frieze board under the eave across the front.
+    if d.frieze {
+        let (fl, frr) = (l + fr.f * 20.0, r + fr.f * 20.0);
+        two_sided(mesh, &[at(fl, fr.z_e - 140.0), at(frr, fr.z_e - 140.0), at(frr, fr.z_e), at(fl, fr.z_e)], Surface::Trim);
     }
     match d.style {
         DormerStyle::Gable => {

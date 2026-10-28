@@ -1296,6 +1296,27 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                         commands.push(p(json!({"ceiling_finish": crate::util::parse_finish(doc, &t)})));
                     }
                 });
+                egui::CollapsingHeader::new("Dormers").show(ui, |ui| {
+                    let dd = &d.dormer;
+                    egui::Grid::new("dormer_defaults").num_columns(2).show(ui, |ui| {
+                        for (label, key, v) in [("Width", "width", dd.width), ("Front wall height", "wall_height", dd.wall_height), ("Overhang", "overhang", dd.overhang)] {
+                            len_row(ui, doc, &mut app.bufs, label, ("dormer", key), v, |v| {
+                                commands.push(p(json!({"dormer": {key: v}})))
+                            });
+                        }
+                        ui.label("Options");
+                        ui.horizontal(|ui| {
+                            let (mut fz, mut st) = (dd.frieze, dd.structural);
+                            if ui.checkbox(&mut fz, "Frieze").changed() {
+                                commands.push(p(json!({"dormer": {"frieze": fz}})));
+                            }
+                            if ui.checkbox(&mut st, "Structural (cuts the roof)").changed() {
+                                commands.push(p(json!({"dormer": {"structural": st}})));
+                            }
+                        });
+                        ui.end_row();
+                    });
+                });
                 egui::CollapsingHeader::new("Decks").show(ui, |ui| {
                     let dd = &d.deck;
                     egui::Grid::new("deck_defaults").num_columns(2).show(ui, |ui| {

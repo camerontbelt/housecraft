@@ -1035,8 +1035,12 @@ pub enum Command {
         width: Option<Length>,
         wall_height: Option<Length>,
         pitch: Option<f64>,
+        /// The default set's when unset.
         #[serde(default)]
-        style: DormerStyle,
+        style: Option<DormerStyle>,
+        /// Structural (cuts the roof); the default set's when unset.
+        #[serde(default)]
+        structural: Option<bool>,
     },
     /// A skylight in the roof plane at plan point `at`.
     AddSkylight { at: Point2, width: Option<Length>, length: Option<Length> },
@@ -3819,7 +3823,7 @@ impl Command {
             Command::SetAngleFormat { format } => doc.settings.angle_format = *format,
             Command::AutoOutlets { floor } => ops::auto_outlets(doc, *floor, &mut out)?,
             Command::ConvertSpacePlan { ids } => ops::convert_space_plan(doc, ids, &mut out)?,
-            Command::AddDormer { floor, at, facing, width, wall_height, pitch, style } => {
+            Command::AddDormer { floor, at, facing, width, wall_height, pitch, style, structural } => {
                 let p = housecraft_geom::v2(*at);
                 // The roof plane under the point gives the floor and facing.
                 let plane = doc
@@ -3834,19 +3838,26 @@ impl Command {
                 let pts: Vec<housecraft_geom::DVec3> = plane.outline.iter().map(|q| { let [x, y, z] = q.mm(); housecraft_geom::DVec3::new(x, y, z) }).collect();
                 let face = facing.unwrap_or_else(|| housecraft_geom::roof_extras::downslope(&pts).to_angle().to_degrees());
                 let layer = doc.defaults_for(plane.floor).layers.roofs.unwrap_or(plane.layer);
+                let dd = doc.defaults_for(plane.floor).dormer.clone();
                 out.created.push(doc.insert(Dormer {
                     id: Id(0),
                     floor: plane.floor,
                     layer,
                     position: *at,
                     facing: face,
-                    width: width.unwrap_or(Length::from_feet(5.0)),
-                    wall_height: wall_height.unwrap_or(Length::from_feet(3.0)),
+                    width: width.unwrap_or(dd.width),
+                    wall_height: wall_height.unwrap_or(dd.wall_height),
                     pitch: pitch.unwrap_or(plane.pitch.clamp(15.0, 60.0)),
-                    style: *style,
+                    style: style.unwrap_or(dd.style),
                     window: true,
-                    overhang: Length::from_inches(8.0),
+                    overhang: dd.overhang,
                     thickness: plane.thickness,
+                    window_width: None,
+                    window_height: None,
+                    window_top: None,
+                    window_lites: 1,
+                    frieze: dd.frieze,
+                    structural: structural.unwrap_or(dd.structural),
                 }));
             }
             Command::AddSkylight { at, width, length } => {
