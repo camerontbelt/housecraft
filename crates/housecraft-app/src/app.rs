@@ -4404,6 +4404,7 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                     floor: self.plan.floor,
                     layer_set: Some(self.plan.layer_set),
                     phase: self.plan.phase,
+                    plan_view: self.plan.view,
                 }),
             },
             _ => None,

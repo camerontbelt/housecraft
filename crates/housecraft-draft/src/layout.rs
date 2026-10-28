@@ -43,6 +43,7 @@ fn source_drawing_on(doc: &Document, s: &LayoutSource, page: Option<(&Layout, us
             floor,
             layer_set,
             phase,
+            plan_view,
         } => {
             let mut opts = PlanOptions::first(doc).unwrap_or(PlanOptions {
                 floor: *floor,
@@ -58,6 +59,14 @@ fn source_drawing_on(doc: &Document, s: &LayoutSource, page: Option<(&Layout, us
                 opts.layer_set = *ls;
             }
             opts.phase = *phase;
+            // A linked saved plan view decides how the plan looks.
+            if let Some(v) = plan_view.and_then(|v| doc.get::<PlanView>(v)) {
+                opts.layer_set = v.layer_set;
+                opts.phase = v.phase;
+                opts.default_set = Some(v.default_set);
+                opts.reference_floor = v.reference_floor;
+                opts.references = v.references.clone();
+            }
             (plan(doc, &opts), true)
         }
         LayoutSource::View { view } => match doc.get::<SectionView>(*view) {
@@ -449,10 +458,19 @@ fn page_boxes(doc: &Document, layout: &Layout, from: usize, page: usize, out: &m
         // Caption: number, name and scale under the box (moved by its offset).
         let shift = b.caption_offset.map_or(DVec2::ZERO, housecraft_geom::v2);
         let lo = lo + shift;
-        let caption = b
-            .label
-            .as_deref()
-            .map_or_else(|| source_name(doc, &b.source), |l| crate::macros::expand_page(doc, layout, page, l));
+        // Callout labels: the box's number, the view's name, its scale and
+        // the page it links to, then the page and plan macros.
+        let caption = b.label.as_deref().map_or_else(
+            || source_name(doc, &b.source),
+            |l| {
+                let l = l
+                    .replace("{number}", &housecraft_api::layouts::box_number(doc, b).map_or(String::new(), |n| n.to_string()))
+                    .replace("{view}", &source_name(doc, &b.source).to_uppercase())
+                    .replace("{scale}", &if model { scale_label(scale, imperial(doc)) } else { String::new() })
+                    .replace("{link_sheet}", b.link_page.and_then(|p| layout.pages.get(p as usize)).map_or("", |s| s.as_str()));
+                crate::macros::expand_page(doc, layout, page, &l)
+            },
+        );
         let caption_y = lo.y - 4.0;
         let mut text_x = lo.x;
         if let Some(n) = housecraft_api::layouts::box_number(doc, b).filter(|_| from == page) {

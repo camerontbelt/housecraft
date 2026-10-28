@@ -14,8 +14,9 @@ so page 6 here appears as "page 7" in the menu (Chief's page 0 is HouseCraft's f
    `1/4" = 1'-0"`. Plans sent without a scale take it; you can still change each box's **Scale**.
 2. Pick the dimensioned floor plan view on the top toolbar. **File › Layout › Send to Layout › Chic Cottage, page …**
    for Floor 1 Plan. Open the new box and set **Scale** `1/4" = 1'-0"`.
-3. Switch to **Electrical Plan** and send it to the Electrical Floor 1 page the same way. The box keeps the view's
-   layer set, so it shows the electrical layers. (Chief links the saved plan view; HouseCraft links its layer set.)
+3. Switch to **Electrical Plan** and send it to the Electrical Floor 1 page the same way. The box is linked to that
+   saved plan view, so it shows the view's layers and follows any change to the view. (Open a box and pick another
+   view under **Shows** to relink it.)
 4. Switch to **Site Plan** and send it to the Site Plan page. Open the box and set **Scale** `1" = 100'-0"`.
 5. Crop and move it with **Left**, **Bottom**, **Width** and **Height** (paper inches) in the box's dialog, or drag its
    handles. **Rotation** `90` turns the plan inside the box. **Center Object › On Page** centres the box inside the
@@ -29,9 +30,9 @@ so page 6 here appears as "page 7" in the menu (Chief's page 0 is HouseCraft's f
    click towards it. Name the view `Exterior Elevation - Right`. Send it to the Elevations page at `1/4" = 1'-0"`.
 3. Crop it and move it into a corner. Section and elevation boxes are live drawings that follow the model, colour
    filled like Chief's colour plot lines. Tick **Lines Only** in the box's dialog for plain lines.
-4. Open the Stair Section box and type a **Caption** such as `S1 STAIR SECTION 1/2" = 1'-0" (A1.3)`. *Not in
-   HouseCraft yet:* callout-style labels with macros and links to other pages. **Marker** puts the caption in a circle,
-   hexagon, square or diamond.
+4. Open the Stair Section box. Set **Link to Page** to A1.3 and type the **Caption** `S{number} {view}  {scale}
+   ({link_sheet})`: it reads `S1 STAIR SECTION  1/2" = 1'-0"  (A1.3)` and keeps up if the box is renumbered or the
+   pages are relabelled. **Marker** puts the caption in a circle, hexagon, square or diamond.
 
 ## Perspective views (pages 494–496)
 
@@ -49,7 +50,6 @@ With the layout open, **File › Layout › Export Layout as PDF…** writes eve
 | Missing | FEATURES row |
 |---|---|
 | Live 3D views on layout pages | PRJ-48 |
-| Callout labels; linking a saved plan view | PRJ-25 |
 
 **Fixed while following this tutorial:** a layout box's **Scale** list now has engineering scales for site plans
 (1" = 10', 20', 50' and 100'), and they're labelled that way.

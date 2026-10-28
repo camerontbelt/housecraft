@@ -1184,8 +1184,14 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 let mut sources: Vec<LayoutSource> = doc
                     .floors_by_elevation()
                     .iter()
-                    .map(|f| LayoutSource::Plan { floor: f.id, layer_set: None, phase: Default::default() })
+                    .map(|f| LayoutSource::Plan { floor: f.id, layer_set: None, phase: Default::default(), plan_view: None })
                     .collect();
+                sources.extend(doc.iter::<PlanView>().map(|v| LayoutSource::Plan {
+                    floor: v.floor.unwrap_or_else(|| doc.floors_by_elevation()[0].id),
+                    layer_set: Some(v.layer_set),
+                    phase: v.phase,
+                    plan_view: Some(v.id),
+                }));
                 sources.extend(doc.iter::<SectionView>().map(|v| LayoutSource::View { view: v.id }));
                 sources.extend(doc.iter::<CadDetail>().map(|d| LayoutSource::Detail { detail: d.id }));
                 let mut chosen = b.source.clone();
@@ -1335,6 +1341,25 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             }
             if matches!(b.source, LayoutSource::View { .. }) {
                 ed.check(ui, "Lines Only", "lines_only", "Plot lines without the colour fill", b.lines_only);
+            }
+            if let Some(l) = doc.get::<Layout>(b.layout) {
+                Ed::label(ui, "Link to Page");
+                let mut chosen = b.link_page;
+                egui::ComboBox::from_id_salt(ed.key("link_page"))
+                    .selected_text(chosen.and_then(|p| l.pages.get(p as usize)).map_or("None", |p| p.as_str()))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut chosen, None, "None");
+                        for (i, p) in l.pages.iter().enumerate() {
+                            ui.selectable_value(&mut chosen, Some(i as u32), p);
+                        }
+                    });
+                if chosen != b.link_page {
+                    ed.out.push(patch(id, json!({ "link_page": chosen })));
+                }
+                ui.end_row();
+                Ed::label(ui, "");
+                ui.weak("Caption macros: {number} {view} {scale} {link_sheet}, and the page macros");
+                ui.end_row();
             }
             let caption = b.label.clone().unwrap_or_default();
             ed.text(ui, "Caption", "label", &caption);

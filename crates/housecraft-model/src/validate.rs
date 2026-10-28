@@ -562,11 +562,14 @@ pub(crate) fn validate(doc: &Document) -> Vec<Issue> {
                 }
                 match &b.source {
                     LayoutSource::Plan {
-                        floor, layer_set, ..
+                        floor, layer_set, plan_view, ..
                     } => {
                         c.reference(id, "source.floor", *floor, K::Floor);
                         if let Some(s) = layer_set {
                             c.reference(id, "source.layer_set", *s, K::LayerSet);
+                        }
+                        if let Some(v) = plan_view {
+                            c.reference(id, "source.plan_view", *v, K::PlanView);
                         }
                     }
                     LayoutSource::View { view } => {

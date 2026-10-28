@@ -1030,3 +1030,23 @@ fn plan_boxes_take_the_default_scale_and_view_boxes_can_drop_their_fill() {
     s.apply(&[serde_json::from_value(serde_json::json!({"op": "update", "id": b.0, "set": {"lines_only": true}})).unwrap()]).unwrap();
     assert_eq!(fills(&s), 0, "lines only");
 }
+
+#[test]
+fn callout_captions_fill_number_view_scale_and_link() {
+    use housecraft_api::model::Layout;
+    let mut s = house();
+    let floor = s.document().floors_by_elevation()[0].id;
+    let out = s.apply(&[serde_json::from_value(serde_json::json!({"op": "add_layout", "name": "Set", "pages": 3})).unwrap()]).unwrap();
+    let l = out.created[0].0;
+    let cmds: Vec<Command> = serde_json::from_value(serde_json::json!([
+        {"op": "send_to_layout", "layout": l, "page": 1, "source": {"type": "plan", "floor": floor.0}, "scale": 48.0, "label": "{number}/{view} {scale} see {link_sheet}"}
+    ]))
+    .unwrap();
+    let b = s.apply(&cmds).unwrap().created[0];
+    s.apply(&[serde_json::from_value(serde_json::json!({"op": "update", "id": b.0, "set": {"link_page": 2}})).unwrap()]).unwrap();
+    let doc = s.document();
+    let lay = doc.get::<Layout>(out.created[0]).unwrap();
+    let d = housecraft_draft::layout::layout_page(doc, lay, 1);
+    let caption = d.items.iter().find_map(|i| match &i.prim { Prim::Text { text, .. } if text.contains("SEE") => Some(text.clone()), _ => None }).unwrap();
+    assert!(caption.starts_with("1/") && caption.contains("1/4\" = 1'-0\"") && caption.ends_with("SEE A-3"), "{caption}");
+}

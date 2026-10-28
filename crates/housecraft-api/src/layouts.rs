@@ -16,6 +16,9 @@ pub const CAPTION: f64 = 12.0;
 /// A short human name for what a box shows.
 pub fn source_name(doc: &Document, s: &LayoutSource) -> String {
     match s {
+        LayoutSource::Plan { plan_view: Some(v), .. } if doc.get::<PlanView>(*v).is_some() => {
+            doc.get::<PlanView>(*v).map_or_else(String::new, |v| v.name.clone())
+        }
         LayoutSource::Plan { floor, .. } => {
             format!(
                 "{} Plan",
@@ -235,5 +238,6 @@ pub(crate) fn send(
         rotation: 0.0,
         caption_offset: None,
         lines_only: false,
+        link_page: None,
     }))
 }

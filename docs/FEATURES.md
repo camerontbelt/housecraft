@@ -142,7 +142,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-22 | Client & designer info with macros and custom fields | P2 | M4 ✓ File > Project Information: client/designer fields and custom fields, each a text macro; shown in the title block |
 | PRJ-23 | Layout files: sheets with scaled, live-linked views; title-block templates; reorder pages | P1 | M4 ◐ sheets in the plan file with live scaled views, title block, several pages; separate .layout files, title-block templates, page reordering later |
 | PRJ-24 | Layout viewports: polyline cropping with breaks/curves; pan/zoom; rotate | P1 | M4 ◐ rectangular crop with a set centre and rotation; polyline crops and in-box pan/zoom later |
-| PRJ-25 | Layout box spec: defaults, multi-line labels, relink, rescale, change layer set; multi-edit | P1 | M4 ◐ position, size, scale, caption, notes text; relink, change layer set and multi-edit later |
+| PRJ-25 | Layout box spec: defaults, multi-line labels, relink, rescale, change layer set; multi-edit | P1 | M4 ◐ position, size, scale, caption (with {number} {view} {scale} {link_sheet} and page macros), notes text, relink (including saved plan views), link to a page; multi-edit later |
 | PRJ-26 | Multiple layout files open at once; copy between them | P2 | M4 ◐ layout boxes copy and paste between plans (their CAD details and views come along); one plan open at a time |
 | PRJ-27 | Edit line views on layout; rescale; relink | P2 | M4 ✓ box scale, relink to another plan/view/detail, Convert to Lines (an editable CAD detail) |
 | PRJ-28 | Multiple pages per layout | P1 | M4 ✓ |

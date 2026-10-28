@@ -398,6 +398,10 @@ pub enum LayoutSource {
         layer_set: Option<Id>,
         #[serde(default)]
         phase: Phase,
+        /// A saved plan view the box follows (its layer set, phase,
+        /// defaults and reference floors).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        plan_view: Option<Id>,
     },
     /// An elevation or cross section.
     View {
@@ -476,6 +480,9 @@ pub struct LayoutBox {
     /// Lines only: drop the colour fill of elevations and sections.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub lines_only: bool,
+    /// The page a callout label links to (`{link_sheet}` in the caption).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub link_page: Option<u32>,
 }
 
 fn is_zero(v: &f64) -> bool {

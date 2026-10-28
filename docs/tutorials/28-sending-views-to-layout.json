@@ -62,8 +62,25 @@
       }
     },
     {
-      "step": "(Link Saved Plan View: the box shows the plan view's layer set)",
-      "gap": "A plan box takes a layer set, not a saved plan view; pick the electrical layer set. Row: PRJ-25"
+      "step": "Link Saved Plan View: the box follows the Electrical Plan view (its layer set and defaults)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$ep",
+          "set": {
+            "source": {
+              "plan_view": "$named:plan_view:Electrical Plan"
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$ep",
+          "path": "/source/plan_view",
+          "is": "$named:plan_view:Electrical Plan"
+        }
+      ]
     },
     {
       "step": "Send the Plot Plan View to page 4 (A1.1 Site Plan) at 1\" = 100'",
@@ -284,8 +301,24 @@
       ]
     },
     {
-      "step": "(Callout-style labels with macros and links)",
-      "gap": "Box captions are plain text (or a marker shape); no callout labels with linked page macros. Row: PRJ-25"
+      "step": "Callout-style label with macros: S{number}, the view's name and scale, linked to page A1.3",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$ss",
+          "set": {
+            "label": "S{number} {view}  {scale}  ({link_sheet})",
+            "link_page": 6
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$ss",
+          "path": "/link_page",
+          "is": 6
+        }
+      ]
     },
     {
       "step": "Full Camera 'Cover Sheet View', saved as a picture and placed on page 2 (Cover Sheet); resize and crop it",
