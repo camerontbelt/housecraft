@@ -19,8 +19,7 @@
       ]
     },
     {
-      "step": "(Tile it with a 3D overview)",
-      "gap": "No tiled views. Row: UI-32"
+      "step": "(Tile it with a 3D overview: Window › Tile Vertically With › 3D Overview)"
     },
     {
       "step": "Roof defaults: 12 in 12, rafters, Auto Rebuild Roofs",

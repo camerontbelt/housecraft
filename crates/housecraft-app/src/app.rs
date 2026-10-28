@@ -188,6 +188,9 @@ pub struct App {
     pub table_view: Option<crate::schedules::TableSource>,
     pub table_this_floor: bool,
     pub drawing_view: crate::drawing_view::DrawingViewState,
+    /// A second pane beside the main view (Window › Tile).
+    pub tile: Option<crate::tile::Tile>,
+    pub tile_state: crate::tile::TileState,
     pub clipboard: Vec<serde_json::Value>,
     /// The clipboard holds layout boxes (copied from a layout page), and
     /// the file and plan they came from.
@@ -265,6 +268,8 @@ impl App {
             table_view: None,
             table_this_floor: false,
             drawing_view: Default::default(),
+            tile: None,
+            tile_state: Default::default(),
             clipboard: Vec::new(),
             clipboard_layout: None,
             materials_layer_set: None,
@@ -3479,6 +3484,26 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                 if item(ui, "3D View", "F3", true) {
                     self.mode = Mode::ThreeD;
                 }
+                ui.menu_button("Tile Vertically With", |ui| {
+                    use crate::tile::Tile;
+                    let mut tiles = vec![Tile::ThreeD];
+                    tiles.extend(self.doc().floors_by_elevation().iter().map(|f| Tile::Floor(f.id)));
+                    tiles.extend(self.doc().iter::<SectionView>().map(|v| Tile::Section(v.id)));
+                    for t in tiles {
+                        let label = match t {
+                            Tile::ThreeD => "3D Overview".to_string(),
+                            Tile::Floor(_) => format!("{} Plan", crate::tile::name(self, t)),
+                            Tile::Section(_) => crate::tile::name(self, t),
+                        };
+                        if ui.selectable_label(self.tile == Some(t), label).clicked() {
+                            self.tile = Some(t);
+                            ui.close();
+                        }
+                    }
+                });
+                if item(ui, "Untile", "", self.tile.is_some()) {
+                    self.tile = None;
+                }
                 ui.separator();
                 if item(ui, "Project Browser", "", true) {
                     self.side_tab = SideTab::ProjectBrowser;
@@ -5105,10 +5130,26 @@ impl eframe::App for App {
             .show(ui, |ui| {
                 egui::Panel::bottom("edit_toolbar").show(ui, |ui| self.edit_toolbar(ui));
                 self.view_px = ui.available_size();
-                match self.mode {
-                    Mode::Plan => crate::canvas::show(self, ui),
-                    Mode::ThreeD => crate::view3d::show(self, ui),
-                    Mode::Drawing(source) => crate::drawing_view::show(self, ui, source),
+                // Tiled: the main view on the left, the tile on the right.
+                let tile = self.tile.filter(|t| !(*t == crate::tile::Tile::ThreeD && self.mode == Mode::ThreeD));
+                let main = |app: &mut App, ui: &mut Ui| match app.mode {
+                    Mode::Plan => crate::canvas::show(app, ui),
+                    Mode::ThreeD => crate::view3d::show(app, ui),
+                    Mode::Drawing(source) => crate::drawing_view::show(app, ui, source),
+                };
+                match tile {
+                    None => main(self, ui),
+                    Some(t) => {
+                        let full = ui.available_rect_before_wrap();
+                        let mid = full.center().x;
+                        let left = egui::Rect::from_min_max(full.min, egui::pos2(mid - 1.0, full.max.y));
+                        let right = egui::Rect::from_min_max(egui::pos2(mid + 1.0, full.min.y), full.max);
+                        let mut lui = ui.new_child(egui::UiBuilder::new().max_rect(left));
+                        main(self, &mut lui);
+                        let mut rui = ui.new_child(egui::UiBuilder::new().max_rect(right));
+                        crate::tile::show(self, &mut rui, t);
+                        ui.painter().vline(mid, full.y_range(), egui::Stroke::new(2.0, egui::Color32::from_gray(120)));
+                    }
                 }
             });
         crate::props::spec_windows(self, &ctx);

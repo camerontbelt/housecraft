@@ -40,7 +40,7 @@ It carries on from [Tutorial 3](03-multiple-floors.md). The steps also run as th
 
 1. **3D › Elevations and Sections › Cross Section / Elevation Tool**: click beside the stair, then click across it.
 2. Rename it: in the Project Browser under **Elevations and Sections**, open it and set the name to `Stair Section`.
-3. *Not in HouseCraft yet:* tiling it beside the plan.
+3. **Window › Tile Vertically With › Stair Section** shows it beside the plan.
 
 ## Stairwell (pages 68–69)
 
@@ -94,4 +94,3 @@ lines you can drag.
 | Movable dimension point markers in sections | SEC-06 |
 | Top/bottom clip planes in sections | SEC-01 |
 | Note types, capsule markers | TXT-16 |
-| Tiled views | UI-32 |

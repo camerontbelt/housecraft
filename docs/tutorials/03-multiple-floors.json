@@ -317,8 +317,7 @@
       ]
     },
     {
-      "step": "(New Plan View; Window > Tile Vertically)",
-      "gap": "No tiled plan views; switch floors in one view. Row: UI-32"
+      "step": "(Window › Tile Vertically With › Foundation Plan: the floor below beside this one)"
     },
     {
       "step": "Wall schedule: total width and the upper/lower construction, without room dividers",

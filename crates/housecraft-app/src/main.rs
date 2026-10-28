@@ -17,6 +17,7 @@ mod projects_panel;
 mod props;
 mod schedules;
 mod snap;
+mod tile;
 mod tools;
 mod util;
 mod view3d;

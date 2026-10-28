@@ -737,7 +737,7 @@ These come from reading the whole list and change the architecture, not just the
 | UI-29 | Account menu before Help; left dock titled "Tool Palette" | P2 | GUI |
 | UI-30 | Dashboard start page (recent and pinned plans, templates, new plan) | P2 | GUI |
 | UI-31 | Close All Views / Close All 3D Views | P3 | GUI |
-| UI-32 | Tile views side by side; swap views; next/previous tab | P2 | GUI |
+| UI-32 | Tile views side by side; swap views; next/previous tab | P2 | GUI ◐ Window › Tile Vertically With: the 3D overview, another floor's plan or a saved elevation/section beside the main view; swap and tab cycling later |
 | UI-33 | View toggles: crosshairs, arc centres, line weights on screen, drawing sheet | P2 | GUI |
 | UI-34 | Rotate Plan View (rotate the screen, not the model) | P2 | GUI |
 | UI-35 | Get Last Symbol: place another of the last library item | P3 | GUI |

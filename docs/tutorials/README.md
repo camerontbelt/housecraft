@@ -20,12 +20,12 @@ has two files:
 |---|---|---|---|---|
 | 1 | Exterior Walls (3) | 18 | 4 | [01-exterior-walls.md](01-exterior-walls.md) |
 | 2 | Interior Walls (28) | 22 | 6 | [02-interior-walls.md](02-interior-walls.md) |
-| 3 | Multiple Floors (45) | 13 | 6 | [03-multiple-floors.md](03-multiple-floors.md) |
-| 4 | Interior Stairs (60) | 15 | 8 | [04-interior-stairs.md](04-interior-stairs.md) |
+| 3 | Multiple Floors (45) | 14 | 5 | [03-multiple-floors.md](03-multiple-floors.md) |
+| 4 | Interior Stairs (60) | 16 | 7 | [04-interior-stairs.md](04-interior-stairs.md) |
 | 5 | Doors and Windows (82) | 26 | 7 | [05-doors-and-windows.md](05-doors-and-windows.md) |
 | 6 | Decks and Porches (105) | 27 | 4 | [06-decks-and-porches.md](06-decks-and-porches.md) |
 | 7 | Roof styles: hip, gable, Dutch gable, shed, offset gable, gambrel, gull wing, half hip, mansard (127) | 15 | 1 | [07-roof-styles.md](07-roof-styles.md) |
-| 8 | Chic Cottage Roof (136) | 15 | 5 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
+| 8 | Chic Cottage Roof (136) | 16 | 4 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
 | 9 | Dormers (159) | 15 | 3 | [09-dormers.md](09-dormers.md) |
 | 10 | Custom Ceilings (177) | 11 | 1 | [10-custom-ceilings.md](10-custom-ceilings.md) |
 | 11 | Finish Materials (191) | 10 | 5 | [11-finish-materials.md](11-finish-materials.md) |

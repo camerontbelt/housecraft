@@ -143,8 +143,7 @@
       ]
     },
     {
-      "step": "(Tile the plan and section views)",
-      "gap": "No tiled views. Row: UI-32"
+      "step": "(Tile the plan and section views: Window › Tile Vertically With › Stair Section)"
     },
     {
       "step": "Auto Stairwell: open the stair's dialog and click Auto Stairwell. The floor above is cut and railings go round the opening, open at the top",

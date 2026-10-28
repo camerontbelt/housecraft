@@ -46,8 +46,8 @@ It carries on from [Tutorial 2](02-interior-walls.md). The steps also run as the
 3. Press an arrow key to nudge it 1" at a time until it sits under the wall above. *Not in HouseCraft yet:* the
    **Align With Wall Above** button.
 4. **Copy and Paste Hold Position:** select the wall, **Ctrl+C**, go up two floors to Floor 2, then
-   **Edit › Paste Hold Position**. *Not in HouseCraft yet:* tiled plan views (Window › Tile Vertically).
-   Switch floors in the one view instead.
+   **Edit › Paste Hold Position**. To see two floors side by side, choose **Window › Tile Vertically With** and pick
+   the other floor: its plan shows on the right (pan and zoom it; edit in the left one).
 
 ## A wall legend (pages 55–58)
 
@@ -72,7 +72,6 @@ It carries on from [Tutorial 2](02-interior-walls.md). The steps also run as the
 | Separate garage foundation with a curb | FD-07 |
 | Center footing on main layer | FD-08 |
 | Align With Wall Above/Below | WL-28 |
-| Tiled plan views | UI-32 |
 | Wall construction columns; rename/resize columns | EST-25, EST-10 |
 
 Fixed for this tutorial: **the foundation kept rebuilding its walls**. It wiped the furred wall type, and any

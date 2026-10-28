@@ -8,8 +8,7 @@ where the roof settings are. The steps also run as the automatic test
 ## Views (pages 138–140)
 
 **View › Add Standard Plan Views** adds a **Roof Plan** view with its own layer set (roofs on; rooms, electrical,
-cabinets and dimensions off). *Not in HouseCraft yet:* tiled views. Switch between the Roof Plan view and a **3D View**
-tab.
+cabinets and dimensions off). **Window › Tile Vertically With › 3D Overview** puts the 3D view beside it.
 
 ## First roof, over Floor 2 (pages 140–145)
 
@@ -58,7 +57,6 @@ Chief builds the roof over Floor 1 (Ignore Top Floor) and raises it 18 1/8". In 
 | Edit roof planes: break edges, corners, join, curved planes | RF-18 |
 | Raise/Lower and Ignore Top Floor in Build Roof; Display On Floor Above | RF-19 |
 | Automatic roof returns; frieze per plane | RF-03, RF-12 |
-| Tiled views | UI-32 |
 
 Added for this tutorial: **Break Wall** (Wall Tools), and **walls under a roof built on a lower floor stop at
 the roof** (the story-and-a-half look).
