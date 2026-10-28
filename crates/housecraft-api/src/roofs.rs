@@ -304,6 +304,7 @@ pub(crate) fn set_style(
                 break_height: Length::from_mm(break_at.max(1.0)),
                 pitch: p,
                 gable,
+                from_floor: false,
             })
         };
         let (gable, edge_pitch, up) = match style {

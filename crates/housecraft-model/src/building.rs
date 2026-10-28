@@ -968,6 +968,9 @@ pub struct UpperRoof {
     /// Above the break this edge becomes a gable (Dutch gable).
     #[serde(default)]
     pub gable: bool,
+    /// `break_height` is measured from the floor, not the wall plate.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub from_floor: bool,
 }
 
 /// Whole-roof styles that set every exterior wall's roof edge.

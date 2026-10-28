@@ -3862,3 +3862,30 @@ fn stairs_open_the_half_wall_at_their_top() {
     assert!(s.document().get::<Wall>(wall).is_some());
     assert!(s.apply(&[Command::OpenWallsAtStair { stair }]).is_err(), "nothing left to open");
 }
+
+#[test]
+fn upper_pitch_breaks_measured_from_the_floor_and_roof_resets() {
+    let mut s = boxed();
+    let ws: Vec<Id> = walls(&s).iter().map(|w| w.id).collect();
+    let floor = walls(&s)[0].floor;
+    let plate = {
+        let doc = s.document();
+        let f = doc.get::<Floor>(floor).unwrap();
+        housecraft_api::geom::roof::plate_height(doc, f) - f.elevation.mm()
+    };
+    let roof_with = |s: &mut Session, upper: serde_json::Value| -> Vec<f64> {
+        apply(s, r#"[{"op": "remove_roof"}]"#);
+        for w in &ws {
+            s.apply(&[Command::Update { id: *w, set: patch(serde_json::json!({ "roof": { "upper": upper.clone() } })) }]).unwrap();
+        }
+        apply(s, r#"[{"op": "build_roof"}]"#);
+        let mut zs: Vec<f64> = s.document().iter::<RoofPlane>().flat_map(|r| r.outline.iter().map(|p| (p.2.mm() * 10.0).round() / 10.0)).collect();
+        zs.sort_by(f64::total_cmp);
+        zs
+    };
+    let from_plate = roof_with(&mut s, serde_json::json!({ "break_height": "2'", "pitch": 20.0 }));
+    let from_floor = roof_with(&mut s, serde_json::json!({ "break_height": format!("{}mm", plate + 609.6), "pitch": 20.0, "from_floor": true }));
+    assert_eq!(from_plate, from_floor, "the same break, measured two ways");
+    s.apply(&[Command::ResetRoofEdges { ids: Vec::new(), floor: None }]).unwrap();
+    assert!(walls(&s).iter().all(|w| w.roof == RoofEdge::default()));
+}

@@ -428,8 +428,14 @@
       ]
     },
     {
-      "step": "(High Shed/Gable Wall)",
-      "gap": "There's no separate High Shed/Gable option; a Full Gable Wall on the high side does the same. Row: RF-17"
+      "step": "(High Shed/Gable Wall: the wall dialog's Full Gable / High Shed Wall box, ticked on the high side above)",
+      "expect": [
+        {
+          "get": "$box.1",
+          "path": "/roof/gable",
+          "is": true
+        }
+      ]
     },
     {
       "step": "Offset gable: gables left and right; bottom wall 12 in 12, the rest 2 in 12",
@@ -1004,12 +1010,106 @@
       ]
     },
     {
-      "step": "(Upper pitch 'Starts at Height' is measured from the floor in Chief)",
-      "gap": "HouseCraft's upper-pitch break is measured from the top of the wall: subtract the ceiling height (109 1/8\" here). Row: RF-17"
+      "step": "Upper pitch 'Starts at Height' 132\" measured from the floor (Break height from the floor)",
+      "commands": [
+        {
+          "op": "remove_roof",
+          "floor": "$floor1"
+        },
+        {
+          "op": "update",
+          "id": "$box.0",
+          "set": {
+            "roof": {
+              "upper": {
+                "break_height": "132\"",
+                "pitch": 7.125,
+                "from_floor": true
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.1",
+          "set": {
+            "roof": {
+              "upper": {
+                "break_height": "132\"",
+                "pitch": 7.125,
+                "from_floor": true
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.2",
+          "set": {
+            "roof": {
+              "upper": {
+                "break_height": "132\"",
+                "pitch": 7.125,
+                "from_floor": true
+              }
+            }
+          }
+        },
+        {
+          "op": "update",
+          "id": "$box.3",
+          "set": {
+            "roof": {
+              "upper": {
+                "break_height": "132\"",
+                "pitch": 7.125,
+                "from_floor": true
+              }
+            }
+          }
+        },
+        {
+          "op": "build_roof",
+          "floor": "$floor1"
+        }
+      ],
+      "expect": [
+        {
+          "roof_planes": 8
+        },
+        {
+          "get": "$box.0",
+          "path": "/roof/upper/from_floor",
+          "is": true
+        }
+      ]
     },
     {
-      "step": "Attic walls: turn off Walls, Attic; Edit > Reset to Defaults for roof directives; Delete Roof Planes",
-      "gap": "No attic walls layer or Reset to Defaults; Build > Roof > Remove Roof deletes the roof. Row: RF-17"
+      "step": "Reset to Defaults for the walls' roof settings; delete the roof planes",
+      "commands": [
+        {
+          "op": "reset_roof_edges",
+          "floor": "$floor1"
+        },
+        {
+          "op": "remove_roof",
+          "floor": "$floor1"
+        }
+      ],
+      "expect": [
+        {
+          "roof_planes": 0
+        },
+        {
+          "get": "$box.0",
+          "path": "/roof/gable",
+          "is": false
+        }
+      ]
+    },
+    {
+      "step": "(Attic walls: turn off Walls, Attic)",
+      "gap": "Gable-end walls above the plate are roof planes on the roof layer; there's no separate Walls, Attic layer. Row: RF-17"
     }
   ]
 }

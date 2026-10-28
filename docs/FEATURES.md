@@ -309,7 +309,7 @@ These come from reading the whole list and change the architecture, not just the
 | RF-14 | Convert roof/ceiling planes to polylines | P3 | M4 ◐ Convert CAD To > Roof Planes to Polylines; there are no separate ceiling planes yet |
 | RF-15 | Manual ceiling plane tool and Edit All Roof Planes dialog | P2 | M9 |
 | RF-16 | Roof hole tool (cut a roof plane without a skylight) | P2 | M9 |
-| RF-17 | Roof directive parity: High Shed/Gable option; upper pitch Starts at Height (from floor) or In From Baseline; attic wall layer; Reset roof directives to defaults | P2 | M9 |
+| RF-17 | Roof directive parity: High Shed/Gable option; upper pitch Starts at Height (from floor) or In From Baseline; attic wall layer; Reset roof directives to defaults | P2 | M9 ◐ Full Gable / High Shed Wall, break height from the floor, Reset Roof to Defaults (`reset_roof_edges`); In From Baseline and an attic wall layer later |
 | RF-18 | Roof plane editing: break an edge, drag corners, Join Roof Planes (valleys/ridges), curved roof planes | P1 | M9 |
 | RF-19 | Build Roof options: Raise/Lower All Roof Planes, Ignore Top Floor; Display On Floor Above | P2 | M9 |
 | RF-20 | Walls under a roof built on a lower floor stop at its underside (story-and-a-half knee and gable walls) | P1 | M9 ✓ 3D walls are trimmed to the roof's underside |

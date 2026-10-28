@@ -912,7 +912,11 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             let d = doc.active_defaults();
             Ed::label(ui, "Roof");
             let mut gable = w.roof.gable;
-            if ui.checkbox(&mut gable, "Full Gable Wall").changed() {
+            if ui
+                .checkbox(&mut gable, "Full Gable / High Shed Wall")
+                .on_hover_text("The roof doesn't slope up from this wall; on a shed roof's high side the wall rises to the roof")
+                .changed()
+            {
                 ed.out
                     .push(patch(id, json!({ "roof": { "gable": gable } })));
             }
@@ -981,7 +985,18 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                         .push(patch(id, json!({ "roof": { "upper": { "gable": g } } })));
                 }
                 ui.end_row();
+                Ed::label(ui, "");
+                let mut ff = u.from_floor;
+                if ui.checkbox(&mut ff, "Break height from the floor (not the wall top)").changed() {
+                    ed.out.push(patch(id, json!({ "roof": { "upper": { "from_floor": ff } } })));
+                }
+                ui.end_row();
             }
+            Ed::label(ui, "");
+            if ui.button("Reset Roof to Defaults").clicked() {
+                ed.out.push(Command::ResetRoofEdges { ids: vec![id], floor: None });
+            }
+            ui.end_row();
         }
         Object::SectionView(v) => {
             ed.text(ui, "Name", "name", &v.name);

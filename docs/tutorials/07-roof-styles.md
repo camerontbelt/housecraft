@@ -16,19 +16,19 @@ Select one or more walls (Shift+click) and double-click. Under **Roof**:
 
 | Chief (Wall Specification › Roof) | HouseCraft |
 |---|---|
-| Full Gable Wall | **Full Gable Wall** |
+| Full Gable Wall | **Full Gable / High Shed Wall** |
 | Pitch | **Roof Pitch**: type `8/12` (or leave empty for the default) |
 | Upper Pitch + Starts at Height | **Upper Roof** › **Break Height** and **Upper Pitch** |
 | Dutch Gable Wall | **Upper Roof** with **Gable above the break** |
-| High Shed/Gable Wall | **Full Gable Wall** on the high side |
+| High Shed/Gable Wall | **Full Gable / High Shed Wall** on the high side |
 
-**Important difference:** Chief's **Starts at Height** is measured from the floor. HouseCraft's **Break Height**
-is measured from the **top of the wall**, so subtract the ceiling height: with 109 1/8" ceilings, Chief's
-`156"` is HouseCraft's `46 7/8"`.
+**Break height:** HouseCraft measures **Break Height** from the **top of the wall** unless you tick **Break height
+from the floor (not the wall top)**. Ticked, it reads like Chief's **Starts at Height**: type `156"` as Chief does.
+Unticked, subtract the ceiling height: with 109 1/8" ceilings, Chief's `156"` is `46 7/8"`.
 
 The default pitch is in **Edit › Default Settings… › Roofs**. Build the roof with **Build › Roof › Build Roof**
-(Ctrl+R), and remove it with **Build › Roof › Remove Roof**. *Not in HouseCraft yet:* Edit › Reset to Defaults
-for roof directives, and a "Walls, Attic" layer.
+(Ctrl+R), and remove it with **Build › Roof › Remove Roof**. **Reset Roof to Defaults** in a wall's dialog clears
+its own roof settings. *Not in HouseCraft yet:* a "Walls, Attic" layer, and In From Baseline for the upper pitch.
 
 ## The styles
 
@@ -61,4 +61,4 @@ dimension from the top of the wall (not the floor) to where the pitch should cha
 
 | Missing | FEATURES row |
 |---|---|
-| High Shed/Gable option; Starts at Height from the floor or In From Baseline; attic wall layer; Reset to Defaults | RF-17 |
+| In From Baseline for the upper pitch; attic wall layer | RF-17 |

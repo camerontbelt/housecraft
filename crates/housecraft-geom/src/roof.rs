@@ -49,7 +49,9 @@ fn edge_wall(doc: &Document, floor: Id, a: DVec2, b: DVec2) -> Option<&Wall> {
         .and_then(|(_, id)| doc.get::<Wall>(id))
 }
 
-fn resolve(edge: RoofEdge, d: &DefaultSet) -> EdgeSpec {
+/// `plate_above_floor`: how far the wall plate sits above the floor, for
+/// break heights measured from the floor.
+fn resolve(edge: RoofEdge, d: &DefaultSet, plate_above_floor: f64) -> EdgeSpec {
     EdgeSpec {
         gable: edge.gable,
         pitch: edge.pitch.unwrap_or(d.roof.pitch).clamp(1.0, 85.0),
@@ -62,7 +64,7 @@ fn resolve(edge: RoofEdge, d: &DefaultSet) -> EdgeSpec {
             |o| o.mm(),
         ),
         upper: edge.upper.map(|u| UpperSpec {
-            break_height: u.break_height.mm(),
+            break_height: if u.from_floor { (u.break_height.mm() - plate_above_floor).max(1.0) } else { u.break_height.mm() },
             pitch: u.pitch.clamp(1.0, 85.0),
             gable: u.gable,
         }),
@@ -99,7 +101,7 @@ pub fn generate(doc: &Document, floor: &Floor) -> Vec<GenPlane> {
             .map(|i| {
                 let edge = edge_wall(doc, floor.id, poly[i], poly[(i + 1) % n])
                     .map_or_else(RoofEdge::default, |w| w.roof);
-                resolve(edge, defaults)
+                resolve(edge, defaults, plate - floor.elevation.mm())
             })
             .collect();
         let break_height = specs
@@ -408,6 +410,7 @@ mod tests {
                 break_height: housecraft_units::Length::from_mm(h),
                 pitch: if end && end_gable_above { lower } else { upper },
                 gable: end && end_gable_above,
+                from_floor: false,
             });
         }
     }
