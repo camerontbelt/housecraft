@@ -151,7 +151,7 @@ pub(crate) fn elevation_data(doc: &Document, e: &ElevationData, stroke: Stroke, 
 }
 
 /// A site feature's plan symbol.
-pub(crate) fn feature(f: &SiteFeature, stroke: Stroke, out: &mut Drawing) {
+pub(crate) fn feature(f: &SiteFeature, cuts: &[(DVec2, f64)], stroke: Stroke, out: &mut Drawing) {
     let pts: Vec<DVec2> = f.points.iter().map(|p| v2(*p)).collect();
     if pts.len() < 2 {
         return;
@@ -194,9 +194,16 @@ pub(crate) fn feature(f: &SiteFeature, stroke: Stroke, out: &mut Drawing) {
                 line(out, f.id, arc_points(end, cul_de_sac.mm(), 0.0, 360.0), true, stroke);
             }
             if *curbs {
-                let (l, r) = sides(&pts, width.mm() / 2.0 + 150.0);
-                line(out, f.id, l, false, thin);
-                line(out, f.id, r, false, thin);
+                // Sampled so driveways and sidewalks can cut through.
+                let s = housecraft_geom::site::along(&pts, false, 100.0);
+                let centre: Vec<DVec2> = s.iter().map(|(p, _)| *p).collect();
+                let (l, r) = sides(&centre, width.mm() / 2.0 + 150.0);
+                for side in [l, r] {
+                    let side: Vec<(DVec2, f64)> = side.into_iter().zip(&s).map(|(p, (_, d))| (p, *d)).collect();
+                    for run in housecraft_geom::site::uncut_runs(&side, &s, cuts) {
+                        line(out, f.id, run.into_iter().map(|(p, _)| p).collect(), false, thin);
+                    }
+                }
             }
             if let Some(apron) = housecraft_geom::site::road_flare(&pts, width.mm(), flare.mm()) {
                 for wedge in apron {

@@ -2270,7 +2270,10 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
         }
         return;
     }
-    if finish && let Some(kind) = tool.site_kind() {
+    if finish && let Some(mut kind) = tool.site_kind() {
+        if let SiteKind::Road { style, .. } = kind {
+            kind = app.doc().active_defaults().roads.kind(style);
+        }
         let pending = std::mem::take(&mut app.plan.pending);
         let min = if kind.closed() { 3 } else { 2 };
         if pending.len() >= min {

@@ -1305,6 +1305,24 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                         }
                     });
                 });
+                egui::CollapsingHeader::new("Roads, Driveways and Sidewalks").show(ui, |ui| {
+                    egui::Grid::new("road_defaults").num_columns(2).show(ui, |ui| {
+                        for (name, key, style) in [("Road", "road", RoadStyle::Road), ("Driveway", "driveway", RoadStyle::Driveway), ("Sidewalk", "sidewalk", RoadStyle::Sidewalk)] {
+                            let sp = d.roads.spec(style).clone();
+                            for (label, field, v) in [("width", "width", sp.width), ("thickness", "thickness", sp.thickness), ("end flare", "flare", sp.flare)] {
+                                len_row(ui, doc, &mut app.bufs, &format!("{name} {label}"), ("roads", &format!("{key}.{field}")), v, |v| {
+                                    commands.push(p(json!({"roads": {key: {field: v}}})))
+                                });
+                            }
+                            ui.label(format!("{name} curbs"));
+                            let mut c = sp.curbs;
+                            if ui.checkbox(&mut c, "").changed() {
+                                commands.push(p(json!({"roads": {key: {"curbs": c}}})));
+                            }
+                            ui.end_row();
+                        }
+                    });
+                });
                 egui::CollapsingHeader::new("Framing").show(ui, |ui| {
                     let f = &d.framing;
                     egui::Grid::new("framing_defaults").num_columns(2).show(ui, |ui| {

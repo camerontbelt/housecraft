@@ -742,7 +742,7 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
     for f in doc.iter::<SiteFeature>().filter(|f| f.floor == opts.floor) {
         let look = ctx.look(f.layer);
         if look.visible {
-            crate::site::feature(f, look.stroke, &mut out);
+            crate::site::feature(f, &housecraft_geom::site::curb_cuts(doc, f), look.stroke, &mut out);
         }
     }
     for p in doc.iter::<Plant>().filter(|p| p.floor == opts.floor) {

@@ -367,6 +367,8 @@ pub struct DefaultSet {
     pub framing: crate::FramingDefaults,
     #[serde(default)]
     pub deck: crate::DeckDefaults,
+    #[serde(default)]
+    pub roads: crate::RoadDefaults,
     /// Default material for each surface role (empty: built-in colours).
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub materials: crate::SurfaceMaterials,

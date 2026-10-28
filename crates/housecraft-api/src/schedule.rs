@@ -110,6 +110,7 @@ pub fn available_columns(kind: ScheduleKind) -> &'static [&'static str] {
             "Code", "Type", "Qty", "Width", "Depth", "Height", "Doors", "Drawers", "Floor",
         ],
         ScheduleKind::Plants => &["Plant", "Form", "Qty", "Mature Height", "Spread"],
+        ScheduleKind::Hardscape => &["Type", "Name", "Width", "Thickness", "Length", "Area"],
         ScheduleKind::Framing => &["Role", "Size", "Material", "Qty", "Cut Length", "Floor"],
         ScheduleKind::Shapes => &["Label", "Layer", "Area", "Perimeter", "Floor"],
         ScheduleKind::Notes => &["No.", "Note", "Floor"],
@@ -127,6 +128,7 @@ pub fn title(kind: ScheduleKind) -> &'static str {
         ScheduleKind::RoofPlanes => "Roof Plane Schedule",
         ScheduleKind::Cabinets => "Cabinet Schedule",
         ScheduleKind::Plants => "Plant Schedule",
+        ScheduleKind::Hardscape => "Hardscape Schedule",
         ScheduleKind::Framing => "Framing Cut List",
         ScheduleKind::Shapes => "Shape Schedule",
         ScheduleKind::Notes => "Note Schedule",
@@ -459,6 +461,21 @@ fn kind_rows(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> Vec<
                 group(&mut raw, key, m.id, row);
             }
             raw.sort_by(|a, b| (&a.1["Floor"], &a.1["Role"], &a.1["Size"]).cmp(&(&b.1["Floor"], &b.1["Role"], &b.1["Size"])));
+        }
+        ScheduleKind::Hardscape => {
+            for f in doc.iter::<SiteFeature>().filter(|f| on_floor(f.floor)) {
+                let SiteKind::Road { style, width, thickness, label, .. } = &f.feature else { continue };
+                let len: f64 = f.points.windows(2).map(|w| housecraft_geom::v2(w[0]).distance(housecraft_geom::v2(w[1]))).sum();
+                let mut row = BTreeMap::new();
+                row.insert("Type", style.name().to_string());
+                row.insert("Name", label.clone());
+                row.insert("Width", fmt(*width));
+                row.insert("Thickness", fmt(*thickness));
+                row.insert("Length", fmt(Length::from_mm(len)));
+                row.insert("Area", area(len * width.mm()));
+                raw.push((vec![f.id], row));
+            }
+            raw.sort_by(|a, b| (&a.1["Type"], &a.1["Name"]).cmp(&(&b.1["Type"], &b.1["Name"])));
         }
         ScheduleKind::Plants => {
             for p in doc.iter::<Plant>().filter(|p| on_floor(p.floor)) {

@@ -3703,3 +3703,40 @@ fn hip_rafters_ridge_sizes_plane_rafter_depths_and_member_labels() {
     assert!(rafters.iter().any(|m| m.host == Some(plane) && m.depth == Length::from_inches(11.25)));
     assert!(rafters.iter().any(|m| m.host != Some(plane) && m.depth == Length::from_inches(7.25)));
 }
+
+#[test]
+fn road_defaults_curb_cuts_and_the_hardscape_schedule() {
+    let mut s = boxed();
+    let set = s.document().settings.active_default_set;
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "roads": { "road": { "width": "28'", "thickness": "6\"", "curbs": true }, "driveway": { "width": "13'", "thickness": "4\"", "flare": "3'" } } })) }]).unwrap();
+    let roads = s.document().active_defaults().roads.clone();
+    let SiteKind::Road { width, flare, .. } = roads.kind(RoadStyle::Driveway) else { panic!() };
+    assert_eq!((width, flare), (Length::from_feet(13.0), Length::from_feet(3.0)));
+    let road_kind = serde_json::to_value(roads.kind(RoadStyle::Road)).unwrap();
+    let drive_kind = serde_json::to_value(roads.kind(RoadStyle::Driveway)).unwrap();
+    let out = s
+        .apply(&[
+            serde_json::from_value(serde_json::json!({"op": "add_site_feature", "points": [["-20'", "-40'"], ["60'", "-40'"]], "feature": road_kind})).unwrap(),
+            serde_json::from_value(serde_json::json!({"op": "add_site_feature", "points": [["10'", "0'"], ["10'", "-26'"]], "feature": drive_kind})).unwrap(),
+        ])
+        .unwrap();
+    let (road, drive) = (out.created[0], out.created[1]);
+    // The curb on the house side opens where the driveway meets it.
+    let f = s.document().get::<SiteFeature>(road).unwrap();
+    let cuts = housecraft_api::geom::site::curb_cuts(s.document(), f);
+    assert_eq!(cuts.len(), 1);
+    assert!((cuts[0].0.x - 10.0 * 304.8).abs() < 1.0 && (cuts[0].1 - 9.5 * 304.8).abs() < 1.0, "{cuts:?}");
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    let curb_near = mesh
+        .faces
+        .iter()
+        .filter(|fc| mesh.parts[fc.part].object == road)
+        .flat_map(|fc| fc.points.iter())
+        .any(|p| (p.x - 10.0 * 304.8).abs() < 3.0 * 304.8 && (p.y - ((-40.0 + 14.0) * 304.8 + 75.0)).abs() < 50.0);
+    assert!(!curb_near, "no curb across the driveway");
+    // The hardscape schedule lists both.
+    let t = housecraft_api::schedule::schedule(s.document(), ScheduleKind::Hardscape, &housecraft_api::schedule::ScheduleOptions::default());
+    let csv = t.export(housecraft_api::schedule::TableFormat::Csv);
+    assert!(csv.contains("Road") && csv.contains("Driveway") && csv.contains("80'"), "{csv}");
+    assert!(t.rows.iter().any(|r| r.ids == vec![drive]));
+}

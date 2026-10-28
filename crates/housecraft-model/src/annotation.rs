@@ -196,10 +196,12 @@ pub enum ScheduleKind {
     Shapes,
     /// Numbered notes and their text.
     Notes,
+    /// Roads, driveways and sidewalks: width, length, area.
+    Hardscape,
 }
 
 impl ScheduleKind {
-    pub const ALL: [ScheduleKind; 12] = [
+    pub const ALL: [ScheduleKind; 13] = [
         ScheduleKind::Doors,
         ScheduleKind::Windows,
         ScheduleKind::Rooms,
@@ -212,6 +214,7 @@ impl ScheduleKind {
         ScheduleKind::Framing,
         ScheduleKind::Shapes,
         ScheduleKind::Notes,
+        ScheduleKind::Hardscape,
     ];
 
     pub fn name(self) -> &'static str {
@@ -228,6 +231,7 @@ impl ScheduleKind {
             ScheduleKind::Framing => "Framing Cut List",
             ScheduleKind::Shapes => "Shape Schedule",
             ScheduleKind::Notes => "Note Schedule",
+            ScheduleKind::Hardscape => "Hardscape Schedule",
         }
     }
 }

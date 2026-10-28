@@ -464,3 +464,53 @@ impl Plant {
         (self.height * k, self.spread * k)
     }
 }
+
+/// One road style's starting settings.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct RoadSpec {
+    pub width: Length,
+    pub thickness: Length,
+    #[serde(default)]
+    pub curbs: bool,
+    #[serde(default)]
+    pub flare: Length,
+}
+
+/// What new roads, driveways and sidewalks start with.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct RoadDefaults {
+    pub road: RoadSpec,
+    pub driveway: RoadSpec,
+    pub sidewalk: RoadSpec,
+}
+
+impl Default for RoadDefaults {
+    fn default() -> Self {
+        let spec = |style| match SiteKind::road(style) {
+            SiteKind::Road { width, thickness, curbs, flare, .. } => RoadSpec { width, thickness, curbs, flare },
+            _ => unreachable!(),
+        };
+        RoadDefaults { road: spec(RoadStyle::Road), driveway: spec(RoadStyle::Driveway), sidewalk: spec(RoadStyle::Sidewalk) }
+    }
+}
+
+impl RoadDefaults {
+    pub fn spec(&self, style: RoadStyle) -> &RoadSpec {
+        match style {
+            RoadStyle::Road => &self.road,
+            RoadStyle::Driveway => &self.driveway,
+            RoadStyle::Sidewalk => &self.sidewalk,
+        }
+    }
+
+    /// A new road of `style` with these settings.
+    pub fn kind(&self, style: RoadStyle) -> SiteKind {
+        let sp = self.spec(style);
+        let mut k = SiteKind::road(style);
+        if let SiteKind::Road { width, thickness, curbs, flare, .. } = &mut k {
+            (*width, *thickness, *curbs, *flare) = (sp.width, sp.thickness, sp.curbs, sp.flare);
+        }
+        k
+    }
+}

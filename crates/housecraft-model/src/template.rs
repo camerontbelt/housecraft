@@ -293,6 +293,7 @@ pub(crate) fn new_document(name: String) -> Document {
         solids: Default::default(),
         framing: Default::default(),
         deck: Default::default(),
+        roads: Default::default(),
         materials,
         labels: Default::default(),
         wall_reference: Default::default(),

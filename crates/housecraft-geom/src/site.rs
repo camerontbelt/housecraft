@@ -3,7 +3,7 @@
 //! ground.
 
 use glam::{DVec2, DVec3};
-use housecraft_model::{Color, Document, FenceStyle, GateStyle, Plant, PlantForm, SiteFeature, SiteKind, Terrain};
+use housecraft_model::{Color, Document, FenceStyle, GateStyle, Plant, PlantForm, RoadStyle, SiteFeature, SiteKind, Terrain};
 
 use crate::math::{perp, signed_area, v2};
 use crate::mesh::{Category, Look, Mesh};
@@ -91,7 +91,53 @@ pub fn post(c: DVec2, half: f64, z0: f64, z1: f64, look: Look, mesh: &mut Mesh) 
     mesh.prism_look(&sq, z0, z1, look);
 }
 
-pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, mesh: &mut Mesh) {
+/// Where driveways and sidewalks meet road `f`'s curbs: points on its centre
+/// line and how far either side of each the curb is cut away.
+pub fn curb_cuts(doc: &Document, f: &SiteFeature) -> Vec<(DVec2, f64)> {
+    let SiteKind::Road { width: road_width, curbs: true, .. } = &f.feature else {
+        return Vec::new();
+    };
+    let centre: Vec<DVec2> = f.points.iter().map(|p| v2(*p)).collect();
+    let reach = road_width.mm() / 2.0 + 2000.0;
+    let mut cuts = Vec::new();
+    for g in doc.iter::<SiteFeature>().filter(|g| g.id != f.id && g.floor == f.floor) {
+        let SiteKind::Road { style, width, flare, .. } = &g.feature else { continue };
+        if *style == RoadStyle::Road {
+            continue;
+        }
+        for end in [g.points.first(), g.points.last()].into_iter().flatten() {
+            let p = v2(*end);
+            if let Some(q) = centre
+                .windows(2)
+                .map(|w| crate::math::closest_on_segment(p, w[0], w[1]).0)
+                .min_by(|a, b| a.distance(p).total_cmp(&b.distance(p)))
+                .filter(|q| q.distance(p) < reach)
+            {
+                cuts.push((q, width.mm() / 2.0 + flare.mm()));
+            }
+        }
+    }
+    cuts
+}
+
+/// Runs of `samples` that stay clear of every cut.
+pub fn uncut_runs(samples: &[(DVec2, f64)], centre: &[(DVec2, f64)], cuts: &[(DVec2, f64)]) -> Vec<Vec<(DVec2, f64)>> {
+    let mut runs = vec![Vec::new()];
+    for (k, s) in samples.iter().enumerate() {
+        let c = centre.get(k).map_or(s.0, |c| c.0);
+        if cuts.iter().any(|(q, half)| q.distance(c) < *half) {
+            if runs.last().is_some_and(|r| !r.is_empty()) {
+                runs.push(Vec::new());
+            }
+        } else if let Some(r) = runs.last_mut() {
+            r.push(*s);
+        }
+    }
+    runs.retain(|r| r.len() >= 2);
+    runs
+}
+
+pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, cuts: &[(DVec2, f64)], mesh: &mut Mesh) {
     let mut pts: Vec<DVec2> = f.points.iter().map(|p| v2(*p)).collect();
     if pts.len() < 2 {
         return;
@@ -161,7 +207,9 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, mes
                         .zip(&s)
                         .map(|((l, r), (_, d))| (if side > 0.0 { l } else { r }, *d))
                         .collect();
-                    strip(&offset, 75.0, -t, 150.0, z, concrete, mesh);
+                    for run in uncut_runs(&offset, &s, cuts) {
+                        strip(&run, 75.0, -t, 150.0, z, concrete, mesh);
+                    }
                 }
             }
         }
@@ -439,7 +487,7 @@ pub fn build(doc: &Document, only_floor: Option<housecraft_model::Id>, mesh: &mu
         }
         mesh.begin(f.id, Category::Terrain);
         let floor_z = doc.get::<housecraft_model::Floor>(f.floor).map_or(0.0, |fl| fl.elevation.mm());
-        feature_mesh(f, &z, floor_z, mesh);
+        feature_mesh(f, &z, floor_z, &curb_cuts(doc, f), mesh);
         mesh.end();
     }
     for p in doc.iter::<Plant>() {

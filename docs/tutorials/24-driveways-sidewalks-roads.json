@@ -4,8 +4,29 @@
   "include": "23-terrain-elevation.json",
   "steps": [
     {
-      "step": "Road defaults: 28' wide; curbs that can cut driveways and sidewalks",
-      "gap": "No road, driveway or sidewalk defaults: a new road is 24' wide; set the width on each. No curb cuts. Row: SITE-32"
+      "step": "Road defaults: 28' wide with curbs; driveways and sidewalks cut the curbs where they meet",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "roads": {
+              "road": {
+                "width": "28'",
+                "thickness": "6\"",
+                "curbs": true
+              }
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/roads/road/width",
+          "is": "28'"
+        }
+      ]
     },
     {
       "step": "Straight Road across the bottom of the terrain, corner to corner",
@@ -128,8 +149,29 @@
       ]
     },
     {
-      "step": "Driveway defaults: 13' wide, end flared 3', Blacktop 1",
-      "gap": "No driveway defaults; the width, end flare and material are set on the driveway (below). Row: SITE-32"
+      "step": "Driveway defaults: 13' wide, end flared 3' (Blacktop with the Material Painter)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "roads": {
+              "driveway": {
+                "width": "13'",
+                "thickness": "4\"",
+                "flare": "3'"
+              }
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/roads/driveway/flare",
+          "is": "3'"
+        }
+      ]
     },
     {
       "step": "Straight Driveway from the middle of the Garage door straight down to the road, its end flared 3'",
@@ -278,8 +320,28 @@
       ]
     },
     {
-      "step": "(A hardscaping schedule)",
-      "gap": "No hardscaping schedule. Row: SITE-32"
+      "step": "A hardscaping schedule",
+      "commands": [
+        {
+          "op": "add_schedule",
+          "floor": "$floor1",
+          "schedule_kind": "hardscape",
+          "position": [
+            45720.0,
+            0.0
+          ]
+        }
+      ],
+      "save": {
+        "hard": "schedule"
+      },
+      "expect": [
+        {
+          "get": "$hard",
+          "path": "/schedule_kind",
+          "is": "hardscape"
+        }
+      ]
     },
     {
       "step": "Make a Copy as Chic Cottage-Hardscape"

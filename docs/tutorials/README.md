@@ -41,7 +41,7 @@ has two files:
 | 21 | Roof and Ceiling Framing (364) | 17 | 1 | [21-roof-and-ceiling-framing.md](21-roof-and-ceiling-framing.md) |
 | 22 | Plot Plans (382) | 11 | 5 | [22-plot-plans.md](22-plot-plans.md) |
 | 23 | Terrain Elevation (403) | 15 | 4 | [23-terrain-elevation.md](23-terrain-elevation.md) |
-| 24 | Driveways, Sidewalks, and Roads (420) | 11 | 3 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
+| 24 | Driveways, Sidewalks, and Roads (420) | 14 | 0 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
 | 25 | Landscaping Design (433) | 18 | 5 | [25-landscaping-design.md](25-landscaping-design.md) |
 | 26 | Layout Page Templates (451) | 7 | 4 | [26-layout-page-templates.md](26-layout-page-templates.md) |
 | 27 | Title Blocks and Borders (460) | 16 | 0 | [27-title-blocks-and-borders.md](27-title-blocks-and-borders.md) |
