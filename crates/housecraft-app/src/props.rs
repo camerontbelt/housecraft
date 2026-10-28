@@ -1124,8 +1124,31 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                             templates[i] = chosen.map(|t| t as u32);
                             ed.out.push(patch(id, json!({ "templates": templates })));
                         }
+                        let mut tpl = l.is_template_page(i);
+                        if ui.checkbox(&mut tpl, "Template").on_hover_text("Use as Page Template: drawn under other pages, not printed").changed() {
+                            let mut pages: Vec<u32> = l.template_pages.iter().copied().filter(|p| *p as usize != i).collect();
+                            if tpl {
+                                pages.push(i as u32);
+                            }
+                            ed.out.push(patch(id, json!({ "template_pages": pages })));
+                        }
+                        if ui.small_button("Insert Before").clicked() {
+                            ed.out.push(Command::InsertLayoutPage { layout: id, at: i as u32, name: None, title: None });
+                        }
+                        if ui.small_button("Insert After").clicked() {
+                            ed.out.push(Command::InsertLayoutPage { layout: id, at: i as u32 + 1, name: None, title: None });
+                        }
                     });
                 }
+                ui.horizontal(|ui| {
+                    ui.label("Label pages");
+                    let key = ed.key("label_pages");
+                    if let Some(t) = ed.bufs.text(ui, key, "", 220.0) {
+                        let labels: Vec<String> = t.split(',').map(|x| x.trim().to_string()).collect();
+                        ed.out.push(Command::LabelPages { layout: id, labels });
+                    }
+                    ui.weak("comma-separated, # numbers within the prefix (A1.#)");
+                });
                 ui.weak(format!(
                     "Page macros: {}",
                     housecraft_draft::macros::PAGE_MACROS.iter().map(|(m, _)| format!("{{{m}}}")).collect::<Vec<_>>().join(" ")

@@ -15,8 +15,8 @@ under **Layouts**.
    the end.
 3. Page 1: sheet `Template`, title `Standard Template`. Page 2: sheet `Cover Template`, title
    `Cover Sheet Template`.
-4. *Not in HouseCraft yet:* a **Use as Page Template** tick box. Any page can be drawn under another, but template
-   pages are printed with the rest.
+4. Tick **Template** in both rows (Use as Page Template). Template pages are drawn under the pages that use them,
+   but they don't print, aren't counted by `{page}` and `{page_count}`, and stay out of the sheet index.
 
 ## Assigning templates and titles (pages 455–457)
 
@@ -32,13 +32,15 @@ Add five more pages. Then, in the page rows:
 
 ## Page numbers (pages 457–458)
 
-*Not in HouseCraft yet:* labels such as `A1.#` that number each prefix on its own. Type the sheet numbers yourself,
-as in the table. **Number Pages** gives every page one prefix (A-1, A-2…).
+In the layout's dialog, type in **Label pages**: `Template, Cover Template, Cover, A0.#, A1.#, A1.#, E1.#`. Each `#`
+becomes the page's number among the pages with the same prefix, so the two `A1.#` pages read A1.1 and A1.2.
+(**Number Pages** gives every page one prefix: A-1, A-2…)
 
 ## Inserting pages (pages 458–459)
 
-*Not in HouseCraft yet:* Insert Page Before / After. Add pages at the end, then retype the rows so the Foundation Plan
-(A1.2) comes before Floor 1 Plan (A1.3), and Elevations (A2.1) and Sections (A2.2) come before Electrical Floor 1.
+Each page row has **Insert Before** and **Insert After** buttons. Insert the Foundation Plan before Floor 1 Plan, and
+Elevations and Sections after it; boxes already on later pages move with their pages. Then label the pages again
+with `A1.#` for the plans and `A2.#` for Elevations and Sections, so they read A1.2, A1.3, A2.1 and A2.2.
 
 ## Revision (page 459)
 
@@ -48,5 +50,4 @@ as in the table. **Number Pages** gives every page one prefix (A-1, A-2…).
 
 | Missing | FEATURES row |
 |---|---|
-| Template flag (no print), # page labels, separate layout files | PRJ-46 |
-| Insert page before / after | PRJ-41 |
+| Separate layout files | PRJ-46 |

@@ -261,6 +261,21 @@ pub enum Command {
     },
     /// Add a page to a layout.
     AddLayoutPage { layout: Id, name: Option<String> },
+    /// Insert a page before page `at` (Insert Page Before; `at` one past a
+    /// page for Insert Page After). Boxes, titles and templates on later
+    /// pages move along with them.
+    InsertLayoutPage {
+        layout: Id,
+        at: u32,
+        #[serde(default)]
+        name: Option<String>,
+        #[serde(default)]
+        title: Option<String>,
+    },
+    /// Give pages labels by pattern: a `#` in a label is the page's number
+    /// among the pages with the same text before the `#` ("A1.#" → A1.1,
+    /// A1.2…). Missing or empty labels leave a page's name as it is.
+    LabelPages { layout: Id, labels: Vec<String> },
     /// Rename `layout`'s pages `{prefix}{n}` from `start` (A-1, A-2…).
     NumberPages {
         layout: Id,
@@ -1456,6 +1471,8 @@ impl Command {
             Command::SetViewDefaults { .. } => "set_view_defaults",
             Command::AddLayout { .. } => "add_layout",
             Command::AddLayoutPage { .. } => "add_layout_page",
+            Command::InsertLayoutPage { .. } => "insert_layout_page",
+            Command::LabelPages { .. } => "label_pages",
             Command::NumberPages { .. } => "number_pages",
             Command::ConvertBoxToLines { .. } => "convert_box_to_lines",
             Command::DeleteLayoutBoxes { .. } => "delete_layout_boxes",
@@ -2058,6 +2075,7 @@ impl Command {
                     titles: Vec::new(),
                     templates: Vec::new(),
                     grid: Length::ZERO,
+                    template_pages: Vec::new(),
                 }));
             }
             Command::ImportPrices { prices, overwrite } => {
@@ -2584,6 +2602,53 @@ impl Command {
                     return Err(ApiError::Invalid("watermark height must be positive and darkness 0–1".into()));
                 }
                 doc.settings.watermark = watermark.clone();
+            }
+            Command::InsertLayoutPage { layout, at, name, title } => {
+                let l = doc.get_mut::<Layout>(*layout).ok_or(ApiError::NotFound(*layout))?;
+                let at = (*at as usize).min(l.pages.len());
+                let n = l.pages.len() + 1;
+                l.pages.insert(at, name.clone().unwrap_or_else(|| format!("A-{n}")));
+                if l.titles.len() >= at || title.is_some() {
+                    l.titles.resize(l.titles.len().max(at), String::new());
+                    l.titles.insert(at, title.clone().unwrap_or_default());
+                }
+                let shift = |p: u32| if p as usize >= at { p + 1 } else { p };
+                if !l.templates.is_empty() {
+                    l.templates.resize(l.templates.len().max(at), None);
+                    for t in l.templates.iter_mut().flatten() {
+                        *t = shift(*t);
+                    }
+                    l.templates.insert(at, None);
+                }
+                for t in &mut l.template_pages {
+                    *t = shift(*t);
+                }
+                let boxes: Vec<Id> = doc.iter::<LayoutBox>().filter(|b| b.layout == *layout && b.page as usize >= at).map(|b| b.id).collect();
+                for id in boxes {
+                    if let Some(b) = doc.get_mut::<LayoutBox>(id) {
+                        b.page += 1;
+                        out.modified.push(id);
+                    }
+                }
+                out.modified.push(*layout);
+            }
+            Command::LabelPages { layout, labels } => {
+                let l = doc.get_mut::<Layout>(*layout).ok_or(ApiError::NotFound(*layout))?;
+                let mut counts: std::collections::BTreeMap<String, u32> = Default::default();
+                for (i, label) in labels.iter().enumerate().take(l.pages.len()) {
+                    if label.is_empty() {
+                        continue;
+                    }
+                    l.pages[i] = match label.split_once('#') {
+                        Some((prefix, rest)) => {
+                            let n = counts.entry(prefix.to_string()).or_insert(0);
+                            *n += 1;
+                            format!("{prefix}{n}{rest}")
+                        }
+                        None => label.clone(),
+                    };
+                }
+                out.modified.push(*layout);
             }
             Command::AddLayoutPage { layout, name } => {
                 let l = doc

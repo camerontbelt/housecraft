@@ -43,7 +43,7 @@ has two files:
 | 23 | Terrain Elevation (403) | 15 | 4 | [23-terrain-elevation.md](23-terrain-elevation.md) |
 | 24 | Driveways, Sidewalks, and Roads (420) | 14 | 0 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
 | 25 | Landscaping Design (433) | 22 | 2 | [25-landscaping-design.md](25-landscaping-design.md) |
-| 26 | Layout Page Templates (451) | 7 | 4 | [26-layout-page-templates.md](26-layout-page-templates.md) |
+| 26 | Layout Page Templates (451) | 10 | 1 | [26-layout-page-templates.md](26-layout-page-templates.md) |
 | 27 | Title Blocks and Borders (460) | 16 | 0 | [27-title-blocks-and-borders.md](27-title-blocks-and-borders.md) |
 | 28 | Sending Views to Layout (483) | 11 | 5 | [28-sending-views-to-layout.md](28-sending-views-to-layout.md) |
 

@@ -356,12 +356,26 @@ pub struct Layout {
     /// (paper length; 0: 1/8" or 3 mm).
     #[serde(default)]
     pub grid: Length,
+    /// Pages used as page templates: drawn under other pages, but not
+    /// printed, numbered or listed in the sheet index.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub template_pages: Vec<u32>,
 }
 
 impl Layout {
     /// Page `page`'s title, or "" when it has none.
     pub fn title(&self, page: usize) -> &str {
         self.titles.get(page).map_or("", |t| t.as_str())
+    }
+
+    /// Whether page `page` is a page template (not printed).
+    pub fn is_template_page(&self, page: usize) -> bool {
+        self.template_pages.contains(&(page as u32))
+    }
+
+    /// The pages that print, in order.
+    pub fn printed_pages(&self) -> Vec<usize> {
+        (0..self.pages.len()).filter(|p| !self.is_template_page(*p)).collect()
     }
 
     /// The template page under page `page`, if any (never itself).

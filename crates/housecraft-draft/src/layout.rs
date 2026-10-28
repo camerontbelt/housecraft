@@ -621,11 +621,9 @@ fn title_block(doc: &Document, layout: &Layout, page: usize, out: &mut Drawing) 
     );
 }
 
-/// Every page of `layout`, in order.
+/// Every printed page of `layout`, in order (page templates are left out).
 pub fn layout_pages(doc: &Document, layout: &Layout) -> Vec<Drawing> {
-    (0..layout.pages.len())
-        .map(|p| layout_page(doc, layout, p))
-        .collect()
+    layout.printed_pages().into_iter().map(|p| layout_page(doc, layout, p)).collect()
 }
 
 #[cfg(test)]

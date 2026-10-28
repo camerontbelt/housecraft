@@ -969,3 +969,36 @@ fn ceiling_break_lines_show_under_a_lower_floors_roof() {
     let roof_lines = d.items.iter().filter(|i| i.object.is_some_and(|o| doc.get::<housecraft_api::model::RoofPlane>(o).is_some()) && matches!(&i.prim, Prim::Polyline { points, stroke, .. } if points.len() == 2 && !stroke.dash.is_empty())).count();
     assert!(roof_lines >= 2, "{roof_lines} ceiling break lines");
 }
+
+#[test]
+fn template_pages_dont_print_labels_number_by_prefix_and_pages_insert() {
+    use housecraft_api::model::{Layout, LayoutBox};
+    let mut s = house();
+    let out = s.apply(&[serde_json::from_value(serde_json::json!({"op": "add_layout", "name": "Set", "pages": 4})).unwrap()]).unwrap();
+    let l = out.created[0].0;
+    let cmds: Vec<Command> = serde_json::from_value(serde_json::json!([
+        {"op": "update", "id": l, "set": {"template_pages": [0], "templates": [null, 0, 0, 0]}},
+        {"op": "label_pages", "layout": l, "labels": ["Template", "A1.#", "A1.#", "E1.#"]},
+        {"op": "send_to_layout", "layout": l, "page": 0, "source": {"type": "text", "text": "{page} of {page_count}"}, "label": ""},
+        {"op": "send_to_layout", "layout": l, "page": 2, "source": {"type": "text", "text": "on A1.2"}, "label": ""}
+    ]))
+    .unwrap();
+    let made = s.apply(&cmds).unwrap().created;
+    let doc = s.document();
+    let lay = doc.get::<Layout>(out.created[0]).unwrap();
+    assert_eq!(lay.pages, ["Template", "A1.1", "A1.2", "E1.1"]);
+    let printed = housecraft_draft::layout::layout_pages(doc, lay);
+    assert_eq!(printed.len(), 3, "the template page doesn't print");
+    let texts: Vec<String> = printed[0].items.iter().filter_map(|i| match &i.prim { Prim::Text { text, .. } => Some(text.clone()), _ => None }).collect();
+    assert!(texts.iter().any(|t| t == "1 of 3"), "{texts:?}");
+    // Insert Page Before A1.2: its box moves along.
+    let ins: Command = serde_json::from_value(serde_json::json!({"op": "insert_layout_page", "layout": l, "at": 2, "name": "A1.X", "title": "Foundation Plan"})).unwrap();
+    s.apply(&[ins]).unwrap();
+    let doc = s.document();
+    let lay = doc.get::<Layout>(out.created[0]).unwrap();
+    assert_eq!(lay.pages, ["Template", "A1.1", "A1.X", "A1.2", "E1.1"]);
+    assert_eq!(lay.title(2), "Foundation Plan");
+    assert_eq!(lay.templates.get(2).copied().flatten(), None);
+    assert_eq!(lay.templates.get(3).copied().flatten(), Some(0));
+    assert_eq!(doc.get::<LayoutBox>(made[1]).unwrap().page, 3);
+}

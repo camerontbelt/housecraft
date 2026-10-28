@@ -54,8 +54,26 @@
       ]
     },
     {
-      "step": "(Use as Page Template: template pages don't print)",
-      "gap": "Any page can be drawn under another, but there is no template flag; template pages print with the rest. Row: PRJ-46"
+      "step": "Use as Page Template: the two template pages don't print",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$lay",
+          "set": {
+            "template_pages": [
+              0,
+              1
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$lay",
+          "path": "/template_pages/1",
+          "is": 1
+        }
+      ]
     },
     {
       "step": "Pages 2-6: page 2 uses the Cover Sheet Template, pages 3-6 the Standard Template; titles Cover Sheet, General Notes, Site Plan",
@@ -163,40 +181,76 @@
       ]
     },
     {
-      "step": "(# in a label numbers the page within its prefix)",
-      "gap": "Number Pages gives one prefix to every page; type mixed sheet numbers yourself. Row: PRJ-46"
+      "step": "# in a label numbers the page within its prefix",
+      "commands": [
+        {
+          "op": "label_pages",
+          "layout": "$lay",
+          "labels": [
+            "Template",
+            "Cover Template",
+            "Cover",
+            "A0.#",
+            "A1.#",
+            "A1.#",
+            "E1.#"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$lay",
+          "path": "/pages/5",
+          "is": "A1.2"
+        },
+        {
+          "get": "$lay",
+          "path": "/pages/6",
+          "is": "E1.1"
+        }
+      ]
     },
     {
       "step": "Insert Page Before page 5 (Foundation Plan, A1.#); Insert Page After page 6 (Elevations, A2.#) and after 7 (Sections, A2.#)",
       "commands": [
         {
+          "op": "insert_layout_page",
+          "layout": "$lay",
+          "at": 5,
+          "title": "Foundation Plan"
+        },
+        {
+          "op": "insert_layout_page",
+          "layout": "$lay",
+          "at": 7,
+          "title": "Elevations"
+        },
+        {
+          "op": "insert_layout_page",
+          "layout": "$lay",
+          "at": 8,
+          "title": "Sections"
+        },
+        {
+          "op": "label_pages",
+          "layout": "$lay",
+          "labels": [
+            "Template",
+            "Cover Template",
+            "Cover",
+            "A0.#",
+            "A1.#",
+            "A1.#",
+            "A1.#",
+            "A2.#",
+            "A2.#",
+            "E1.#"
+          ]
+        },
+        {
           "op": "update",
           "id": "$lay",
           "set": {
-            "pages": [
-              "Template",
-              "Cover Template",
-              "Cover",
-              "A0.1",
-              "A1.1",
-              "A1.2",
-              "A1.3",
-              "A2.1",
-              "A2.2",
-              "E1.1"
-            ],
-            "titles": [
-              "Standard Template",
-              "Cover Sheet Template",
-              "Cover Sheet",
-              "General Notes",
-              "Site Plan",
-              "Foundation Plan",
-              "Floor 1 Plan",
-              "Elevations",
-              "Sections",
-              "Electrical Floor 1"
-            ],
             "templates": [
               null,
               null,
@@ -222,12 +276,28 @@
           "get": "$lay",
           "path": "/pages/9",
           "is": "E1.1"
+        },
+        {
+          "get": "$lay",
+          "path": "/pages/6",
+          "is": "A1.3"
+        },
+        {
+          "get": "$lay",
+          "path": "/titles/8",
+          "is": "Sections"
         }
       ]
     },
     {
-      "step": "(Insert Page Before / After)",
-      "gap": "Add Page adds at the end; reorder by editing the page list. Row: PRJ-41"
+      "step": "(Insert Page Before / After: buttons beside each page in the layout's dialog)",
+      "expect": [
+        {
+          "get": "$lay",
+          "path": "/pages/7",
+          "is": "A2.1"
+        }
+      ]
     },
     {
       "step": "Make a Copy as Chic Cottage-Page Templates"

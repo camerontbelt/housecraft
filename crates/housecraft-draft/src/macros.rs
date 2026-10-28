@@ -209,8 +209,9 @@ pub fn expand_page(doc: &Document, layout: &housecraft_model::Layout, page: usiz
     let page_value = |name: &str| -> Option<String> {
         Some(match name {
             "sheet" => layout.pages.get(page)?.clone(),
-            "page" => (page + 1).to_string(),
-            "page_count" => layout.pages.len().to_string(),
+            // Numbered among the printed pages (page templates don't count).
+            "page" => (layout.printed_pages().iter().position(|p| *p == page).unwrap_or(page) + 1).to_string(),
+            "page_count" => layout.printed_pages().len().to_string(),
             "page_title" => layout.title(page).to_string(),
             "layout" => layout.name.clone(),
             _ => return None,

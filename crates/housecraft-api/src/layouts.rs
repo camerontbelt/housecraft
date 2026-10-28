@@ -110,6 +110,7 @@ pub fn sheet_index(doc: &Document, layout: Id) -> crate::schedule::ScheduleTable
         l.pages
             .iter()
             .enumerate()
+            .filter(|(i, _)| !l.is_template_page(*i))
             .map(|(i, p)| crate::schedule::ScheduleRow {
                 ids: Vec::new(),
                 cells: vec![p.clone(), l.title(i).to_string()],
