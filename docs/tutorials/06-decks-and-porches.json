@@ -81,8 +81,27 @@
       ]
     },
     {
-      "step": "Deck room defaults: 1\" planks with 1/4\" gaps; deck post footings 30\" deep",
-      "gap": "Deck defaults (planks, footing depth) live on each deck and are set below. Row: SITE-26"
+      "step": "Deck defaults: 1\" planks with 1/4\" gaps; deck post footings 30\" deep",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "deck": {
+              "plank_thickness": "1\"",
+              "plank_gap": "1/4\"",
+              "footing_depth": "30\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/deck/footing_depth",
+          "is": "30\""
+        }
+      ]
     },
     {
       "step": "Deck at the back: three deck railings enclosing a deck room, 36\" in from each side wall and 8' deep",
@@ -152,8 +171,14 @@
       ]
     },
     {
-      "step": "(In Chief the deck is a room drawn with Deck Railings)",
-      "gap": "Decks are drawn with the Deck tool as one object, not as a room enclosed by deck railings. Row: SITE-26"
+      "step": "(In Chief the deck is a room drawn with Deck Railings: with the Deck tool, double-click inside railings to fill them; here the deck draws its own railing)",
+      "expect": [
+        {
+          "get": "$deck",
+          "path": "/footing_depth",
+          "is": "30\""
+        }
+      ]
     },
     {
       "step": "Move the three automatic dimensions out of the deck (Transform/Replicate, 8' up); they stop refreshing",
@@ -311,7 +336,21 @@
     },
     {
       "step": "Turn on the Footings, Deck Post layer",
-      "gap": "Deck post footings have no layer of their own. Row: SITE-26"
+      "commands": [
+        {
+          "op": "set_layer_display",
+          "layer_set": "$named:layer_set:Working",
+          "layer": "$named:layer:Footings, Deck Post",
+          "visible": true
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:layer:Footings, Deck Post",
+          "path": "/name",
+          "is": "Footings, Deck Post"
+        }
+      ]
     },
     {
       "step": "Porch stem walls on Floor 0 under the porch walls, 37 1/2\" high, no floor under the porch room",

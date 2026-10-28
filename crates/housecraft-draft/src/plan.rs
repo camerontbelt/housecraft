@@ -674,6 +674,17 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
                     Prim::Polyline { points: vec![c + DVec2::new(-h, -h), c + DVec2::new(h, -h), c + DVec2::new(h, h), c + DVec2::new(-h, h)], closed: true, stroke: look.stroke },
                 );
             }
+            // Post footings, on their own layer.
+            if let Some(fl) = dk.footing_layer {
+                let fl = ctx.look(fl);
+                if fl.visible {
+                    for m in parts.members.iter().filter(|m| m.role == FramingRole::Footing) {
+                        let c = m.a.truncate();
+                        let r = m.width / 2.0;
+                        out.push(Some(dk.id), Prim::Polyline { points: housecraft_geom::math::arc_points(c, r, 0.0, 360.0), closed: true, stroke: fl.stroke });
+                    }
+                }
+            }
         }
     }
     for j in doc.iter::<JoistDirection>().filter(|j| j.floor == opts.floor) {

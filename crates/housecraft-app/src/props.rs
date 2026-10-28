@@ -1556,6 +1556,15 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             if dk.ledger {
                 ed.opt_length(ui, "Ledger Depth", "ledger_depth", dk.ledger_depth, Some(dk.joist_depth));
             }
+            if dk.covered {
+                if let Some(p) = ed.number(ui, "Roof Pitch (in 12; 0 flat)", "roof_pitch", dk.roof_pitch) {
+                    ed.out.push(patch(id, json!({ "roof_pitch": p.max(0.0) })));
+                }
+                if dk.roof_pitch > 0.0 {
+                    ed.check(ui, "Gable Ends", "roof_gables", "Gables at the ends (hips when off)", dk.roof_gables);
+                    ed.check(ui, "Vaulted", "vaulted", "Ceiling follows the roof (no flat ceiling)", dk.vaulted);
+                }
+            }
             Ed::label(ui, "Beam Positions");
             ui.horizontal(|ui| {
                 let unit = doc.settings.display_unit;

@@ -325,10 +325,46 @@ pub fn deck_mesh(doc: &Document, deck: &Deck, mesh: &mut Mesh) {
             crate::site::post(*c, 2.75 * IN, p.top, roof_z, wood, mesh);
         }
         let over = inset_polygon(&p.outline, -300.0);
-        if over.len() >= 3 {
-            mesh.prism_look(&over, roof_z, roof_z + 150.0, look(Color::rgb(110, 105, 100), 1.0));
+        let roofing = look(Color::rgb(110, 105, 100), 1.0);
+        if deck.roof_pitch > 0.0
+            && let Some((lo, hi)) = crate::math::bounds(over.iter().copied())
+        {
+            for face in pitched_roof(lo, hi, roof_z, deck.roof_pitch / 12.0, deck.roof_gables) {
+                mesh.polygon_look(&face, roofing);
+            }
+            if !deck.vaulted {
+                let ceiling = inset_polygon(&p.outline, -10.0);
+                mesh.prism_look(&ceiling, roof_z - 15.0, roof_z, wood);
+            }
+        } else if over.len() >= 3 {
+            mesh.prism_look(&over, roof_z, roof_z + 150.0, roofing);
         }
     }
+}
+
+/// The faces of a pitched roof over the rectangle `lo..hi` from eave
+/// height `z`, rising `slope` per unit run, its ridge along the long side:
+/// two planes and two gable ends, or four hipped planes.
+pub fn pitched_roof(lo: DVec2, hi: DVec2, z: f64, slope: f64, gables: bool) -> Vec<Vec<DVec3>> {
+    let size = hi - lo;
+    // Work with the ridge along x, then swap back.
+    let along_x = size.x >= size.y;
+    let (len, span) = if along_x { (size.x, size.y) } else { (size.y, size.x) };
+    let half = span / 2.0;
+    let top = z + half * slope;
+    let inset = if gables { 0.0 } else { half.min(len / 2.0) };
+    let p = |u: f64, v: f64, h: f64| {
+        let (x, y) = if along_x { (lo.x + u, lo.y + v) } else { (lo.x + v, lo.y + u) };
+        DVec3::new(x, y, h)
+    };
+    let mut faces = vec![
+        vec![p(0.0, 0.0, z), p(len, 0.0, z), p(len - inset, half, top), p(inset, half, top)],
+        vec![p(len, span, z), p(0.0, span, z), p(inset, half, top), p(len - inset, half, top)],
+    ];
+    // Ends: gable triangles, or hip triangles.
+    faces.push(vec![p(0.0, span, z), p(0.0, 0.0, z), p(inset, half, top)]);
+    faces.push(vec![p(len, 0.0, z), p(len, span, z), p(len - inset, half, top)]);
+    faces
 }
 
 /// Every deck (on `only_floor` when given).

@@ -62,7 +62,42 @@ pub struct Deck {
     /// A roof over it on posts at the corners.
     #[serde(default)]
     pub covered: bool,
+    /// The covered roof's pitch (rise in 12); flat when 0.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub roof_pitch: f64,
+    /// The pitched roof has gable ends (instead of hips).
+    #[serde(default)]
+    pub roof_gables: bool,
+    /// Under a pitched roof the ceiling follows the roof (cathedral)
+    /// instead of a flat ceiling at the posts' tops.
+    #[serde(default)]
+    pub vaulted: bool,
+    /// Post footings are drawn in plan on this layer (none when unset).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub footing_layer: Option<Id>,
     pub color: Color,
+}
+
+fn is_zero(v: &f64) -> bool {
+    *v == 0.0
+}
+
+/// Settings new decks start with.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct DeckDefaults {
+    pub plank_width: Length,
+    pub plank_gap: Length,
+    pub plank_thickness: Length,
+    pub footing_depth: Length,
+    pub railing_height: Length,
+}
+
+impl Default for DeckDefaults {
+    fn default() -> Self {
+        let i = Length::from_inches;
+        DeckDefaults { plank_width: i(5.5), plank_gap: i(0.25), plank_thickness: i(1.0), footing_depth: footing_depth(), railing_height: i(36.0) }
+    }
 }
 
 fn footing_depth() -> Length {
@@ -103,6 +138,10 @@ impl Deck {
             railing: true,
             railing_height: i(36.0),
             covered: false,
+            roof_pitch: 0.0,
+            roof_gables: false,
+            vaulted: false,
+            footing_layer: None,
             color: Color::rgb(160, 115, 75),
         }
     }

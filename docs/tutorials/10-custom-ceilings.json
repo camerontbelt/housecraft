@@ -56,8 +56,23 @@
       "gap": "No ceiling finish layers to remove. Row: RM-19"
     },
     {
-      "step": "Cathedral ceiling over the Deck: untick Flat Ceiling Over This Room so it follows the roof",
-      "gap": "The deck isn't a room; a room's ceiling can follow the roof with Ceiling > Vaulted. Row: SITE-26"
+      "step": "Cathedral ceiling over the Deck: the ceiling follows the roof (Vaulted)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$deck",
+          "set": {
+            "vaulted": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$deck",
+          "path": "/vaulted",
+          "is": true
+        }
+      ]
     },
     {
       "step": "Tray ceiling in the basement with 36\" x 12\" soffits round the room",

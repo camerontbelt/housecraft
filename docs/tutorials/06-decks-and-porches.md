@@ -37,11 +37,17 @@ these on each wall or deck instead.
 
 ## Deck (pages 110–112)
 
+0. Deck defaults: **Edit › Default Settings**, open **Decks**: **Plank thickness** `1"`, **Plank gap** `1/4"`,
+   **Post footing depth** `30"`. New decks start with these.
 1. **Terrain › Site › Deck**: click the four corners: along the back wall 36" in from each side, then 8' out.
    Press **Enter**.
 2. Open the deck: **Plank thickness** `1"`, **Plank gap** `1/4"`, **Footing Depth** `30"` (how far the post
    footings reach into the ground). It has a railing on its open sides.
-3. *Not in HouseCraft yet:* the deck as a room enclosed by deck railings, and a layer of its own for the footings.
+3. Chief draws the deck as a room enclosed by Deck Railings. You can do that too: draw railing walls (a wall type
+   with a railing) round the space, then pick the **Deck** tool and double-click inside them. The deck fills the
+   space and leaves the railing to the walls. The tutorial's deck uses the Deck tool's own railing instead.
+4. Deck post footings are drawn on the **Footings, Deck Post** layer, which starts hidden. Turn it on in the layer
+   set (**Tools › Layer › Layer Display Options**) to see them as dashed circles under the posts.
 
 ## Dimensioning exterior rooms (pages 112–115)
 
@@ -95,7 +101,6 @@ Shift+click to pick several first). They move on disk too.
 |---|---|
 | Stairs opening half walls; concrete stair material | ST-20, ST-12 |
 | Half Wall / Railing / Deck Railing tools and defaults | WL-29 |
-| Decks as rooms; a footing layer | SITE-26 |
 | Moving automatic dimensions | DIM-27 |
 | Foundation wall tool; per-room stem walls | FD-09 |
 | Dragging schedule rows | EST-28 |

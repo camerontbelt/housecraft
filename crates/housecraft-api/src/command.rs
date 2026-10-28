@@ -671,6 +671,9 @@ pub enum Command {
         #[serde(default)]
         curved: bool,
     },
+    /// A deck filling the room around `at`: the space enclosed by railing
+    /// walls (and the house). The railings are walls, so the deck has none.
+    DeckFromRoom { floor: Option<Id>, at: Point2, height: Option<Length> },
     /// Pin a note or dimension in 3D (to one camera's view, or every 3D view).
     AddAnnotation3d {
         #[serde(default)]
@@ -1392,6 +1395,7 @@ impl Command {
             Command::TrussDetail { .. } => "truss_detail",
             Command::WallFramingDetail { .. } => "wall_framing_detail",
             Command::AddDeck { .. } => "add_deck",
+            Command::DeckFromRoom { .. } => "deck_from_room",
             Command::AddWalkthrough { .. } => "add_walkthrough",
             Command::AddAnnotation3d { .. } => "add_annotation3d",
             Command::OrbitWalkthrough { .. } => "orbit_walkthrough",
@@ -3153,7 +3157,32 @@ impl Command {
                 };
                 dk.layer = d.layers.cad;
                 dk.curved = *curved;
+                if !*platform {
+                    let dd = &d.deck;
+                    (dk.plank_width, dk.plank_gap, dk.plank_thickness) = (dd.plank_width, dd.plank_gap, dd.plank_thickness);
+                    (dk.footing_depth, dk.railing_height) = (dd.footing_depth, dd.railing_height);
+                }
+                // The deck comes first in what was created; its layer after.
+                let mut made = Outcome::default();
+                dk.footing_layer = Some(crate::framing::footing_layer(doc, &mut made));
                 out.created.push(doc.insert(dk));
+                out.created.extend(made.created);
+                out.modified.extend(made.modified);
+            }
+            Command::DeckFromRoom { floor, at, height } => {
+                let floor = ops::resolve_floor(doc, *floor)?;
+                let region = housecraft_geom::rooms::detect(doc, floor)
+                    .rooms
+                    .into_iter()
+                    .find(|r| housecraft_geom::math::point_in_polygon(housecraft_geom::v2(*at), &r.polygon))
+                    .ok_or_else(|| ApiError::Invalid("click inside a space enclosed by railings or walls".into()))?;
+                let points = region.polygon.iter().map(|p| housecraft_geom::pt(*p)).collect();
+                let more = Command::AddDeck { floor: Some(floor), points, height: *height, platform: false, curved: false }.apply(doc)?;
+                let id = more.created.iter().copied().find(|c| doc.get::<Deck>(*c).is_some()).ok_or(ApiError::NotFound(Id(0)))?;
+                if let Some(dk) = doc.get_mut::<Deck>(id) {
+                    dk.railing = false;
+                }
+                out.created.extend(more.created);
             }
             Command::WallFramingDetail { wall } => {
                 let (name, shapes, texts) = crate::framing::wall_detail(doc, *wall)?;

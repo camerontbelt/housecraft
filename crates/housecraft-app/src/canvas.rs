@@ -2239,7 +2239,7 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
     }
     if finish && matches!(tool, Tool::Deck | Tool::RaisedPlatform) {
         let pending = std::mem::take(&mut app.plan.pending);
-        if pending.len() >= 3 {
+        if pending.len() >= 3 && pending.iter().any(|p| p.distance(pending[0]) > 50.0) {
             commands.push(Command::AddDeck {
                 floor,
                 points: pending.iter().map(|p| pt(*p)).collect(),
@@ -2247,6 +2247,11 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                 platform: tool == Tool::RaisedPlatform,
                 curved: false,
             });
+        } else if tool == Tool::Deck
+            && let Some(at) = pending.first()
+        {
+            // A double-click inside a space enclosed by railings fills it.
+            commands.push(Command::DeckFromRoom { floor, at: pt(*at), height: None });
         }
         return;
     }

@@ -19,8 +19,8 @@ view and a **3D View** tab, switching between them.
 4. **Reverse gable:** choose **Break Wall** (Wall Tools; **new**) and click the right wall level with the back of
    the Garage. Make the back piece a **Full Gable Wall**.
 5. **Build › Roof › Build Roof** (Ctrl+R).
-6. **Roof over the deck:** *different in HouseCraft.* Open the deck and tick **Covered**. That gives it a roof on
-   posts, rather than room settings and railing pitches.
+6. **Roof over the deck:** open the deck and tick **Covered**, then set **Roof Pitch** `2` (2 in 12) and tick
+   **Gable Ends**. The roof sits on posts at the deck's corners; its ridge runs along the deck's long side.
 
 ## Story and a half (pages 145–148)
 
@@ -58,7 +58,6 @@ Chief builds the roof over Floor 1 (Ignore Top Floor) and raises it 18 1/8". In 
 | Raise/Lower and Ignore Top Floor in Build Roof; Display On Floor Above | RF-19 |
 | Automatic roof returns; frieze per plane | RF-03, RF-12 |
 | Attic room type | RM-18 |
-| Deck roofs from room settings | SITE-26 |
 | Roof Plan View; tiled views | PRJ-13, UI-32 |
 
 Added for this tutorial: **Break Wall** (Wall Tools), and **walls under a roof built on a lower floor stop at

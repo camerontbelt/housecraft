@@ -154,8 +154,25 @@
       ]
     },
     {
-      "step": "Roof over the deck: Roof Over This Room, sides gables, 2 in 12",
-      "gap": "A deck's roof comes from its Covered box (a roof on corner posts), not from room settings and railing pitches. Row: SITE-26"
+      "step": "Roof over the deck: covered, gable ends, 2 in 12",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$deck",
+          "set": {
+            "covered": true,
+            "roof_pitch": 2.0,
+            "roof_gables": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$deck",
+          "path": "/roof_pitch",
+          "is": 2.0
+        }
+      ]
     },
     {
       "step": "Story and a half: build the roof over Floor 1 (Ignore Top Floor) raised 18 1/8\"",

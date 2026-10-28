@@ -290,6 +290,7 @@ pub(crate) fn new_document(name: String) -> Document {
         cabinets: CabinetDefaults::default(),
         solids: Default::default(),
         framing: Default::default(),
+        deck: Default::default(),
         materials,
         labels: Default::default(),
         wall_reference: Default::default(),

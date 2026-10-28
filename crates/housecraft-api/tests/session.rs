@@ -3219,7 +3219,8 @@ fn deck_stairs_go_down_to_grade_through_the_railing() {
         r#"[{"op": "add_deck", "points": [["30'",0],["46'",0],["46'","20'"],["30'","20'"]], "height": "3'"},
             {"op": "add_stair", "start": ["38'","20'"], "direction": 270, "width": "5'"}]"#,
     );
-    let (deck, stair) = (out.created[0], out.created[1]);
+    // The first deck also makes the footing layer.
+    let (deck, stair) = (out.created[0], *out.created.last().unwrap());
     let rails_before = {
         let dk = s.document().get::<Deck>(deck).unwrap();
         housecraft_api::geom::deck::parts(s.document(), dk).unwrap().rails.len()
@@ -3599,4 +3600,38 @@ fn path_edges_curve_into_arcs() {
     assert!(points.len() > 4);
     assert!(points[4..].iter().all(|p| p.0.mm() < 0.0), "the new corners lie west of the lot");
     assert!(s.apply(&[Command::CurveEdge { id: lot, edge: 0, radius: Length::from_feet(2.0) }]).is_err(), "radius under half the edge");
+}
+
+#[test]
+fn deck_defaults_footing_layer_decks_from_railing_rooms_and_pitched_deck_roofs() {
+    let mut s = boxed();
+    let set = s.document().settings.active_default_set;
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "deck": { "plank_gap": "1/8\"", "footing_depth": "30\"" } })) }]).unwrap();
+    // Three railings off the house's east wall enclose the deck room.
+    let rail = s.document().iter::<WallType>().find(|t| t.railing.is_some()).unwrap().id;
+    let out = apply(
+        &mut s,
+        &format!(
+            r#"[{{"op": "add_walls", "points": [["20'","5'"], ["32'","5'"], ["32'","25'"], ["20'","25'"]], "wall_type": {r}}}]"#,
+            r = rail.0
+        ),
+    );
+    assert!(!out.created.is_empty());
+    let out = s.apply(&[serde_json::from_value(serde_json::json!({"op": "deck_from_room", "at": ["26'", "15'"]})).unwrap()]).unwrap();
+    let dk = out.created.iter().find_map(|id| s.document().get::<Deck>(*id)).unwrap().clone();
+    assert!(!dk.railing, "the railings are walls");
+    assert_eq!(dk.plank_gap, Length::from_inches(0.125));
+    assert_eq!(dk.footing_depth, Length::from_inches(30.0));
+    let xs: Vec<f64> = dk.outline.iter().map(|p| p.0.mm() / 304.8).collect();
+    assert!(xs.iter().all(|x| *x > 20.0 && *x < 32.0), "fills the room: {xs:?}");
+    // The footing layer exists, hidden.
+    let fl = s.document().get::<Layer>(dk.footing_layer.unwrap()).unwrap();
+    assert_eq!(fl.name, "Footings, Deck Post");
+    // A 2 in 12 gable roof over the covered deck, vaulted: no flat ceiling.
+    s.apply(&[Command::Update { id: dk.id, set: patch(serde_json::json!({ "covered": true, "roof_pitch": 2.0, "roof_gables": true, "vaulted": true })) }]).unwrap();
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    let zs: Vec<f64> = mesh.faces.iter().filter(|f| mesh.parts[f.part].object == dk.id).flat_map(|f| f.points.iter().map(|p| p.z)).collect();
+    let top = zs.iter().cloned().fold(f64::MIN, f64::max);
+    let eave = s.document().get::<Deck>(dk.id).map(|d| housecraft_api::geom::deck::parts(s.document(), d).unwrap().top).unwrap() + 2700.0;
+    assert!(top > eave + 300.0, "the ridge rises above the eaves: {top} vs {eave}");
 }

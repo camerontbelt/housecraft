@@ -23,11 +23,11 @@ has two files:
 | 3 | Multiple Floors (45) | 13 | 6 | [03-multiple-floors.md](03-multiple-floors.md) |
 | 4 | Interior Stairs (60) | 13 | 10 | [04-interior-stairs.md](04-interior-stairs.md) |
 | 5 | Doors and Windows (82) | 24 | 8 | [05-doors-and-windows.md](05-doors-and-windows.md) |
-| 6 | Decks and Porches (105) | 20 | 9 | [06-decks-and-porches.md](06-decks-and-porches.md) |
+| 6 | Decks and Porches (105) | 23 | 6 | [06-decks-and-porches.md](06-decks-and-porches.md) |
 | 7 | Roof styles: hip, gable, Dutch gable, shed, offset gable, gambrel, gull wing, half hip, mansard (127) | 12 | 3 | [07-roof-styles.md](07-roof-styles.md) |
-| 8 | Chic Cottage Roof (136) | 12 | 7 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
+| 8 | Chic Cottage Roof (136) | 13 | 6 | [08-chic-cottage-roof.md](08-chic-cottage-roof.md) |
 | 9 | Dormers (159) | 11 | 6 | [09-dormers.md](09-dormers.md) |
-| 10 | Custom Ceilings (177) | 6 | 6 | [10-custom-ceilings.md](10-custom-ceilings.md) |
+| 10 | Custom Ceilings (177) | 7 | 5 | [10-custom-ceilings.md](10-custom-ceilings.md) |
 | 11 | Finish Materials (191) | 10 | 5 | [11-finish-materials.md](11-finish-materials.md) |
 | 12 | Room Moldings (211) | 6 | 3 | [12-room-moldings.md](12-room-moldings.md) |
 | 13 | Interior Furnishings (222) | 10 | 6 | [13-interior-furnishings.md](13-interior-furnishings.md) |

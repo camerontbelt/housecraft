@@ -537,7 +537,7 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-22 | Landscaping plans and plant schedules | P3 | M6 ✓ plant schedule; plants and site work in the materials list |
 | SITE-23 | Plant growth over time | P3 | M8 |
 | SITE-24 | 3D plants with shadows | P2 | M7 ✓ plants cast sun shadows in 3D |
-| SITE-26 | Decks as rooms enclosed by Deck Railings (Deck room type defaults: planking, framing, post footing depth and layer) | P2 | M9 ◐ each deck has a Footing Depth; decks as rooms and a footing layer later |
+| SITE-26 | Decks as rooms enclosed by Deck Railings (Deck room type defaults: planking, framing, post footing depth and layer) | P2 | M9 ✓ deck defaults (planks, footing depth, railing height), Deck tool double-click fills a railing-enclosed room, Footings, Deck Post layer, covered decks with a pitched gable or hip roof and a flat or vaulted ceiling |
 | SITE-27 | Terrain elevation reference point (surface height set at a chosen point) | P3 | M9 ✓ Reference Point in the terrain dialog: the ground is held at the base elevation there and slopes to the elevation data |
 | SITE-28 | North Pointer object that rotates with the lot; a separate site north for plot plans vs the house | P3 | M9 |
 | SITE-29 | Plot plan lines: decimal-feet lengths and quadrant-bearing angles on CAD lines; curved lot sides by radius and arc length | P2 | M9 ◐ Edit › Change Line/Arc… curves any edge of a lot line, elevation line, road or bed by radius; decimal feet, bearings and typed arc lengths later |

@@ -1289,6 +1289,22 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                         ui.weak(format!("{{{m}}}  {what}"));
                     }
                 });
+                egui::CollapsingHeader::new("Decks").show(ui, |ui| {
+                    let dd = &d.deck;
+                    egui::Grid::new("deck_defaults").num_columns(2).show(ui, |ui| {
+                        for (label, key, v) in [
+                            ("Plank width", "plank_width", dd.plank_width),
+                            ("Plank gap", "plank_gap", dd.plank_gap),
+                            ("Plank thickness", "plank_thickness", dd.plank_thickness),
+                            ("Post footing depth", "footing_depth", dd.footing_depth),
+                            ("Railing height", "railing_height", dd.railing_height),
+                        ] {
+                            len_row(ui, doc, &mut app.bufs, label, ("deck", key), v, |v| {
+                                commands.push(p(json!({"deck": {key: v}})))
+                            });
+                        }
+                    });
+                });
                 egui::CollapsingHeader::new("Framing").show(ui, |ui| {
                     let f = &d.framing;
                     egui::Grid::new("framing_defaults").num_columns(2).show(ui, |ui| {

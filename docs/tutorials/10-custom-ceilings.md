@@ -20,8 +20,8 @@ floors, room types or rooms, and custom framing types such as hat channel. What 
 
 ## Cathedral ceiling (pages 183–184)
 
-The deck isn't a room in HouseCraft (see [Tutorial 6](06-decks-and-porches.md)), so skip this step. On any room,
-**Ceiling: Vaulted** gives the same result under a roof.
+Open the deck and tick **Vaulted**: the flat ceiling under its pitched roof goes, and you see the underside of
+the roof. On a room, **Ceiling: Vaulted** does the same under the house roof.
 
 ## Tray and coffered ceilings (pages 184–188)
 
@@ -41,4 +41,3 @@ The deck isn't a room in HouseCraft (see [Tutorial 6](06-decks-and-porches.md)),
 | Ceiling finish definitions | RM-19 |
 | Custom framing types (hat channel) | FR-07 |
 | Soffit tool | CB-26 |
-| Decks as rooms (cathedral ceiling over the deck) | SITE-26 |

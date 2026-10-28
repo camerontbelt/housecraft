@@ -33,6 +33,34 @@ impl FramingParts {
     }
 }
 
+/// The "Footings, Deck Post" layer, made (hidden in every layer set) the
+/// first time a deck is added.
+pub(crate) fn footing_layer(doc: &mut Document, out: &mut Outcome) -> Id {
+    const NAME: &str = "Footings, Deck Post";
+    if let Some(id) = doc.iter::<Layer>().find(|l| l.name == NAME).map(|l| l.id) {
+        return id;
+    }
+    let id = doc.insert(Layer {
+        id: Id(0),
+        name: NAME.into(),
+        color: Some(Color::rgb(120, 120, 120)),
+        line_weight: 0.18,
+        line_style: LineStyle::Dashed,
+        text_style: None,
+        in_materials_list: true,
+        fill: None,
+    });
+    out.created.push(id);
+    let sets: Vec<Id> = doc.iter::<LayerSet>().map(|s| s.id).collect();
+    for s in sets {
+        if let Some(ls) = doc.get_mut::<LayerSet>(s) {
+            ls.layers.insert(id, LayerDisplay { visible: false, ..Default::default() });
+            out.modified.push(s);
+        }
+    }
+    id
+}
+
 /// The framing layer, made (hidden in every layer set) the first time.
 fn framing_layer(doc: &mut Document, out: &mut Outcome) -> Id {
     let set = doc.settings.active_default_set;
