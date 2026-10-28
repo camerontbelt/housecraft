@@ -106,7 +106,7 @@
       "expect": [
         {
           "count": "material_assignment",
-          "is": 3
+          "is": 9
         }
       ]
     },

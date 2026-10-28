@@ -523,6 +523,18 @@ pub struct StairDefaults {
     pub tread_overhang: Length,
     #[serde(default = "stair_stringers")]
     pub stringers: bool,
+    /// Newel posts new stairs get (none: rails only).
+    #[serde(default)]
+    pub newel_style: crate::NewelStyle,
+    #[serde(default = "newel_size")]
+    pub newel_size: Length,
+    /// Materials for the stair's parts (treads, stringers, railing).
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub materials: crate::SurfaceMaterials,
+}
+
+fn newel_size() -> Length {
+    Length::from_inches(3.5)
 }
 
 fn stair_overhang() -> Length {
@@ -546,6 +558,9 @@ impl StairDefaults {
             railing_right: true,
             tread_overhang: Length::ZERO,
             stringers: true,
+            newel_style: crate::NewelStyle::None,
+            newel_size: newel_size(),
+            materials: Default::default(),
         }
     }
 }
@@ -561,6 +576,9 @@ impl Default for StairDefaults {
             railing_right: true,
             tread_overhang: stair_overhang(),
             stringers: true,
+            newel_style: crate::NewelStyle::None,
+            newel_size: newel_size(),
+            materials: Default::default(),
         }
     }
 }

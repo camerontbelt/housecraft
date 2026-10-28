@@ -1058,6 +1058,40 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                                         }
                                     });
                                     ui.end_row();
+                                    ui.label("Newel posts");
+                                    ui.horizontal(|ui| {
+                                        for n in NewelStyle::ALL {
+                                            if ui.selectable_label(sd.newel_style == n, n.name()).clicked() {
+                                                commands.push(p(json!({ key: { "newel_style": n } })));
+                                            }
+                                        }
+                                    });
+                                    ui.end_row();
+                                    if let Some(v) = app.bufs.length(ui, doc, egui::Id::unique(("newel_size", key)), sd.newel_size) {
+                                        commands.push(p(json!({ key: { "newel_size": v } })));
+                                    }
+                                    ui.end_row();
+                                    for (label, surface) in [("Treads", Surface::Stair), ("Stringers", Surface::Stringer), ("Railing", Surface::Railing)] {
+                                        ui.label(format!("{label} material"));
+                                        let current = sd.materials.get(&surface).copied();
+                                        egui::ComboBox::from_id_salt(("stair_mat", key, label))
+                                            .selected_text(current.and_then(|m| doc.get::<Material>(m)).map_or("Default", |m| m.name.as_str()))
+                                            .show_ui(ui, |ui| {
+                                                let mut mats = sd.materials.clone();
+                                                if ui.selectable_label(current.is_none(), "Default").clicked() {
+                                                    mats.remove(&surface);
+                                                    commands.push(p(json!({ key: { "materials": mats } })));
+                                                }
+                                                for m in doc.iter::<Material>() {
+                                                    if ui.selectable_label(current == Some(m.id), &m.name).clicked() {
+                                                        let mut mats = sd.materials.clone();
+                                                        mats.insert(surface, m.id);
+                                                        commands.push(p(json!({ key: { "materials": mats } })));
+                                                    }
+                                                }
+                                            });
+                                        ui.end_row();
+                                    }
                                 });
                         });
                 }

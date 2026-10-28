@@ -2767,6 +2767,15 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ed.out.push(patch(id, json!({ "stringers": st })));
             }
             ui.end_row();
+            if s.newel.is_none() {
+                let styles: Vec<(NewelStyle, &str)> = NewelStyle::ALL.iter().map(|n| (*n, n.name())).collect();
+                ed.choice(ui, "Newel Posts", "newel_style", s.newel_style, &styles);
+                if s.newel_style != NewelStyle::None
+                    && let Some(l) = ed.length(ui, "Newel Size", "newel_size", s.newel_size)
+                {
+                    ed.out.push(patch(id, json!({ "newel_size": l })));
+                }
+            }
             Ed::label(ui, "Risers");
             ui.label(format!(
                 "{} at {}",

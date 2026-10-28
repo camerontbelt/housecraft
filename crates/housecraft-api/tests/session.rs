@@ -3826,3 +3826,19 @@ fn dormer_defaults_windows_frieze_and_structural_dormers() {
     assert_eq!(hole.len(), 4);
     assert!(roof_faces(&s) > before, "the plane under it is cut into pieces round the hole");
 }
+
+#[test]
+fn stair_defaults_give_newels_and_part_materials() {
+    let mut s = boxed();
+    let set = s.document().settings.active_default_set;
+    let redwood = apply(&mut s, r##"[{"op": "add_material", "name": "Redwood", "color": "#8a3b2a"}]"##).created[0];
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "stair": { "newel_style": "capped", "newel_size": "5 1/2\"", "railing_left": true, "materials": { "stair": redwood.0 } } })) }]).unwrap();
+    let stair = apply(&mut s, r#"[{"op": "add_stair", "start": ["10'","5'"], "direction": 90}]"#).created[0];
+    let st = s.document().get::<Stair>(stair).unwrap();
+    assert_eq!((st.newel_style, st.newel_size), (NewelStyle::Capped, Length::from_inches(5.5)));
+    assert!(s.document().iter::<MaterialAssignment>().any(|a| a.object == stair && a.surface == Some(Surface::Stair) && a.material == redwood), "treads painted redwood");
+    // A capped newel stands at each end of the rail: wider than the rail itself.
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    let caps = mesh.faces.iter().filter(|f| mesh.parts[f.part].object == stair).flat_map(|f| f.points.iter()).filter(|p| p.z > 36.0 * 25.4).count();
+    assert!(caps > 0);
+}

@@ -18,8 +18,10 @@ It carries on from [Tutorial 3](03-multiple-floors.md). The steps also run as th
 ## Stair defaults (pages 62–64)
 
 1. **Edit › Default Settings… › Stairs**: set the width to `44"`.
-2. *Not in HouseCraft yet:* choosing the newel style (BX-02) and materials per part (balusters, rails, treads) in
-   the defaults. You can give a stair its own baluster and newel shapes in its specification.
+2. In the same **Stairs** defaults pick **Newel posts**: **Square** (also Capped or Ball top) and the **Newel size**,
+   and choose materials for the **Treads**, **Stringers** and **Railing**. New stairs get them. A stair can also
+   take its own baluster and newel shapes (3D symbols) in its specification. *Not in HouseCraft yet:* a library of
+   named newel and baluster styles.
 
 ## Stairs (pages 64–66)
 
@@ -84,7 +86,7 @@ lines you can drag.
 
 | Missing | FEATURES row |
 |---|---|
-| Newel/baluster styles and materials in stair defaults | ST-12 |
+| A library of named newel and baluster styles | ST-12 |
 | Lower garage floor (garage steps) | FD-07 |
 | Lock top/bottom/treads; Make Best Fit | ST-19 |
 | Open Below room; Same Wall Type handle | ST-18 |

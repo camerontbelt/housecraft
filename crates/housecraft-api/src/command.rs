@@ -1772,9 +1772,12 @@ impl Command {
                     layer: d.layers.stairs.unwrap_or(d.layers.walls),
                     baluster: None,
                     newel: None,
+                    newel_style: sd.newel_style,
+                    newel_size: sd.newel_size,
                     extras: Default::default(),
                     sections: Vec::new(),
                 };
+                let paints = sd.materials.clone();
                 // Split L and U stairs evenly when asked to.
                 let risers =
                     ((doc.stair_rise(&stair).mm() / stair.max_riser.mm()).ceil() as u32).max(1);
@@ -1787,7 +1790,12 @@ impl Command {
                     }
                     _ => {}
                 }
-                out.created.push(doc.insert(stair));
+                let id = doc.insert(stair);
+                out.created.push(id);
+                // The defaults' part materials, painted on.
+                for (surface, material) in paints {
+                    crate::paint::paint(doc, Some(material), PaintScope::Object, &[id], Some(surface), &mut out)?;
+                }
             }
             Command::AddElectrical {
                 floor,

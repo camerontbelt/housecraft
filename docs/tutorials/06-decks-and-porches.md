@@ -77,8 +77,11 @@ manual dimension along the deck's outer edge instead.
    **DN**, and the deck railing opens where the stair meets it.
 2. **Porch steps:** another Straight Stair at the middle of the porch's front edge, pointing at the house.
    **Width** `6'`, tick **Down to grade**, and untick **Stringers** so the steps are solid blocks.
-3. *Not in HouseCraft yet:* a concrete material just for the stairs, and stairs opening a half wall. Add a break in
-   the porch's front half wall on each side of the steps (**Edit › Add Break**) and delete the piece between.
+3. Concrete steps: paint the porch stair's treads with **Concrete** using the Material Painter (object mode, the
+   treads surface). Exterior stairs take their part materials from **Edit › Default Settings…** › **Stairs** ›
+   exterior stairs (here redwood treads, treated stringers, white rails and capped 5 1/2" newels).
+   *Not in HouseCraft yet:* stairs opening a half wall. Add a break in the porch's front half wall on each side of
+   the steps (**Edit › Add Break**) and delete the piece between.
 
 ## Annotations (pages 121–124)
 
@@ -99,7 +102,7 @@ Shift+click to pick several first). They move on disk too.
 
 | Missing | FEATURES row |
 |---|---|
-| Stairs opening half walls; concrete stair material | ST-20, ST-12 |
+| Stairs opening half walls | ST-20 |
 | Half Wall / Railing / Deck Railing tools and defaults | WL-29 |
 | Moving automatic dimensions | DIM-27 |
 | Foundation wall tool; per-room stem walls | FD-09 |

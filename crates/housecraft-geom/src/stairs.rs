@@ -606,6 +606,8 @@ mod tests {
             layer: d.layers.walls,
             baluster: None,
             newel: None,
+            newel_style: Default::default(),
+            newel_size: Length::from_inches(3.5),
             extras: Default::default(),
             sections: Vec::new(),
         };

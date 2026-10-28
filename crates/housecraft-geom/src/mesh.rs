@@ -1070,6 +1070,21 @@ fn stair_mesh(doc: &Document, stair: &housecraft_model::Stair, mesh: &mut Mesh) 
                 let base = p.z - stair.railing_height.mm();
                 symbol_post(newel, p.truncate(), base, p.z + 75.0, mesh);
             }
+        } else if stair.newel_style != housecraft_model::NewelStyle::None {
+            let h = stair.newel_size.mm() / 2.0;
+            let sq = |c: DVec2, r: f64| vec![c + DVec2::new(-r, -r), c + DVec2::new(r, -r), c + DVec2::new(r, r), c + DVec2::new(-r, r)];
+            for p in [rail.first(), rail.last()].into_iter().flatten() {
+                let (c, base, top) = (p.truncate(), p.z - stair.railing_height.mm(), p.z + 100.0);
+                mesh.prism(&sq(c, h), base, top, Surface::Railing);
+                match stair.newel_style {
+                    housecraft_model::NewelStyle::Capped => mesh.prism(&sq(c, h + 20.0), top, top + 30.0, Surface::Railing),
+                    housecraft_model::NewelStyle::Ball => {
+                        let ring: Vec<DVec2> = (0..8).map(|k| c + DVec2::from_angle(k as f64 * std::f64::consts::TAU / 8.0) * h).collect();
+                        mesh.prism(&ring, top, top + 2.0 * h, Surface::Railing);
+                    }
+                    _ => {}
+                }
+            }
         }
     }
 }

@@ -357,8 +357,49 @@
       "gap": "No Straight Foundation Wall tool or room stem-wall height; draw walls on the Foundation floor and set their height. Row: FD-09"
     },
     {
-      "step": "Exterior stair defaults (capped newels 5 1/2\" x 44\", white rails, redwood treads, treated stringers)",
-      "gap": "Stair defaults have no newel style or per-part materials. Row: ST-12"
+      "step": "Exterior stair defaults (capped newels 5 1/2\", white rails, redwood treads, treated stringers)",
+      "commands": [
+        {
+          "op": "add_material",
+          "name": "Redwood",
+          "color": "#8a3b2a"
+        },
+        {
+          "op": "add_material",
+          "name": "Treated Lumber",
+          "color": "#7c8a5a"
+        }
+      ],
+      "save": {
+        "woods": "material"
+      }
+    },
+    {
+      "step": "(the exterior stair defaults)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "exterior_stair": {
+              "newel_style": "capped",
+              "newel_size": "5 1/2\"",
+              "materials": {
+                "stair": "$woods.0",
+                "stringer": "$woods.1",
+                "railing": "$named:material:White Rail Paint"
+              }
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/exterior_stair/newel_style",
+          "is": "capped"
+        }
+      ]
     },
     {
       "step": "Deck stairs: outside the left deck railing, going down to the terrain (Open Object > Down to grade); 5' wide with railings both sides. The deck railing opens where they meet it",
@@ -450,8 +491,22 @@
       ]
     },
     {
-      "step": "(Concrete material on the porch stairs; the stairs opening the porch's front half wall)",
-      "gap": "Stairs have one material and only open deck railings; break the half wall (Add Break) and delete the piece in front of the stairs. Rows: ST-12, ST-20"
+      "step": "Concrete material on the porch stairs (Material Painter, treads)",
+      "commands": [
+        {
+          "op": "paint_material",
+          "material": "$named:material:Concrete",
+          "ids": [
+            "$porch_stairs"
+          ],
+          "surface": "stair"
+        }
+      ],
+      "expect": []
+    },
+    {
+      "step": "(the stairs opening the porch's front half wall)",
+      "gap": "Stairs only open deck railings; break the half wall (Add Break) and delete the piece in front of the stairs. Row: ST-20"
     },
     {
       "step": "Notes: 'CONCRETE STEPS TO GRADE', 'FRAMED STEPS TO GRADE', and numbered note 'EXTERIOR LANDING 36\" MINIMUM IN DIRECTION OF TRAVEL' (copied to both stairs)",

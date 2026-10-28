@@ -675,12 +675,44 @@ pub struct Stair {
     pub baluster: Option<Id>,
     #[serde(default)]
     pub newel: Option<Id>,
+    /// Built-in newel posts (used when `newel` has no symbol).
+    #[serde(default, skip_serializing_if = "is_no_newel")]
+    pub newel_style: NewelStyle,
+    #[serde(default = "newel_post_size")]
+    pub newel_size: Length,
     /// Open risers, starter tread, winders, ramps and rail ends.
     #[serde(default, skip_serializing_if = "StairExtras::is_plain")]
     pub extras: StairExtras,
     /// The flights and landings of a sectioned stair (`StairShape::Sections`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sections: Vec<StairSection>,
+}
+
+/// Built-in newel posts at the ends of a stair's railings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum NewelStyle {
+    #[default]
+    None,
+    /// A plain square post.
+    Square,
+    /// A square post with a wider flat cap.
+    Capped,
+    /// A square post with a ball on top.
+    Ball,
+}
+
+impl NewelStyle {
+    pub const ALL: [NewelStyle; 4] = [NewelStyle::None, NewelStyle::Square, NewelStyle::Capped, NewelStyle::Ball];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            NewelStyle::None => "None",
+            NewelStyle::Square => "Square",
+            NewelStyle::Capped => "Capped",
+            NewelStyle::Ball => "Ball top",
+        }
+    }
 }
 
 /// Stair options beyond the basic flight.
@@ -1534,6 +1566,14 @@ pub struct Dormer {
 
 fn one_u32() -> u32 {
     1
+}
+
+fn is_no_newel(s: &NewelStyle) -> bool {
+    *s == NewelStyle::None
+}
+
+fn newel_post_size() -> Length {
+    Length::from_inches(3.5)
 }
 
 /// What new dormers start with.

@@ -331,7 +331,7 @@ These come from reading the whole list and change the architecture, not just the
 | ST-09 | Auto stairwell (cut platform) | P1 | M3 ✓ |
 | ST-10 | ADA ramps | P2 | M3 ✓ stair Style > Ramp: 1:12 runs rising at most 30", 5' landings between, rails both sides |
 | ST-11 | Custom landings and auto-connect | P2 | M3 ✓ landings with their own depth and turn, landings on their own, and stairs started on a landing climb from it |
-| ST-12 | Stair railing styles; plan display of balusters | P1 | M3 ◐ handrails and balusters in 3D, baluster dots in plan; styles later |
+| ST-12 | Stair railing styles; plan display of balusters | P1 | M3 ◐ handrails and balusters in 3D, baluster dots in plan; built-in newel posts (square, capped, ball top) and per-part materials (treads, stringers, railing) in the stair defaults; a named style library later |
 | ST-13 | Custom newels & balusters (library/import) | P2 | M5 ✓ any 3D symbol as the stair's balusters and newel posts |
 | ST-14 | Stair defaults interior/exterior | P1 | M3 ✓ |
 | ST-15 | Stairs/ramps saved to library | P2 | M5 ✓ Add Selected saves stairs (and solids, symbols) to the library; groups carry their symbols |

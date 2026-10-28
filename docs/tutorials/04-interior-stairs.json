@@ -25,8 +25,28 @@
       ]
     },
     {
-      "step": "(Newel and baluster styles and materials from the library)",
-      "gap": "Stair defaults have no newel/baluster style or per-part materials; set them on each stair (baluster/newel symbols). Row: ST-12"
+      "step": "Newel style and materials in the stair defaults: square newels, white-painted railing",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "stair": {
+              "newel_style": "square",
+              "materials": {
+                "railing": "$named:material:White Rail Paint"
+              }
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/stair/newel_style",
+          "is": "square"
+        }
+      ]
     },
     {
       "step": "A few steps from the Garage up to the Foyer",
