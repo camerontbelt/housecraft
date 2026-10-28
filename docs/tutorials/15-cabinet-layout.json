@@ -9,7 +9,24 @@
     },
     {
       "step": "Cabinet defaults: diagonal door on corner cabinets",
-      "gap": "No automatic corner cabinets; set a corner cabinet's Shape to Angled. Row: CB-29"
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "cabinets": {
+              "corner_cut": "12\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/cabinets/corner_cut",
+          "is": "12\""
+        }
+      ]
     },
     {
       "step": "Base cabinets: one more along the left wall, one in the middle of the room, one in the bottom-left corner (diagonal front), one along the Dining wall",
@@ -220,8 +237,26 @@
       ]
     },
     {
-      "step": "(Overhang per side: Uniform off, Back 0\")",
-      "gap": "A cabinet's countertop overhang is the same on every side. Row: CB-29"
+      "step": "Overhang per side: Uniform off, Back 0\", sides 1 1/2\"",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$island.0",
+          "set": {
+            "countertop": {
+              "back_overhang": "0\"",
+              "side_overhang": "1 1/2\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$island.0",
+          "path": "/countertop/side_overhang",
+          "is": "1 1/2\""
+        }
+      ]
     },
     {
       "step": "Breakfast bar: a base cabinet behind the island, 42\" high and 7\" deep",

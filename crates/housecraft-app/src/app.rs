@@ -2846,6 +2846,15 @@ impl App {
                                 .clone(),
                         });
                     }
+                    let cut = self.doc().active_defaults().cabinets.corner_cut;
+                    let diag = cut.mm() > 1.0;
+                    if item(ui, if diag { "Corner Cabinets: Square Front" } else { "Corner Cabinets: Diagonal Front" }, "", true) {
+                        let v = if diag { Length::ZERO } else { Length::from_inches(12.0) };
+                        self.run1(Command::Update {
+                            id: set,
+                            set: serde_json::json!({ "cabinets": { "corner_cut": v } }).as_object().expect("object").clone(),
+                        });
+                    }
                     if item(ui, "Auto Fillers", "", true) {
                         let floor = Some(self.plan.floor);
                         self.run1(Command::AutoFillers { floor });

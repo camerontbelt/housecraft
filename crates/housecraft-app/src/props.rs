@@ -4195,6 +4195,13 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
     if let Some(l) = ed.length(ui, "Off the Floor", "elevation", c.elevation) {
         ed.out.push(patch(id, json!({ "elevation": l })));
     }
+    if c.cabinet_kind == CabinetKind::Wall {
+        Ed::label(ui, "");
+        if ui.button("Top to Ceiling").on_hover_text("Raise it so its top meets the ceiling (Elevation From Ceiling 0\")").clicked() {
+            ed.out.push(Command::CabinetsToCeiling { ids: vec![id], gap: Length::ZERO });
+        }
+        ui.end_row();
+    }
     if let Some(n) = ed.number(ui, "Facing (°)", "facing", c.facing) {
         ed.out.push(patch(id, json!({ "facing": n })));
     }
@@ -4279,6 +4286,9 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
             (HardwareStyle::None, "None"),
         ],
     );
+    if c.hardware != HardwareStyle::None {
+        ed.opt_length(ui, "Handles From Door Edge", "handle_from_edge", c.handle_from_edge, Some(Length::from_inches(3.0)));
+    }
     // Front layout: rows top to bottom.
     Ed::label(ui, "Front (top to bottom)");
     ui.vertical(|ui| {
@@ -4398,6 +4408,10 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
                 corner: CornerTreatment::Square,
                 corner_left: false,
                 corner_right: false,
+                back_overhang: Length::ZERO,
+                side_overhang: Length::ZERO,
+                side_splash_left: false,
+                side_splash_right: false,
                 waterfall_left: false,
                 waterfall_right: false,
             })
@@ -4413,17 +4427,27 @@ fn cabinet_editor(ui: &mut Ui, ed: &mut Ed<'_>, c: &Cabinet) {
         for (label, field, value) in [
             ("  Thickness", "thickness", top.thickness),
             ("  Overhang", "overhang", top.overhang),
+            ("  Back Overhang", "back_overhang", top.back_overhang),
+            ("  Side Overhang", "side_overhang", top.side_overhang),
             ("  Backsplash", "backsplash", top.backsplash),
         ] {
             if let Some(l) = ed.length(ui, label, &format!("countertop.{field}"), value) {
                 match field {
                     "thickness" => t.thickness = l,
                     "overhang" => t.overhang = l,
+                    "back_overhang" => t.back_overhang = l,
+                    "side_overhang" => t.side_overhang = l,
                     _ => t.backsplash = l,
                 }
                 changed = true;
             }
         }
+        Ed::label(ui, "  Side Splashes");
+        ui.horizontal(|ui| {
+            changed |= ui.checkbox(&mut t.side_splash_left, "Left").changed();
+            changed |= ui.checkbox(&mut t.side_splash_right, "Right").changed();
+        });
+        ui.end_row();
         Ed::label(ui, "  Edge Profile");
         egui::ComboBox::from_id_salt(ed.key("countertop.edge"))
             .selected_text(top.edge.name())

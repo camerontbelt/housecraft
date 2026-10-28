@@ -171,6 +171,13 @@ pub enum Command {
     /// Auto Stairwell: cut the floor above the stair and put railings round
     /// the opening there, leaving the top end open as the way off the stair.
     AutoStairwell { stair: Id },
+    /// Elevation From Ceiling: raise cabinets so their tops sit `gap` below
+    /// the ceiling of the room they're in (the floor's ceiling height).
+    CabinetsToCeiling {
+        ids: Vec<Id>,
+        #[serde(default)]
+        gap: Length,
+    },
     /// Allowed Angles: extra directions (degrees from east) that drawing
     /// snaps to beside the angle step.
     SetAllowedAngles { angles: Vec<f64> },
@@ -1500,6 +1507,7 @@ impl Command {
             Command::ResetRoofEdges { .. } => "reset_roof_edges",
             Command::SetLayoutScale { .. } => "set_layout_scale",
             Command::SetAllowedAngles { .. } => "set_allowed_angles",
+            Command::CabinetsToCeiling { .. } => "cabinets_to_ceiling",
             Command::DuplicatePlanView { .. } => "duplicate_plan_view",
             Command::PointToPointMove { .. } => "point_to_point_move",
             Command::ReflectAbout { .. } => "reflect_about",
@@ -2418,6 +2426,23 @@ impl Command {
                 {
                     *p = pt(housecraft_geom::v2(*p) + shift);
                     out.modified.push(*dimension);
+                }
+            }
+            Command::CabinetsToCeiling { ids, gap } => {
+                for id in ids {
+                    let cab = expect::<Cabinet>(doc, *id)?.clone();
+                    // The room it's in decides the ceiling; else the floor's.
+                    let regions = housecraft_geom::rooms::detect(doc, cab.floor);
+                    let ceiling = regions
+                        .room_at(housecraft_geom::v2(cab.position))
+                        .and_then(|i| doc.rooms_on(cab.floor).find(|r| regions.room_at(housecraft_geom::v2(r.anchor)) == Some(i)))
+                        .and_then(|r| doc.finished_ceiling_height(r))
+                        .or_else(|| doc.get::<Floor>(cab.floor).map(|f| f.ceiling_height))
+                        .ok_or(ApiError::NotFound(cab.floor))?;
+                    if let Some(c) = doc.get_mut::<Cabinet>(*id) {
+                        c.elevation = Length::from_mm((ceiling.mm() - c.height.mm() - gap.mm()).max(0.0));
+                        out.modified.push(*id);
+                    }
                 }
             }
             Command::SetAllowedAngles { angles } => {

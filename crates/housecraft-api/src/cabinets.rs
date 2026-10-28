@@ -29,6 +29,33 @@ fn place(doc: &Document, floor: Id, at: Point2, facing: Option<f64>) -> (Point2,
     }
 }
 
+/// Which end of a cabinet at `position` facing `facing` (its back to a
+/// wall) touches a side wall: `Some(true)` for the left end (as you face
+/// the cabinet), `Some(false)` for the right, `None` for neither.
+fn corner_end(doc: &Document, floor: Id, position: Point2, facing: f64, width: Length) -> Option<bool> {
+    let front = housecraft_geom::DVec2::from_angle(facing.to_radians());
+    // Facing the cabinet, its left end is to the front direction's right.
+    let side = housecraft_geom::math::perp(front);
+    let c = v2(position);
+    let half = width.mm() / 2.0;
+    let touches = |end: housecraft_geom::DVec2| {
+        housecraft_geom::walls::wall_geoms(doc, floor).iter().any(|g| {
+            g.dir.dot(front).abs() > 0.9 && {
+                let (q, _) = housecraft_geom::math::closest_on_segment(end, g.start, g.end);
+                q.distance(end) < g.half + 50.0
+            }
+        })
+    };
+    let (left, right) = (c - side * (half + 1.0) + front * 100.0, c + side * (half + 1.0) + front * 100.0);
+    if touches(left) {
+        Some(true)
+    } else if touches(right) {
+        Some(false)
+    } else {
+        None
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn add_cabinet(
     doc: &mut Document,
@@ -66,9 +93,24 @@ pub(crate) fn add_cabinet(
         corner: CornerTreatment::Square,
         corner_left: false,
         corner_right: false,
+        back_overhang: Length::ZERO,
+        side_overhang: Length::ZERO,
+        side_splash_left: false,
+        side_splash_right: false,
         waterfall_left: false,
         waterfall_right: false,
     });
+    // Into a corner: a diagonal front on the end against the side wall.
+    let shape = match shape {
+        CabinetShape::Standard if c.corner_cut.mm() > 1.0 && kind != CabinetKind::Full => {
+            match corner_end(doc, floor, position, facing, width) {
+                Some(true) => CabinetShape::Angled { left: c.corner_cut, right: Length::ZERO },
+                Some(false) => CabinetShape::Angled { left: Length::ZERO, right: c.corner_cut },
+                None => shape,
+            }
+        }
+        _ => shape,
+    };
     Ok(doc.insert(Cabinet {
         id: Id(0),
         floor,
@@ -85,6 +127,7 @@ pub(crate) fn add_cabinet(
         face: c.face(kind, width, sink),
         door_style: c.door_style,
         hardware: c.hardware,
+        handle_from_edge: None,
         shelves: if kind == CabinetKind::Base { 1 } else { 2 },
         toe_kick: toe,
         countertop,

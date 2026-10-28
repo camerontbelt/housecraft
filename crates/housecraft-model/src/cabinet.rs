@@ -192,6 +192,17 @@ pub struct CabinetTop {
     pub corner_left: bool,
     #[serde(default)]
     pub corner_right: bool,
+    /// Overhang past the back (an island's seating side); none when zero.
+    #[serde(default)]
+    pub back_overhang: Length,
+    /// Overhang past each end, besides the fillers.
+    #[serde(default)]
+    pub side_overhang: Length,
+    /// Backsplashes up the ends, against side walls.
+    #[serde(default)]
+    pub side_splash_left: bool,
+    #[serde(default)]
+    pub side_splash_right: bool,
     /// The countertop turns down the exposed end to the floor.
     #[serde(default)]
     pub waterfall_left: bool,
@@ -410,6 +421,10 @@ pub struct Cabinet {
     pub door_style: DoorStyleCab,
     #[serde(default)]
     pub hardware: HardwareStyle,
+    /// Door handles this far from the door's top (base cabinets) or
+    /// bottom (wall cabinets); 3" when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub handle_from_edge: Option<Length>,
     /// Shelves behind the doors.
     #[serde(default)]
     pub shelves: u32,
@@ -713,6 +728,10 @@ pub struct CabinetDefaults {
     /// Label cabinets in plan with their NKBA codes (B24, W3030…).
     #[serde(default)]
     pub show_codes: bool,
+    /// Base and wall cabinets placed into a corner get a diagonal front,
+    /// cut back this far on the end against the side wall (none when 0).
+    #[serde(default)]
+    pub corner_cut: Length,
 }
 
 impl Default for CabinetDefaults {
@@ -739,6 +758,7 @@ impl Default for CabinetDefaults {
             backsplash: i(4.0),
             max_filler: i(6.0),
             show_codes: false,
+            corner_cut: Length::ZERO,
         }
     }
 }

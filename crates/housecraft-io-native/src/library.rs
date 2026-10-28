@@ -474,6 +474,10 @@ pub fn builtin() -> Vec<LibraryItem> {
             corner: CornerTreatment::Square,
             corner_left: false,
             corner_right: false,
+            side_splash_right: false,
+            side_splash_left: false,
+            side_overhang: Length::ZERO,
+            back_overhang: Length::ZERO,
             waterfall_left: false,
             waterfall_right: false,
         });

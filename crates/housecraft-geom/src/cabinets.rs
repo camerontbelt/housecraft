@@ -203,12 +203,15 @@ pub fn countertop_outline(c: &Cabinet) -> Option<Vec<DVec2>> {
     let f = frame(c);
     let o = top.overhang.mm();
     let (shape, _) = local_shape(c, -o);
-    let (l, r) = (c.filler_left.mm(), c.filler_right.mm());
+    let (l, r) = (c.filler_left.mm() + top.side_overhang.mm(), c.filler_right.mm() + top.side_overhang.mm());
+    let back = top.back_overhang.mm();
     let h = c.width.mm() / 2.0;
     let local: Vec<DVec2> = shape
         .into_iter()
         .map(|p| {
-            // Widen straight ends to cover fillers.
+            // Out over the back when asked.
+            let p = if p.y.abs() < 1e-6 { DVec2::new(p.x, -back) } else { p };
+            // Widen straight ends to cover fillers and the side overhang.
             if (p.x + h).abs() < 1e-6 {
                 DVec2::new(p.x - l, p.y)
             } else if (p.x - h).abs() < 1e-6 {
@@ -601,9 +604,10 @@ pub fn hardware_spot(c: &Cabinet, cell: &Cell) -> Option<(f64, f64, bool)> {
             let s = if cell.hinge_left { cell.s1 - inset } else { cell.s0 + inset };
             // Pulls sit near the edge closest to the hand: top of base doors,
             // bottom of wall doors; tall doors at counter height.
+            let e = c.handle_from_edge.map_or(3.0 * IN, |l| l.mm()).clamp(IN, (cell.z1 - cell.z0) / 2.0);
             let z = match c.cabinet_kind {
-                CabinetKind::Base => cell.z1 - 3.0 * IN,
-                CabinetKind::Wall => cell.z0 + 3.0 * IN,
+                CabinetKind::Base => cell.z1 - e,
+                CabinetKind::Wall => cell.z0 + e,
                 CabinetKind::Full => {
                     let counter = 36.0 * IN - c.elevation.mm();
                     counter.clamp(cell.z0 + 3.0 * IN, cell.z1 - 3.0 * IN)
@@ -1009,6 +1013,13 @@ pub fn cabinet_mesh(doc: &Document, c: &Cabinet, mesh: &mut Mesh) {
         if bs > 0.0 {
             let zb = tt + h;
             block(&mut b, (-half - l, half + r), (0.0, 0.75 * IN), (zb, zb + bs), Surface::Backsplash);
+            // Side splashes up the ends, the depth of the top.
+            if top.side_splash_left {
+                block(&mut b, (-half - l, -half - l + 0.75 * IN), (0.0, d + o), (zb, zb + bs), Surface::Backsplash);
+            }
+            if top.side_splash_right {
+                block(&mut b, (half + r - 0.75 * IN, half + r), (0.0, d + o), (zb, zb + bs), Surface::Backsplash);
+            }
         }
     }
 }
@@ -1485,6 +1496,7 @@ mod tests {
             face: d.face(kind, Length::from_inches(width_in), false),
             door_style: DoorStyleCab::Shaker,
             hardware: HardwareStyle::Pull,
+            handle_from_edge: None,
             shelves: 1,
             toe_kick: Some((d.toe_kick_height, d.toe_kick_depth)),
             countertop: None,

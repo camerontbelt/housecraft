@@ -31,8 +31,8 @@ has two files:
 | 11 | Finish Materials (191) | 10 | 5 | [11-finish-materials.md](11-finish-materials.md) |
 | 12 | Room Moldings (211) | 6 | 3 | [12-room-moldings.md](12-room-moldings.md) |
 | 13 | Interior Furnishings (222) | 10 | 6 | [13-interior-furnishings.md](13-interior-furnishings.md) |
-| 14 | Cabinet Styles (237) | 8 | 4 | [14-cabinet-styles.md](14-cabinet-styles.md) |
-| 15 | Cabinet Layout (260) | 7 | 4 | [15-cabinet-layout.md](15-cabinet-layout.md) |
+| 14 | Cabinet Styles (237) | 11 | 2 | [14-cabinet-styles.md](14-cabinet-styles.md) |
+| 15 | Cabinet Layout (260) | 9 | 2 | [15-cabinet-layout.md](15-cabinet-layout.md) |
 | 16 | Appliances and Fixtures (277) | 18 | 0 | [16-appliances-and-fixtures.md](16-appliances-and-fixtures.md) |
 | 17 | Light Fixtures (298) | 28 | 4 | [17-light-fixtures.md](17-light-fixtures.md) |
 | 18 | Electrical Objects (317) | 22 | 4 | [18-electrical-objects.md](18-electrical-objects.md) |

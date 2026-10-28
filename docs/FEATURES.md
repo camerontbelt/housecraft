@@ -237,7 +237,7 @@ These come from reading the whole list and change the architecture, not just the
 | CB-05 | Shelf spacing per opening | P2 | M5 ✓ |
 | CB-06 | Waterfall countertop edges | P2 | M5 ✓ |
 | CB-07 | Custom countertops: holes, edge profiles, thickness, height | P1 | M5 ✓ |
-| CB-08 | Custom backsplash that wraps cabinets/openings/appliances | P2 | M5 ✓ backsplash along any path, wrapping corners and ends; it stops under the sills of windows it runs past |
+| CB-08 | Custom backsplash that wraps cabinets/openings/appliances | P2 | M5 ✓ backsplash along any path, wrapping corners and ends; it stops under the sills of windows it runs past; cabinet countertops take side splashes |
 | CB-09 | Auto/manual fillers with exclusions | P1 | M5 ✓ |
 | CB-10 | Blind-corner behaviour | P2 | M5 ✓ |
 | CB-11 | Independent side/back/front configuration; side & back thickness | P2 | M5 ✓ |
@@ -257,8 +257,8 @@ These come from reading the whole list and change the architecture, not just the
 | CB-25 | Manufacturer cabinet catalogs | P3 | M8 |
 | CB-26 | Soffit tool and defaults (boxes against walls/ceilings for trays, coffers, bulkheads) | P2 | M9 |
 | CB-27 | Architectural blocks in the plan: group objects to move/edit/schedule as one; explode | P2 | M9 ◐ Edit › Make / Explode Architectural Block (`make_group`, `explode_group`): grouped objects pick, move, copy, paste and delete as one; editing a piece in place and block schedules later |
-| CB-28 | Cabinet door panels and handles from the library; handle position; cabinet elevation measured from the ceiling | P2 | M9 |
-| CB-29 | Automatic diagonal corner cabinets; countertop overhang set per side (island backs) | P2 | M9 |
+| CB-28 | Cabinet door panels and handles from the library; handle position; cabinet elevation measured from the ceiling | P2 | M9 ◐ Handles From Door Edge; Top to Ceiling (`cabinets_to_ceiling`); library door panels and handle shapes later |
+| CB-29 | Automatic diagonal corner cabinets; countertop overhang set per side (island backs) | P2 | M9 ✓ Corner Cabinets: Diagonal Front (`corner_cut`); Back and Side Overhang on countertops |
 | CB-30 | Cabinet partitions (finished end panels between cabinets and appliances, with crown) | P2 | M9 ✓ Cabinet Partition: a full-height panel with crown molding |
 | CB-31 | Reverse Symbol: mirror a fixture or appliance (tub drain end, fridge hinge side) | P3 | M9 ◐ Reverse on appliances (a bathtub's drain end); other asymmetric fixtures later |
 

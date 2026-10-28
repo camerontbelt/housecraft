@@ -13,7 +13,8 @@ own layer set), and you can switch to it from the plan view list on the top tool
 
 1. **Cabinet Tools › Base Cabinet**: click in the Kitchen under the windows. It turns its back to the wall.
 2. Double-click it: **Door Style** `Shaker` (closest to Beaded Recessed Panel), **Hardware** `Pull`.
-   *Not in HouseCraft yet:* door panels and handles from the library, and the handle's position.
+   **Handles From Door Edge** `6"` puts the pulls 6" down from the top of the doors. *Not in HouseCraft yet:* door
+   panels and handle shapes from the library.
 3. Place a **Wall Cabinet** beside the windows and a **Full Height** cabinet in the Kitchen's corner.
 4. **Match Properties:** select the base cabinet and click **Match Properties** on the edit toolbar. **New:** a
    small window lists what will be copied, with the cabinet's kind and size unticked. Tick only **Door style** and
@@ -23,13 +24,12 @@ own layer set), and you can switch to it from the plan view list on the top tool
 ## Countertop and backsplash (pages 242–244)
 
 Open the base cabinet. Under **Countertop**: thickness `1 1/4"`, overhang `1 1/2"`, backsplash `4"`, edge **Ogee**
-(for the EM05 edge molding). *Not in HouseCraft yet:* a side backsplash on a cabinet. Use **Custom Backsplash**
-(Cabinet Tools) for that.
+(for the EM05 edge molding). Tick **Side Splashes › Left** for a backsplash up the end against the side wall.
 
 ## Moldings (pages 244–248)
 
-1. Open the wall cabinet. To run it to the ceiling, set its elevation to the ceiling height minus its height
-   (97 1/8" − 30" = `67 1/8"`). *Not in HouseCraft yet:* measuring cabinet elevation from the ceiling.
+1. Open the wall cabinet and click **Top to Ceiling**: it rises so its top meets the room's ceiling (Chief's
+   Elevation From Ceiling `0"`).
 2. **Moldings:** add a **Top** crown 3" high and 3" out, and a **Bottom** flat 1" × 1" for the light rail.
 
 ## Cabinet colour (pages 248–250)
@@ -40,8 +40,7 @@ Open the base cabinet. Under **Countertop**: thickness `1 1/4"`, overhang `1 1/2
 
 | Missing | FEATURES row |
 |---|---|
-| Library door panels and handles; handle position; elevation from ceiling | CB-28 |
-| Side backsplash on a cabinet | CB-08 |
+| Library door panels and handle shapes | CB-28 |
 | Ready-made Kitchen & Bath plan view | PRJ-13 |
 
 Fixed for this tutorial: **Match Properties copies only what you tick**.

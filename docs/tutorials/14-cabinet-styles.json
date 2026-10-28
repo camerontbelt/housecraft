@@ -51,8 +51,27 @@
       ]
     },
     {
-      "step": "(Door styles and handles from the library; handle position)",
-      "gap": "Door styles are slab, shaker or raised and handles knob or pull; no library door panels or handle position. Row: CB-28"
+      "step": "Handle position: the pulls 6\" from the top of the doors",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$base",
+          "set": {
+            "handle_from_edge": "6\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$base",
+          "path": "/handle_from_edge",
+          "is": "6\""
+        }
+      ]
+    },
+    {
+      "step": "(Door styles and handles from the library)",
+      "gap": "Door styles are slab, shaker or raised and handles knob or pull; no library door panels or handle shapes. Row: CB-28"
     },
     {
       "step": "A wall cabinet beside the windows and a full-height cabinet in the Kitchen's corner",
@@ -154,8 +173,25 @@
       ]
     },
     {
-      "step": "(Side backsplash)",
-      "gap": "No side backsplash on a cabinet's countertop (use a custom backsplash). Row: CB-08"
+      "step": "Side backsplash against the side wall",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$base",
+          "set": {
+            "countertop": {
+              "side_splash_left": true
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$base",
+          "path": "/countertop/side_splash_left",
+          "is": true
+        }
+      ]
     },
     {
       "step": "EM05 edge molding on the counter (an ogee edge)",
@@ -212,8 +248,22 @@
       ]
     },
     {
-      "step": "(Elevation measured from the ceiling)",
-      "gap": "Cabinet elevation is from the floor only; for a cabinet to the ceiling, set elevation = ceiling - height. Row: CB-28"
+      "step": "Elevation measured from the ceiling: the wall cabinet's top at the ceiling (Top to Ceiling)",
+      "commands": [
+        {
+          "op": "cabinets_to_ceiling",
+          "ids": [
+            "$more.0"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$more.0",
+          "path": "/cabinet_kind",
+          "is": "wall"
+        }
+      ]
     },
     {
       "step": "Cabinet box and doors Color - Robin's Egg",

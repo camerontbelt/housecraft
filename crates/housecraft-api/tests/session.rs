@@ -3928,3 +3928,35 @@ fn allowed_angles_duplicate_plan_views_and_reversed_fixtures() {
     s.apply(&[Command::Update { id: tub, set: patch(serde_json::json!({ "reversed": true })) }]).unwrap();
     assert!(s.document().get::<Appliance>(tub).unwrap().reversed);
 }
+
+#[test]
+fn diagonal_corner_cabinets_overhangs_handles_and_tops_to_the_ceiling() {
+    let mut s = boxed();
+    let set = s.document().settings.active_default_set;
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "cabinets": { "corner_cut": "12\"" } })) }]).unwrap();
+    // Into the box's south-west corner (back to the west wall), and one mid-wall.
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'", "1'6\""], "width": "36\""},
+            {"op": "add_cabinet", "cabinet_kind": "base", "at": ["1'", "15'"], "width": "36\""},
+            {"op": "add_cabinet", "cabinet_kind": "wall", "at": ["1'", "15'"], "width": "30\""}]"#,
+    );
+    let (corner, middle, upper) = (out.created[0], out.created[1], out.created[2]);
+    assert!(matches!(s.document().get::<Cabinet>(corner).unwrap().shape, CabinetShape::Angled { .. }), "diagonal in the corner");
+    assert_eq!(s.document().get::<Cabinet>(middle).unwrap().shape, CabinetShape::Standard);
+    // A 12" back overhang (island seating) pushes the top out behind.
+    s.apply(&[Command::Update { id: middle, set: patch(serde_json::json!({ "countertop": { "back_overhang": "12\"", "side_splash_left": true } })) }]).unwrap();
+    let c = s.document().get::<Cabinet>(middle).unwrap().clone();
+    let top = housecraft_api::geom::cabinets::countertop_outline(&c).unwrap();
+    let wall_face = c.position.0.mm();
+    assert!(top.iter().any(|p| p.x < wall_face - 300.0), "past the back by 12\": {top:?}");
+    // Handles 6" from the top of base doors.
+    s.apply(&[Command::Update { id: middle, set: patch(serde_json::json!({ "handle_from_edge": "6\"" })) }]).unwrap();
+    assert_eq!(s.document().get::<Cabinet>(middle).unwrap().handle_from_edge, Some(Length::from_inches(6.0)));
+    // The wall cabinet up to the ceiling.
+    s.apply(&[Command::CabinetsToCeiling { ids: vec![upper], gap: Length::ZERO }]).unwrap();
+    let u = s.document().get::<Cabinet>(upper).unwrap().clone();
+    let room = s.document().iter::<Room>().next().unwrap().clone();
+    let ceiling = s.document().finished_ceiling_height(&room).unwrap();
+    assert!((u.elevation.mm() + u.height.mm() - ceiling.mm()).abs() < 1e-6);
+}
