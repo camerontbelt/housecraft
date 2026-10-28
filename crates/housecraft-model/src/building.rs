@@ -996,6 +996,10 @@ pub struct RoofPlane {
     /// Rafter spacing under this plane; the framing defaults' when `None`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rafter_spacing: Option<Length>,
+    /// Rafter depth under this plane; the framing defaults' when `None`.
+    /// Rafters hang from the roof surface, so their tops stay put.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rafter_depth: Option<Length>,
 }
 
 impl Wall {

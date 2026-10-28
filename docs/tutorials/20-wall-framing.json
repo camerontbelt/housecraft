@@ -14,8 +14,32 @@
       ]
     },
     {
-      "step": "Automatic framing defaults, wall panel: studs 'Wall Framing - Lumber', plates match studs; solid white fill",
-      "gap": "Wall framing settings are stud spacing, plates, corners and blocking; no framing member defaults or fill style. Row: FR-38"
+      "step": "Automatic framing defaults, wall panel: studs and plates in lumber; solid white fill for studs",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "framing": {
+              "wall_material": "lumber",
+              "member_styles": [
+                {
+                  "role": "stud",
+                  "fill": "#ffffff",
+                  "label": ""
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/framing/member_styles/0/fill",
+          "is": "#ffffff"
+        }
+      ]
     },
     {
       "step": "Build Framing once: walls",
@@ -42,8 +66,36 @@
       ]
     },
     {
-      "step": "(Header labels with size and count on Floor 1; Perspective Framing Overview)",
-      "gap": "Headers aren't labelled in plan. Row: FR-38"
+      "step": "Header labels with size and count on Floor 1",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "framing": {
+              "member_styles": [
+                {
+                  "role": "stud",
+                  "fill": "#ffffff",
+                  "label": ""
+                },
+                {
+                  "role": "header",
+                  "fill": null,
+                  "label": "{plies}-{nominal_size} HDR"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/framing/member_styles/1/label",
+          "is": "{plies}-{nominal_size} HDR"
+        }
+      ]
     },
     {
       "step": "Porch corner: move a corner stud out of the corner, copy the flat stud three times 1 1/2\" apart, make the moved stud 3 1/2\" wide flat to the inside",

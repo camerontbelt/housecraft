@@ -9,8 +9,8 @@
 //! In a step's commands, `"$name"` stands for an id saved by an earlier
 //! step, `"$name.2"` for the third of a saved list, `"$named:Floor 1"` for
 //! the object with that name (`"$named:default_set:Default"` to give its
-//! kind too), `"$room_at:x,y"` / `"$wall_at:x,y"` (mm) for the room or wall
-//! there and `"$floor1"` for the first floor.
+//! kind too), `"$room_at:x,y"` / `"$wall_at:x,y"` / `"$roof_at:x,y"` (mm)
+//! for the room, wall or roof plane there and `"$floor1"` for the first floor.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -127,6 +127,37 @@ impl Run {
             let regions = housecraft_api::geom::rooms::detect(self.doc(), floor);
             let i = regions.room_at(p)?;
             return self.doc().rooms_on(floor).find(|r| regions.room_at(housecraft_api::geom::v2(r.anchor)) == Some(i)).map(|r| r.id);
+        }
+        if let Some(spec) = rest.strip_prefix("framing_at:") {
+            // "$framing_at:role:x,y": the member of that role nearest the
+            // point in plan (within 1').
+            let (role, spec) = spec.split_once(':')?;
+            let p = at(spec)?;
+            let dist = |m: &FramingMember| {
+                let (a, b) = (housecraft_api::geom::DVec2::new(m.a.0.mm(), m.a.1.mm()), housecraft_api::geom::DVec2::new(m.b.0.mm(), m.b.1.mm()));
+                housecraft_api::geom::math::closest_on_segment(p, a, b).0.distance(p)
+            };
+            return self
+                .doc()
+                .iter::<FramingMember>()
+                .filter(|m| serde_json::to_value(m.role).ok().and_then(|v| v.as_str().map(String::from)).as_deref() == Some(role))
+                .filter(|m| dist(m) < 304.8)
+                .min_by(|a, b| dist(a).total_cmp(&dist(b)))
+                .map(|m| m.id);
+        }
+        if let Some(spec) = rest.strip_prefix("roof_at:") {
+            // The lowest roof plane over that point (on that floor, or any).
+            let p = at(spec)?;
+            return self
+                .doc()
+                .iter::<RoofPlane>()
+                .filter(|r| on.is_none_or(|f| r.floor == f) && !r.gable)
+                .filter(|r| housecraft_api::geom::math::point_in_polygon(p, &r.outline.iter().map(|q| housecraft_api::geom::DVec2::new(q.0.mm(), q.1.mm())).collect::<Vec<_>>()))
+                .min_by(|a, b| {
+                    let low = |r: &RoofPlane| r.outline.iter().map(|q| q.2.mm()).fold(f64::MAX, f64::min);
+                    low(a).total_cmp(&low(b))
+                })
+                .map(|r| r.id);
         }
         if let Some(spec) = rest.strip_prefix("wall_at:") {
             let p = at(spec)?;

@@ -1437,7 +1437,52 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                             }
                         });
                         ui.end_row();
+                        let lw = f.lumber_width;
+                        let rd = Length::from_mm(f.rafter_depth.mm() + 50.8);
+                        len_row(ui, doc, &mut app.bufs, "Ridge thickness", ("framing", "ridge_width"), f.ridge_width.unwrap_or(lw), |v| {
+                            commands.push(p(json!({"framing": {"ridge_width": v}})))
+                        });
+                        len_row(ui, doc, &mut app.bufs, "Ridge depth", ("framing", "ridge_depth"), f.ridge_depth.unwrap_or(rd), |v| {
+                            commands.push(p(json!({"framing": {"ridge_depth": v}})))
+                        });
                     });
+                    ui.separator();
+                    ui.label("Member styles in plan (fill and label by role; {nominal_size}, {size}, {plies}, {role})");
+                    let mut styles = f.member_styles.clone();
+                    let mut changed = false;
+                    let mut drop = None;
+                    egui::Grid::new("member_styles").num_columns(4).show(ui, |ui| {
+                        for (i, st) in styles.iter_mut().enumerate() {
+                            egui::ComboBox::from_id_salt(("style_role", i)).selected_text(st.role.name()).show_ui(ui, |ui| {
+                                for r in FramingRole::ALL {
+                                    changed |= ui.selectable_value(&mut st.role, r, r.name()).changed();
+                                }
+                            });
+                            let mut on = st.fill.is_some();
+                            let mut c = crate::util::to_color32(st.fill.unwrap_or(Color::rgb(200, 200, 200)));
+                            ui.horizontal(|ui| {
+                                changed |= ui.checkbox(&mut on, "Fill").changed();
+                                changed |= ui.color_edit_button_srgba(&mut c).changed();
+                            });
+                            st.fill = on.then(|| crate::util::from_color32(c));
+                            changed |= ui.add(egui::TextEdit::singleline(&mut st.label).hint_text("label").desired_width(160.0)).lost_focus();
+                            if ui.small_button("Remove").clicked() {
+                                drop = Some(i);
+                            }
+                            ui.end_row();
+                        }
+                    });
+                    if let Some(i) = drop {
+                        styles.remove(i);
+                        changed = true;
+                    }
+                    if ui.small_button("Add Member Style").clicked() {
+                        styles.push(MemberStyle { role: FramingRole::Header, fill: None, label: "{plies}-{nominal_size}".into() });
+                        changed = true;
+                    }
+                    if changed {
+                        commands.push(p(json!({"framing": {"member_styles": styles}})));
+                    }
                 });
                 egui::CollapsingHeader::new("3D Solids").show(ui, |ui| {
                     let s = &d.solids;

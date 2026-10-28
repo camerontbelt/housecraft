@@ -613,12 +613,30 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             crate::site::terrain(doc, t, look.stroke, look.ink, &mut out);
         }
     }
+    let member_styles = &doc.active_defaults().framing.member_styles;
     for m in doc.iter::<FramingMember>().filter(|m| m.floor == opts.floor) {
         let look = ctx.look(m.layer);
         if look.visible {
             let outline = housecraft_geom::framing::plan_outline(m);
+            let style = member_styles.iter().find(|s| s.role == m.role);
             if outline.len() >= 3 {
+                if let Some(c) = style.and_then(|s| s.fill) {
+                    out.push(Some(m.id), Prim::Polygon { points: outline.clone(), fill: Fill::Ink(Ink::Color(c)) });
+                }
                 out.push(Some(m.id), Prim::Polyline { points: outline, closed: true, stroke: Stroke { width: look.stroke.width * 0.5, ..look.stroke } });
+            }
+            if let Some(st) = style.filter(|s| !s.label.is_empty()) {
+                let (a, b) = (DVec2::new(m.a.0.mm(), m.a.1.mm()), DVec2::new(m.b.0.mm(), m.b.1.mm()));
+                let mut angle = (b - a).to_angle().to_degrees();
+                if angle > 90.0 {
+                    angle -= 180.0;
+                } else if angle < -90.0 {
+                    angle += 180.0;
+                }
+                out.push(
+                    Some(m.id),
+                    Prim::Text { at: (a + b) / 2.0, text: m.label_text(&st.label), height: 100.0, rotation: if m.is_vertical() { 0.0 } else { angle }, justify: Justify::Center, middle: true, bold: false, ink: look.ink },
+                );
             }
         }
     }

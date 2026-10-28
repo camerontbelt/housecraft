@@ -8,14 +8,15 @@ carries on from [Tutorial 19](19-floor-framing.md). The steps also run as the au
 
 1. Use your usual plan view, and pick **Framing Set - Working** in the **Layer Display** side window.
 2. **Edit › Default Settings…** › **Framing** has the wall settings: stud spacing, top plates, corner style,
-   blocking. *Not in HouseCraft yet:* framing member defaults and a fill style for studs.
+   blocking, and whether wall studs are lumber or steel. Under **Edit › Default Settings…** › **Framing** › **Member styles in plan**, click
+   **Add Member Style**, pick **Stud**, tick **Fill** and choose white.
 
 ## Building wall framing (page 351)
 
 1. **Build › Framing › Build Wall Framing (this floor)**, on each floor. **Build All Framing** also does floors,
    ceilings and roofs.
-2. *Not in HouseCraft yet:* header labels (size and count) in plan. Open a header to see its size. Use the 3D view
-   for the plates and sills.
+2. Header labels: add another member style for **Header** with the label `{plies}-{nominal_size} HDR`. Each header
+   in plan then reads like `2-2x10 HDR`. Use the 3D view for the plates and sills.
 
 ## Editing studs (pages 351–353)
 
@@ -61,7 +62,6 @@ HouseCraft yet:* a per-view default set for details, a secondary (feet) label, a
 | Missing | FEATURES row |
 |---|---|
 | Live, editable wall details named from the wall's label | FR-37 |
-| Framing member defaults and fill; header labels | FR-38 |
 | Stud spacing per wall type | FR-39 |
 | Detail default sets; framing locate | DIM-29, DIM-30 |
 | Secondary dimension format | DIM-12 |

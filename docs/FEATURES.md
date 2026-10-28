@@ -396,9 +396,9 @@ These come from reading the whole list and change the architecture, not just the
 | FR-35 | Automatically rebuild framing when the model changes (per category) | P2 | M9 |
 | FR-36 | Trim/extend framing members to another member (with Sticky Mode); Add Break to split a member | P3 | M9 ◐ Trim / Extend to Second Object and Add Break (Break Wall tool, `break_wall`) work on joists, beams and rafters, keeping rafters on their pitch; Sticky Mode later |
 | FR-37 | Live Wall Detail views: named from the wall's label, listed per floor in the Project Browser, framing edited and blocking drawn there | P2 | M9 |
-| FR-38 | Framing member defaults (stud/plate construction, fill style); header labels with size and count in plan | P3 | M9 |
+| FR-38 | Framing member defaults (stud/plate construction, fill style); header labels with size and count in plan | P3 | M9 ✓ member styles per role (fill and a label with {nominal_size}, {size}, {plies}, {role}); stud material lumber or steel |
 | FR-39 | Stud spacing per wall type framing layer | P3 | M9 |
-| FR-40 | Roof framing per plane: ridge board size, rafter depth per roof plane, locked height reference when depth changes | P3 | M9 |
+| FR-40 | Roof framing per plane: ridge board size, rafter depth per roof plane, locked height reference when depth changes | P3 | M9 ✓ ridge thickness and depth defaults, rafter depth per plane (tops stay on the roof surface), hip and valley rafters |
 
 ## 13. CAD tools
 

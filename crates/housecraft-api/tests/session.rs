@@ -3679,3 +3679,27 @@ fn joists_take_a_reference_point_short_spans_bearing_lines_and_beams() {
     let through: Vec<_> = js.iter().filter(|m| m.a.1.mm().min(m.b.1.mm()) < ft(15.0) - 10.0 && m.a.1.mm().max(m.b.1.mm()) > ft(15.0) + 10.0).map(|m| (m.a, m.b)).collect();
     assert!(through.is_empty(), "none run through it: {through:?}");
 }
+
+#[test]
+fn hip_rafters_ridge_sizes_plane_rafter_depths_and_member_labels() {
+    let mut s = boxed();
+    let set = s.document().settings.active_default_set;
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "framing": { "ridge_width": "3 1/2\"", "ridge_depth": "15 1/4\"" } })) }]).unwrap();
+    apply(&mut s, r#"[{"op": "build_roof"}, {"op": "build_framing", "parts": {"walls": false, "floors": false, "ceilings": false, "roofs": true}}]"#);
+    let of = |s: &Session, r: FramingRole| -> Vec<FramingMember> { s.document().iter::<FramingMember>().filter(|m| m.role == r).cloned().collect() };
+    // A hip roof on the box: four hips, no valleys.
+    assert_eq!(of(&s, FramingRole::HipRafter).len(), 4);
+    assert!(of(&s, FramingRole::ValleyRafter).is_empty());
+    let ridge = &of(&s, FramingRole::Ridge)[0];
+    assert_eq!(ridge.width, Length::from_inches(3.5));
+    assert_eq!(ridge.depth, Length::from_inches(15.25));
+    assert_eq!(ridge.nominal_size(), "4x16");
+    assert_eq!(ridge.label_text("{plies}-{nominal_size} {role}"), "1-4x16 Ridge");
+    // One plane's rafters 11 1/4" deep; the others keep the default.
+    let plane = s.document().iter::<RoofPlane>().map(|r| r.id).next().unwrap();
+    s.apply(&[Command::Update { id: plane, set: patch(serde_json::json!({ "rafter_depth": "11 1/4\"" })) }]).unwrap();
+    apply(&mut s, r#"[{"op": "build_framing", "parts": {"walls": false, "floors": false, "ceilings": false, "roofs": true}}]"#);
+    let rafters = of(&s, FramingRole::Rafter);
+    assert!(rafters.iter().any(|m| m.host == Some(plane) && m.depth == Length::from_inches(11.25)));
+    assert!(rafters.iter().any(|m| m.host != Some(plane) && m.depth == Length::from_inches(7.25)));
+}

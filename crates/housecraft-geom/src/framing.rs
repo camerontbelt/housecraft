@@ -824,7 +824,7 @@ pub fn roof_framing(d: &FramingDefaults, plane: &RoofPlane, overhang: f64, ridge
     let down = -grad.normalize();
     let cos = 1.0 / (1.0 + grad.length_squared()).sqrt();
     let t = d.lumber_width.mm();
-    let depth = d.rafter_depth.mm();
+    let depth = plane.rafter_depth.unwrap_or(d.rafter_depth).mm();
     let drop = (19.0 + depth / 2.0) / cos;
     let mut flat_ccw = flat.clone();
     if signed_area(&flat_ccw) < 0.0 {
@@ -871,6 +871,21 @@ pub fn roof_framing(d: &FramingDefaults, plane: &RoofPlane, overhang: f64, ridge
             let z = |x: DVec2| height(x) - drop;
             out.push(Member { role: FramingRole::Blocking, a: p.extend(z(p)), b: q.extend(z(q)), width: t, depth, rotation: 0.0, host: plane.id, floor: plane.floor });
         }
+        // Sloping edges that aren't rakes are hips (the plane falls away
+        // inside) or valleys (it rises inside): a rafter under each, once.
+        let (ha, hb) = (height(a), height(b));
+        let inside = (a + b) / 2.0 + perp(ed) * 300.0;
+        let fall = height((a + b) / 2.0) - height(inside);
+        if (ha - hb).abs() > 50.0 && fall.abs() > 20.0 {
+            let seen = ridges.iter().any(|(x, y)| (x.distance(a) < 50.0 && y.distance(b) < 50.0) || (x.distance(b) < 50.0 && y.distance(a) < 50.0));
+            if !seen {
+                ridges.push((a, b));
+                let hd = depth + 2.0 * IN;
+                let z = |x: DVec2| height(x) - (19.0 + hd / 2.0) / cos;
+                let role = if fall > 0.0 { FramingRole::HipRafter } else { FramingRole::ValleyRafter };
+                out.push(Member { role, a: a.extend(z(a)), b: b.extend(z(b)), width: t, depth: hd, rotation: 0.0, host: plane.id, floor: plane.floor });
+            }
+        }
         // Rakes run down the slope: lookouts every 24" across the overhang.
         if d.lookouts && ed.dot(down).abs() > 0.97 {
             let inward = perp(ed);
@@ -915,12 +930,12 @@ pub fn roof_framing(d: &FramingDefaults, plane: &RoofPlane, overhang: f64, ridge
                 .any(|(x, y)| (x.distance(fa) < 50.0 && y.distance(fb) < 50.0) || (x.distance(fb) < 50.0 && y.distance(fa) < 50.0));
             if !seen {
                 ridges.push((fa, fb));
-                let rd = depth + 2.0 * IN;
+                let rd = d.ridge_depth.map_or(depth + 2.0 * IN, |l| l.mm());
                 out.push(Member {
                     role: FramingRole::Ridge,
                     a: fa.extend(top - 19.0 / cos - rd / 2.0),
                     b: fb.extend(top - 19.0 / cos - rd / 2.0),
-                    width: t,
+                    width: d.ridge_width.map_or(t, |l| l.mm()),
                     depth: rd,
                     rotation: 0.0,
                     host: plane.id,

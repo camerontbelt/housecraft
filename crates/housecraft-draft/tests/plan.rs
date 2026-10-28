@@ -930,3 +930,25 @@ fn layout_sheets_take_rotation_pictures_lines_revision_ranges_and_index_columns(
     let d2 = housecraft_draft::layout::layout_page(doc, doc.get::<Layout>(out.created[0]).unwrap(), 2);
     assert!(d2.items.iter().any(|i| matches!(&i.prim, Prim::Text { text, .. } if text == "Only A-3")));
 }
+
+#[test]
+fn framing_members_take_role_fills_and_labels() {
+    let mut s = house();
+    let floor = s.document().floors_by_elevation()[0].id;
+    let set = s.document().settings.active_default_set;
+    let cmds: Vec<Command> = serde_json::from_value(serde_json::json!([
+        {"op": "update", "id": set.0, "set": {"framing": {"member_styles": [{"role": "header", "fill": "#c8c8c8", "label": "{plies}-{nominal_size} HDR"}]}}},
+        {"op": "add_framing_member", "floor": floor.0, "role": "header", "a": [0, 0, 2000], "b": [1200, 0, 2000], "width": "1 1/2\"", "depth": "9 1/4\"", "plies": 2}
+    ]))
+    .unwrap();
+    s.apply(&cmds).unwrap();
+    // Show the framing layer the member went on.
+    let layer = s.document().iter::<housecraft_api::model::FramingMember>().next().unwrap().layer;
+    let layer_set = PlanOptions::first(s.document()).unwrap().layer_set;
+    let show: Command = serde_json::from_value(serde_json::json!({"op": "set_layer_display", "layer_set": layer_set.0, "layer": layer.0, "visible": true})).unwrap();
+    s.apply(&[show]).unwrap();
+    let doc = s.document();
+    let d = plan(doc, &PlanOptions::first(doc).unwrap());
+    assert!(d.items.iter().any(|i| matches!(&i.prim, Prim::Text { text, .. } if text == "2-2x10 HDR")), "the header is labelled");
+    assert!(d.items.iter().any(|i| matches!(&i.prim, Prim::Polygon { .. }) && doc.get::<housecraft_api::model::FramingMember>(i.object.unwrap_or(housecraft_api::model::Id(0))).is_some()));
+}

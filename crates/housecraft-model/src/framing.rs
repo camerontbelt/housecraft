@@ -43,6 +43,10 @@ pub enum FramingRole {
     Girt,
     /// A board let into balloon-framed studs that floor joists rest on.
     Ribbon,
+    /// A rafter under a hip (where two planes meet sloping down away).
+    HipRafter,
+    /// A rafter under a valley (where two planes meet sloping in).
+    ValleyRafter,
 }
 
 /// How the low end of a rafter is cut.
@@ -120,7 +124,7 @@ pub enum WallFraming {
 }
 
 impl FramingRole {
-    pub const ALL: [FramingRole; 23] = [
+    pub const ALL: [FramingRole; 25] = [
         FramingRole::Stud,
         FramingRole::KingStud,
         FramingRole::JackStud,
@@ -144,6 +148,8 @@ impl FramingRole {
         FramingRole::Purlin,
         FramingRole::Girt,
         FramingRole::Ribbon,
+        FramingRole::HipRafter,
+        FramingRole::ValleyRafter,
     ];
 
     pub fn name(self) -> &'static str {
@@ -171,6 +177,8 @@ impl FramingRole {
             FramingRole::Purlin => "Purlin",
             FramingRole::Girt => "Girt",
             FramingRole::Ribbon => "Ribbon",
+            FramingRole::HipRafter => "Hip Rafter",
+            FramingRole::ValleyRafter => "Valley Rafter",
         }
     }
 }
@@ -375,6 +383,57 @@ pub struct FramingDefaults {
     /// Openings closer than this share one header.
     #[serde(default = "combine_headers")]
     pub combine_headers: Length,
+    /// The ridge board's thickness; the lumber's when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ridge_width: Option<Length>,
+    /// The ridge board's depth; 2" deeper than the rafters when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ridge_depth: Option<Length>,
+    /// How members of each role look in plan: a fill and a label.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub member_styles: Vec<MemberStyle>,
+}
+
+/// How framing members of one role are drawn in plan.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct MemberStyle {
+    pub role: FramingRole,
+    /// Fill colour (outline only when `None`).
+    #[serde(default)]
+    pub fill: Option<crate::Color>,
+    /// A label at the member's middle; `{nominal_size}`, `{size}`,
+    /// `{plies}` and `{role}` are filled in. Empty: no label.
+    #[serde(default)]
+    pub label: String,
+}
+
+/// Lumber's nominal size from its actual size in inches (1 1/2" → 2,
+/// 7 1/4" → 8); other sizes as they are.
+pub fn nominal_inches(actual: f64) -> String {
+    let table = [(1.5, 2), (2.5, 3), (3.5, 4), (5.5, 6), (7.25, 8), (9.25, 10), (11.25, 12), (13.25, 14), (15.25, 16)];
+    match table.iter().find(|(a, _)| (actual - a).abs() < 0.05) {
+        Some((_, n)) => n.to_string(),
+        None => {
+            let r = (actual * 8.0).round() / 8.0;
+            if (r - r.round()).abs() < 1e-9 { format!("{}", r.round()) } else { format!("{r}") }
+        }
+    }
+}
+
+impl FramingMember {
+    /// "2x10" style nominal size.
+    pub fn nominal_size(&self) -> String {
+        format!("{}x{}", nominal_inches(self.width.mm() / 25.4), nominal_inches(self.depth.mm() / 25.4))
+    }
+
+    /// A [`MemberStyle`] label with its fields filled in.
+    pub fn label_text(&self, template: &str) -> String {
+        template
+            .replace("{nominal_size}", &self.nominal_size())
+            .replace("{size}", &format!("{:.4}\" x {:.4}\"", self.width.mm() / 25.4, self.depth.mm() / 25.4).replace(".0000", ""))
+            .replace("{plies}", &self.plies.max(1).to_string())
+            .replace("{role}", self.role.name())
+    }
 }
 
 fn combine_headers() -> Length {
@@ -423,6 +482,9 @@ impl Default for FramingDefaults {
             truss_type: TrussType::Common,
             girder_ends: false,
             combine_headers: combine_headers(),
+            ridge_width: None,
+            ridge_depth: None,
+            member_styles: Vec::new(),
         }
     }
 }

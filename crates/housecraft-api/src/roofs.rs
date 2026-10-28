@@ -92,6 +92,7 @@ fn regenerate(doc: &mut Document, floor: Id, out: &mut Outcome) -> usize {
                 d(a).total_cmp(&d(b))
             });
         let rafter_spacing = old.and_then(|r| r.rafter_spacing);
+        let rafter_depth = old.and_then(|r| r.rafter_depth);
         let skylights: Vec<Skylight> = old.map_or(Vec::new(), |r| {
             r.skylights.iter().filter(|s| housecraft_geom::math::point_in_polygon(housecraft_geom::v2(s.center), &poly)).cloned().collect()
         });
@@ -110,6 +111,7 @@ fn regenerate(doc: &mut Document, floor: Id, out: &mut Outcome) -> usize {
             layer,
             skylights,
             rafter_spacing,
+            rafter_depth,
         }));
     }
     generated.len()
@@ -212,6 +214,7 @@ pub(crate) fn add_plane(
         layer: defaults.layers.roofs.unwrap_or(defaults.layers.walls),
         skylights: Vec::new(),
         rafter_spacing: None,
+        rafter_depth: None,
     }));
     Ok(())
 }

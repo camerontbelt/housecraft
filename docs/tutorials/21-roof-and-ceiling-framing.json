@@ -36,8 +36,26 @@
       ]
     },
     {
-      "step": "(Ridge board 3 1/2\" x 15 1/4\")",
-      "gap": "The ridge is lumber-width and 2\" deeper than the rafters; no ridge size setting. Row: FR-40"
+      "step": "Ridge board 3 1/2\" x 15 1/4\"",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "framing": {
+              "ridge_width": "3 1/2\"",
+              "ridge_depth": "15 1/4\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/framing/ridge_depth",
+          "is": "15 1/4\""
+        }
+      ]
     },
     {
       "step": "Build Framing once: roofs",
@@ -64,8 +82,13 @@
       ]
     },
     {
-      "step": "Examine a rafter and the ridge: Chief keeps the old depths until the roof planes are edited",
-      "gap": "Not needed: HouseCraft frames every roof plane with the current defaults (and the plane's own rafter spacing, if set). Row: FR-40"
+      "step": "Examine a rafter and the ridge (Chief keeps the old depths until the planes are edited; HouseCraft frames every plane with the current defaults)",
+      "expect": [
+        {
+          "joists": "ridge",
+          "floor": "$floor1"
+        }
+      ]
     },
     {
       "step": "Edit All Roof Planes: rafter spacing 16\", ridge width 3 1/2\"; rebuild roofs",
@@ -88,8 +111,33 @@
       ]
     },
     {
-      "step": "The roof plane over the Deck: rafters 24\" OC and 11 1/4\" deep; Build Framing for Selected Objects",
-      "gap": "Spacing can be set on one roof plane but not its rafter depth; no locked height reference. Row: FR-40"
+      "step": "The back roof plane beside the Deck: rafters 24\" OC and 11 1/4\" deep; rebuild roof framing (the deck's own roof is part of the deck)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$roof_at:6400,-1000",
+          "set": {
+            "rafter_spacing": "24\"",
+            "rafter_depth": "11 1/4\""
+          }
+        },
+        {
+          "op": "build_framing",
+          "parts": {
+            "walls": false,
+            "floors": false,
+            "ceilings": false,
+            "roofs": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$roof_at:6400,-1000",
+          "path": "/rafter_depth",
+          "is": "11 1/4\""
+        }
+      ]
     },
     {
       "step": "Post in the wall right of the stairwell on Floor 2, under the ridge",
@@ -125,7 +173,23 @@
     },
     {
       "step": "Add Break: break the ridge board over the post",
-      "gap": "Framing members can't be broken in two. Row: FR-36"
+      "commands": [
+        {
+          "op": "break_wall",
+          "id": "$framing_at:ridge:5918.2,-4267.2",
+          "at": [
+            5918.2,
+            -4267.2
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$framing_at:ridge:5918.2,-4267.2",
+          "path": "/manual",
+          "is": true
+        }
+      ]
     },
     {
       "step": "Stack posts: Paste Hold Position on Floor 1 (top lowered 97 7/8\" to the joists) and Floor 0 (top at -3/4\")",
@@ -313,8 +377,40 @@
       "gap": "No select-by-type with the Joist tool; the reference display uses one layer set. Rows: UI-38, LY-07"
     },
     {
-      "step": "Valley rafters filled grey, labelled '%nominal_size% VALLEY RAFTER'",
-      "gap": "Framing members have no fill or labels. Row: FR-38"
+      "step": "Valley rafters filled grey, labelled '{nominal_size} VALLEY RAFTER'",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "framing": {
+              "member_styles": [
+                {
+                  "role": "stud",
+                  "fill": "#ffffff",
+                  "label": ""
+                },
+                {
+                  "role": "header",
+                  "fill": null,
+                  "label": "{plies}-{nominal_size} HDR"
+                },
+                {
+                  "role": "valley_rafter",
+                  "fill": "#a0a0a0",
+                  "label": "{nominal_size} VALLEY RAFTER"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "joists": "valley_rafter",
+          "floor": "$floor1"
+        }
+      ]
     },
     {
       "step": "Make a Copy as Chic Cottage-Roof Framing; a Framing Tutorials folder"
