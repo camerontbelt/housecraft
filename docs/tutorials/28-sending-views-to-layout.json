@@ -265,8 +265,7 @@
       "gap": "3D camera views can't be placed on layout pages. Row: PRJ-48"
     },
     {
-      "step": "Print the layout to PDF (ARCH D, 24\" x 36\")",
-      "gap": "Done with File > Layout > Export Layout as PDF while the layout is open; not part of the scripted test."
+      "step": "Print the layout to PDF (ARCH D, 24\" x 36\") — Done with File > Layout > Export Layout as PDF while the layout is open; not part of the scripted test."
     }
   ]
 }

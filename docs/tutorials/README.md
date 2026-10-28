@@ -37,15 +37,15 @@ has two files:
 | 17 | Light Fixtures (298) | 23 | 7 | [17-light-fixtures.md](17-light-fixtures.md) |
 | 18 | Electrical Objects (317) | 21 | 5 | [18-electrical-objects.md](18-electrical-objects.md) |
 | 19 | Floor Framing (331) | 22 | 5 | [19-floor-framing.md](19-floor-framing.md) |
-| 20 | Wall Framing (349) | 14 | 6 | [20-wall-framing.md](20-wall-framing.md) |
+| 20 | Wall Framing (349) | 15 | 5 | [20-wall-framing.md](20-wall-framing.md) |
 | 21 | Roof and Ceiling Framing (364) | 17 | 1 | [21-roof-and-ceiling-framing.md](21-roof-and-ceiling-framing.md) |
 | 22 | Plot Plans (382) | 11 | 5 | [22-plot-plans.md](22-plot-plans.md) |
 | 23 | Terrain Elevation (403) | 15 | 4 | [23-terrain-elevation.md](23-terrain-elevation.md) |
 | 24 | Driveways, Sidewalks, and Roads (420) | 14 | 0 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
-| 25 | Landscaping Design (433) | 21 | 3 | [25-landscaping-design.md](25-landscaping-design.md) |
+| 25 | Landscaping Design (433) | 22 | 2 | [25-landscaping-design.md](25-landscaping-design.md) |
 | 26 | Layout Page Templates (451) | 7 | 4 | [26-layout-page-templates.md](26-layout-page-templates.md) |
 | 27 | Title Blocks and Borders (460) | 16 | 0 | [27-title-blocks-and-borders.md](27-title-blocks-and-borders.md) |
-| 28 | Sending Views to Layout (483) | 10 | 6 | [28-sending-views-to-layout.md](28-sending-views-to-layout.md) |
+| 28 | Sending Views to Layout (483) | 11 | 5 | [28-sending-views-to-layout.md](28-sending-views-to-layout.md) |
 
 All 28 tutorials in the guide are covered: 315 steps replayed and 199 gaps, each gap with its FEATURES.md row.
 

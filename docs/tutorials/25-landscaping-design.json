@@ -305,8 +305,7 @@
       ]
     },
     {
-      "step": "(The fence replaces the retaining wall where they overlap; Undo; move the wall)",
-      "gap": "Not needed: fences and retaining walls are separate objects that can overlap."
+      "step": "(The fence replaces the retaining wall where they overlap; Undo; move the wall) — Not needed: fences and retaining walls are separate objects that can overlap."
     },
     {
       "step": "A gate in the back fence near the left corner, 72\" high, 4\" off the ground",
