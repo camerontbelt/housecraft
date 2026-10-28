@@ -379,6 +379,7 @@ fn page_boxes(doc: &Document, layout: &Layout, from: usize, page: usize, out: &m
                         );
                     }
                 }
+                Prim::Polygon { .. } if b.lines_only => {}
                 Prim::Polygon { points, fill } => {
                     let pts: Vec<DVec2> = points.iter().map(|p| map(*p)).collect();
                     let clipped = clip_polygon(&pts, lo, hi);

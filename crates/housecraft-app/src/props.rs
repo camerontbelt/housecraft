@@ -1141,6 +1141,21 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     });
                 }
                 ui.horizontal(|ui| {
+                    ui.label("Default plan scale");
+                    let imperial = crate::util::input_unit(doc) == housecraft_api::units::LengthUnit::Inches;
+                    let scales: &[f64] = if imperial { &[0.0, 24.0, 32.0, 48.0, 96.0] } else { &[0.0, 20.0, 50.0, 100.0] };
+                    let name = |v: f64| if v <= 0.0 { "Fit".to_string() } else { housecraft_draft::pdf::scale_label(v, imperial) };
+                    let mut chosen = doc.settings.layout_scale;
+                    egui::ComboBox::from_id_salt(ed.key("layout_scale")).selected_text(name(chosen)).show_ui(ui, |ui| {
+                        for v in scales {
+                            ui.selectable_value(&mut chosen, *v, name(*v));
+                        }
+                    });
+                    if chosen != doc.settings.layout_scale {
+                        ed.out.push(Command::SetLayoutScale { scale: chosen });
+                    }
+                });
+                ui.horizontal(|ui| {
                     ui.label("Label pages");
                     let key = ed.key("label_pages");
                     if let Some(t) = ed.bufs.text(ui, key, "", 220.0) {
@@ -1317,6 +1332,9 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                         .join(" ")
                 ));
                 ui.end_row();
+            }
+            if matches!(b.source, LayoutSource::View { .. }) {
+                ed.check(ui, "Lines Only", "lines_only", "Plot lines without the colour fill", b.lines_only);
             }
             let caption = b.label.clone().unwrap_or_default();
             ed.text(ui, "Caption", "label", &caption);

@@ -10,7 +10,8 @@ so page 6 here appears as "page 7" in the menu (Chief's page 0 is HouseCraft's f
 
 ## Plan views (pages 485–488)
 
-1. *Not in HouseCraft yet:* a plan-wide default drawing scale. You pick the scale on each box.
+1. Default drawing scale: open the layout (Project Browser › **Layouts**) and set **Default plan scale** to
+   `1/4" = 1'-0"`. Plans sent without a scale take it; you can still change each box's **Scale**.
 2. Pick the dimensioned floor plan view on the top toolbar. **File › Layout › Send to Layout › Chic Cottage, page …**
    for Floor 1 Plan. Open the new box and set **Scale** `1/4" = 1'-0"`.
 3. Switch to **Electrical Plan** and send it to the Electrical Floor 1 page the same way. The box keeps the view's
@@ -26,16 +27,17 @@ so page 6 here appears as "page 7" in the menu (Chief's page 0 is HouseCraft's f
    set **Scale** `1/2" = 1'-0"`.
 2. **3D › Elevations and Sections › Cross Section / Elevation Tool**: click outside the right side of the house, then
    click towards it. Name the view `Exterior Elevation - Right`. Send it to the Elevations page at `1/4" = 1'-0"`.
-3. Crop it and move it into a corner. Section and elevation boxes are live line drawings that follow the model.
-   *Not in HouseCraft yet:* a colour-fill option for them.
+3. Crop it and move it into a corner. Section and elevation boxes are live drawings that follow the model, colour
+   filled like Chief's colour plot lines. Tick **Lines Only** in the box's dialog for plain lines.
 4. Open the Stair Section box and type a **Caption** such as `S1 STAIR SECTION 1/2" = 1'-0" (A1.3)`. *Not in
    HouseCraft yet:* callout-style labels with macros and links to other pages. **Marker** puts the caption in a circle,
    hexagon, square or diamond.
 
 ## Perspective views (pages 494–496)
 
-*Not in HouseCraft yet:* 3D camera views on layout pages. For now, save the 3D view as a picture with
-**File › Export › Export 3D View as Image…** for the cover sheet.
+Save the camera view as a picture with **File › Export › Export 3D View as Image…**, then on the Cover Sheet page
+choose **File › Layout › Add Picture…** and pick it. Open the box to size and place it. *Not in HouseCraft yet:* a
+live 3D view on a page that updates with the model.
 
 ## Printing (pages 496–497)
 
@@ -46,7 +48,7 @@ With the layout open, **File › Layout › Export Layout as PDF…** writes eve
 
 | Missing | FEATURES row |
 |---|---|
-| 3D views on pages; colour-filled elevations; default drawing scale | PRJ-48 |
+| Live 3D views on layout pages | PRJ-48 |
 | Callout labels; linking a saved plan view | PRJ-25 |
 
 **Fixed while following this tutorial:** a layout box's **Scale** list now has engineering scales for site plans

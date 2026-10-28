@@ -218,6 +218,7 @@ pub(crate) fn send(
     let cx = MARGIN + (q % 2) as f64 * (cw + gap);
     let cy = bottom + CAPTION + if q < 2 { ch + gap + CAPTION } else { 0.0 };
     let mm = Length::from_mm;
+    let default_scale = if matches!(source, LayoutSource::Plan { .. }) { doc.settings.layout_scale } else { 0.0 };
     Ok(doc.insert(LayoutBox {
         id: Id(0),
         layout,
@@ -227,10 +228,12 @@ pub(crate) fn send(
         y: rect[1].unwrap_or(mm(cy)),
         width: rect[2].unwrap_or(mm(cw)),
         height: rect[3].unwrap_or(mm(ch)),
-        scale: scale.unwrap_or(0.0),
+        // Plans take the plan's default drawing scale.
+        scale: scale.unwrap_or(default_scale),
         center: None,
         label,
         rotation: 0.0,
         caption_offset: None,
+        lines_only: false,
     }))
 }

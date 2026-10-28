@@ -5,7 +5,12 @@
   "steps": [
     {
       "step": "Default drawing scale for plan views: 1/4 in = 1 ft",
-      "gap": "Each box picks its scale when sent (or fits a standard one); there's no plan-wide default drawing scale. Row: PRJ-48"
+      "commands": [
+        {
+          "op": "set_layout_scale",
+          "scale": 48.0
+        }
+      ]
     },
     {
       "step": "Send the dimensioned Floor 1 plan to page 6 (A1.3 Floor 1 Plan) at 1/4\" = 1'",
@@ -212,8 +217,30 @@
       ]
     },
     {
-      "step": "(Plot Lines vs Live View; colour fill)",
-      "gap": "Section and elevation boxes are live line drawings; no colour-fill option. Row: PRJ-48"
+      "step": "(Plot Lines vs Live View; colour fill: elevation boxes are live and colour-filled; Lines Only drops the fill)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$elbox",
+          "set": {
+            "lines_only": true
+          }
+        },
+        {
+          "op": "update",
+          "id": "$elbox",
+          "set": {
+            "lines_only": false
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$elbox",
+          "path": "/source/type",
+          "is": "view"
+        }
+      ]
     },
     {
       "step": "Crop and move the elevation into a corner",
@@ -261,8 +288,33 @@
       "gap": "Box captions are plain text (or a marker shape); no callout labels with linked page macros. Row: PRJ-25"
     },
     {
-      "step": "Full Camera 'Cover Sheet View', sent to page 2 (Cover Sheet) as an image; resize and crop it",
-      "gap": "3D camera views can't be placed on layout pages. Row: PRJ-48"
+      "step": "Full Camera 'Cover Sheet View', saved as a picture and placed on page 2 (Cover Sheet); resize and crop it",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 2,
+          "source": {
+            "type": "picture",
+            "path": "samples/cover-sheet-view.png"
+          },
+          "x": "6\"",
+          "y": "6\"",
+          "width": "18\"",
+          "height": "12\"",
+          "label": ""
+        }
+      ],
+      "save": {
+        "cover3d": "layout_box"
+      },
+      "expect": [
+        {
+          "get": "$cover3d",
+          "path": "/source/type",
+          "is": "picture"
+        }
+      ]
     },
     {
       "step": "Print the layout to PDF (ARCH D, 24\" x 36\") — Done with File > Layout > Export Layout as PDF while the layout is open; not part of the scripted test."

@@ -293,6 +293,10 @@ pub struct Settings {
     /// Text stamped across every layout page.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub watermark: Option<Watermark>,
+    /// Default drawing scale for plans sent to a layout (model mm per paper
+    /// mm, 48 = 1/4" = 1'-0"); 0 fits a standard scale.
+    #[serde(default, skip_serializing_if = "is_zero_scale")]
+    pub layout_scale: f64,
     /// Materials list components set on objects (extra items, or ones
     /// replacing what the take-off counts for them).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -531,6 +535,7 @@ impl Document {
                 project: ProjectInfo::default(),
                 revisions: Vec::new(),
                 watermark: None,
+                layout_scale: 0.0,
                 components: BTreeMap::new(),
                 macros: BTreeMap::new(),
                 auto_dims: BTreeMap::new(),
@@ -896,6 +901,10 @@ named!(
     Floor, WallType, RoomType, Layer, LayerSet, TextStyle, DefaultSet, PlanView, Camera, SectionView,
     CadDetail, Block, Group, Layout, Material, SymbolDef, MoldingProfile, StylePalette, Walkthrough
 );
+
+fn is_zero_scale(v: &f64) -> bool {
+    *v == 0.0
+}
 
 #[cfg(test)]
 mod tests {

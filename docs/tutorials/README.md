@@ -45,7 +45,7 @@ has two files:
 | 25 | Landscaping Design (433) | 22 | 2 | [25-landscaping-design.md](25-landscaping-design.md) |
 | 26 | Layout Page Templates (451) | 10 | 1 | [26-layout-page-templates.md](26-layout-page-templates.md) |
 | 27 | Title Blocks and Borders (460) | 16 | 0 | [27-title-blocks-and-borders.md](27-title-blocks-and-borders.md) |
-| 28 | Sending Views to Layout (483) | 11 | 5 | [28-sending-views-to-layout.md](28-sending-views-to-layout.md) |
+| 28 | Sending Views to Layout (483) | 14 | 2 | [28-sending-views-to-layout.md](28-sending-views-to-layout.md) |
 
 All 28 tutorials in the guide are covered: 315 steps replayed and 199 gaps, each gap with its FEATURES.md row.
 

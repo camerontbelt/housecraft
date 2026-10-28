@@ -473,6 +473,9 @@ pub struct LayoutBox {
     /// The caption moves this far from its place under the box.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub caption_offset: Option<Point2>,
+    /// Lines only: drop the colour fill of elevations and sections.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub lines_only: bool,
 }
 
 fn is_zero(v: &f64) -> bool {

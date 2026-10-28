@@ -171,6 +171,9 @@ pub enum Command {
     /// Auto Stairwell: cut the floor above the stair and put railings round
     /// the opening there, leaving the top end open as the way off the stair.
     AutoStairwell { stair: Id },
+    /// The default drawing scale plans get when sent to a layout (model mm
+    /// per paper mm, 48 = 1/4" = 1'-0"; 0 fits a standard scale).
+    SetLayoutScale { scale: f64 },
     /// Reset to Defaults for roof settings: the walls `ids` (every wall on
     /// `floor` when `ids` is empty) lose their own gable, pitch, overhang
     /// and upper-roof settings.
@@ -1484,6 +1487,7 @@ impl Command {
             Command::AutoStairwell { .. } => "auto_stairwell",
             Command::OpenWallsAtStair { .. } => "open_walls_at_stair",
             Command::ResetRoofEdges { .. } => "reset_roof_edges",
+            Command::SetLayoutScale { .. } => "set_layout_scale",
             Command::PointToPointMove { .. } => "point_to_point_move",
             Command::ReflectAbout { .. } => "reflect_about",
             Command::MakeParallel { .. } => "make_parallel",
@@ -2399,6 +2403,12 @@ impl Command {
                     *p = pt(housecraft_geom::v2(*p) + shift);
                     out.modified.push(*dimension);
                 }
+            }
+            Command::SetLayoutScale { scale } => {
+                if !(scale.is_finite() && *scale >= 0.0) {
+                    return invalid("scale must be 0 (fit) or positive");
+                }
+                doc.settings.layout_scale = *scale;
             }
             Command::ResetRoofEdges { ids, floor } => {
                 let targets: Vec<Id> = if ids.is_empty() {

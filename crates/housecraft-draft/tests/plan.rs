@@ -1002,3 +1002,31 @@ fn template_pages_dont_print_labels_number_by_prefix_and_pages_insert() {
     assert_eq!(lay.templates.get(3).copied().flatten(), Some(0));
     assert_eq!(doc.get::<LayoutBox>(made[1]).unwrap().page, 3);
 }
+
+#[test]
+fn plan_boxes_take_the_default_scale_and_view_boxes_can_drop_their_fill() {
+    use housecraft_api::model::{Layout, LayoutBox};
+    let mut s = house();
+    let floor = s.document().floors_by_elevation()[0].id;
+    let out = s.apply(&[serde_json::from_value(serde_json::json!({"op": "add_layout", "name": "Set", "pages": 1})).unwrap()]).unwrap();
+    let l = out.created[0].0;
+    let cmds: Vec<Command> = serde_json::from_value(serde_json::json!([
+        {"op": "set_layout_scale", "scale": 48.0},
+        {"op": "send_to_layout", "layout": l, "page": 0, "source": {"type": "plan", "floor": floor.0}},
+        {"op": "add_section_view", "floor": floor.0, "name": "South", "a": ["40'", "-10'"], "b": [0, "-10'"], "section_kind": "elevation"}
+    ]))
+    .unwrap();
+    let made = s.apply(&cmds).unwrap().created;
+    assert_eq!(s.document().get::<LayoutBox>(made[0]).unwrap().scale, 48.0);
+    let view = made[1];
+    let el: Command = serde_json::from_value(serde_json::json!({"op": "send_to_layout", "layout": l, "page": 0, "source": {"type": "view", "view": view.0}})).unwrap();
+    let b = s.apply(&[el]).unwrap().created[0];
+    let fills = |s: &Session| {
+        let doc = s.document();
+        let lay = doc.get::<Layout>(out.created[0]).unwrap();
+        housecraft_draft::layout::layout_page(doc, lay, 0).items.iter().filter(|i| i.object == Some(b) && matches!(i.prim, Prim::Polygon { .. })).count()
+    };
+    assert!(fills(&s) > 0, "colour-filled by default");
+    s.apply(&[serde_json::from_value(serde_json::json!({"op": "update", "id": b.0, "set": {"lines_only": true}})).unwrap()]).unwrap();
+    assert_eq!(fills(&s), 0, "lines only");
+}
