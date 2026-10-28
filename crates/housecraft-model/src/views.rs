@@ -352,6 +352,10 @@ pub struct Layout {
     /// The template page each page draws underneath its own boxes, by page.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub templates: Vec<Option<u32>>,
+    /// Snap grid for moving boxes on the page, and the arrow-key nudge
+    /// (paper length; 0: 1/8" or 3 mm).
+    #[serde(default)]
+    pub grid: Length,
 }
 
 impl Layout {
@@ -396,11 +400,29 @@ pub enum LayoutSource {
         floor: Option<Id>,
     },
     MaterialsList,
-    /// The plan's revision table.
-    Revisions,
-    /// A sheet index: every page of `layout` with its title.
+    /// The plan's revision table: the revisions for the page it is drawn on
+    /// (each revision's `sheets`), padded to at least `min_rows` rows.
+    Revisions {
+        #[serde(default)]
+        min_rows: u32,
+    },
+    /// A sheet index: every page of `layout` with its title. `columns`
+    /// renames the Sheet and Title headings; an empty name drops that column.
     SheetIndex {
         layout: Id,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        columns: Vec<String>,
+    },
+    /// A picture file (a logo) stretched over the box.
+    Picture {
+        path: String,
+        #[serde(default)]
+        transparent: Option<crate::Color>,
+    },
+    /// Lines drawn on the sheet itself, in paper millimetres from the box's
+    /// bottom-left corner (title block frames, a title bar line).
+    Lines {
+        shapes: Vec<crate::Shape>,
     },
     /// Free text (notes); `{macros}` are filled in.
     Text {
@@ -430,6 +452,17 @@ pub struct LayoutBox {
     /// Caption under the box; the source's name when `None`.
     #[serde(default)]
     pub label: Option<String>,
+    /// The contents turn this many degrees (counter-clockwise) about the
+    /// box's centre; the box itself stays square to the page.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub rotation: f64,
+    /// The caption moves this far from its place under the box.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub caption_offset: Option<Point2>,
+}
+
+fn is_zero(v: &f64) -> bool {
+    *v == 0.0
 }
 
 /// A stop on a walkthrough path.

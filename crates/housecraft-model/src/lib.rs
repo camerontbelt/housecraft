@@ -407,6 +407,9 @@ pub struct Revision {
     pub description: String,
     #[serde(default)]
     pub by: String,
+    /// The sheets (page names) it applies to; every page when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sheets: Vec<String>,
 }
 
 /// A watermark: large pale text across the page.

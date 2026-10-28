@@ -174,21 +174,37 @@ pub fn show(app: &mut App, ui: &mut Ui, source: DrawingSource) {
             None => state.center -= delta,
         }
     }
+    // The page's snap grid: boxes land on it and arrow keys nudge by it.
+    let DrawingSource::Layout(layout_id, _) = source;
+    let grid = doc.get::<Layout>(layout_id).map_or(0.0, |l| l.grid.mm());
+    let grid = if grid > 0.01 { grid } else { 3.175 };
+    let snap = |v: f64| (v / grid).round() * grid;
+    let move_to = |id: Id, x: f64, y: f64| Command::Update {
+        id,
+        set: serde_json::json!({ "x": Length::from_mm(x), "y": Length::from_mm(y) }).as_object().expect("object").clone(),
+    };
     if resp.drag_stopped()
         && let Some((id, moved)) = state.dragging.take()
         && let Some(b) = doc.get::<LayoutBox>(id)
         && moved.length() > 0.1
     {
-        commands.push(Command::Update {
-            id,
-            set: serde_json::json!({
-                "x": Length::from_mm(b.x.mm() + moved.x),
-                "y": Length::from_mm(b.y.mm() + moved.y),
-            })
-            .as_object()
-            .expect("object")
-            .clone(),
+        commands.push(move_to(id, snap(b.x.mm() + moved.x), snap(b.y.mm() + moved.y)));
+    }
+    if resp.hovered() || resp.has_focus() {
+        let nudge = ui.input(|i| {
+            let k = |key| i.key_pressed(key);
+            DVec2::new(
+                (k(egui::Key::ArrowRight) as i32 - k(egui::Key::ArrowLeft) as i32) as f64,
+                (k(egui::Key::ArrowUp) as i32 - k(egui::Key::ArrowDown) as i32) as f64,
+            )
         });
+        if nudge != DVec2::ZERO {
+            for id in &app.selection {
+                if let Some(b) = doc.get::<LayoutBox>(*id) {
+                    commands.push(move_to(*id, b.x.mm() + nudge.x * grid, b.y.mm() + nudge.y * grid));
+                }
+            }
+        }
     }
     if resp.clicked()
         && let Some(p) = resp.interact_pointer_pos()
@@ -257,7 +273,7 @@ pub fn show(app: &mut App, ui: &mut Ui, source: DrawingSource) {
         }
     }
     let hint =
-        "drag a box to move it, double-click to edit it; drag elsewhere to pan, F2 for plan";
+        "drag a box to move it (it snaps to the grid), arrow keys nudge, double-click to edit it; drag elsewhere to pan, F2 for plan";
     painter.text(
         rect.left_top() + egui::vec2(10.0, 8.0),
         egui::Align2::LEFT_TOP,

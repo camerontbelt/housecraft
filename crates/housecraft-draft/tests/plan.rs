@@ -881,3 +881,52 @@ fn street_names_run_along_roads() {
     // Drawn east to west, but the name still reads left to right.
     assert!(d.items.iter().any(|i| matches!(&i.prim, Prim::Text { text, rotation, .. } if text == "Elm Street" && rotation.abs() < 1e-6)));
 }
+
+#[test]
+fn layout_sheets_take_rotation_pictures_lines_revision_ranges_and_index_columns() {
+    use housecraft_api::model::{Layout, LayoutBox};
+    let mut s = house();
+    let out = s
+        .apply(&[serde_json::from_value(serde_json::json!({"op": "add_layout", "name": "Set", "pages": 3})).unwrap()])
+        .unwrap();
+    let l = out.created[0].0;
+    let cmds: Vec<Command> = serde_json::from_str(&format!(
+        r#"[{{"op": "add_revision", "description": "Everywhere", "date": "2026-10-01"}},
+            {{"op": "add_revision", "description": "Only A-3", "date": "2026-10-02", "sheets": ["A-3"]}},
+            {{"op": "update", "id": {l}, "set": {{"title_block": false}}}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 0, "source": {{"type": "revisions", "min_rows": 7}}, "x": "800", "y": "400", "width": "50", "height": "150", "label": ""}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 0, "source": {{"type": "sheet_index", "layout": {l}, "columns": ["No.", ""]}}, "x": "10", "y": "400", "width": "100", "height": "150", "label": ""}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 0, "source": {{"type": "text", "text": "COMPANY"}}, "x": "850", "y": "100", "width": "40", "height": "100", "label": ""}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 0, "source": {{"type": "picture", "path": "logo.png"}}, "x": "20", "y": "20", "width": "76.2", "height": "76.2"}},
+            {{"op": "send_to_layout", "layout": {l}, "page": 0, "source": {{"type": "lines", "shapes": [{{"shape": "line", "a": [0, 0], "b": [50, 0]}}]}}, "x": "860", "y": "300", "width": "50", "height": "1"}}]"#
+    ))
+    .unwrap();
+    let ids = s.apply(&cmds).unwrap().created;
+    let (text_box, picture) = (ids[2], ids[3]);
+    s.apply(&[serde_json::from_value(serde_json::json!({"op": "update", "id": text_box.0, "set": {"rotation": 90.0}})).unwrap()]).unwrap();
+    // Center Object: the picture centres on the page.
+    s.apply(&[serde_json::from_value(serde_json::json!({"op": "center_layout_box", "id": picture.0})).unwrap()]).unwrap();
+    let doc = s.document();
+    let lay = doc.get::<Layout>(out.created[0]).unwrap();
+    let pic = doc.get::<LayoutBox>(picture).unwrap();
+    assert!(((pic.x.mm() + 38.1) - lay.paper_width.mm() / 2.0).abs() < 1e-6, "centred across");
+    let d0 = housecraft_draft::layout::layout_page(doc, lay, 0);
+    let texts: Vec<(&str, f64)> = d0.items.iter().filter_map(|i| match &i.prim {
+        Prim::Text { text, rotation, .. } => Some((text.as_str(), *rotation)),
+        _ => None,
+    }).collect();
+    assert!(texts.contains(&("COMPANY", 90.0)), "{texts:?}");
+    assert!(texts.iter().any(|t| t.0 == "Everywhere") && !texts.iter().any(|t| t.0 == "Only A-3"), "A-1 lists only its revisions");
+    assert!(texts.iter().any(|t| t.0 == "No.") && !texts.iter().any(|t| t.0 == "Title"), "renamed and dropped columns");
+    assert!(d0.items.iter().any(|i| matches!(&i.prim, Prim::Image { path, .. } if path == "logo.png")));
+    assert!(d0.items.iter().any(|i| matches!(&i.prim, Prim::Polyline { points, .. } if points.len() == 2 && (points[0].y - 300.0).abs() < 1e-6 && (points[1].x - points[0].x - 50.0).abs() < 1e-6)));
+    // The revision table keeps at least 7 rows: more horizontal rules than with none.
+    let rules = |d: &housecraft_draft::Drawing| d.items.iter().filter(|i| i.object == Some(ids[0]) && matches!(&i.prim, Prim::Polyline { points, .. } if points.len() == 2 && (points[0].y - points[1].y).abs() < 1e-9)).count();
+    assert!(rules(&d0) >= 8, "{}", rules(&d0));
+    // On A-3 the A-3 revision shows.
+    let mut s2 = s;
+    s2.apply(&[serde_json::from_value(serde_json::json!({"op": "update", "id": ids[0].0, "set": {"page": 2}})).unwrap()]).unwrap();
+    let doc = s2.document();
+    let d2 = housecraft_draft::layout::layout_page(doc, doc.get::<Layout>(out.created[0]).unwrap(), 2);
+    assert!(d2.items.iter().any(|i| matches!(&i.prim, Prim::Text { text, .. } if text == "Only A-3")));
+}

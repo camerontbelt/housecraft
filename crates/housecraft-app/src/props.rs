@@ -1065,6 +1065,9 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             if let Some(v) = ed.length(ui, "Sheet Height", "paper_height", l.paper_height) {
                 ed.out.push(patch(id, json!({ "paper_height": v })));
             }
+            if let Some(v) = ed.length(ui, "Grid (0: 1/8\")", "grid", l.grid) {
+                ed.out.push(patch(id, json!({ "grid": v })));
+            }
             Ed::label(ui, "Title Block");
             let mut t = l.title_block;
             if ui.checkbox(&mut t, "Border and title strip").changed() {
@@ -1175,6 +1178,59 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 if let Some(v) = ed.length(ui, label, field, value) {
                     ed.out.push(patch(id, json!({ field: v })));
                 }
+            }
+            if let Some(a) = ed.number(ui, "Rotation (°)", "rotation", b.rotation) {
+                ed.out.push(patch(id, json!({ "rotation": a })));
+            }
+            Ed::label(ui, "Center Object");
+            ui.horizontal(|ui| {
+                if ui.button("On Page").on_hover_text("Centre inside the border, above the title strip").clicked() {
+                    ed.out.push(Command::CenterLayoutBox { id, within: None });
+                }
+                // The smallest other box on the page that holds this one's centre.
+                let c = (b.x.mm() + b.width.mm() / 2.0, b.y.mm() + b.height.mm() / 2.0);
+                let frame = doc
+                    .iter::<LayoutBox>()
+                    .filter(|o| o.id != id && o.layout == b.layout && o.page == b.page)
+                    .filter(|o| c.0 >= o.x.mm() && c.0 <= o.x.mm() + o.width.mm() && c.1 >= o.y.mm() && c.1 <= o.y.mm() + o.height.mm())
+                    .filter(|o| o.width.mm() * o.height.mm() > b.width.mm() * b.height.mm())
+                    .min_by(|p, q| (p.width.mm() * p.height.mm()).total_cmp(&(q.width.mm() * q.height.mm())))
+                    .map(|o| o.id);
+                if ui.add_enabled(frame.is_some(), egui::Button::new("In Box Under It")).clicked() {
+                    ed.out.push(Command::CenterLayoutBox { id, within: frame });
+                }
+            });
+            ui.end_row();
+            let off = b.caption_offset.unwrap_or(Point2(Length::ZERO, Length::ZERO));
+            for (label, i, value) in [("Caption Shift Right", 0, off.0), ("Caption Shift Up", 1, off.1)] {
+                if let Some(v) = ed.length(ui, label, if i == 0 { "caption_dx" } else { "caption_dy" }, value) {
+                    let moved = if i == 0 { Point2(v, off.1) } else { Point2(off.0, v) };
+                    ed.out.push(patch(id, json!({ "caption_offset": moved })));
+                }
+            }
+            match &b.source {
+                LayoutSource::Revisions { min_rows } => {
+                    if let Some(n) = ed.number(ui, "Minimum Rows", "min_rows", *min_rows as f64) {
+                        ed.out.push(patch(id, json!({ "source": { "min_rows": n.max(0.0).round() as u32 } })));
+                    }
+                }
+                LayoutSource::SheetIndex { columns, .. } => {
+                    for (i, default) in ["Sheet", "Title"].into_iter().enumerate() {
+                        Ed::label(ui, &format!("{default} Column"));
+                        let current = columns.get(i).cloned().unwrap_or_else(|| default.to_string());
+                        let key = ed.key(&format!("index_col{i}"));
+                        if let Some(t) = ed.bufs.text(ui, key, &current, 140.0) {
+                            let mut cols: Vec<String> = ["Sheet", "Title"].iter().enumerate().map(|(j, d)| columns.get(j).cloned().unwrap_or_else(|| d.to_string())).collect();
+                            cols[i] = t;
+                            ed.out.push(patch(id, json!({ "source": { "columns": cols } })));
+                        }
+                        ui.end_row();
+                    }
+                    Ed::label(ui, "");
+                    ui.weak("Empty a heading to drop that column.");
+                    ui.end_row();
+                }
+                _ => {}
             }
             if housecraft_api::layouts::is_drawing(&b.source) {
                 Ed::label(ui, "Scale");

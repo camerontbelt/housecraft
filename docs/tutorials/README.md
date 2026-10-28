@@ -44,8 +44,8 @@ has two files:
 | 24 | Driveways, Sidewalks, and Roads (420) | 11 | 3 | [24-driveways-sidewalks-roads.md](24-driveways-sidewalks-roads.md) |
 | 25 | Landscaping Design (433) | 18 | 5 | [25-landscaping-design.md](25-landscaping-design.md) |
 | 26 | Layout Page Templates (451) | 7 | 4 | [26-layout-page-templates.md](26-layout-page-templates.md) |
-| 27 | Title Blocks and Borders (460) | 10 | 6 | [27-title-blocks-and-borders.md](27-title-blocks-and-borders.md) |
-| 28 | Sending Views to Layout (483) | 9 | 7 | [28-sending-views-to-layout.md](28-sending-views-to-layout.md) |
+| 27 | Title Blocks and Borders (460) | 16 | 0 | [27-title-blocks-and-borders.md](27-title-blocks-and-borders.md) |
+| 28 | Sending Views to Layout (483) | 10 | 6 | [28-sending-views-to-layout.md](28-sending-views-to-layout.md) |
 
 All 28 tutorials in the guide are covered: 315 steps replayed and 199 gaps, each gap with its FEATURES.md row.
 

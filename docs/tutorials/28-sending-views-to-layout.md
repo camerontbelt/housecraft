@@ -17,7 +17,8 @@ so page 6 here appears as "page 7" in the menu (Chief's page 0 is HouseCraft's f
    layer set, so it shows the electrical layers. (Chief links the saved plan view; HouseCraft links its layer set.)
 4. Switch to **Site Plan** and send it to the Site Plan page. Open the box and set **Scale** `1" = 100'-0"`.
 5. Crop and move it with **Left**, **Bottom**, **Width** and **Height** (paper inches) in the box's dialog, or drag its
-   handles. *Not in HouseCraft yet:* rotating a box 90°, Center Object on the sheet, and moving the caption.
+   handles. **Rotation** `90` turns the plan inside the box. **Center Object › On Page** centres the box inside the
+   border. **Caption Shift Right / Up** moves its caption.
 
 ## Sections and elevations (pages 489–494)
 
@@ -46,9 +47,7 @@ With the layout open, **File › Layout › Export Layout as PDF…** writes eve
 | Missing | FEATURES row |
 |---|---|
 | 3D views on pages; colour-filled elevations; default drawing scale | PRJ-48 |
-| Rotating boxes | PRJ-24 |
 | Callout labels; linking a saved plan view | PRJ-25 |
-| Centring and moving captions on the sheet | PRJ-47 |
 
 **Fixed while following this tutorial:** a layout box's **Scale** list now has engineering scales for site plans
 (1" = 10', 20', 50' and 100'), and they're labelled that way.

@@ -216,7 +216,8 @@ pub struct Dialogs {
     pub project: Option<ProjectInfo>,
     /// Custom field name, revision description and "by" being typed.
     pub new_project_field: String,
-    pub new_revision: (String, String),
+    /// Description, by and sheets (comma-separated page names) being typed.
+    pub new_revision: (String, String, String),
     /// Name and pattern being typed for a new line style.
     pub new_line_type: (String, String),
     pub room_types: bool,
@@ -2029,8 +2030,8 @@ fn project_dialog(app: &mut App, ctx: &Context) {
         });
         ui.separator();
         ui.strong("Revisions");
-        egui::Grid::new("revisions").striped(true).num_columns(5).show(ui, |ui| {
-            for h in ["Rev", "Date", "Description", "By", ""] {
+        egui::Grid::new("revisions").striped(true).num_columns(6).show(ui, |ui| {
+            for h in ["Rev", "Date", "Description", "By", "Sheets", ""] {
                 ui.strong(h);
             }
             ui.end_row();
@@ -2039,6 +2040,7 @@ fn project_dialog(app: &mut App, ctx: &Context) {
                 ui.label(&r.date);
                 ui.label(&r.description);
                 ui.label(&r.by);
+                ui.label(if r.sheets.is_empty() { "all".to_string() } else { r.sheets.join(", ") });
                 if ui.small_button("Delete").clicked() {
                     commands.push(Command::DeleteRevision { number: r.number });
                 }
@@ -2046,11 +2048,13 @@ fn project_dialog(app: &mut App, ctx: &Context) {
             }
         });
         ui.horizontal(|ui| {
-            let (desc, by) = &mut app.dialogs.new_revision;
+            let (desc, by, sheets) = &mut app.dialogs.new_revision;
             ui.add(egui::TextEdit::singleline(desc).hint_text("What changed").desired_width(220.0));
             ui.add(egui::TextEdit::singleline(by).hint_text("By").desired_width(60.0));
+            ui.add(egui::TextEdit::singleline(sheets).hint_text("Sheets (blank: all)").desired_width(120.0));
             if ui.add_enabled(!desc.trim().is_empty(), egui::Button::new("Add Revision")).clicked() {
-                commands.push(Command::AddRevision { description: desc.trim().to_string(), by: by.trim().to_string(), date: None });
+                let sheets = sheets.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect();
+                commands.push(Command::AddRevision { description: desc.trim().to_string(), by: by.trim().to_string(), date: None, sheets });
                 desc.clear();
             }
         });

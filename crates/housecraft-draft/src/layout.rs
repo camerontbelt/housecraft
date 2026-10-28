@@ -113,8 +113,15 @@ fn source_drawing_on(doc: &Document, s: &LayoutSource, page: Option<(&Layout, us
             );
             (d, false)
         }
-        LayoutSource::Revisions => (table_box(&housecraft_api::layouts::revision_table(doc), paper_stroke), false),
-        LayoutSource::SheetIndex { layout } => (table_box(&housecraft_api::layouts::sheet_index(doc, *layout), paper_stroke), false),
+        LayoutSource::Revisions { min_rows } => {
+            let sheet = page.and_then(|(l, p)| l.pages.get(p)).map(String::as_str);
+            (table_box(&housecraft_api::layouts::revision_table_for(doc, sheet, *min_rows), paper_stroke), false)
+        }
+        LayoutSource::SheetIndex { layout, columns } => {
+            (table_box(&housecraft_api::layouts::sheet_index_with(doc, *layout, columns), paper_stroke), false)
+        }
+        // Drawn by `page_boxes`, which knows the box.
+        LayoutSource::Picture { .. } | LayoutSource::Lines { .. } => (Drawing::default(), false),
         LayoutSource::Text { text } => {
             let mut d = Drawing::default();
             let text = match page {
@@ -304,16 +311,46 @@ fn page_boxes(doc: &Document, layout: &Layout, from: usize, page: usize, out: &m
         .iter::<LayoutBox>()
         .filter(|b| b.layout == layout.id && b.page as usize == from)
     {
-        let (d, model) = source_drawing_on(doc, &b.source, Some((layout, page)));
+        let (mut d, model) = source_drawing_on(doc, &b.source, Some((layout, page)));
         let lo = DVec2::new(b.x.mm(), b.y.mm());
         let hi = lo + DVec2::new(b.width.mm(), b.height.mm());
+        let on_sheet = matches!(b.source, LayoutSource::Picture { .. } | LayoutSource::Lines { .. });
+        match &b.source {
+            LayoutSource::Picture { path, transparent } => d.push(
+                None,
+                Prim::Image {
+                    corners: [DVec2::ZERO, DVec2::new(b.width.mm(), 0.0), DVec2::new(b.width.mm(), b.height.mm()), DVec2::new(0.0, b.height.mm())],
+                    path: path.clone(),
+                    opacity: 1.0,
+                    transparent: *transparent,
+                },
+            ),
+            LayoutSource::Lines { shapes } => {
+                for shape in shapes {
+                    for (points, closed) in housecraft_geom::math::shape_polylines(shape) {
+                        d.push(None, Prim::Polyline { points, closed, stroke: Stroke { width: 0.35, ..thin } });
+                    }
+                }
+            }
+            _ => {}
+        }
         let scale = if model { box_scale(doc, b) } else { 1.0 };
         let (dlo, dhi) = bounds(&d).unwrap_or((DVec2::ZERO, DVec2::ZERO));
-        // Model drawings centre in the box; tables and notes hang from its top-left.
+        let bc = (lo + hi) / 2.0;
+        let turn = DVec2::from_angle(b.rotation.to_radians());
+        let rotated = b.rotation != 0.0;
+        // Model drawings centre in the box; pictures and lines sit on it from
+        // its bottom-left; tables and notes hang from its top-left, or centre
+        // in it when turned.
         let map: Box<dyn Fn(DVec2) -> DVec2> = if model {
             let c = b.center.map_or((dlo + dhi) / 2.0, housecraft_geom::v2);
-            let bc = (lo + hi) / 2.0;
-            Box::new(move |p| bc + (p - c) / scale)
+            Box::new(move |p| bc + turn.rotate(p - c) / scale)
+        } else if on_sheet {
+            let c = (lo + hi) / 2.0 - lo;
+            Box::new(move |p| bc + turn.rotate(p - c))
+        } else if rotated {
+            let c = (dlo + dhi) / 2.0;
+            Box::new(move |p| bc + turn.rotate(p - c))
         } else {
             let top_left = DVec2::new(lo.x + 2.0, hi.y - 2.0);
             let origin = DVec2::new(dlo.x, dhi.y);
@@ -330,7 +367,7 @@ fn page_boxes(doc: &Document, layout: &Layout, from: usize, page: usize, out: &m
                 } => {
                     let corners = corners.map(&map);
                     // Images aren't cut to the box: keep those inside it.
-                    if corners.iter().any(|p| p.cmpge(lo).all() && p.cmple(hi).all()) {
+                    if on_sheet || corners.iter().any(|p| p.cmpge(lo).all() && p.cmple(hi).all()) {
                         out.push(
                             id,
                             Prim::Image {
@@ -394,7 +431,7 @@ fn page_boxes(doc: &Document, layout: &Layout, from: usize, page: usize, out: &m
                                 at: p,
                                 text: text.clone(),
                                 height: if model { height / scale } else { *height },
-                                rotation: *rotation,
+                                rotation: *rotation + b.rotation,
                                 justify: *justify,
                                 middle: *middle,
                                 bold: *bold,
@@ -405,7 +442,12 @@ fn page_boxes(doc: &Document, layout: &Layout, from: usize, page: usize, out: &m
                 }
             }
         }
-        // Caption: number, name and scale under the box.
+        if on_sheet && b.label.as_deref().is_none_or(str::is_empty) {
+            continue;
+        }
+        // Caption: number, name and scale under the box (moved by its offset).
+        let shift = b.caption_offset.map_or(DVec2::ZERO, housecraft_geom::v2);
+        let lo = lo + shift;
         let caption = b
             .label
             .as_deref()

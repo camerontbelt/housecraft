@@ -25,7 +25,22 @@
     },
     {
       "step": "Grid snap 1/8\" for layout; arrow-key nudge by the grid",
-      "gap": "Layout pages hold boxes; CAD isn't drawn on the sheet itself, and there's no layout grid or nudge. Row: PRJ-47"
+      "commands": [
+        {
+          "op": "update",
+          "id": "$lay",
+          "set": {
+            "grid": "1/8\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$lay",
+          "path": "/grid",
+          "is": "1/8\""
+        }
+      ]
     },
     {
       "step": "Delete the installed title block and border; draw a new border 1/8\" in, with a second 1/8\" inside it (Concentric)",
@@ -283,8 +298,45 @@
       ]
     },
     {
-      "step": "Title block frame 2\" wide down the right side; component frames 1\", 1\", 4\", 5\" and 4\" high (Point to Point Move, nudge)",
-      "gap": "Frames are drawn in a CAD detail, not on the sheet itself. Row: PRJ-47"
+      "step": "Title block frame 2\" wide down the right side; component frames 1\", 1\", 4\", 5\" and 4\" high (Point to Point Move, nudge); the last frame line drawn on the sheet itself",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 0,
+          "source": {
+            "type": "lines",
+            "shapes": [
+              {
+                "shape": "line",
+                "a": [
+                  0,
+                  0
+                ],
+                "b": [
+                  44.45,
+                  0
+                ]
+              }
+            ]
+          },
+          "x": "33.625\"",
+          "y": "16.25\"",
+          "width": "1.75\"",
+          "height": "1/8\"",
+          "label": ""
+        }
+      ],
+      "save": {
+        "frameline": "layout_box"
+      },
+      "expect": [
+        {
+          "get": "$frameline",
+          "path": "/source/type",
+          "is": "lines"
+        }
+      ]
     },
     {
       "step": "Rich text defaults: Chief Blueprint 1/8\"; company name and contact, centred, rotated 90 degrees in the 4\" frame",
@@ -309,8 +361,23 @@
       }
     },
     {
-      "step": "(Rotate the text 90 degrees; Center Object in the frame)",
-      "gap": "Layout text boxes don't rotate, and there's no Center Object on layout pages. Row: PRJ-47"
+      "step": "Rotate the text 90 degrees in the 4\" frame",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$company",
+          "set": {
+            "rotation": 90.0
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$company",
+          "path": "/rotation",
+          "is": 90.0
+        }
+      ]
     },
     {
       "step": "Sheet title with the page-title macro, sheet number with the page-label macro, and the date",
@@ -398,8 +465,33 @@
       ]
     },
     {
-      "step": "(Minimum rows; revisions listed only on the pages they belong to)",
-      "gap": "The revision table lists the plan's revisions on every page; no minimum rows or page range. Row: PRJ-47"
+      "step": "At least 7 rows; the test revision on pages 3 and 4 shows only there (then Undo)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$revtab",
+          "set": {
+            "source": {
+              "min_rows": 7
+            }
+          }
+        },
+        {
+          "op": "add_revision",
+          "description": "Test",
+          "sheets": [
+            "A-3",
+            "A-4"
+          ]
+        }
+      ],
+      "expect": [
+        {
+          "get": "$revtab",
+          "path": "/source/min_rows",
+          "is": 7
+        }
+      ]
     },
     {
       "step": "Cover sheet template: copy the border to page 1 (Paste Hold Position)",
@@ -423,13 +515,38 @@
       "expect": [
         {
           "count": "layout_box",
-          "is": 7
+          "is": 8
         }
       ]
     },
     {
-      "step": "Import a company logo picture, 3\" x 3\", saved in the plan",
-      "gap": "No pictures on layout pages. Row: PRJ-47"
+      "step": "Import a company logo picture, 3\" x 3\" (Layout > Add Picture)",
+      "commands": [
+        {
+          "op": "send_to_layout",
+          "layout": "$lay",
+          "page": 1,
+          "source": {
+            "type": "picture",
+            "path": "samples/logo.png"
+          },
+          "x": "1\"",
+          "y": "19\"",
+          "width": "3\"",
+          "height": "3\"",
+          "label": ""
+        }
+      ],
+      "save": {
+        "logo": "layout_box"
+      },
+      "expect": [
+        {
+          "get": "$logo",
+          "path": "/source/type",
+          "is": "picture"
+        }
+      ]
     },
     {
       "step": "Title bar line; company and project text left and right aligned",
@@ -452,7 +569,7 @@
       "expect": [
         {
           "count": "layout_box",
-          "is": 8
+          "is": 10
         }
       ]
     },
@@ -486,8 +603,28 @@
       ]
     },
     {
-      "step": "(Rename and remove table columns; alignment and title text style)",
-      "gap": "The sheet index has fixed columns (sheet, title) and text. Row: PRJ-47"
+      "step": "Rename the columns (Sheet No., Sheet Title)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$index",
+          "set": {
+            "source": {
+              "columns": [
+                "Sheet No.",
+                "Sheet Title"
+              ]
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$index",
+          "path": "/source/columns/1",
+          "is": "Sheet Title"
+        }
+      ]
     },
     {
       "step": "Make a Copy as Chic Cottage-Title Block; a Layout Tutorials folder"

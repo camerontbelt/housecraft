@@ -398,6 +398,9 @@ pub enum Command {
         #[serde(default)]
         by: String,
         date: Option<String>,
+        /// The sheets (page names) it applies to; every page when empty.
+        #[serde(default)]
+        sheets: Vec<String>,
     },
     /// Remove revision `number`.
     DeleteRevision { number: u32 },
@@ -707,6 +710,13 @@ pub enum Command {
         floor: Option<Id>,
         points: Vec<Point2>,
         feature: SiteKind,
+    },
+    /// Center Object on a layout page: centre box `id` on the page's drawing
+    /// area, or inside box `within` (a title block frame).
+    CenterLayoutBox {
+        id: Id,
+        #[serde(default)]
+        within: Option<Id>,
     },
     /// Auto Generate Sidewalks: a sidewalk `width` wide (5' when unset)
     /// down each side of `road`, `gap` out from its edge (or its curb).
@@ -1390,6 +1400,7 @@ impl Command {
             Command::AddSiteFeature { .. } => "add_site_feature",
             Command::AddPlant { .. } => "add_plant",
             Command::AutoSidewalks { .. } => "auto_sidewalks",
+            Command::CenterLayoutBox { .. } => "center_layout_box",
             Command::CadBoolean { .. } => "cad_boolean",
             Command::ExtrudeCad { .. } => "extrude_cad",
             Command::RevolveCad { .. } => "revolve_cad",
@@ -2007,6 +2018,7 @@ impl Command {
                     title_block: true,
                     titles: Vec::new(),
                     templates: Vec::new(),
+                    grid: Length::ZERO,
                 }));
             }
             Command::ImportPrices { prices, overwrite } => {
@@ -2432,13 +2444,14 @@ impl Command {
             Command::SetProjectInfo { info } => {
                 doc.settings.project = info.clone();
             }
-            Command::AddRevision { description, by, date } => {
+            Command::AddRevision { description, by, date, sheets } => {
                 let number = doc.settings.revisions.iter().map(|r| r.number).max().unwrap_or(0) + 1;
                 doc.settings.revisions.push(Revision {
                     number,
                     date: date.clone().unwrap_or_else(crate::layouts::today),
                     description: description.clone(),
                     by: by.clone(),
+                    sheets: sheets.clone(),
                 });
             }
             Command::DeleteRevision { number } => {
@@ -3161,6 +3174,10 @@ impl Command {
                     points: points.clone(),
                     feature: feature.clone(),
                 }));
+            }
+            Command::CenterLayoutBox { id, within } => {
+                crate::layouts::center_box(doc, *id, *within)?;
+                out.modified.push(*id);
             }
             Command::AutoSidewalks { road, width, gap } => {
                 let r = expect::<SiteFeature>(doc, *road)?.clone();

@@ -108,8 +108,36 @@
       ]
     },
     {
-      "step": "(Rotate a layout box; Center Object; move the label)",
-      "gap": "Layout boxes can't rotate, centre on the border, or move their caption. Rows: PRJ-24, PRJ-47"
+      "step": "Rotate the site plan 90 degrees, Center Object on the border, move its label",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$site",
+          "set": {
+            "rotation": 90.0,
+            "caption_offset": [
+              "2\"",
+              "0\""
+            ]
+          }
+        },
+        {
+          "op": "center_layout_box",
+          "id": "$site"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$site",
+          "path": "/rotation",
+          "is": 90.0
+        },
+        {
+          "get": "$site",
+          "path": "/caption_offset/0",
+          "is": "2\""
+        }
+      ]
     },
     {
       "step": "Send the saved Stair Section to page 8 (A2.2 Sections) at 1/2\" = 1'",

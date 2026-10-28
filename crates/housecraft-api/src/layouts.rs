@@ -1,5 +1,6 @@
 //! Layout sheets: placing views on pages.
 
+use housecraft_geom::DVec2;
 use housecraft_model::*;
 use housecraft_units::Length;
 
@@ -29,9 +30,11 @@ pub fn source_name(doc: &Document, s: &LayoutSource) -> String {
             .map_or("?".into(), |d| d.name.clone()),
         LayoutSource::Schedule { schedule_kind, .. } => schedule_kind.name().to_string(),
         LayoutSource::MaterialsList => "Materials List".into(),
-        LayoutSource::Revisions => "Revisions".into(),
+        LayoutSource::Revisions { .. } => "Revisions".into(),
         LayoutSource::SheetIndex { .. } => "Sheet Index".into(),
         LayoutSource::Text { .. } => "Notes".into(),
+        LayoutSource::Picture { .. } => "Picture".into(),
+        LayoutSource::Lines { .. } => "Lines".into(),
     }
 }
 
@@ -43,9 +46,11 @@ pub fn source_kind(s: &LayoutSource) -> &'static str {
         LayoutSource::Detail { .. } => "detail",
         LayoutSource::Schedule { .. } => "schedule",
         LayoutSource::MaterialsList => "materials_list",
-        LayoutSource::Revisions => "revisions",
+        LayoutSource::Revisions { .. } => "revisions",
         LayoutSource::SheetIndex { .. } => "sheet_index",
         LayoutSource::Text { .. } => "text",
+        LayoutSource::Picture { .. } => "picture",
+        LayoutSource::Lines { .. } => "lines",
     }
 }
 
@@ -73,18 +78,29 @@ pub fn box_number(doc: &Document, b: &LayoutBox) -> Option<u32> {
 
 /// The revision table.
 pub fn revision_table(doc: &Document) -> crate::schedule::ScheduleTable {
+    revision_table_for(doc, None, 0)
+}
+
+/// The revision table as drawn on sheet `sheet` (a page name): only the
+/// revisions for that sheet, padded with blank rows to `min_rows`.
+pub fn revision_table_for(doc: &Document, sheet: Option<&str>, min_rows: u32) -> crate::schedule::ScheduleTable {
+    let mut rows: Vec<_> = doc
+        .settings
+        .revisions
+        .iter()
+        .filter(|r| r.sheets.is_empty() || sheet.is_none_or(|s| r.sheets.iter().any(|x| x == s)))
+        .map(|r| crate::schedule::ScheduleRow {
+            ids: Vec::new(),
+            cells: vec![r.number.to_string(), r.date.clone(), r.description.clone(), r.by.clone()],
+        })
+        .collect();
+    while rows.len() < min_rows as usize {
+        rows.push(crate::schedule::ScheduleRow { ids: Vec::new(), cells: vec![String::new(); 4] });
+    }
     crate::schedule::ScheduleTable {
         title: "Revisions".into(),
         columns: ["Rev", "Date", "Description", "By"].map(String::from).to_vec(),
-        rows: doc
-            .settings
-            .revisions
-            .iter()
-            .map(|r| crate::schedule::ScheduleRow {
-                ids: Vec::new(),
-                cells: vec![r.number.to_string(), r.date.clone(), r.description.clone(), r.by.clone()],
-            })
-            .collect(),
+        rows,
     }
 }
 
@@ -105,6 +121,43 @@ pub fn sheet_index(doc: &Document, layout: Id) -> crate::schedule::ScheduleTable
         columns: vec!["Sheet".into(), "Title".into()],
         rows: pages,
     }
+}
+
+/// The sheet index with its headings renamed by `columns` (an empty name
+/// drops that column).
+pub fn sheet_index_with(doc: &Document, layout: Id, columns: &[String]) -> crate::schedule::ScheduleTable {
+    let mut t = sheet_index(doc, layout);
+    if columns.is_empty() {
+        return t;
+    }
+    let keep: Vec<usize> = (0..t.columns.len()).filter(|i| columns.get(*i).is_none_or(|c| !c.is_empty())).collect();
+    t.columns = keep.iter().map(|i| columns.get(*i).cloned().unwrap_or_else(|| t.columns[*i].clone())).collect();
+    for r in &mut t.rows {
+        r.cells = keep.iter().map(|i| r.cells[*i].clone()).collect();
+    }
+    t
+}
+
+/// Centre a box on the page's drawing area (inside the border and above the
+/// title strip), or inside box `within`.
+pub(crate) fn center_box(doc: &mut Document, id: Id, within: Option<Id>) -> Result<(), ApiError> {
+    let b = expect::<LayoutBox>(doc, id)?.clone();
+    let (lo, hi) = match within {
+        Some(w) => {
+            let w = expect::<LayoutBox>(doc, w)?;
+            (DVec2::new(w.x.mm(), w.y.mm()), DVec2::new(w.x.mm() + w.width.mm(), w.y.mm() + w.height.mm()))
+        }
+        None => {
+            let l = expect::<Layout>(doc, b.layout)?;
+            let bottom = MARGIN + if l.title_block { TITLE_STRIP } else { 0.0 };
+            (DVec2::new(MARGIN, bottom), DVec2::new(l.paper_width.mm() - MARGIN, l.paper_height.mm() - MARGIN))
+        }
+    };
+    let c = (lo + hi) / 2.0;
+    let nb = doc.get_mut::<LayoutBox>(id).ok_or(ApiError::NotFound(id))?;
+    nb.x = Length::from_mm(c.x - b.width.mm() / 2.0);
+    nb.y = Length::from_mm(c.y - b.height.mm() / 2.0);
+    Ok(())
 }
 
 /// Today's date (UTC) as YYYY-MM-DD.
@@ -176,5 +229,7 @@ pub(crate) fn send(
         scale: scale.unwrap_or(0.0),
         center: None,
         label,
+        rotation: 0.0,
+        caption_offset: None,
     }))
 }

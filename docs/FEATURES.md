@@ -141,7 +141,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-21 | R-values for walls, roofs, ceilings, platforms | P2 | M3 ◐ R-values per wall-type layer (total shown on walls) and for the roof in Default Settings; no energy totals |
 | PRJ-22 | Client & designer info with macros and custom fields | P2 | M4 ✓ File > Project Information: client/designer fields and custom fields, each a text macro; shown in the title block |
 | PRJ-23 | Layout files: sheets with scaled, live-linked views; title-block templates; reorder pages | P1 | M4 ◐ sheets in the plan file with live scaled views, title block, several pages; separate .layout files, title-block templates, page reordering later |
-| PRJ-24 | Layout viewports: polyline cropping with breaks/curves; pan/zoom; rotate | P1 | M4 ◐ rectangular crop with a set centre; polyline crops, in-box pan/zoom, rotation later |
+| PRJ-24 | Layout viewports: polyline cropping with breaks/curves; pan/zoom; rotate | P1 | M4 ◐ rectangular crop with a set centre and rotation; polyline crops and in-box pan/zoom later |
 | PRJ-25 | Layout box spec: defaults, multi-line labels, relink, rescale, change layer set; multi-edit | P1 | M4 ◐ position, size, scale, caption, notes text; relink, change layer set and multi-edit later |
 | PRJ-26 | Multiple layout files open at once; copy between them | P2 | M4 ◐ layout boxes copy and paste between plans (their CAD details and views come along); one plan open at a time |
 | PRJ-27 | Edit line views on layout; rescale; relink | P2 | M4 ✓ box scale, relink to another plan/view/detail, Convert to Lines (an editable CAD detail) |
@@ -164,7 +164,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-44 | Build New Floor: derive the new floor's exterior walls from the floor below (pony walls take the upper type) | P1 | M9 |
 | PRJ-45 | File > Make a Copy: save a revision copy under a new name and stay in the original | P3 | M9 ✓ File > Make a Copy… saves a renamed copy beside the plan (Plan-Copy, Plan-Copy 2…) and adds it to Recent; you keep working in the original |
 | PRJ-46 | Layout page templates: a Use as Page Template flag (template pages don't print), page labels with # numbered per prefix (A1.#, E1.#), layouts as their own file | P2 | M9 |
-| PRJ-47 | Drafting on layout sheets: CAD and text drawn on the page, layout grid snap and arrow-key nudge, rotated text, Center Object, pictures/logos, revision table page ranges and minimum rows, sheet index columns | P2 | M9 |
+| PRJ-47 | Drafting on layout sheets: CAD and text drawn on the page, layout grid snap and arrow-key nudge, rotated text, Center Object, pictures/logos, revision table page ranges and minimum rows, sheet index columns | P2 | M9 ✓ lines and picture boxes, page grid snap and arrow nudge, box rotation, Center Object (page or the box under it), caption offset, revisions per sheet with minimum rows, renamable/removable index columns |
 | PRJ-48 | Layouts: 3D camera views on pages (image or live), colour-filled elevation boxes, a plan-wide default drawing scale for new boxes | P2 | M9 |
 
 ## 5. Rooms

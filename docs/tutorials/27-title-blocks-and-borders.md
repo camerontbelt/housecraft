@@ -13,7 +13,8 @@ page at full size (scale 1). The words go in text boxes that use page macros.
 1. Open the layout (Project Browser › **Layouts**, right-click › **Open Object**): **Sheet Width** `36"`,
    **Sheet Height** `24"`.
 2. Untick **Title Block** to drop HouseCraft's built-in border and title strip.
-3. *Not in HouseCraft yet:* a layout grid snap and arrow-key nudging.
+3. In the same dialog set **Grid** `1/8"`. Boxes you drag on the page snap to it, and the arrow keys nudge the
+   selected box by one grid step.
 
 ## Border and title block frames (pages 464–468)
 
@@ -26,6 +27,9 @@ page at full size (scale 1). The words go in text boxes that use page macros.
 
    *Not in HouseCraft yet:* the Concentric behaviour, so type the corners. Open each rectangle to type them exactly,
    or use **Edit › Point to Point Move** to snap one frame's corner onto another's.
+
+   Lines can also go straight on the sheet: a box whose source is **lines** holds shapes measured in paper inches
+   from its bottom-left corner. The tutorial's scenario adds the top frame line that way.
 2. With the detail open, **File › Layout › Send to Layout › Chic Cottage, page 1** (the Standard Template page). Open
    the box and set **Left** `0`, **Bottom** `0`, **Width** `36"`, **Height** `24"`, **Scale** 1, and an empty
    **Caption**.
@@ -40,21 +44,24 @@ its position and size to fit its frame:
 - `{sheet}` (the page's sheet number) in the bottom 1" frame;
 - `{date}` in the 1" frame above it.
 
-The macros fill in for whichever page the template sits under, so page A0.1 shows "General Notes A0.1". *Not in
-HouseCraft yet:* rotating text 90°, and Center Object on layout pages.
+The macros fill in for whichever page the template sits under, so page A0.1 shows "General Notes A0.1". For the
+company name, open its box and set **Rotation** `90`: the text turns and sits centred in the box. To centre a box,
+use **Center Object › On Page** in its dialog, or **In Box Under It** to centre it in the box it sits on.
 
 ## Revision table (pages 475–477)
 
-**File › Layout › Add Revision Table** on the template page, above the sheet title. *Not in HouseCraft yet:* minimum
-rows, and revisions that only show on the pages they belong to.
+**File › Layout › Add Revision Table** on the template page, above the sheet title. Open the box and set **Minimum
+Rows** `7`: blank rows fill the table out. When you add a revision (**File › Project Information**), type the sheets
+it belongs to in **Sheets**, such as `A-3, A-4`. It then shows only in the revision tables on those pages. Leave
+**Sheets** blank for a revision that covers every page.
 
 ## Cover sheet template (pages 477–481)
 
 1. Send the same `Standard Title Block` detail to page 2 (Cover Sheet Template) at full size, so it has the same border.
-2. *Not in HouseCraft yet:* pictures (a company logo) on layout pages.
+2. **File › Layout › Add Picture…** and pick the logo file. Open the box: **Width** `3"`, **Height** `3"`.
 3. A notes box with `{project}` for the project name.
-4. **File › Layout › Add Sheet Index** in the top-right corner, caption `Sheet Index`. *Not in HouseCraft yet:*
-   renaming or removing its columns.
+4. **File › Layout › Add Sheet Index** in the top-right corner, caption `Sheet Index`. Open it to rename the
+   **Sheet Column** and **Title Column** headings. Empty one to drop that column.
 
 ## Revision and folders (page 481)
 
@@ -66,5 +73,4 @@ then drag it in).
 
 | Missing | FEATURES row |
 |---|---|
-| Drafting directly on layout sheets (CAD, grid, nudge, rotated text, centring, pictures, table options) | PRJ-47 |
 | Concentric edit | CAD-32 |

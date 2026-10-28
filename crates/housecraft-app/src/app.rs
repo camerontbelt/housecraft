@@ -2222,10 +2222,15 @@ impl App {
                     });
                     if let Mode::Drawing(crate::drawing_view::DrawingSource::Layout(id, page)) = self.mode {
                         if item(ui, "Add Revision Table", "", true) {
-                            self.send_to_layout(id, page as u32, LayoutSource::Revisions);
+                            self.send_to_layout(id, page as u32, LayoutSource::Revisions { min_rows: 0 });
                         }
                         if item(ui, "Add Sheet Index", "", true) {
-                            self.send_to_layout(id, page as u32, LayoutSource::SheetIndex { layout: id });
+                            self.send_to_layout(id, page as u32, LayoutSource::SheetIndex { layout: id, columns: Vec::new() });
+                        }
+                        if item(ui, "Add Picture…", "", true)
+                            && let Some(path) = crate::props::pick_image()
+                        {
+                            self.send_to_layout(id, page as u32, LayoutSource::Picture { path, transparent: None });
                         }
                         if item(ui, "Number Pages A-1, A-2…", "", true) {
                             self.run1(Command::NumberPages { layout: id, prefix: "A-".into(), start: 1 });
