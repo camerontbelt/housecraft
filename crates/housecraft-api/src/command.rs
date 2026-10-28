@@ -182,6 +182,13 @@ pub enum Command {
     /// by side on the first one's wall, at its height, 2 3/4" apart, and
     /// keep them together as one block with a shared plate.
     MakeGangedBlock { ids: Vec<Id> },
+    /// Align With Wall Above (or Below): move wall `id` sideways onto the
+    /// line of the nearest parallel wall on the floor above (below).
+    AlignWithWall {
+        id: Id,
+        #[serde(default)]
+        below: bool,
+    },
     /// Change a door's or window's height keeping its top where it is (the
     /// sill moves).
     SetOpeningHeight { id: Id, height: Length },
@@ -1523,6 +1530,7 @@ impl Command {
             Command::SetAllowedAngles { .. } => "set_allowed_angles",
             Command::SameWallType { .. } => "same_wall_type",
             Command::SetOpeningHeight { .. } => "set_opening_height",
+            Command::AlignWithWall { .. } => "align_with_wall",
             Command::MakeGangedBlock { .. } => "make_ganged_block",
             Command::CabinetsToCeiling { .. } => "cabinets_to_ceiling",
             Command::DuplicatePlanView { .. } => "duplicate_plan_view",
@@ -2530,6 +2538,36 @@ impl Command {
                 let members: Vec<Id> = order.iter().map(|(_, id)| *id).collect();
                 let n = doc.iter::<Group>().filter(|g| g.ganged).count() + 1;
                 out.created.push(doc.insert(Group { id: Id(0), floor: first.floor, name: format!("Ganged Block {n}"), members, ganged: true }));
+            }
+            Command::AlignWithWall { id, below } => {
+                let w = expect::<Wall>(doc, *id)?.clone();
+                let other_floor = if *below {
+                    let floors = doc.floors_by_elevation();
+                    floors.iter().position(|f| f.id == w.floor).and_then(|i| i.checked_sub(1)).map(|i| floors[i].id)
+                } else {
+                    doc.floor_above(w.floor).map(|f| f.id)
+                }
+                .ok_or_else(|| ApiError::Invalid("there is no floor there".into()))?;
+                let v2 = housecraft_geom::v2;
+                let (a, b) = (v2(w.start), v2(w.end));
+                let dir = (b - a).normalize_or_zero();
+                let n = housecraft_geom::math::perp(dir);
+                let mid = (a + b) / 2.0;
+                // The nearest parallel wall within 2' whose span overlaps this one.
+                let shift = doc
+                    .walls_on(other_floor)
+                    .filter(|o| (v2(o.end) - v2(o.start)).normalize_or_zero().dot(dir).abs() > 0.999)
+                    .filter(|o| {
+                        let (p, q) = ((v2(o.start) - a).dot(dir), (v2(o.end) - a).dot(dir));
+                        p.max(q) > 0.0 && p.min(q) < a.distance(b)
+                    })
+                    .map(|o| (v2(o.start) - mid).dot(n))
+                    .filter(|d| d.abs() < 609.6)
+                    .min_by(|x, y| x.abs().total_cmp(&y.abs()))
+                    .ok_or_else(|| ApiError::Invalid("no parallel wall lines up with it there".into()))?;
+                let pt = housecraft_geom::pt;
+                let moved = Command::MoveWall { id: *id, start: Some(pt(a + n * shift)), end: Some(pt(b + n * shift)), detach: false }.apply(doc)?;
+                out.merge(moved);
             }
             Command::SetOpeningHeight { id, height } => {
                 if height.mm() <= 0.0 {

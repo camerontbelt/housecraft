@@ -832,10 +832,17 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             }
         }
     }
-    for a in doc.iter::<Appliance>().filter(|a| a.floor == opts.floor) {
+    // Furniture masks what it sits on top of, in draw order (lowest first).
+    let mut appliances: Vec<&Appliance> = doc.iter::<Appliance>().filter(|a| a.floor == opts.floor).collect();
+    appliances.sort_by_key(|a| a.draw_order);
+    for a in appliances {
         let look = ctx.look(a.layer);
         if look.visible && opts.phase.shows(a.renovation) {
             let style = ctx.text_style(None, &look);
+            if a.appliance_kind.is_furniture() {
+                let outline = housecraft_geom::cabinets::appliance_outline(a);
+                out.push(Some(a.id), Prim::Polygon { points: outline, fill: Fill::Paper });
+            }
             crate::cabinets::appliance(a, look.stroke, style.height.mm() * 0.7, look.ink, &mut out);
         }
     }

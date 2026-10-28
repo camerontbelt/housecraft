@@ -138,6 +138,8 @@ pub fn available_columns(kind: ScheduleKind) -> &'static [&'static str] {
         ],
         ScheduleKind::Plants => &["Plant", "Form", "Qty", "Mature Height", "Spread"],
         ScheduleKind::Hardscape => &["Type", "Name", "Width", "Thickness", "Length", "Area"],
+        ScheduleKind::Moldings => &["Room", "Molding", "Height", "Length", "Floor"],
+        ScheduleKind::Furniture => &["Item", "Qty", "Width", "Depth", "Height", "Floor"],
         ScheduleKind::Framing => &["Role", "Size", "Material", "Qty", "Cut Length", "Floor"],
         ScheduleKind::Shapes => &["Label", "Layer", "Area", "Perimeter", "Floor"],
         ScheduleKind::Notes => &["No.", "Note", "Floor"],
@@ -156,6 +158,8 @@ pub fn title(kind: ScheduleKind) -> &'static str {
         ScheduleKind::Cabinets => "Cabinet Schedule",
         ScheduleKind::Plants => "Plant Schedule",
         ScheduleKind::Hardscape => "Hardscape Schedule",
+        ScheduleKind::Moldings => "Molding Schedule",
+        ScheduleKind::Furniture => "Furniture Schedule",
         ScheduleKind::Framing => "Framing Cut List",
         ScheduleKind::Shapes => "Shape Schedule",
         ScheduleKind::Notes => "Note Schedule",
@@ -505,6 +509,44 @@ fn kind_rows(doc: &Document, kind: ScheduleKind, opts: &ScheduleOptions) -> Vec<
                 group(&mut raw, key, m.id, row);
             }
             raw.sort_by(|a, b| (&a.1["Floor"], &a.1["Role"], &a.1["Size"]).cmp(&(&b.1["Floor"], &b.1["Role"], &b.1["Size"])));
+        }
+        ScheduleKind::Moldings => {
+            for room in doc.iter::<Room>().filter(|r| on_floor(r.floor)) {
+                let moldings = room.moldings.clone().unwrap_or_else(|| doc.get::<RoomType>(room.room_type).map_or(Vec::new(), |t| t.moldings.clone()));
+                if moldings.is_empty() {
+                    continue;
+                }
+                let regions = housecraft_geom::rooms::detect(doc, room.floor);
+                let Some(i) = regions.room_at(housecraft_geom::v2(room.anchor)) else { continue };
+                let poly = &regions.rooms[i].polygon;
+                let perimeter: f64 = (0..poly.len()).map(|k| poly[k].distance(poly[(k + 1) % poly.len()])).sum();
+                for m in moldings {
+                    let mut row = BTreeMap::new();
+                    row.insert("Room", doc.room_name(room));
+                    row.insert("Molding", serde_json::to_value(m.place).ok().and_then(|v| v.as_str().map(String::from)).unwrap_or_default());
+                    row.insert("Height", fmt(m.spec.height));
+                    row.insert("Length", fmt(Length::from_mm(perimeter)));
+                    row.insert("Floor", floor_name(room.floor));
+                    raw.push((vec![room.id], row));
+                }
+            }
+            raw.sort_by(|a, b| (&a.1["Floor"], &a.1["Room"]).cmp(&(&b.1["Floor"], &b.1["Room"])));
+        }
+        ScheduleKind::Furniture => {
+            for a in doc.iter::<Appliance>().filter(|a| on_floor(a.floor)) {
+                if !a.appliance_kind.is_furniture() || matches!(a.appliance_kind, ApplianceKind::Vase | ApplianceKind::PictureFrame) {
+                    continue;
+                }
+                let mut row = BTreeMap::new();
+                row.insert("Item", a.appliance_kind.name().to_string());
+                row.insert("Width", fmt(a.width));
+                row.insert("Depth", fmt(a.depth));
+                row.insert("Height", fmt(a.height));
+                row.insert("Floor", floor_name(a.floor));
+                let key = ["Item", "Width", "Depth", "Height", "Floor"].iter().map(|k| row[k].clone()).collect();
+                group(&mut raw, key, a.id, row);
+            }
+            raw.sort_by(|a, b| (&a.1["Floor"], &a.1["Item"]).cmp(&(&b.1["Floor"], &b.1["Item"])));
         }
         ScheduleKind::Hardscape => {
             for f in doc.iter::<SiteFeature>().filter(|f| on_floor(f.floor)) {

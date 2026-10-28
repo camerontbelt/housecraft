@@ -223,7 +223,7 @@ These come from reading the whole list and change the architecture, not just the
 | WL-25 | Reverse Layers: flip a wall's layers to the other side | P2 | M9 ✓ Reverse Layers in the wall dialog (`reverse_wall_layers`): flips the wall end for end, keeping doors, windows, niches and the top in place |
 | WL-26 | Edit Wall Layer Intersection handles (where layers of meeting walls stop) | P3 | M9 |
 | WL-27 | Split walls automatically where another wall crosses or meets them | P2 | M9 |
-| WL-28 | Align With Wall Above / Below edit buttons | P2 | M9 |
+| WL-28 | Align With Wall Above / Below edit buttons | P2 | M9 ✓ Align With Wall Above / Below buttons in the wall dialog |
 | WL-29 | Half Wall, Railing and Deck Railing tools with their own defaults (height, posts, balusters, materials, no-locate) | P1 | M9 |
 
 ## 7. Cabinets
@@ -433,7 +433,7 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-27 | Paste Special: choose which attributes to paste | P3 | M9 |
 | CAD-28 | Bumping/pushing: objects push neighbours instead of overlapping | P3 | M9 |
 | CAD-29 | Reflect About Object (mirror a copy across a door, window or wall centre) | P3 | M9 ✓ Edit › Reflect About Object (and the edit toolbar's mirror button): click a wall, CAD line, door or window; Ctrl+click keeps the original (`reflect_about`) |
-| CAD-30 | Drawing groups / draw order (Move Forward/Backward) | P2 | M9 |
+| CAD-30 | Drawing groups / draw order (Move Forward/Backward) | P2 | M9 ✓ furniture draw order (Move Forward / Backward); furniture masks what it covers in plan |
 | CAD-31 | Point to Point Move: move an object by one of its points onto another point | P2 | M9 ◐ Edit › Point to Point Move: click a snapped point on the selection, then where it goes; Ctrl+click moves a copy (`point_to_point_move`); point markers later |
 | CAD-32 | Concentric edit behaviour: resize a closed shape in or out by a set jump (setbacks) | P3 | M9 |
 | CAD-33 | Additional allowed angles for angle snaps (e.g. a lot's side); Make Parallel/Perpendicular edit tool | P2 | M9 ◐ allowed angles (Preferences › Allowed angles); Edit › Make Parallel / Perpendicular: click a reference line, then an edge of the selection, which turns about that edge's middle (`make_parallel`); single-edge moves on polylines and additional allowed angles later |
@@ -530,7 +530,7 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-15 | Deck designer (straight, curved, polygon, covered) | P2 | M6 ✓ Deck tool: straight, polygon or curved outlines, optional cover on posts |
 | SITE-16 | Fences that follow terrain; gates | P2 | M6 ✓ picket, privacy and split-rail fences with posts following the ground; gates |
 | SITE-17 | Sprinkler designer (zones, runs) | P3 | M8 |
-| SITE-18 | Plant images/symbols in 2D/3D | P2 | M6 ✓ trees, conifers, shrubs and grasses as plan canopies and 3D shapes |
+| SITE-18 | Plant images/symbols in 2D/3D | P2 | M6 ✓ trees, conifers, shrubs and grasses as plan canopies and 3D shapes (not images, so no Reverse Image) |
 | SITE-19 | Import own plant images with growth data | P3 | M6 ✓ growth data (years to mature, show at age) and a plan image per plant, sized to its spread |
 | SITE-20 | Plant chooser with hardiness zone maps | P3 | M8 |
 | SITE-21 | Plant encyclopedia data | P3 | M8 (own data) |
@@ -583,7 +583,7 @@ These come from reading the whole list and change the architecture, not just the
 | MAT-30 | Replace Moldings: swap one molding profile for another plan-wide | P3 | M9 |
 | MAT-31 | Wall surfaces painted per room they face (a wall spanning rooms takes each room's finish) | P2 | M9 |
 | MAT-32 | Wall coverings (wainscot, beadboard): a finish band at a height on a room's walls | P2 | M9 |
-| MAT-33 | Accent upholstery as its own material default | P3 | M9 |
+| MAT-33 | Accent upholstery as its own material default | P3 | M9 ✓ Accent Upholstery material default for pillows and cushions |
 
 ## 19. Library / catalog
 
@@ -641,8 +641,8 @@ These come from reading the whole list and change the architecture, not just the
 | EST-26 | Schedules placed in CAD details (legends) | P2 | M9 ✓ open a CAD detail and Place in Plan puts the schedule there (`add_schedule` with the detail as `floor`); in a detail it lists every floor |
 | EST-27 | Door/window schedules: show objects' own labels instead of schedule-number callouts | P3 | M9 |
 | EST-28 | Reorder schedule rows (drag rows; Move Up/Down in Schedule) | P3 | M9 ◐ Row Order ▲/▼ (Move Up/Down in Schedule) in the schedule dialog; dragging rows in the table later |
-| EST-29 | Room moldings schedule (profiles and lengths by room) | P3 | M9 |
-| EST-30 | Furniture schedule (pictures, dimensions; blocks as one line; leave accessories out) | P3 | M9 |
+| EST-29 | Room moldings schedule (profiles and lengths by room) | P3 | M9 ✓ Molding Schedule |
+| EST-30 | Furniture schedule (pictures, dimensions; blocks as one line; leave accessories out) | P3 | M9 ✓ Furniture Schedule |
 | EST-31 | Schedule from a room; category filter (lighting only); custom schedule title | P2 | M9 ✓ Only in Room, Only Rows With (text filter) and Title on schedules |
 
 ## 21. Text, annotation & scripting

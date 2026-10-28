@@ -21,8 +21,25 @@
       ]
     },
     {
-      "step": "(Accent upholstery as its own default)",
-      "gap": "One upholstery default for all furniture fabric; no separate accent upholstery. Row: MAT-33"
+      "step": "Accent upholstery: pillows and seat cushions take the Twill Cornflower",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "materials": {
+              "accent": "$named:material:Twill Cornflower"
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/materials/accent",
+          "is": "$named:material:Twill Cornflower"
+        }
+      ]
     },
     {
       "step": "Library: a queen bed under the Bedroom windows, its back to the wall",
@@ -210,11 +227,29 @@
           "count": "appliance",
           "is": 14
         }
-      ]
+      ],
+      "save": {
+        "dining": "appliance"
+      }
     },
     {
-      "step": "Draw order: the table in front of the chairs in plan (Move Forward / drawing groups)",
-      "gap": "No drawing groups or draw order controls. Row: CAD-30"
+      "step": "Draw order: the table in front of the chairs in plan (Move Forward)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$dining.0",
+          "set": {
+            "draw_order": 1
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$dining.0",
+          "path": "/draw_order",
+          "is": 1
+        }
+      ]
     },
     {
       "step": "Accessories: a vase on the dresser and a picture frame on the wall above it",
@@ -376,8 +411,29 @@
       "gap": "No user library folders or links. Row: LIB-01"
     },
     {
-      "step": "Furniture schedule with 3D pictures and rounded dimensions; the dining set as one line; leave accessories out",
-      "gap": "No furniture schedule. Row: EST-30"
+      "step": "Furniture schedule: the dining chairs on one line; accessories left out",
+      "commands": [
+        {
+          "op": "add_schedule",
+          "floor": "$floor1",
+          "schedule_kind": "furniture",
+          "position": [
+            15240.0,
+            0.0
+          ]
+        }
+      ],
+      "save": {
+        "fsched": "schedule"
+      },
+      "expect": [
+        {
+          "schedule_rows": "$fsched",
+          "is": 8,
+          "column": "Qty",
+          "has": "6"
+        }
+      ]
     }
   ]
 }

@@ -696,6 +696,9 @@ pub struct Appliance {
     pub elevation: Length,
     #[serde(default)]
     pub renovation: Renovation,
+    /// Draw order in plan: higher draws on top (Move Forward / Backward).
+    #[serde(default, skip_serializing_if = "is_zero_i32")]
+    pub draw_order: i32,
     /// Reversed end for end (a bathtub's drain at the other end).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub reversed: bool,
@@ -809,4 +812,8 @@ pub struct Backsplash {
     pub bottom: Length,
     pub height: Length,
     pub thickness: Length,
+}
+
+fn is_zero_i32(v: &i32) -> bool {
+    *v == 0
 }

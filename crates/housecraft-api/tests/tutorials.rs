@@ -414,6 +414,25 @@ fn check(run: &Run, e: &Value, step: &str) -> Result<(), String> {
         let want = e["is"].as_str().unwrap_or_default();
         return if shown == want { Ok(()) } else { Err(format!("the text reads {shown:?}, expected {want:?}")) };
     }
+    if let Some(target) = e.get("schedule_rows") {
+        // {"schedule_rows": schedule, "is": n, "column"?: name, "has"?: cell}
+        let id = target.as_u64().map(Id).ok_or("schedule_rows needs a schedule")?;
+        let s = doc.get::<Schedule>(id).ok_or("no such schedule")?;
+        let table = housecraft_api::schedule::schedule(doc, s.schedule_kind, &housecraft_api::schedule::ScheduleOptions::of(doc, s));
+        let want = e["is"].as_u64().unwrap_or_default() as usize;
+        if table.rows.len() != want {
+            let rows: Vec<&Vec<String>> = table.rows.iter().map(|r| &r.cells).collect();
+            return Err(format!("{} rows, expected {want}: {rows:?}", table.rows.len()));
+        }
+        if let (Some(col), Some(has)) = (e.get("column").and_then(Value::as_str), e.get("has").and_then(Value::as_str)) {
+            let c = table.columns.iter().position(|x| x == col).ok_or(format!("no column {col} in {:?}", table.columns))?;
+            if !table.rows.iter().any(|r| r.cells[c] == has) {
+                let cells: Vec<&String> = table.rows.iter().map(|r| &r.cells[c]).collect();
+                return Err(format!("no {col} {has:?} in {cells:?}"));
+            }
+        }
+        return Ok(());
+    }
     if let Some(text) = e.get("text_exists").and_then(Value::as_str) {
         if doc.iter::<Text>().any(|t| t.text == text) {
             return Ok(());

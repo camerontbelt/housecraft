@@ -919,6 +919,16 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 }
             });
             ui.end_row();
+            Ed::label(ui, "Align");
+            ui.horizontal(|ui| {
+                if ui.small_button("With Wall Above").on_hover_text("Line this wall up under the parallel wall on the floor above").clicked() {
+                    ed.out.push(Command::AlignWithWall { id, below: false });
+                }
+                if ui.small_button("With Wall Below").on_hover_text("Line this wall up over the parallel wall on the floor below").clicked() {
+                    ed.out.push(Command::AlignWithWall { id, below: true });
+                }
+            });
+            ui.end_row();
             let d = doc.active_defaults();
             Ed::label(ui, "Roof");
             let mut gable = w.roof.gable;
@@ -2220,6 +2230,17 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 ApplianceKind::ALL.iter().map(|k| (*k, k.name())).collect();
             ed.choice(ui, "Type", "appliance_kind", a.appliance_kind, &kinds);
             ed.check(ui, "Reverse", "reversed", "End for end (a tub's drain at the other end)", a.reversed);
+            Ed::label(ui, "Draw Order");
+            ui.horizontal(|ui| {
+                ui.label(a.draw_order.to_string());
+                if ui.small_button("Move Forward").on_hover_text("Draw on top of what it overlaps in plan").clicked() {
+                    ed.out.push(patch(id, json!({ "draw_order": a.draw_order + 1 })));
+                }
+                if ui.small_button("Move Backward").on_hover_text("Draw under what it overlaps in plan").clicked() {
+                    ed.out.push(patch(id, json!({ "draw_order": a.draw_order - 1 })));
+                }
+            });
+            ui.end_row();
             for (label, field, v) in [
                 ("Width", "width", a.width),
                 ("Depth", "depth", a.depth),

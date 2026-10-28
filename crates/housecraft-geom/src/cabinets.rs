@@ -1225,7 +1225,7 @@ pub fn appliance_mesh(doc: &Document, a: &Appliance, mesh: &mut Mesh) {
             b.prism(&rect(-hw, 3.0 * IN, hw, d), 6.0 * IN, 14.0 * IN, wood); // frame
             b.prism(&rect(-hw + IN, 3.0 * IN, hw - IN, d - IN), 14.0 * IN, h, fabric); // mattress
             for u in [-hw / 2.0, hw / 2.0] {
-                b.prism(&rect(u - 11.0 * IN, 5.0 * IN, u + 11.0 * IN, 20.0 * IN), h, h + 5.0 * IN, fabric); // pillows
+                b.prism(&rect(u - 11.0 * IN, 5.0 * IN, u + 11.0 * IN, 20.0 * IN), h, h + 5.0 * IN, Surface::Accent); // pillows
             }
             for (u, v) in [(-hw, 3.0 * IN), (hw - 2.0 * IN, 3.0 * IN), (-hw, d - 2.0 * IN), (hw - 2.0 * IN, d - 2.0 * IN)] {
                 b.prism(&rect(u, v, u + 2.0 * IN, v + 2.0 * IN), 0.0, 6.0 * IN, wood);
@@ -1260,7 +1260,7 @@ pub fn appliance_mesh(doc: &Document, a: &Appliance, mesh: &mut Mesh) {
             b.prism(&rect(-hw, 0.0, hw, 9.0 * IN), 10.0 * IN, h, fabric); // back
             b.prism(&rect(-hw, 9.0 * IN, -hw + arm, d), 10.0 * IN, 25.0 * IN, fabric); // arms
             b.prism(&rect(hw - arm, 9.0 * IN, hw, d), 10.0 * IN, 25.0 * IN, fabric);
-            b.prism(&rect(-hw + arm, 9.0 * IN, hw - arm, d), 10.0 * IN, seat, fabric); // cushions
+            b.prism(&rect(-hw + arm, 9.0 * IN, hw - arm, d), 10.0 * IN, seat, Surface::Accent); // cushions
             for (u, v) in [(-hw, 0.0), (hw - 2.0 * IN, 0.0), (-hw, d - 2.0 * IN), (hw - 2.0 * IN, d - 2.0 * IN)] {
                 b.prism(&rect(u, v, u + 2.0 * IN, v + 2.0 * IN), 0.0, 3.0 * IN, wood);
             }

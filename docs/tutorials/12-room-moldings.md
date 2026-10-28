@@ -28,7 +28,8 @@ built-in shape (flat, crown, cove, bead) and size it, or use a profile of your o
 
 ## Schedule (page 220)
 
-*Not in HouseCraft yet:* a room moldings schedule.
+**Schedule › Molding Schedule**, then click in the plan to place it. Each room gets a row for each molding it has
+(base, crown, chair rail), with the molding's height and the length round the room.
 
 ## What this tutorial showed HouseCraft still needs
 
@@ -36,4 +37,3 @@ built-in shape (flat, crown, cove, bead) and size it, or use a profile of your o
 |---|---|
 | Molding library profiles; default moldings per floor | MAT-27, RM-05 |
 | Exterior Room; molding on/off per polyline edge | RM-20 |
-| Moldings schedule | EST-29 |

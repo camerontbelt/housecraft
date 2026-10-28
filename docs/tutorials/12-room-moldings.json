@@ -424,7 +424,36 @@
     },
     {
       "step": "Room moldings schedule",
-      "gap": "No moldings schedule. Row: EST-29"
+      "commands": [
+        {
+          "op": "add_schedule",
+          "floor": "$floor1",
+          "schedule_kind": "moldings",
+          "position": [
+            15240.0,
+            0.0
+          ]
+        }
+      ],
+      "save": {
+        "msched": "schedule"
+      },
+      "expect": [
+        {
+          "get": "$msched",
+          "path": "/schedule_kind",
+          "is": "moldings"
+        }
+      ]
+    },
+    {
+      "step": "(a row for each molding in each room)",
+      "expect": [
+        {
+          "schedule_rows": "$msched",
+          "is": 16
+        }
+      ]
     },
     {
       "step": "Save a copy as Chic Cottage-Moldings"

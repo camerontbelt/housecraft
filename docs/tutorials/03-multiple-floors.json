@@ -290,7 +290,31 @@
     },
     {
       "step": "Nudge it 1\" with the arrow key, then Align With Wall Above",
-      "gap": "No Align With Wall Above/Below button; nudge with the arrow keys. Row: WL-28"
+      "commands": [
+        {
+          "op": "move_wall",
+          "id": "$stairwall",
+          "start": [
+            4171.95,
+            -8473.281
+          ],
+          "end": [
+            4171.95,
+            -4959.35
+          ]
+        },
+        {
+          "op": "align_with_wall",
+          "id": "$stairwall"
+        }
+      ],
+      "expect": [
+        {
+          "get": "$stairwall",
+          "path": "/start/0",
+          "is": 4146.55
+        }
+      ]
     },
     {
       "step": "Copy the wall, open a second plan view, tile the views, and Paste Hold Position on Floor 2",

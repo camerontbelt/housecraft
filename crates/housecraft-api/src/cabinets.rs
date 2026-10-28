@@ -181,6 +181,7 @@ pub(crate) fn add_appliance(
         elevation: i(e),
         renovation: Renovation::default(),
         reversed: false,
+        draw_order: 0,
     }))
 }
 

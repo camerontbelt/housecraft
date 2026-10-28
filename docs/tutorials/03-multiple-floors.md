@@ -43,8 +43,8 @@ It carries on from [Tutorial 2](02-interior-walls.md). The steps also run as the
 
 1. On the Foundation floor, press **F9** for the Reference Display. Floor 1's walls show faintly.
 2. Draw an interior wall over the Dining/Foyer wall above it. Snapping to the faint reference walls lines it up.
-3. Press an arrow key to nudge it 1" at a time until it sits under the wall above. *Not in HouseCraft yet:* the
-   **Align With Wall Above** button.
+3. If it's a little off, double-click the wall and, on the **Align** row, click **With Wall Above**: it slides
+   sideways to sit right under the matching wall on the floor above. (**With Wall Below** does the reverse.)
 4. **Copy and Paste Hold Position:** select the wall, **Ctrl+C**, go up two floors to Floor 2, then
    **Edit › Paste Hold Position**. To see two floors side by side, choose **Window › Tile Vertically With** and pick
    the other floor: its plan shows on the right (pan and zoom it; edit in the left one).
@@ -71,7 +71,6 @@ It carries on from [Tutorial 2](02-interior-walls.md). The steps also run as the
 | Floor/Ceiling Platform defaults used by new floors | RM-16 |
 | Separate garage foundation with a curb | FD-07 |
 | Center footing on main layer | FD-08 |
-| Align With Wall Above/Below | WL-28 |
 | Wall construction columns; rename/resize columns | EST-25, EST-10 |
 
 Fixed for this tutorial: **the foundation kept rebuilding its walls**. It wiped the furred wall type, and any

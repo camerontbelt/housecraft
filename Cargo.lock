@@ -1324,6 +1324,7 @@ name = "housecraft-api"
 version = "0.1.0"
 dependencies = [
  "housecraft-geom",
+ "housecraft-io-native",
  "housecraft-model",
  "housecraft-units",
  "schemars",
