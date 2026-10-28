@@ -34,7 +34,8 @@ they face out.
 ## Switches (pages 324–325)
 
 1. **Switch**: on the back wall right of the sliding door, and right of the doorway into the Dining room.
-2. Two more switches beside the Deck one. *Not in HouseCraft yet:* Make Ganged Electrical Block.
+2. Two more switches beside the Deck one. Select all three and choose **Edit › Make Ganged Electrical Block**: they
+   line up 2 3/4" apart on one plate and move together.
 3. **Air Switch** on the countertop beside the sink. It's a switch, so you can wire it to the disposal outlet with
    **Connect Electrical**.
 
@@ -71,5 +72,4 @@ and place the schedule there instead. Open it and set **Title** `Electrical Lege
 | Missing | FEATURES row |
 |---|---|
 | A recessed outlet cutting the wall surface | EL-14 |
-| Ganged electrical blocks | EL-09 |
 | Wiring splines | EL-01 |

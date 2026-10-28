@@ -374,6 +374,10 @@ pub struct Group {
     pub floor: Id,
     pub name: String,
     pub members: Vec<Id>,
+    /// A ganged electrical block: outlets and switches in one box, drawn
+    /// with one plate round them.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ganged: bool,
 }
 
 /// A placed copy of a block on a floor plan, view or CAD detail.

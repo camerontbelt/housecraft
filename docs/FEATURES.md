@@ -502,7 +502,7 @@ These come from reading the whole list and change the architecture, not just the
 | EL-06 | Lighting manager table | P2 | M7 ✓ 3D > Lighting Manager: every light in one table: on/off, dimmer, brightness, colour temperature and shadows |
 | EL-07 | Kelvin color temperature (X18+) | P2 | M5 ✓ |
 | EL-08 | Lighting sets per view/camera | P2 | M7 ✓ each camera can turn individual lights off (a lighting set) |
-| EL-09 | Ganged electrical blocks (outlets/switches combined in one box) | P3 | M9 |
+| EL-09 | Ganged electrical blocks (outlets/switches combined in one box) | P3 | M9 ✓ Edit › Make Ganged Electrical Block: lined up 2 3/4" apart, one plate, kept together |
 | EL-10 | Plumbing trim fixtures: faucets, tub spouts, shower heads | P2 | M9 ✓ Faucet, Tub Spout and Shower Head |
 | EL-11 | Light fixture library: chandeliers, pendants, flush mounts, lanterns, sconce styles, table and floor lamps, bollards; fixture size; Electrical Defaults choosing each tool's symbol | P2 | M9 ◐ ceiling and wall lights take a Fixture style (flush mount, pendant, chandelier, lantern, sconce, table lamp, floor lamp) with a width and drop, drawn at size in plan and 3D; bollards and Electrical Defaults choosing a style later |
 | EL-12 | One Light tool: sconce on a wall, ceiling fixture in a room, path light outside | P3 | M9 |

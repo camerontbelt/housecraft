@@ -3981,3 +3981,25 @@ fn outlets_over_counters_start_above_them_and_recess_into_walls() {
     s.apply(&[Command::Update { id: out.created[1], set: patch(serde_json::json!({ "wall_offset": "-4\"" })) }]).unwrap();
     assert_eq!(s.document().get::<Electrical>(out.created[1]).unwrap().wall_offset, Length::from_inches(-4.0));
 }
+
+#[test]
+fn ganged_electrical_blocks_line_up_on_one_plate() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_electrical", "electrical_kind": "switch", "at": ["0.5'", "10'"]},
+            {"op": "add_electrical", "electrical_kind": "switch", "at": ["0.5'", "10.5'"]},
+            {"op": "add_electrical", "electrical_kind": "outlet", "at": ["0.5'", "11'"]}]"#,
+    );
+    let g = s.apply(&[Command::MakeGangedBlock { ids: out.created.clone() }]).unwrap().created[0];
+    let doc = s.document();
+    let group = doc.get::<Group>(g).unwrap();
+    assert!(group.ganged && group.members.len() == 3);
+    let ys: Vec<f64> = group.members.iter().map(|m| doc.get::<Electrical>(*m).unwrap().position.1.mm()).collect();
+    for w in ys.windows(2) {
+        assert!(((w[1] - w[0]).abs() - 2.75 * 25.4).abs() < 1e-6, "2 3/4\" apart: {ys:?}");
+    }
+    let xs: Vec<f64> = group.members.iter().map(|m| doc.get::<Electrical>(*m).unwrap().position.0.mm()).collect();
+    assert!(xs.iter().all(|x| (x - xs[0]).abs() < 1e-6), "on the one wall");
+    assert!(s.apply(&[Command::MakeGangedBlock { ids: vec![out.created[0]] }]).is_err());
+}

@@ -178,6 +178,10 @@ pub enum Command {
         #[serde(default)]
         gap: Length,
     },
+    /// Make Ganged Electrical Block: line up wall outlets and switches side
+    /// by side on the first one's wall, at its height, 2 3/4" apart, and
+    /// keep them together as one block with a shared plate.
+    MakeGangedBlock { ids: Vec<Id> },
     /// Same Wall Type: wall `id` takes the type of the wall joined to its
     /// end (or its start).
     SameWallType {
@@ -1515,6 +1519,7 @@ impl Command {
             Command::SetLayoutScale { .. } => "set_layout_scale",
             Command::SetAllowedAngles { .. } => "set_allowed_angles",
             Command::SameWallType { .. } => "same_wall_type",
+            Command::MakeGangedBlock { .. } => "make_ganged_block",
             Command::CabinetsToCeiling { .. } => "cabinets_to_ceiling",
             Command::DuplicatePlanView { .. } => "duplicate_plan_view",
             Command::PointToPointMove { .. } => "point_to_point_move",
@@ -2474,6 +2479,36 @@ impl Command {
                         out.modified.push(*id);
                     }
                 }
+            }
+            Command::MakeGangedBlock { ids } => {
+                let items: Vec<Electrical> = ids.iter().map(|id| expect::<Electrical>(doc, *id).cloned()).collect::<Result<_, _>>()?;
+                if items.len() < 2 || items.iter().any(|e| !e.electrical_kind.on_wall()) {
+                    return invalid("gang two or more wall outlets or switches");
+                }
+                let first = &items[0];
+                if items.iter().any(|e| e.floor != first.floor) {
+                    return invalid("ganged objects must be on one floor");
+                }
+                // Side by side along the wall, centred on where they were.
+                let along = housecraft_geom::math::perp(housecraft_geom::DVec2::from_angle(first.rotation.to_radians()));
+                let base = housecraft_geom::v2(first.position);
+                let mid: f64 = items.iter().map(|e| (housecraft_geom::v2(e.position) - base).dot(along)).sum::<f64>() / items.len() as f64;
+                let mut order: Vec<(f64, Id)> = items.iter().map(|e| ((housecraft_geom::v2(e.position) - base).dot(along), e.id)).collect();
+                order.sort_by(|a, b| a.0.total_cmp(&b.0));
+                let step = 2.75 * 25.4;
+                let n = order.len() as f64;
+                for (k, (_, id)) in order.iter().enumerate() {
+                    let at = base + along * (mid + (k as f64 - (n - 1.0) / 2.0) * step);
+                    if let Some(e) = doc.get_mut::<Electrical>(*id) {
+                        e.position = housecraft_geom::pt(at);
+                        e.rotation = first.rotation;
+                        e.height = first.height;
+                        out.modified.push(*id);
+                    }
+                }
+                let members: Vec<Id> = order.iter().map(|(_, id)| *id).collect();
+                let n = doc.iter::<Group>().filter(|g| g.ganged).count() + 1;
+                out.created.push(doc.insert(Group { id: Id(0), floor: first.floor, name: format!("Ganged Block {n}"), members, ganged: true }));
             }
             Command::SameWallType { id, at_start } => {
                 let w = expect::<Wall>(doc, *id)?.clone();
@@ -4479,7 +4514,7 @@ impl Command {
                 }
                 let n = doc.iter::<Group>().count() + 1;
                 let name = name.clone().unwrap_or_else(|| format!("Architectural Block {n}"));
-                out.created.push(doc.insert(Group { id: Id(0), floor, name, members }));
+                out.created.push(doc.insert(Group { id: Id(0), floor, name, members, ganged: false }));
             }
             Command::AddDimensionPoint { id, at } => {
                 let dm = doc.get_mut::<Dimension>(*id).ok_or(ApiError::NotFound(*id))?;

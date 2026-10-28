@@ -359,8 +359,27 @@
       ]
     },
     {
-      "step": "(Make Ganged Electrical Block)",
-      "gap": "No ganged electrical blocks. Row: EL-09"
+      "step": "Make Ganged Electrical Block from the three Deck switches",
+      "commands": [
+        {
+          "op": "make_ganged_block",
+          "ids": [
+            "$sw.0",
+            "$gang.0",
+            "$gang.1"
+          ]
+        }
+      ],
+      "save": {
+        "gb": "group"
+      },
+      "expect": [
+        {
+          "get": "$gb",
+          "path": "/ganged",
+          "is": true
+        }
+      ]
     },
     {
       "step": "Electrical Connection: the Deck switch to the Deck wall light and on to the Deck ceiling light",

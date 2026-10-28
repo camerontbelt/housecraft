@@ -2505,6 +2505,14 @@ impl App {
                     {
                         self.start_pick(crate::canvas::Pick::ContinuePath { id, at_start: None });
                     }
+                    let gangable = self.selection.len() >= 2
+                        && self.selection.iter().all(|id| self.doc().get::<Electrical>(*id).is_some_and(|e| e.electrical_kind.on_wall()));
+                    if item(ui, "Make Ganged Electrical Block", "", gangable) {
+                        let ids = self.selection.clone();
+                        if let Some(out) = self.run1(Command::MakeGangedBlock { ids }) {
+                            self.selection = out.created.clone();
+                        }
+                    }
                     if item(ui, "Make Architectural Block", "", self.selection.len() >= 2) {
                         let ids = self.selection.clone();
                         if let Some(out) = self.run1(Command::MakeGroup { ids, name: None }) {

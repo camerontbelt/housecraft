@@ -546,6 +546,23 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         }
     }
     let switch_labels = doc.switch_labels();
+    // Ganged blocks: one plate round the devices.
+    for g in doc.iter::<Group>().filter(|g| g.ganged && g.floor == opts.floor) {
+        let devices: Vec<&Electrical> = g.members.iter().filter_map(|m| doc.get::<Electrical>(*m)).collect();
+        let Some(first) = devices.first() else { continue };
+        let look = ctx.look(first.layer);
+        if !look.visible {
+            continue;
+        }
+        let out_dir = DVec2::from_angle(first.rotation.to_radians());
+        let along = perp(out_dir);
+        let ps: Vec<f64> = devices.iter().map(|e| (v2(e.position) - v2(first.position)).dot(along)).collect();
+        let (lo, hi) = ps.iter().fold((f64::MAX, f64::MIN), |(a, b), x| (a.min(*x), b.max(*x)));
+        let o = v2(first.position);
+        let (l0, l1) = (lo - 1.75 * 25.4, hi + 1.75 * 25.4);
+        let plate = vec![o + along * l0, o + along * l1, o + along * l1 + out_dir * 120.0, o + along * l0 + out_dir * 120.0];
+        out.push(Some(g.id), Prim::Polyline { points: plate, closed: true, stroke: Stroke { width: look.stroke.width * 0.6, ..look.stroke } });
+    }
     for e in doc.iter::<Electrical>().filter(|e| e.floor == opts.floor) {
         let look = ctx.look(e.layer);
         if !look.visible || !opts.phase.shows(e.renovation) {
