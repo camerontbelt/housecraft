@@ -1323,6 +1323,30 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                         }
                     });
                 });
+                egui::CollapsingHeader::new("Fencing").show(ui, |ui| {
+                    let fd = &d.fence;
+                    egui::Grid::new("fence_defaults").num_columns(2).show(ui, |ui| {
+                        ui.label("Style");
+                        ui.horizontal(|ui| {
+                            for st in FenceStyle::ALL {
+                                if ui.selectable_label(fd.style == st, st.name()).clicked() {
+                                    commands.push(p(json!({"fence": {"style": st}})));
+                                }
+                            }
+                        });
+                        ui.end_row();
+                        for (label, key, v) in [
+                            ("Height", "height", fd.height),
+                            ("Post spacing", "post_spacing", fd.post_spacing),
+                            ("Post size", "post_size", fd.post_size),
+                            ("Rail size", "rail_size", fd.rail_size),
+                        ] {
+                            len_row(ui, doc, &mut app.bufs, label, ("fence", key), v, |v| {
+                                commands.push(p(json!({"fence": {key: v}})))
+                            });
+                        }
+                    });
+                });
                 egui::CollapsingHeader::new("Framing").show(ui, |ui| {
                     let f = &d.framing;
                     egui::Grid::new("framing_defaults").num_columns(2).show(ui, |ui| {

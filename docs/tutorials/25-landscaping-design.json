@@ -15,7 +15,37 @@
     },
     {
       "step": "Material default for Dirt: Mulch - Dark",
-      "gap": "Garden beds take their soil material from the plan materials, not a Dirt default. Row: SITE-34"
+      "commands": [
+        {
+          "op": "add_material",
+          "name": "Mulch - Dark",
+          "color": "#3a2a1e"
+        }
+      ],
+      "save": {
+        "mulch": "material"
+      }
+    },
+    {
+      "step": "(set it as the Dirt default)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "materials": {
+              "dirt": "$mulch"
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/materials/dirt",
+          "is": "$mulch"
+        }
+      ]
     },
     {
       "step": "Polyline Garden Bed between the porch stairs, the Garage, the sidewalk and the driveway",
@@ -200,8 +230,29 @@
       ]
     },
     {
-      "step": "Fencing defaults: 72\" rail, 5 1/2\" posts 74\" high, iron pole panels, top and bottom rails 5 1/2\" x 1 1/2\"",
-      "gap": "No fencing defaults or panel library (iron poles); post and rail sizes are set on each fence (below). Row: SITE-34"
+      "step": "Fencing defaults: 72\" post spacing, 5 1/2\" posts 74\" high, iron pole panels, rails 5 1/2\"",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "fence": {
+              "style": "iron_pole",
+              "height": "74\"",
+              "post_spacing": "72\"",
+              "post_size": "5 1/2\"",
+              "rail_size": "5 1/2\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/fence/style",
+          "is": "iron_pole"
+        }
+      ]
     },
     {
       "step": "Straight Fencing along the left setback, the back and the right angled setback",

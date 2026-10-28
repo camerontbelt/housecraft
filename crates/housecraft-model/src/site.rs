@@ -158,16 +158,19 @@ pub enum FenceStyle {
     Picket,
     Privacy,
     Rail,
+    /// Metal panels of thin round poles between top and bottom rails.
+    IronPole,
 }
 
 impl FenceStyle {
-    pub const ALL: [FenceStyle; 3] = [FenceStyle::Picket, FenceStyle::Privacy, FenceStyle::Rail];
+    pub const ALL: [FenceStyle; 4] = [FenceStyle::Picket, FenceStyle::Privacy, FenceStyle::Rail, FenceStyle::IronPole];
 
     pub fn name(self) -> &'static str {
         match self {
             FenceStyle::Picket => "Picket",
             FenceStyle::Privacy => "Privacy",
             FenceStyle::Rail => "Split rail",
+            FenceStyle::IronPole => "Iron poles",
         }
     }
 }
@@ -512,5 +515,39 @@ impl RoadDefaults {
             (*width, *thickness, *curbs, *flare) = (sp.width, sp.thickness, sp.curbs, sp.flare);
         }
         k
+    }
+}
+
+/// What new fences start with.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct FenceDefaults {
+    pub style: FenceStyle,
+    pub height: Length,
+    pub post_spacing: Length,
+    pub post_size: Length,
+    pub rail_size: Length,
+}
+
+impl Default for FenceDefaults {
+    fn default() -> Self {
+        match SiteKind::fence() {
+            SiteKind::Fence { style, height, post_spacing, post_size, rail_size, .. } => FenceDefaults { style, height, post_spacing, post_size, rail_size },
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl FenceDefaults {
+    /// A new fence with these settings.
+    pub fn kind(&self) -> SiteKind {
+        SiteKind::Fence {
+            style: self.style,
+            height: self.height,
+            post_spacing: self.post_spacing,
+            gates: Vec::new(),
+            post_size: self.post_size,
+            rail_size: self.rail_size,
+        }
     }
 }

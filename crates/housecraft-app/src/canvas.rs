@@ -2273,6 +2273,8 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
     if finish && let Some(mut kind) = tool.site_kind() {
         if let SiteKind::Road { style, .. } = kind {
             kind = app.doc().active_defaults().roads.kind(style);
+        } else if matches!(kind, SiteKind::Fence { .. }) {
+            kind = app.doc().active_defaults().fence.kind();
         }
         let pending = std::mem::take(&mut app.plan.pending);
         let min = if kind.closed() { 3 } else { 2 };

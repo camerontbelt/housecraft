@@ -11,8 +11,8 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
 
 1. In the **Layer Display** side window, with **Landscaping Layer Set** active, lock the road and sidewalk layers and
    hide the elevation data.
-2. *Not in HouseCraft yet:* a "Dirt" material default for garden beds. Paint a mulch material onto a bed with
-   **3D › Material Painter** if you want one.
+2. In **Tools › Plan Materials…** make a material named `Mulch - Dark`, then under **Default material for each
+   surface** pick it for **Dirt (garden beds)**. Every garden bed's soil uses it.
 
 ## Garden bed (pages 435–437)
 
@@ -34,8 +34,8 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
 
 ## Fencing and a gate (pages 440–443)
 
-1. *Not in HouseCraft yet:* fencing defaults and a library of fence panels (such as iron poles). You set the sizes
-   on each fence instead.
+1. Fencing defaults: **Edit › Default Settings…** › **Fencing**: **Style** Iron poles, **Height** `74"`,
+   **Post spacing** `72"`, **Post size** `5 1/2"`, **Rail size** `5 1/2"`. New fences start with these.
 2. **Fence**: click along the left setback line from the sidewalk to the back, along the back, and down the right
    angled setback line. Press Enter. Open it: **Style** Privacy, **Height** `6'`, **Post Spacing** `72"`,
    **Post Size** `5 1/2"`, **Rail Size** `5 1/2"`.
@@ -64,7 +64,6 @@ It carries on from [Tutorial 24](24-driveways-sidewalks-roads.md). The steps als
 
 | Missing | FEATURES row |
 |---|---|
-| Dirt material default; fencing defaults and panel library | SITE-34 |
 | Plant Chooser and encyclopedia | SITE-20, SITE-21 |
 
 **New while following this tutorial:**

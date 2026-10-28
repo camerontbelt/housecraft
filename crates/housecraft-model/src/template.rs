@@ -294,6 +294,7 @@ pub(crate) fn new_document(name: String) -> Document {
         framing: Default::default(),
         deck: Default::default(),
         roads: Default::default(),
+        fence: Default::default(),
         materials,
         labels: Default::default(),
         wall_reference: Default::default(),

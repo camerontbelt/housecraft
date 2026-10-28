@@ -58,10 +58,12 @@ pub enum Surface {
     Furniture,
     /// Furniture fabric (cushions, mattresses).
     Upholstery,
+    /// Soil and mulch in garden beds.
+    Dirt,
 }
 
 impl Surface {
-    pub const ALL: [Surface; 23] = [
+    pub const ALL: [Surface; 24] = [
         Surface::Wall,
         Surface::Floor,
         Surface::Ceiling,
@@ -85,6 +87,7 @@ impl Surface {
         Surface::Trim,
         Surface::Furniture,
         Surface::Upholstery,
+        Surface::Dirt,
     ];
 
     pub fn name(self) -> &'static str {
@@ -112,6 +115,7 @@ impl Surface {
             Surface::Trim => "Trim & Moldings",
             Surface::Furniture => "Furniture",
             Surface::Upholstery => "Furniture Upholstery",
+            Surface::Dirt => "Dirt (garden beds)",
         }
     }
 }

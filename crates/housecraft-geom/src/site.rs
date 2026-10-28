@@ -262,6 +262,15 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, cut
                     }
                 }
                 FenceStyle::Rail => {}
+                FenceStyle::IronPole => {
+                    // Thin dark poles about 4" apart.
+                    let iron = look(Color::rgb(40, 40, 42), 1.0, 0.5);
+                    for (p, dist) in &s {
+                        if !in_gate(*dist) {
+                            post(*p, 8.0, z(*p) + 75.0, z(*p) + h - 25.0, iron, mesh);
+                        }
+                    }
+                }
             }
             // Rails.
             for frac in match style {
@@ -311,7 +320,7 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, cut
             if signed_area(&pts) < 0.0 {
                 pts.reverse();
             }
-            let soil = look(Color::rgb(90, 65, 45), 1.0, 0.95);
+            let soil = pick(mesh.look(housecraft_model::Surface::Dirt));
             if height.mm() < 1.0 {
                 // A flat bed (mulch) lying on the ground.
                 let mut edge: Vec<DVec2> = along(&pts, true, 600.0).into_iter().map(|(p, _)| p).collect();

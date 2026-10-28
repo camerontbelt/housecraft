@@ -3740,3 +3740,26 @@ fn road_defaults_curb_cuts_and_the_hardscape_schedule() {
     assert!(csv.contains("Road") && csv.contains("Driveway") && csv.contains("80'"), "{csv}");
     assert!(t.rows.iter().any(|r| r.ids == vec![drive]));
 }
+
+#[test]
+fn fence_defaults_iron_poles_and_dirt_material() {
+    let mut s = boxed();
+    let set = s.document().settings.active_default_set;
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "fence": { "style": "iron_pole", "height": "74\"", "post_spacing": "72\"", "post_size": "5 1/2\"" } })) }]).unwrap();
+    let kind = s.document().active_defaults().fence.kind();
+    let SiteKind::Fence { style, height, post_size, .. } = &kind else { panic!() };
+    assert_eq!((*style, *height, *post_size), (FenceStyle::IronPole, Length::from_inches(74.0), Length::from_inches(5.5)));
+    let fence = s
+        .apply(&[serde_json::from_value(serde_json::json!({"op": "add_site_feature", "points": [["30'", 0], ["30'", "20'"]], "feature": kind})).unwrap()])
+        .unwrap()
+        .created[0];
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    let parts = mesh.faces.iter().filter(|f| mesh.parts[f.part].object == fence).count();
+    assert!(parts > 200, "a pole every 4\": {parts} faces");
+    // A Dirt default material colours garden beds.
+    let dirt = s.document().iter::<Material>().next().map(|m| m.id);
+    if let Some(m) = dirt {
+        s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "materials": { "dirt": m.0 } })) }]).unwrap();
+        assert_eq!(s.document().active_defaults().materials.get(&Surface::Dirt), Some(&m));
+    }
+}
