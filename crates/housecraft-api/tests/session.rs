@@ -3763,3 +3763,31 @@ fn fence_defaults_iron_poles_and_dirt_material() {
         assert_eq!(s.document().active_defaults().materials.get(&Surface::Dirt), Some(&m));
     }
 }
+
+#[test]
+fn ceiling_finish_layers_lower_the_finished_ceiling() {
+    let mut s = boxed();
+    let room = s.document().iter::<Room>().next().unwrap().clone();
+    let h = s.document().room_ceiling_height(&room).unwrap().mm();
+    assert_eq!(s.document().finished_ceiling_height(&room).unwrap().mm(), h, "no finish: no change");
+    // A plan default of 1/2" drywall, then a room type with fire-rated board over rigid insulation.
+    let set = s.document().settings.active_default_set;
+    let layer = |name: &str, t: &str| serde_json::json!({"name": name, "thickness": t});
+    s.apply(&[Command::Update { id: set, set: patch(serde_json::json!({ "ceiling_finish": [layer("Drywall", "1/2\"")] })) }]).unwrap();
+    let room = s.document().get::<Room>(room.id).unwrap().clone();
+    assert!((s.document().finished_ceiling_height(&room).unwrap().mm() - (h - 12.7)).abs() < 1e-6);
+    s.apply(&[Command::Update { id: room.room_type, set: patch(serde_json::json!({ "ceiling_finish": [layer("Rigid insulation", "1 1/2\""), layer("Fire-rated drywall", "5/8\"")] })) }]).unwrap();
+    let room = s.document().get::<Room>(room.id).unwrap().clone();
+    assert!((s.document().finished_ceiling_height(&room).unwrap().mm() - (h - 2.125 * 25.4)).abs() < 1e-6);
+    // A hat channel lowers this room's ceiling; then the finish is removed.
+    s.apply(&[Command::Update { id: room.id, set: patch(serde_json::json!({ "ceiling_finish": [layer("Hat Channel", "1\""), layer("Drywall", "1/2\"")] })) }]).unwrap();
+    let r = s.document().get::<Room>(room.id).unwrap().clone();
+    assert!((s.document().finished_ceiling_height(&r).unwrap().mm() - (h - 1.5 * 25.4)).abs() < 1e-6);
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    let z0 = s.document().get::<Floor>(r.floor).unwrap().elevation.mm();
+    let ceiling_zs: Vec<f64> = mesh.faces.iter().filter(|f| mesh.parts[f.part].category == housecraft_api::geom::mesh::Category::Ceiling).flat_map(|f| f.points.iter().map(|p| p.z)).collect();
+    assert!(ceiling_zs.iter().any(|z| (z - (z0 + h - 1.5 * 25.4)).abs() < 1e-6), "the 3D ceiling is lowered");
+    s.apply(&[Command::Update { id: room.id, set: patch(serde_json::json!({ "ceiling_finish": [] })) }]).unwrap();
+    let r = s.document().get::<Room>(room.id).unwrap().clone();
+    assert_eq!(s.document().finished_ceiling_height(&r).unwrap().mm(), h);
+}

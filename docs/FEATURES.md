@@ -189,7 +189,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-16 | Floor/Ceiling Platform defaults shared by new floors (structure, finishes) | P2 | M9 |
 | RM-17 | Outdoor room types (Porch, Deck) are left out of the foundation | P1 | M9 ✓ RoomType.exterior; walls that only enclose outdoor rooms don't shape the foundation |
 | RM-18 | Attic room type (unfinished space under the roof) | P3 | M9 |
-| RM-19 | Ceiling finish definitions (layers, materials) for the plan, each floor, room types and rooms; lowered ceilings by finish | P2 | M9 |
+| RM-19 | Ceiling finish definitions (layers, materials) for the plan, each floor, room types and rooms; lowered ceilings by finish | P2 | M9 ✓ ceiling finish layers on the default set, room types and rooms (or none); they lower the finished ceiling in 3D; per-floor finishes later |
 | RM-20 | Exterior Room (the band round each floor's outside) with Make Room Molding Polyline; molding on/off per polyline edge | P3 | M9 |
 
 ## 6. Walls

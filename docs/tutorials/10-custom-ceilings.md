@@ -11,12 +11,18 @@ ceiling), **Tray**, **Coffered**, **Barrel** or **None**. The room's **Ceiling H
 
 ## Ceiling finishes (pages 178–183)
 
-*Not in HouseCraft yet:* ceiling finish definitions (drywall layers, insulation, fire-rated drywall) for the plan,
-floors, room types or rooms, and custom framing types such as hat channel. What you can do:
+Ceiling finish layers hang below a room's ceiling height, so they lower the finished ceiling. Type them top layer
+first, each as a name and a thickness, separated by semicolons, such as `Drywall 1/2"; Paint 1/32"`.
 
-1. **Tools › Plan Materials…**: make a new material `Hat Channel`, grey.
-2. **Lowered basement ceiling:** open the basement room on the Foundation floor and lower its **Ceiling Height**
-   by 1" (`112 1/8"`), instead of adding a 1" hat channel layer.
+1. Plan default: **Edit › Default Settings…** › **Ceiling Finish**: `Drywall 1/2"; Paint 1/32"`.
+2. Garage: open the Garage room type (Project Browser › Room Types) and set its **Ceiling Finish** to
+   `Rigid insulation 1 1/2"; Fire-rated drywall 5/8"`.
+3. **Tools › Plan Materials…**: make a new material `Hat Channel`, grey. *Not in HouseCraft yet:* custom framing
+   types such as a steel hat channel member.
+4. **Lowered basement ceiling:** open the basement room on the Foundation floor. In **Ceiling Finish** type
+   `Hat Channel 1"; Drywall 1/2"; Paint 1/32"`. The ceiling drops by the hat channel. The dialog shows where the
+   finished ceiling now sits.
+5. To take the finish off a room, click **Remove Finish** in its dialog (**Use Room Type's** puts it back).
 
 ## Cathedral ceiling (pages 183–184)
 
@@ -38,6 +44,5 @@ the roof. On a room, **Ceiling: Vaulted** does the same under the house roof.
 
 | Missing | FEATURES row |
 |---|---|
-| Ceiling finish definitions | RM-19 |
 | Custom framing types (hat channel) | FR-07 |
 | Soffit tool | CB-26 |

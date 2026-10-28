@@ -1364,6 +1364,10 @@ pub struct RoomType {
     /// An outdoor room (porch, deck): the foundation isn't built under it.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub exterior: bool,
+    /// Ceiling finish layers, top (against the framing) first; the plan
+    /// default's when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ceiling_finish: Vec<WallLayer>,
 }
 
 impl RoomType {
@@ -1401,6 +1405,10 @@ pub struct Room {
     /// The label is turned this many degrees counter-clockwise.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub label_rotation: f64,
+    /// This room's ceiling finish layers (empty: none); its type's when
+    /// `None`. They hang below the ceiling height, lowering the ceiling.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ceiling_finish: Option<Vec<WallLayer>>,
 }
 
 fn is_zero(v: &f64) -> bool {

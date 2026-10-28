@@ -83,6 +83,7 @@ pub(crate) fn sync(doc: &mut Document, before: Option<&Document>, out: &mut Outc
                         moldings: None,
                         label_hidden: false,
                         label_rotation: 0.0,
+                        ceiling_finish: None,
                     },
                 }));
             }

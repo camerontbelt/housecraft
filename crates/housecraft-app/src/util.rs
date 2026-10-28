@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use egui::{Color32, Ui};
-use housecraft_api::model::{Color, Document};
+use housecraft_api::model::{Color, Document, WallLayer};
 use housecraft_api::units::{DisplayUnit, Length, LengthUnit};
 
 /// Unit for bare numbers typed by the user: inches for imperial display, mm otherwise.
@@ -121,4 +121,22 @@ pub fn parse_pitch(s: &str) -> Option<f64> {
         (s.parse::<f64>().ok()? / 12.0).atan().to_degrees()
     };
     (deg > 0.0 && deg < 90.0).then_some(deg)
+}
+
+/// Finish layers as typed: "Drywall 1/2\"; Hat Channel 1\"" (name, then
+/// thickness, top layer first).
+pub fn finish_text(doc: &Document, layers: &[WallLayer]) -> String {
+    layers.iter().map(|l| format!("{} {}", l.name, fmt(doc, l.thickness))).collect::<Vec<_>>().join("; ")
+}
+
+/// Parse [`finish_text`]; layers whose thickness won't read are skipped.
+pub fn parse_finish(doc: &Document, text: &str) -> Vec<WallLayer> {
+    text.split(';')
+        .filter_map(|part| {
+            let part = part.trim();
+            let (name, len) = part.rsplit_once(' ').unwrap_or(("", part));
+            let thickness = parse(doc, len)?;
+            Some(WallLayer { name: name.trim().to_string(), thickness, material: String::new(), main: false, r_value: 0.0 })
+        })
+        .collect()
 }

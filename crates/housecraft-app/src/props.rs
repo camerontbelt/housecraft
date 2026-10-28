@@ -2999,6 +2999,26 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 r.ceiling_height,
                 type_height,
             );
+            Ed::label(ui, "Ceiling Finish");
+            ui.vertical(|ui| {
+                let current = doc.room_ceiling_finish(r);
+                let key = ed.key("ceiling_finish");
+                if let Some(t) = ed.bufs.text(ui, key, &crate::util::finish_text(doc, &current), 220.0) {
+                    ed.out.push(patch(id, json!({ "ceiling_finish": crate::util::parse_finish(doc, &t) })));
+                }
+                ui.horizontal(|ui| {
+                    if ui.small_button("Remove Finish").clicked() {
+                        ed.out.push(patch(id, json!({ "ceiling_finish": [] })));
+                    }
+                    if r.ceiling_finish.is_some() && ui.small_button("Use Room Type's").clicked() {
+                        ed.out.push(patch(id, json!({ "ceiling_finish": null })));
+                    }
+                });
+                if let Some(h) = doc.finished_ceiling_height(r) {
+                    ui.weak(format!("Finished ceiling at {}", crate::util::fmt(doc, h)));
+                }
+            });
+            ui.end_row();
             let finish = r.floor_finish.clone().unwrap_or_else(|| {
                 doc.get::<RoomType>(r.room_type)
                     .map_or_else(String::new, |t| t.floor_finish.clone())
@@ -3490,6 +3510,12 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             );
             ed.text(ui, "Floor Finish", "floor_finish", &t.floor_finish);
             ed.text(ui, "Wall Finish", "wall_finish", &t.wall_finish);
+            Ed::label(ui, "Ceiling Finish");
+            let key = ed.key("type_ceiling_finish");
+            if let Some(text) = ed.bufs.text(ui, key, &crate::util::finish_text(doc, &t.ceiling_finish), 220.0) {
+                ed.out.push(patch(id, json!({ "ceiling_finish": crate::util::parse_finish(doc, &text) })));
+            }
+            ui.end_row();
             Ed::label(ui, "Living Area");
             let mut l = t.living_area;
             if ui.checkbox(&mut l, "Count in living area").changed() {

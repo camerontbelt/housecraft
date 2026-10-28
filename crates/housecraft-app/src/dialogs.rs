@@ -1289,6 +1289,13 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                         ui.weak(format!("{{{m}}}  {what}"));
                     }
                 });
+                egui::CollapsingHeader::new("Ceiling Finish").show(ui, |ui| {
+                    ui.weak("Layers under the ceiling framing for rooms whose type has none, top first: Drywall 1/2\"; Paint 1/16\"");
+                    let text = crate::util::finish_text(doc, &d.ceiling_finish);
+                    if let Some(t) = app.bufs.text(ui, egui::Id::unique(("defaults", "ceiling_finish")), &text, 320.0) {
+                        commands.push(p(json!({"ceiling_finish": crate::util::parse_finish(doc, &t)})));
+                    }
+                });
                 egui::CollapsingHeader::new("Decks").show(ui, |ui| {
                     let dd = &d.deck;
                     egui::Grid::new("deck_defaults").num_columns(2).show(ui, |ui| {

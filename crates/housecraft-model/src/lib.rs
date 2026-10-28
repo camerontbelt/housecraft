@@ -822,6 +822,25 @@ impl Document {
             .or_else(|| self.get::<Floor>(room.floor).map(|f| f.ceiling_height))
     }
 
+    /// A room's ceiling finish layers: its own, else its type's, else the
+    /// active defaults'.
+    pub fn room_ceiling_finish(&self, room: &Room) -> Vec<WallLayer> {
+        if let Some(own) = &room.ceiling_finish {
+            return own.clone();
+        }
+        match self.get::<RoomType>(room.room_type).map(|t| &t.ceiling_finish) {
+            Some(layers) if !layers.is_empty() => layers.clone(),
+            _ => self.active_defaults().ceiling_finish.clone(),
+        }
+    }
+
+    /// The height of a room's finished ceiling: its ceiling height less its
+    /// ceiling finish.
+    pub fn finished_ceiling_height(&self, room: &Room) -> Option<Length> {
+        let finish: f64 = self.room_ceiling_finish(room).iter().map(|l| l.thickness.mm()).sum();
+        self.room_ceiling_height(room).map(|h| Length::from_mm(h.mm() - finish))
+    }
+
     /// The display name of a room: its own name, else its type's.
     pub fn room_name(&self, room: &Room) -> String {
         room.name.clone().unwrap_or_else(|| {

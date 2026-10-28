@@ -235,6 +235,7 @@ pub(crate) fn new_document(name: String) -> Document {
             living_area: living,
             moldings: if living { vec![RoomMolding::base()] } else { Vec::new() },
             exterior: matches!(name, "Porch" | "Deck"),
+            ceiling_finish: Vec::new(),
         });
         if name == "Unspecified" {
             unspecified = id;
@@ -295,6 +296,7 @@ pub(crate) fn new_document(name: String) -> Document {
         deck: Default::default(),
         roads: Default::default(),
         fence: Default::default(),
+        ceiling_finish: Vec::new(),
         materials,
         labels: Default::default(),
         wall_reference: Default::default(),

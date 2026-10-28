@@ -3567,6 +3567,7 @@ impl Command {
                     living_area: *living_area,
                     moldings: vec![RoomMolding::base()],
                     exterior: false,
+                    ceiling_finish: Vec::new(),
                 }));
             }
             Command::AddWall {

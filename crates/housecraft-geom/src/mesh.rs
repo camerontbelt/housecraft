@@ -1622,7 +1622,7 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
         let Some(room) = room else {
             continue;
         };
-        let h = doc.room_ceiling_height(room).map_or(2438.4, |h| h.mm());
+        let h = doc.finished_ceiling_height(room).map_or(2438.4, |h| h.mm());
         let zc = z0 + h;
         mesh.begin(owner, Category::Ceiling);
         match room.ceiling {

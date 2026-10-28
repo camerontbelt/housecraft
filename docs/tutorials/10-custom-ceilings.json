@@ -5,7 +5,47 @@
   "steps": [
     {
       "step": "Ceiling finish defaults: drywall and paint; the Garage room type gets 5/8\" fire-rated drywall under 1 1/2\" rigid insulation",
-      "gap": "No ceiling finish definitions (layers) for the plan, room types or rooms. Row: RM-19"
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "ceiling_finish": [
+              {
+                "name": "Drywall",
+                "thickness": "1/2\""
+              },
+              {
+                "name": "Paint",
+                "thickness": "1/32\""
+              }
+            ]
+          }
+        },
+        {
+          "op": "update",
+          "id": "$named:room_type:Garage",
+          "set": {
+            "ceiling_finish": [
+              {
+                "name": "Rigid insulation",
+                "thickness": "1 1/2\""
+              },
+              {
+                "name": "Fire-rated drywall",
+                "thickness": "5/8\""
+              }
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:room_type:Garage",
+          "path": "/ceiling_finish/1/thickness",
+          "is": "5/8\""
+        }
+      ]
     },
     {
       "step": "Hat channel: a steel framing type and member for ceiling joists",
@@ -48,12 +88,55 @@
       ]
     },
     {
-      "step": "(Through the ceiling finish, not the room's height)",
-      "gap": "Lower a room's ceiling with its Ceiling Height; ceiling finish layers aren't modelled. Row: RM-19"
+      "step": "Through the ceiling finish: a 1\" hat channel layer above the drywall lowers the basement ceiling",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:6350.0,-3810.0@Foundation",
+          "set": {
+            "ceiling_finish": [
+              {
+                "name": "Hat Channel",
+                "thickness": "1\""
+              },
+              {
+                "name": "Drywall",
+                "thickness": "1/2\""
+              },
+              {
+                "name": "Paint",
+                "thickness": "1/32\""
+              }
+            ]
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:6350.0,-3810.0@Foundation",
+          "path": "/ceiling_finish/0/name",
+          "is": "Hat Channel"
+        }
+      ]
     },
     {
-      "step": "Remove the ceiling finish from the room below the Porch",
-      "gap": "No ceiling finish layers to remove. Row: RM-19"
+      "step": "Remove the ceiling finish from the Porch (the basement doesn't reach under it here)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$room_at:6350.0,-9652.0",
+          "set": {
+            "ceiling_finish": []
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$room_at:6350.0,-9652.0",
+          "path": "/ceiling_finish",
+          "len_at_least": 0
+        }
+      ]
     },
     {
       "step": "Cathedral ceiling over the Deck: the ceiling follows the roof (Vaulted)",
