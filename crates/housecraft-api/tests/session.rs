@@ -2300,7 +2300,7 @@ fn standard_plan_views_have_their_own_sets() {
     s.apply(&[Command::AddStandardPlanViews]).unwrap();
     s.apply(&[Command::AddStandardPlanViews]).unwrap();
     let doc = s.document();
-    assert_eq!(doc.iter::<PlanView>().count(), views + 5, "added once");
+    assert_eq!(doc.iter::<PlanView>().count(), views + 6, "added once");
     let c = doc.iter::<PlanView>().find(|v| v.name == "Construction Plan").unwrap();
     assert_eq!(doc.get::<DefaultSet>(c.default_set).unwrap().labels.windows, "{size}");
 }
