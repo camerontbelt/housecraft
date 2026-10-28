@@ -249,6 +249,17 @@ pub enum SiteKind {
         /// A round turnaround of this radius at the road's end (0: none).
         #[serde(default)]
         cul_de_sac: Length,
+        /// Painted stripes along it, each this far left (+) or right (−) of
+        /// the centre line (a bike lane, a centre line).
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        stripes: Vec<Length>,
+        /// The far end widens this much on each side, over this distance (a
+        /// driveway apron where it meets the road; 0: square end).
+        #[serde(default)]
+        flare: Length,
+        /// A street name written along it in plan.
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        label: String,
     },
     /// A concrete curb along a path.
     Curb { height: Length, width: Length },
@@ -323,7 +334,17 @@ impl SiteKind {
             RoadStyle::Driveway => (12.0, 4.0, false),
             RoadStyle::Sidewalk => (4.0, 4.0, false),
         };
-        SiteKind::Road { style, width: Length::from_feet(w), thickness: Length::from_inches(t), curbs, median: Length::ZERO, cul_de_sac: Length::ZERO }
+        SiteKind::Road {
+            style,
+            width: Length::from_feet(w),
+            thickness: Length::from_inches(t),
+            curbs,
+            median: Length::ZERO,
+            cul_de_sac: Length::ZERO,
+            stripes: Vec::new(),
+            flare: Length::ZERO,
+            label: String::new(),
+        }
     }
     pub fn fence() -> Self {
         SiteKind::Fence {

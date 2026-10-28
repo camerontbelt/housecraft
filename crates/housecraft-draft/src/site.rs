@@ -26,6 +26,23 @@ fn label(out: &mut Drawing, id: Id, at: DVec2, text: String, ink: Ink) {
     );
 }
 
+/// A street name centred on `at`, turned along the road.
+fn road_label(out: &mut Drawing, id: Id, at: DVec2, rotation: f64, text: &str, ink: Ink) {
+    out.push(
+        Some(id),
+        Prim::Text {
+            at,
+            text: text.to_string(),
+            height: 600.0,
+            rotation,
+            justify: Justify::Center,
+            middle: true,
+            bold: true,
+            ink,
+        },
+    );
+}
+
 fn line(out: &mut Drawing, id: Id, points: Vec<DVec2>, closed: bool, stroke: Stroke) {
     out.push(Some(id), Prim::Polyline { points, closed, stroke });
 }
@@ -162,7 +179,7 @@ pub(crate) fn feature(f: &SiteFeature, stroke: Stroke, out: &mut Drawing) {
             outline.extend(r.into_iter().rev());
             line(out, f.id, outline, true, stroke);
         }
-        SiteKind::Road { style, width, curbs, median, cul_de_sac, .. } => {
+        SiteKind::Road { style, width, curbs, median, cul_de_sac, stripes, flare, label, .. } => {
             let (l, r) = sides(&pts, width.mm() / 2.0);
             line(out, f.id, l, false, stroke);
             line(out, f.id, r, false, stroke);
@@ -181,7 +198,29 @@ pub(crate) fn feature(f: &SiteFeature, stroke: Stroke, out: &mut Drawing) {
                 line(out, f.id, l, false, thin);
                 line(out, f.id, r, false, thin);
             }
-            if *style == RoadStyle::Road {
+            if let Some(apron) = housecraft_geom::site::road_flare(&pts, width.mm(), flare.mm()) {
+                for wedge in apron {
+                    line(out, f.id, wedge, true, stroke);
+                }
+            }
+            for off in stripes {
+                let (l, r) = sides(&pts, off.mm().abs());
+                line(out, f.id, if off.mm() >= 0.0 { l } else { r }, false, thin);
+            }
+            if !label.is_empty() {
+                // Along the longest segment, reading left to right.
+                if let Some(w) = pts.windows(2).max_by(|a, b| a[0].distance(a[1]).total_cmp(&b[0].distance(b[1]))) {
+                    let d = w[1] - w[0];
+                    let mut angle = d.y.atan2(d.x).to_degrees();
+                    if angle > 90.0 {
+                        angle -= 180.0;
+                    } else if angle < -90.0 {
+                        angle += 180.0;
+                    }
+                    road_label(out, f.id, (w[0] + w[1]) / 2.0, angle, label, stroke.ink);
+                }
+            }
+            if *style == RoadStyle::Road && stripes.is_empty() {
                 line(out, f.id, pts, false, Stroke { dash: &[4.0, 3.0], ..thin });
             }
         }

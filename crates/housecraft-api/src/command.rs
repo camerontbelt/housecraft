@@ -704,6 +704,15 @@ pub enum Command {
         points: Vec<Point2>,
         feature: SiteKind,
     },
+    /// Auto Generate Sidewalks: a sidewalk `width` wide (5' when unset)
+    /// down each side of `road`, `gap` out from its edge (or its curb).
+    AutoSidewalks {
+        road: Id,
+        #[serde(default)]
+        width: Option<Length>,
+        #[serde(default)]
+        gap: Length,
+    },
     /// Plant a tree, shrub or grass; unset sizes are typical for its form.
     AddPlant {
         floor: Option<Id>,
@@ -1376,6 +1385,7 @@ impl Command {
             Command::SitePlanDetail { .. } => "site_plan_detail",
             Command::AddSiteFeature { .. } => "add_site_feature",
             Command::AddPlant { .. } => "add_plant",
+            Command::AutoSidewalks { .. } => "auto_sidewalks",
             Command::CadBoolean { .. } => "cad_boolean",
             Command::ExtrudeCad { .. } => "extrude_cad",
             Command::RevolveCad { .. } => "revolve_cad",
@@ -3136,6 +3146,24 @@ impl Command {
                     points: points.clone(),
                     feature: feature.clone(),
                 }));
+            }
+            Command::AutoSidewalks { road, width, gap } => {
+                let r = expect::<SiteFeature>(doc, *road)?.clone();
+                let SiteKind::Road { style: RoadStyle::Road, width: road_width, curbs, .. } = r.feature else {
+                    return invalid("sidewalks follow a road");
+                };
+                let mut walk = SiteKind::road(RoadStyle::Sidewalk);
+                let w = width.unwrap_or(Length::from_feet(5.0));
+                if let SiteKind::Road { width, .. } = &mut walk {
+                    *width = w;
+                }
+                let curb = if curbs { 150.0 } else { 0.0 };
+                let dist = road_width.mm() / 2.0 + curb + gap.mm() + w.mm() / 2.0;
+                let centre: Vec<_> = r.points.iter().map(|p| housecraft_geom::v2(*p)).collect();
+                for side in [1.0, -1.0] {
+                    let points = ops::offset_polyline(&centre, false, dist * side).into_iter().map(housecraft_geom::pt).collect();
+                    out.created.push(doc.insert(SiteFeature { id: Id(0), floor: r.floor, layer: r.layer, points, feature: walk.clone() }));
+                }
             }
             Command::AddPlant { floor, at, name, form, height, spread } => {
                 let floor = ops::resolve_floor(doc, *floor)?;

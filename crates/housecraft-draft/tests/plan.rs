@@ -867,3 +867,17 @@ fn schedules_go_in_cad_details_as_legends() {
     let p = plan(doc, &PlanOptions::first(doc).unwrap());
     assert!(!p.items.iter().any(|i| i.object == Some(sched)), "not on the floor plan");
 }
+
+#[test]
+fn street_names_run_along_roads() {
+    let mut s = house();
+    let cmds: Vec<Command> = serde_json::from_str(
+        r#"[{"op": "add_site_feature", "points": [["100'","-40'"],["0'","-40'"]], "feature": {"type": "road", "style": "road", "width": "28'", "thickness": "6\"", "label": "Elm Street", "stripes": ["8'"]}}]"#,
+    )
+    .unwrap();
+    s.apply(&cmds).unwrap();
+    let doc = s.document();
+    let d = plan(doc, &PlanOptions::first(doc).unwrap());
+    // Drawn east to west, but the name still reads left to right.
+    assert!(d.items.iter().any(|i| matches!(&i.prim, Prim::Text { text, rotation, .. } if text == "Elm Street" && rotation.abs() < 1e-6)));
+}

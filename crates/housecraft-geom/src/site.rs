@@ -114,7 +114,7 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, mes
                 mesh.prism_look(&quad, bottom, top.mm().max(bottom + 10.0), concrete);
             }
         }
-        SiteKind::Road { style, width, thickness, curbs, median, cul_de_sac } => {
+        SiteKind::Road { style, width, thickness, curbs, median, cul_de_sac, stripes, flare, .. } => {
             let s = along(&pts, false, 500.0);
             let surface = pick(match style {
                 housecraft_model::RoadStyle::Road => look(Color::rgb(70, 70, 72), 1.0, 0.9),
@@ -134,6 +134,24 @@ pub fn feature_mesh(f: &SiteFeature, z: &dyn Fn(DVec2) -> f64, floor_z: f64, mes
                 let disc: Vec<DVec2> = (0..32).map(|i| end + DVec2::from_angle(i as f64 / 32.0 * std::f64::consts::TAU) * r).collect();
                 let zc = z(end);
                 mesh.prism_look(&disc, zc - t, zc + 30.0, surface);
+            }
+            // A flared end: a wedge either side, widest at the end.
+            if let Some(apron) = road_flare(&pts, width.mm(), flare.mm()) {
+                for wedge in apron {
+                    let zc = z(wedge[0]);
+                    let wedge = if signed_area(&wedge) < 0.0 { wedge.into_iter().rev().collect() } else { wedge };
+                    mesh.prism_look(&wedge, zc - t, zc + 30.0, surface);
+                }
+            }
+            // Painted stripes just above the surface.
+            let paint = look(Color::rgb(245, 240, 220), 1.0, 0.6);
+            for off in stripes {
+                let line: Vec<(DVec2, f64)> = edges(&s, off.mm().abs())
+                    .into_iter()
+                    .zip(&s)
+                    .map(|((l, r), (_, d))| (if off.mm() >= 0.0 { l } else { r }, *d))
+                    .collect();
+                strip(&line, 50.0, 25.0, 35.0, z, paint, mesh);
             }
             if *curbs {
                 let half = width.mm() / 2.0;
@@ -432,4 +450,20 @@ pub fn build(doc: &Document, only_floor: Option<housecraft_model::Id>, mesh: &mu
         plant_mesh(p, &z, mesh);
         mesh.end();
     }
+}
+
+/// The two wedges of a flared road end (each a triangle beside the road's
+/// last `flare` of length, widest at the end), or `None` for a square end.
+pub fn road_flare(pts: &[DVec2], width: f64, flare: f64) -> Option<[Vec<DVec2>; 2]> {
+    let n = pts.len();
+    if flare < 1.0 || n < 2 {
+        return None;
+    }
+    let (a, end) = (pts[n - 2], pts[n - 1]);
+    let dir = (end - a).normalize_or_zero();
+    let run = flare.min(a.distance(end));
+    let side = crate::math::perp(dir);
+    let half = width / 2.0;
+    let wedge = |k: f64| vec![end - dir * run + side * half * k, end + side * half * k, end + side * (half + flare) * k];
+    Some([wedge(1.0), wedge(-1.0)])
 }

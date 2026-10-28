@@ -5,7 +5,7 @@
   "steps": [
     {
       "step": "Road defaults: 28' wide; curbs that can cut driveways and sidewalks",
-      "gap": "Roads, driveways and sidewalks start at typical sizes (road 24'); set the width on each. No curb cuts. Row: SITE-32"
+      "gap": "No road, driveway or sidewalk defaults: a new road is 24' wide; set the width on each. No curb cuts. Row: SITE-32"
     },
     {
       "step": "Straight Road across the bottom of the terrain, corner to corner",
@@ -48,8 +48,28 @@
       "gap": "Roads are straight-segment paths; no arcs. Row: SITE-32"
     },
     {
-      "step": "Road Stripe for a bike lane, 6' from the road's edge",
-      "gap": "No road stripes. Row: SITE-32"
+      "step": "Road Stripe for a bike lane, 6' from the road's edge (both sides)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$road",
+          "set": {
+            "feature": {
+              "stripes": [
+                "8'",
+                "-8'"
+              ]
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$road",
+          "path": "/feature/stripes/1",
+          "is": "-8'"
+        }
+      ]
     },
     {
       "step": "Pull the terrain edge out to the road's far edge so the road shows in 3D (copy of the perimeter kept as a plot plan polyline)",
@@ -95,10 +115,10 @@
     },
     {
       "step": "Driveway defaults: 13' wide, end flared 3', Blacktop 1",
-      "gap": "Driveways have no flared ends. Row: SITE-32"
+      "gap": "No driveway defaults; the width, end flare and material are set on the driveway (below). Row: SITE-32"
     },
     {
-      "step": "Straight Driveway from the middle of the Garage door straight down to the road",
+      "step": "Straight Driveway from the middle of the Garage door straight down to the road, its end flared 3'",
       "commands": [
         {
           "op": "add_site_feature",
@@ -118,7 +138,8 @@
             "style": "driveway",
             "width": "13'",
             "thickness": "4\"",
-            "curbs": false
+            "curbs": false,
+            "flare": "3'"
           }
         }
       ],
@@ -130,12 +151,38 @@
           "get": "$drive",
           "path": "/feature/style",
           "is": "driveway"
+        },
+        {
+          "get": "$drive",
+          "path": "/feature/flare",
+          "is": "3'"
         }
       ]
     },
     {
-      "step": "Sidewalk defaults: 5' wide; Auto Generate Sidewalks 60\" from the road",
-      "gap": "No automatic sidewalks along a road. Row: SITE-32"
+      "step": "Auto Generate Sidewalks: 5' wide, 60\" from the road",
+      "commands": [
+        {
+          "op": "auto_sidewalks",
+          "road": "$road",
+          "width": "5'",
+          "gap": "60\""
+        }
+      ],
+      "save": {
+        "walks": "site_feature"
+      },
+      "expect": [
+        {
+          "count": "site_feature",
+          "is": 5
+        },
+        {
+          "get": "$walks.1",
+          "path": "/feature/width",
+          "is": "5'"
+        }
+      ]
     },
     {
       "step": "Straight Sidewalk down from the porch stairs, then a second segment over to the driveway",
@@ -182,8 +229,29 @@
       "gap": "No curved sidewalks; add more corners to round it off. Row: SITE-32"
     },
     {
-      "step": "Annotations: street name label on the road; a hardscaping schedule",
-      "gap": "Roads have no label, and there's no hardscaping schedule. Row: SITE-32"
+      "step": "Annotations: street name label on the road",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$road",
+          "set": {
+            "feature": {
+              "label": "Garden Way"
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$road",
+          "path": "/feature/label",
+          "is": "Garden Way"
+        }
+      ]
+    },
+    {
+      "step": "(A hardscaping schedule)",
+      "gap": "No hardscaping schedule. Row: SITE-32"
     },
     {
       "step": "Make a Copy as Chic Cottage-Hardscape"

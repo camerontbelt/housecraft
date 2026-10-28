@@ -543,7 +543,7 @@ These come from reading the whole list and change the architecture, not just the
 | SITE-29 | Plot plan lines: decimal-feet lengths and quadrant-bearing angles on CAD lines; curved lot sides by radius and arc length | P2 | M9 |
 | SITE-30 | Elevation line editing: angle with a locked start point, Add Break, continue drawing from an end | P3 | M9 ✓ Edit › Add Break, Move Edge, Edge Angle… and Continue Drawing on elevation lines and regions, site features (garden beds) and CAD polylines; corner handles on elevation lines and site features |
 | SITE-31 | Retaining walls that separate the terrain on each side (heights from the terrain either side) | P2 | M9 |
-| SITE-32 | Roads: per-style defaults, curved (arc) roads and sidewalks, road stripes, flared driveway ends, curb cuts, Auto Generate Sidewalks, street-name labels, hardscape schedule | P2 | M9 |
+| SITE-32 | Roads: per-style defaults, curved (arc) roads and sidewalks, road stripes, flared driveway ends, curb cuts, Auto Generate Sidewalks, street-name labels, hardscape schedule | P2 | M9 ◐ road stripes, flared ends, Auto Generate Sidewalks and street names done; defaults, arcs, curb cuts and the schedule later |
 | SITE-33 | Terrain surface passes exactly through elevation data (smoothing pulls a line ~1.5' off where data is steep) | P2 | M9 |
 | SITE-34 | Landscaping defaults: Dirt material for garden beds; fence panels from the library, rail and post sizes; gate styles and heights | P3 | M9 ◐ each fence sets its post and rail size; gates have a height, clearance off the ground and a Panel, Picket or Arched style; Dirt default, fencing defaults and a panel library later |
 

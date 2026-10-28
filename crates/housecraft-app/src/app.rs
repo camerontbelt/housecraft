@@ -3188,10 +3188,10 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                         ("Terrain Perimeter", housecraft_api::CadTarget::TerrainPerimeter),
                         ("Garden Bed", housecraft_api::CadTarget::SiteFeature { feature: SiteKind::garden_bed() }),
                         ("Sidewalk", housecraft_api::CadTarget::SiteFeature {
-                            feature: SiteKind::Road { style: RoadStyle::Sidewalk, width: Length::from_feet(4.0), thickness: Length::from_inches(4.0), curbs: false, median: Length::ZERO, cul_de_sac: Length::ZERO },
+                            feature: SiteKind::road(RoadStyle::Sidewalk),
                         }),
                         ("Driveway", housecraft_api::CadTarget::SiteFeature {
-                            feature: SiteKind::Road { style: RoadStyle::Driveway, width: Length::from_feet(12.0), thickness: Length::from_inches(4.0), curbs: false, median: Length::ZERO, cul_de_sac: Length::ZERO },
+                            feature: SiteKind::road(RoadStyle::Driveway),
                         }),
                         ("Solid (8' tall)", housecraft_api::CadTarget::Solid { height: Some(Length::from_feet(8.0)) }),
                     ];

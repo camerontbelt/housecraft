@@ -1357,7 +1357,7 @@ pub(crate) fn offset(
     Ok(())
 }
 
-fn offset_polyline(points: &[DVec2], closed: bool, dist: f64) -> Vec<DVec2> {
+pub fn offset_polyline(points: &[DVec2], closed: bool, dist: f64) -> Vec<DVec2> {
     let n = points.len();
     let seg_dir = |i: usize| (points[(i + 1) % n] - points[i]).normalize_or_zero();
     (0..n)

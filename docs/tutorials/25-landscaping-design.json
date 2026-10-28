@@ -158,7 +158,7 @@
       "expect": [
         {
           "count": "site_feature",
-          "is": 6
+          "is": 8
         }
       ]
     },

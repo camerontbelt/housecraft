@@ -1539,7 +1539,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     len(ui, ed, "Top Elevation", "feature.top", top);
                     len(ui, ed, "Thickness", "feature.thickness", thickness);
                 }
-                SiteKind::Road { style, width, thickness, curbs, median, cul_de_sac } => {
+                SiteKind::Road { style, width, thickness, curbs, median, cul_de_sac, stripes, flare, label } => {
                     Ed::label(ui, "Type");
                     ui.horizontal(|ui| {
                         for s in [RoadStyle::Road, RoadStyle::Driveway, RoadStyle::Sidewalk] {
@@ -1554,6 +1554,31 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                     ui.end_row();
                     len(ui, ed, "Median (0: none)", "feature.median", median);
                     len(ui, ed, "Cul-de-sac Radius (0: none)", "feature.cul_de_sac", cul_de_sac);
+                    len(ui, ed, "End Flare (0: square)", "feature.flare", flare);
+                    Ed::label(ui, "Stripes");
+                    ui.horizontal(|ui| {
+                        let unit = doc.settings.display_unit;
+                        let text = stripes.iter().map(|l| l.format(unit)).collect::<Vec<_>>().join(", ");
+                        let key = ed.key("feature.stripes");
+                        if let Some(t) = ed.bufs.text(ui, key, &text, 160.0) {
+                            *stripes = t.split(',').filter(|x| !x.trim().is_empty()).filter_map(|x| Length::parse(x.trim(), crate::util::input_unit(doc)).ok()).collect();
+                        }
+                        ui.weak("from the centre line, + left");
+                    });
+                    ui.end_row();
+                    if *style == RoadStyle::Road {
+                        Ed::label(ui, "");
+                        if ui.button("Auto Generate Sidewalks").on_hover_text("A 5' sidewalk down each side, 5' out from the curb").clicked() {
+                            ed.out.push(Command::AutoSidewalks { road: id, width: None, gap: Length::from_feet(5.0) });
+                        }
+                        ui.end_row();
+                    }
+                    Ed::label(ui, "Street Name");
+                    let key = ed.key("feature.label");
+                    if let Some(t) = ed.bufs.text(ui, key, label, 160.0) {
+                        *label = t;
+                    }
+                    ui.end_row();
                 }
                 SiteKind::Curb { height, width } => {
                     len(ui, ed, "Height", "feature.height", height);

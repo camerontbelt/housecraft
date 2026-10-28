@@ -6,14 +6,17 @@ Keep this open beside **Chief Architect Tutorial Guide › Landscaping Tutorials
 
 **Road**, **Driveway** and **Sidewalk** are on the **Terrain** menu (and the Terrain tool list). Click along the
 centre line, then double-click or press Enter to finish. Open one to set its **Width**, **Thickness** and curbs. Each
-lies on the terrain.
+lies on the terrain. Roads also have **End Flare**, **Stripes** and **Street Name**.
 
 ## The road (pages 421–425)
 
 1. *Not in HouseCraft yet:* road defaults. A new road is 24' wide; open it and set **Width** `28'`.
 2. **Road**: click the bottom-right corner of the terrain, then the lower-left corner. Press Enter.
-3. *Not in HouseCraft yet:* curved roads (Change Line/Arc) and road stripes. For a gentle curve, draw the road with more
-   corners. To snap the road onto the lot edge, use **Edit › Point to Point Move**.
+3. *Not in HouseCraft yet:* curved roads (Change Line/Arc). For a gentle curve, draw the road with more corners. To
+   snap the road onto the lot edge, use **Edit › Point to Point Move**.
+4. Road stripes for a bike lane: open the road and type `8', -8'` in **Stripes**. Each number is how far a painted
+   line sits from the road's centre line (+ is to the left as drawn, − to the right). On a 28' road, 8' is 6' in from
+   each edge. Painted stripes replace the dashed centre line.
 
 ## Road in 3D and its height (pages 425–427)
 
@@ -25,26 +28,27 @@ lies on the terrain.
 
 ## Driveway (pages 427–428)
 
-1. *Not in HouseCraft yet:* driveway defaults and flared ends.
+1. *Not in HouseCraft yet:* driveway defaults.
 2. **Driveway**: click at the middle of the Garage door, then straight down at the road. Press Enter. Open it:
-   **Width** `13'`.
+   **Width** `13'`, **End Flare** `3'`. The flare widens the end you finished at (where it meets the road) by 3' on
+   each side.
 3. For blacktop, use **3D › Material Painter** on the driveway with an asphalt material.
 
 ## Sidewalks (pages 428–431)
 
-1. *Not in HouseCraft yet:* Auto Generate Sidewalks along a road.
+1. Open the road and click **Auto Generate Sidewalks**. You get a 5' sidewalk down each side, 5' (60") beyond the curb.
 2. **Sidewalk**: click at the foot of the porch stairs, down a few feet, then across to the driveway. Press Enter.
    Open it: **Width** `5'`.
 3. *Not in HouseCraft yet:* curved sidewalks. Add a few extra corners to round the bend.
 
 ## Annotations and revision (pages 431–432)
 
-*Not in HouseCraft yet:* a street-name label on the road, and a hardscaping schedule. Use **Text** for the street
-name. Then **File › Make a Copy…** `Chic Cottage-Hardscape`.
+Open the road and type its name in **Street Name**. The name is drawn along the road in plan, always reading left to
+right. *Not in HouseCraft yet:* a hardscaping schedule. Then **File › Make a Copy…** `Chic Cottage-Hardscape`.
 
 ## What this tutorial showed HouseCraft still needs
 
 | Missing | FEATURES row |
 |---|---|
-| Road defaults, curves, stripes, flares, curb cuts, auto sidewalks, labels, schedule | SITE-32 |
+| Road defaults, curved roads and sidewalks, curb cuts, hardscaping schedule | SITE-32 |
 | Terrain passing exactly through elevation data | SITE-33 |

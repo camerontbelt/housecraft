@@ -3543,3 +3543,31 @@ fn paths_take_breaks_edge_moves_locked_angles_and_more_drawing() {
     assert!(close(b[1], (53.0, 10.0)) && close(b[2], (53.0, 20.0)) && close(b[0], (40.0, 10.0)), "{b:?}");
     assert!(s.apply(&[Command::ExtendPath { id: bed, points: vec![ft(0.0, 0.0)], at_start: false }]).is_err(), "closed beds have no ends");
 }
+
+#[test]
+fn road_stripes_flares_labels_and_auto_sidewalks() {
+    let mut s = boxed();
+    let out = apply(
+        &mut s,
+        r#"[{"op": "add_site_feature", "points": [["0'","-40'"],["100'","-40'"]], "feature": {"type": "road", "style": "road", "width": "28'", "thickness": "6\"", "curbs": true, "stripes": ["8'", "-8'"], "label": "Elm Street"}},
+            {"op": "add_site_feature", "points": [["20'","0'"],["20'","-26'"]], "feature": {"type": "road", "style": "driveway", "width": "13'", "thickness": "4\"", "flare": "3'"}}]"#,
+    );
+    let (road, drive) = (out.created[0], out.created[1]);
+    // Auto Generate Sidewalks: 5' walks, 5' beyond the 150 mm curbs.
+    let walks = s.apply(&[Command::AutoSidewalks { road, width: None, gap: Length::from_feet(5.0) }]).unwrap().created;
+    assert_eq!(walks.len(), 2);
+    let ys: Vec<f64> = walks.iter().map(|id| s.document().get::<SiteFeature>(*id).unwrap().points[0].1.mm() / 304.8).collect();
+    let want = 14.0 + 150.0 / 304.8 + 5.0 + 2.5;
+    assert!(ys.iter().any(|y| (y - (-40.0 + want)).abs() < 1e-6) && ys.iter().any(|y| (y - (-40.0 - want)).abs() < 1e-6), "{ys:?}");
+    assert!(s.apply(&[Command::AutoSidewalks { road: drive, width: None, gap: Length::ZERO }]).is_err(), "only roads");
+    // The flare widens the driveway's end: 3D reaches 6 1/2' + 3' either side.
+    let mesh = housecraft_api::geom::mesh::build(s.document(), None);
+    let xs: Vec<f64> = mesh.faces.iter().filter(|f| mesh.parts[f.part].object == drive).flat_map(|f| f.points.iter().map(|p| p.x / 304.8)).collect();
+    let (lo, hi) = xs.iter().fold((f64::MAX, f64::MIN), |(a, b), x| (a.min(*x), b.max(*x)));
+    assert!((lo - (20.0 - 9.5)).abs() < 0.01 && (hi - (20.0 + 9.5)).abs() < 0.01, "{lo}..{hi}");
+    // Stripes are painted in 3D at ±8'.
+    let painted = mesh.faces.iter().filter(|f| mesh.parts[f.part].object == road).flat_map(|f| f.points.iter()).any(|p| ((p.y / 304.8) - (-32.0)).abs() < 0.2);
+    assert!(painted);
+    let json = query::get_object(s.document(), road).unwrap();
+    assert_eq!(json.pointer("/feature/label").and_then(|v| v.as_str()), Some("Elm Street"));
+}
