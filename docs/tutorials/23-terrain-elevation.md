@@ -9,10 +9,12 @@ the left). An elevation line takes several clicks: click along it, then double-c
 
 ## Defaults and the landscaping view (pages 404–406)
 
-1. *Not in HouseCraft yet:* extra allowed angles for angle snaps (such as the lot's S 49 59 11 W side).
+1. Allowed angles: the plan can snap to extra directions besides the angle step, such as the lot's S 49 59 11 W
+   side: **Edit › Preferences…** › **Allowed angles** `-78.4794`. Lines then snap to that direction both ways.
 2. **View › Layers and Layer Sets…** › **Layer Sets**: copy the site plan's set and call it
    `Landscaping Layer Set`. Turn contours on and plot plan dimensions off in the **Layer Display** side window.
-   *Not in HouseCraft yet:* Duplicate for a saved plan view.
+   Or right-click the Site Plan view in the Project Browser › **Duplicate (with its layer set)** and rename the copy
+   `Landscaping Plan View`.
 
 ## Building pad (pages 406–407)
 
@@ -63,6 +65,4 @@ elevation data, about 1" below the Garage slab. In the terrain's dialog tick **R
 
 | Missing | FEATURES row |
 |---|---|
-| Additional allowed angles | CAD-33 |
-| Duplicate a saved plan view | PRJ-12 |
 | Retaining walls separating the terrain | SITE-31 |

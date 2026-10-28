@@ -660,6 +660,9 @@ pub struct Appliance {
     pub elevation: Length,
     #[serde(default)]
     pub renovation: Renovation,
+    /// Reversed end for end (a bathtub's drain at the other end).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub reversed: bool,
 }
 
 /// Cabinet sizes and options used when placing new cabinets.

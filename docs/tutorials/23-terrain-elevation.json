@@ -5,7 +5,14 @@
   "steps": [
     {
       "step": "Allowed Angles: an additional angle of S 49 59 11 W (-78 28 46) for the lot's angled side",
-      "gap": "Angle snaps are every 7.5 degrees, no additional allowed angles. Row: CAD-33"
+      "commands": [
+        {
+          "op": "set_allowed_angles",
+          "angles": [
+            -78.4794
+          ]
+        }
+      ]
     },
     {
       "step": "Duplicate the Plot Plan View as 'Landscaping Plan View' with a copied layer set; contours on, plot plan dimensions off",
@@ -24,8 +31,22 @@
       ]
     },
     {
-      "step": "(Duplicate a saved plan view; Save Active View)",
-      "gap": "No Duplicate for saved plan views. Row: PRJ-12"
+      "step": "Duplicate the Site Plan view as 'Landscaping Plan View' with a copy of its layer set",
+      "commands": [
+        {
+          "op": "duplicate_plan_view",
+          "id": "$named:plan_view:Site Plan",
+          "name": "Landscaping Plan View",
+          "copy_layer_set": true
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:plan_view:Landscaping Plan View",
+          "path": "/name",
+          "is": "Landscaping Plan View"
+        }
+      ]
     },
     {
       "step": "Building pad: surface -28\" at the reference point, moved to the centre of the Garage door",

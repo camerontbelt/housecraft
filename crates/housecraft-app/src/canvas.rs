@@ -373,7 +373,7 @@ pub fn show(app: &mut App, ui: &mut Ui) {
             _ => point_pick.flatten(),
         });
         let cache = app.plan.cache.as_ref().expect("cache built");
-        let targets = if matches!(app.plan.tool, Tool::Dimension | Tool::AngularDimension) { &cache.dim_targets } else { &cache.targets };
+        let targets = if matches!(app.plan.tool, Tool::Dimension | Tool::AngularDimension | Tool::TapeMeasure) { &cache.dim_targets } else { &cache.targets };
         // Holding Alt places freely, ignoring every snap.
         let free = ui.input(|i| i.modifiers.alt);
         if (app.plan.tool == Tool::Select && app.plan.drag.is_none() && point_pick.is_none()) || free {
@@ -2148,6 +2148,23 @@ fn drawing_tool(app: &mut App, ui: &Ui, resp: &Response, view: &View, commands: 
                             text_override: None,
                         });
                     }
+                }
+            }
+            Tool::TapeMeasure => {
+                if let Some(a) = pending.pop() {
+                    let d = p - a;
+                    let doc = app.doc();
+                    let f = |v: f64| crate::util::fmt(doc, Length::from_mm(v));
+                    let msg = format!(
+                        "Tape Measure: {} (across {}, up {}, {:.1}°)",
+                        f(d.length()),
+                        f(d.x.abs()),
+                        f(d.y.abs()),
+                        d.y.atan2(d.x).to_degrees()
+                    );
+                    app.status = Some((msg, false));
+                } else {
+                    pending.push(p);
                 }
             }
             Tool::AngularDimension => {

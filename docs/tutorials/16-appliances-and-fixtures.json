@@ -289,7 +289,22 @@
     },
     {
       "step": "Reverse the bathtub symbol so the drain is at the other end",
-      "gap": "Fixtures can't be reversed (mirrored). Row: CB-31"
+      "commands": [
+        {
+          "op": "update",
+          "id": "$bath.0",
+          "set": {
+            "reversed": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$bath.0",
+          "path": "/reversed",
+          "is": true
+        }
+      ]
     },
     {
       "step": "Wall Elevation of the Kitchen's left wall with automatic elevation dimensions",

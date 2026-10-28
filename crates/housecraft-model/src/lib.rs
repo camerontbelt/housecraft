@@ -297,6 +297,10 @@ pub struct Settings {
     /// mm, 48 = 1/4" = 1'-0"); 0 fits a standard scale.
     #[serde(default, skip_serializing_if = "is_zero_scale")]
     pub layout_scale: f64,
+    /// Allowed Angles beyond the angle-snap step (degrees, counter-clockwise
+    /// from east; the opposite direction snaps too), such as a lot line's.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub allowed_angles: Vec<f64>,
     /// Materials list components set on objects (extra items, or ones
     /// replacing what the take-off counts for them).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -536,6 +540,7 @@ impl Document {
                 revisions: Vec::new(),
                 watermark: None,
                 layout_scale: 0.0,
+                allowed_angles: Vec::new(),
                 components: BTreeMap::new(),
                 macros: BTreeMap::new(),
                 auto_dims: BTreeMap::new(),

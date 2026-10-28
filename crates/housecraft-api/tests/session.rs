@@ -3911,3 +3911,20 @@ fn schedules_from_a_room_filtered_and_titled() {
     let all = housecraft_api::schedule::schedule(s.document(), ScheduleKind::Fixtures, &opts(None, ""));
     assert!(all.rows.len() >= 2);
 }
+
+#[test]
+fn allowed_angles_duplicate_plan_views_and_reversed_fixtures() {
+    let mut s = boxed();
+    s.apply(&[Command::SetAllowedAngles { angles: vec![-78.4794] }]).unwrap();
+    assert_eq!(s.document().settings.allowed_angles, vec![-78.4794]);
+    let view = apply(&mut s, r#"[{"op": "add_plan_view", "name": "Site Plan"}]"#).created[0];
+    let out = s.apply(&[Command::DuplicatePlanView { id: view, name: "Landscaping Plan View".into(), copy_layer_set: true }]).unwrap();
+    let copy = out.created.iter().find_map(|id| s.document().get::<PlanView>(*id)).unwrap().clone();
+    let original = s.document().get::<PlanView>(view).unwrap().clone();
+    assert_eq!(copy.name, "Landscaping Plan View");
+    assert_ne!(copy.layer_set, original.layer_set, "its own layer set");
+    assert_eq!(copy.floor, original.floor);
+    let tub = apply(&mut s, r#"[{"op": "add_appliance", "appliance_kind": "bathtub", "at": ["5'", "5'"]}]"#).created[0];
+    s.apply(&[Command::Update { id: tub, set: patch(serde_json::json!({ "reversed": true })) }]).unwrap();
+    assert!(s.document().get::<Appliance>(tub).unwrap().reversed);
+}

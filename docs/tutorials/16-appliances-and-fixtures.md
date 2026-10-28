@@ -41,8 +41,7 @@ cabinet fronts.
 2. *Not in HouseCraft yet:* faucets, tub spouts and shower heads.
 3. **Bathtub** along the Bath's left wall. Use **Center Object** (edit toolbar) and click the wall to centre it.
 4. **Toilet** between the tub and the vanity.
-5. *Not in HouseCraft yet:* **Reverse Symbol**, which puts the tub drain at the other end. Turn the tub 180°
-   instead if the room allows it.
+5. Open the tub and tick **Reverse**: the drain moves to the other end.
 
 ## Wall elevation with dimensions (pages 294–297)
 
@@ -58,5 +57,4 @@ cabinet fronts.
 |---|---|
 | Cabinet partitions | CB-30 |
 | Faucets, tub spouts, shower heads | EL-10 |
-| Reverse Symbol (mirror a fixture) | CB-31 |
 | Handle fill colour preference | UI-39 |

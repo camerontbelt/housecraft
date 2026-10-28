@@ -77,8 +77,8 @@ HouseCraft ever disagree, the test catches it.
 3. Close the 3D view with the × on its tab.
 4. **Back-clipped cross section:** **3D › Elevations and Sections › Cross Section / Elevation Tool**. Click inside the
    bump-out, then click in the direction to look.
-5. **Tape Measure:** *not in HouseCraft yet.* For now, use the **Manual Dimension** tool (Dimension Tools) and
-   delete the dimension afterwards.
+5. **Tape Measure** (Dimension tools): click two points; the distance, with how far across and up, shows in the
+   status bar. Nothing is added to the plan.
 
 ## Dimensions and moving walls (pages 18–23)
 
@@ -100,7 +100,8 @@ HouseCraft ever disagree, the test catches it.
 
 ## Annotations and revisions (pages 24–26)
 
-1. **Rich text and Uppercase:** *not in HouseCraft yet.* Use the **Text** tool and type the note in capitals:
+1. **Uppercase:** make a text style `Notes` (**Tools › Text Styles…**) and tick **Uppercase**; text using it shows in
+   capitals. Notes take simple rich text (**bold**, __underline__, links and colour). Use the **Text** tool for
    `2X6 EXTERIOR WALLS 24" OC U.N.O.`
 2. **Spell check:** *not in HouseCraft yet.*
 3. **File › Make a Copy…**: name the copy `Chic Cottage-Shell`. It's saved beside your plan, and you stay in
@@ -111,8 +112,6 @@ HouseCraft ever disagree, the test catches it.
 | Missing | FEATURES row |
 |---|---|
 | Pony wall tool and defaults | WL-03 |
-| Tape Measure | DIM-24 |
-| Rich text with uppercase | TXT-02 |
 | Spell check | TXT-17 |
 | Move Left End / Right End / Both Ends when resizing by dimension | DIM-03 |
 | "Foundation/Dimension to Exterior of Layer" wall type settings | FD-05 |

@@ -528,6 +528,7 @@ fn prefs_dialog(app: &mut App, ctx: &Context) {
     let mut unit_cmd = None;
     let mut theme_changed = false;
     let mut file_type_result: Option<std::io::Result<String>> = None;
+    let mut angles_cmd = None;
     egui::Window::new("Preferences")
         .open(&mut open)
         .resizable(false)
@@ -587,6 +588,13 @@ fn prefs_dialog(app: &mut App, ctx: &Context) {
                     && v.mm() >= 0.0
                 {
                     s.length_step_mm = v.mm();
+                }
+                ui.end_row();
+                ui.label("Allowed angles (°, this plan)");
+                let current = doc.settings.allowed_angles.iter().map(|a| format!("{a}")).collect::<Vec<_>>().join(", ");
+                if let Some(t) = app.bufs.text(ui, egui::Id::unique("allowed_angles"), &current, 160.0) {
+                    let angles: Vec<f64> = t.split(',').filter_map(|x| x.trim().parse().ok()).collect();
+                    angles_cmd = Some(Command::SetAllowedAngles { angles });
                 }
                 ui.end_row();
             });
@@ -668,6 +676,9 @@ fn prefs_dialog(app: &mut App, ctx: &Context) {
         None => {}
     }
     if let Some(c) = unit_cmd {
+        app.run1(c);
+    }
+    if let Some(c) = angles_cmd {
         app.run1(c);
     }
 }

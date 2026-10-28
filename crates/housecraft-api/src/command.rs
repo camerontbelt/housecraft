@@ -171,6 +171,17 @@ pub enum Command {
     /// Auto Stairwell: cut the floor above the stair and put railings round
     /// the opening there, leaving the top end open as the way off the stair.
     AutoStairwell { stair: Id },
+    /// Allowed Angles: extra directions (degrees from east) that drawing
+    /// snaps to beside the angle step.
+    SetAllowedAngles { angles: Vec<f64> },
+    /// Duplicate a saved plan view under a new name (with a copy of its
+    /// layer set when `copy_layer_set`).
+    DuplicatePlanView {
+        id: Id,
+        name: String,
+        #[serde(default)]
+        copy_layer_set: bool,
+    },
     /// The default drawing scale plans get when sent to a layout (model mm
     /// per paper mm, 48 = 1/4" = 1'-0"; 0 fits a standard scale).
     SetLayoutScale { scale: f64 },
@@ -1488,6 +1499,8 @@ impl Command {
             Command::OpenWallsAtStair { .. } => "open_walls_at_stair",
             Command::ResetRoofEdges { .. } => "reset_roof_edges",
             Command::SetLayoutScale { .. } => "set_layout_scale",
+            Command::SetAllowedAngles { .. } => "set_allowed_angles",
+            Command::DuplicatePlanView { .. } => "duplicate_plan_view",
             Command::PointToPointMove { .. } => "point_to_point_move",
             Command::ReflectAbout { .. } => "reflect_about",
             Command::MakeParallel { .. } => "make_parallel",
@@ -2406,6 +2419,26 @@ impl Command {
                     *p = pt(housecraft_geom::v2(*p) + shift);
                     out.modified.push(*dimension);
                 }
+            }
+            Command::SetAllowedAngles { angles } => {
+                if angles.iter().any(|a| !a.is_finite()) {
+                    return invalid("angles must be numbers of degrees");
+                }
+                doc.settings.allowed_angles = angles.clone();
+            }
+            Command::DuplicatePlanView { id, name, copy_layer_set } => {
+                let mut v = expect::<PlanView>(doc, *id)?.clone();
+                if *copy_layer_set {
+                    let mut ls = expect::<LayerSet>(doc, v.layer_set)?.clone();
+                    ls.id = Id(0);
+                    ls.name = format!("{name} Layer Set");
+                    let new_set = doc.insert(ls);
+                    out.created.push(new_set);
+                    v.layer_set = new_set;
+                }
+                v.id = Id(0);
+                v.name = name.clone();
+                out.created.push(doc.insert(v));
             }
             Command::SetLayoutScale { scale } => {
                 if !(scale.is_finite() && *scale >= 0.0) {

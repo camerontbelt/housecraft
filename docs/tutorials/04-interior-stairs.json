@@ -208,8 +208,7 @@
       ]
     },
     {
-      "step": "Tape Measure the clearance at the bottom of the basement stair",
-      "gap": "No Tape Measure. Row: DIM-24"
+      "step": "Tape Measure the clearance at the bottom of the basement stair (Dimension tools › Tape Measure)"
     },
     {
       "step": "Turn off the Stairs & Ramps layer while editing the stairwell",

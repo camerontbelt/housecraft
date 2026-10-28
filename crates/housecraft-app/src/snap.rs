@@ -67,11 +67,13 @@ impl Default for SnapSettings {
 pub struct SnapTargets {
     points: Vec<(DVec2, SnapKind)>,
     segments: Vec<(DVec2, DVec2)>,
+    /// The plan's extra allowed angles (radians).
+    angles: Vec<f64>,
 }
 
 impl SnapTargets {
     pub fn build(doc: &Document, floors: &[Id]) -> Self {
-        let mut t = SnapTargets::default();
+        let mut t = SnapTargets { angles: doc.settings.allowed_angles.iter().map(|a| a.to_radians()).collect(), ..Default::default() };
         for &floor in floors {
             for g in wall_geoms(doc, floor) {
                 t.points.push((g.start, SnapKind::Endpoint));
@@ -223,7 +225,18 @@ pub fn snap(
         let d = cursor - f;
         if d.length() > 1.0 {
             let step = s.angle_step.max(1.0).to_radians();
-            let angle = (d.y.atan2(d.x) / step).round() * step;
+            let raw = d.y.atan2(d.x);
+            let mut angle = (raw / step).round() * step;
+            // An allowed angle (either way along it) wins when it's nearer.
+            let off = |a: f64| {
+                let x = (raw - a).rem_euclid(std::f64::consts::TAU);
+                x.min(std::f64::consts::TAU - x)
+            };
+            for a in targets.angles.iter().flat_map(|a| [*a, a + std::f64::consts::PI]) {
+                if off(a) < off(angle) {
+                    angle = a;
+                }
+            }
             let dir = DVec2::from_angle(angle);
             let mut len = d.dot(dir);
             if s.length_step_mm > 0.0 {

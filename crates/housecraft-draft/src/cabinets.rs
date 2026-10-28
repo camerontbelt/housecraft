@@ -156,7 +156,8 @@ pub(crate) fn appliance(a: &Appliance, stroke: Stroke, text: f64, ink: Ink, out:
             if inner.len() == outline.len() {
                 line(out, id, inner, true, stroke);
             }
-            line(out, id, circle(f.world(DVec2::new(w / 2.0 - 8.0 * IN, d / 2.0)), 1.0 * IN), true, stroke);
+            let end = if a.reversed { -1.0 } else { 1.0 };
+            line(out, id, circle(f.world(DVec2::new(end * (w / 2.0 - 8.0 * IN), d / 2.0)), 1.0 * IN), true, stroke);
         }
         K::Shower => {
             line(out, id, vec![outline[0], outline[2]], false, stroke);

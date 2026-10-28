@@ -129,7 +129,7 @@ These come from reading the whole list and change the architecture, not just the
 | PRJ-09 | Project Browser: tree of layouts, floors, views, cameras, schedules, details; multi-select; folders; thumbnails | P1 | M4 ◐ floors, plan views, cameras, layouts and pages, elevations, rooms; Projects: the plan's folder as a project with its plans and sub-folders, New Folder, rename, drag (or Move To) to file plans, Ctrl/Shift multi-select, double-click to open; thumbnails later |
 | PRJ-10 | Pin items in Project Browser (X18+) | P3 | M8 ✓ Edit > Pin Selected; Pinned section at the top of the Project Browser (right-click to unpin); `pin_objects` command |
 | PRJ-11 | Saved Plan Views (layer set + default set + active defaults; zoom/floor optional); tabs/windows | P0 | M1 ✓ (multiple view tabs: later) |
-| PRJ-12 | Duplicate saved view copies its active layer set (X18+) | P2 | M1 |
+| PRJ-12 | Duplicate saved view copies its active layer set (X18+) | P2 | M1 ✓ Duplicate (with its layer set) on saved plan views |
 | PRJ-13 | Default Sets per drawing type (kitchen, framing, electrical…) | P1 | M1 ✓ View > Add Standard Plan Views: Electrical, Framing, Kitchen & Bath, Construction and Site, each with its own default set and layer set |
 | PRJ-14 | Multi-floor structures | P0 | M0 ✓ |
 | PRJ-15 | Insert/exchange floors above/below | P1 | M3 ✓ |
@@ -260,7 +260,7 @@ These come from reading the whole list and change the architecture, not just the
 | CB-28 | Cabinet door panels and handles from the library; handle position; cabinet elevation measured from the ceiling | P2 | M9 |
 | CB-29 | Automatic diagonal corner cabinets; countertop overhang set per side (island backs) | P2 | M9 |
 | CB-30 | Cabinet partitions (finished end panels between cabinets and appliances, with crown) | P2 | M9 |
-| CB-31 | Reverse Symbol: mirror a fixture or appliance (tub drain end, fridge hinge side) | P3 | M9 |
+| CB-31 | Reverse Symbol: mirror a fixture or appliance (tub drain end, fridge hinge side) | P3 | M9 ◐ Reverse on appliances (a bathtub's drain end); other asymmetric fixtures later |
 
 ## 8. Doors & windows
 
@@ -436,7 +436,7 @@ These come from reading the whole list and change the architecture, not just the
 | CAD-30 | Drawing groups / draw order (Move Forward/Backward) | P2 | M9 |
 | CAD-31 | Point to Point Move: move an object by one of its points onto another point | P2 | M9 ◐ Edit › Point to Point Move: click a snapped point on the selection, then where it goes; Ctrl+click moves a copy (`point_to_point_move`); point markers later |
 | CAD-32 | Concentric edit behaviour: resize a closed shape in or out by a set jump (setbacks) | P3 | M9 |
-| CAD-33 | Additional allowed angles for angle snaps (e.g. a lot's side); Make Parallel/Perpendicular edit tool | P2 | M9 ◐ Edit › Make Parallel / Perpendicular: click a reference line, then an edge of the selection, which turns about that edge's middle (`make_parallel`); single-edge moves on polylines and additional allowed angles later |
+| CAD-33 | Additional allowed angles for angle snaps (e.g. a lot's side); Make Parallel/Perpendicular edit tool | P2 | M9 ◐ allowed angles (Preferences › Allowed angles); Edit › Make Parallel / Perpendicular: click a reference line, then an edge of the selection, which turns about that edge's middle (`make_parallel`); single-edge moves on polylines and additional allowed angles later |
 
 ## 14. Layers
 
@@ -482,7 +482,7 @@ These come from reading the whole list and change the architecture, not just the
 | DIM-21 | NKBA automatic dimensions | P2 | M5 ✓ |
 | DIM-22 | Angled dimension behaviour | P2 | M1 |
 | DIM-23 | Story pole dimensions | P3 | M4 ✓ Story Pole in a view: marked staff with each level's height |
-| DIM-24 | Tape Measure tool (measure without placing a dimension) | P2 | M9 |
+| DIM-24 | Tape Measure tool (measure without placing a dimension) | P2 | M9 ✓ Tape Measure in the Dimension tools |
 | DIM-25 | Delete Dimensions (automatic, manual or all, by floor) | P2 | M9 ✓ Edit › Delete Dimensions: automatic, manual or all on this floor (`delete_dimensions`, any floor or all) |
 | DIM-26 | Auto Room Dimension: dimension every wall of a selected room | P2 | M9 ✓ Auto Room Dimension in the room dialog (`auto_room_dimension`): one dimension along each inside wall face |
 | DIM-27 | Moving or editing automatic dimensions keeps them (they become manual) | P2 | M9 |

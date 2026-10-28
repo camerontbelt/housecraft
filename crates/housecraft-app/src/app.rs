@@ -4134,6 +4134,10 @@ N 90°00'00\" W, 80'".into(), "10'".into()));
                             self.spec.push(v.id);
                             ui.close();
                         }
+                        if ui.button("Duplicate (with its layer set)").clicked() {
+                            self.run1(Command::DuplicatePlanView { id: v.id, name: format!("{} copy", v.name), copy_layer_set: true });
+                            ui.close();
+                        }
                         if ui.button("Delete").clicked() {
                             self.run1(Command::Delete { ids: vec![v.id] });
                             ui.close();

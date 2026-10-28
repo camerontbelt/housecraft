@@ -1167,6 +1167,11 @@ pub fn appliance_mesh(doc: &Document, a: &Appliance, mesh: &mut Mesh) {
             b.prism(&rect(-hw, wall, -hw + wall, d - wall), 0.0, h, Surface::Device);
             b.prism(&rect(hw - wall, wall, hw, d - wall), 0.0, h, Surface::Device);
             b.prism(&rect(-hw + wall, wall, hw - wall, d - wall), 0.0, 2.0 * IN, Surface::Device);
+            // The drain, at the far end unless reversed.
+            if a.appliance_kind == K::Bathtub {
+                let u = if a.reversed { -(hw - 8.0 * IN) } else { hw - 8.0 * IN };
+                b.prism(&rect(u - IN, d / 2.0 - IN, u + IN, d / 2.0 + IN), 2.0 * IN, 2.2 * IN, Surface::Hardware);
+            }
         }
         K::VanitySink => {
             // An oval bowl rim at counter height.

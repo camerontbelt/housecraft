@@ -59,7 +59,8 @@ the point markers at the dimension's ends.
 
 1. Select the stair, **Ctrl+C**, go down to the Foundation, and **Edit › Paste Hold Position**. The copy climbs
    from the basement to Floor 1, with its own stairwell cut in Floor 1.
-2. *Not in HouseCraft yet:* the **Tape Measure**.
+2. **Tape Measure** (Dimension tools) the clearance at the bottom of the basement stair: two clicks, read it in the
+   status bar.
 3. Hide stairs while you work round them: **Layer Display** tab (right side), untick **Stairs**.
 4. To turn a railing into a wall, double-click it and change its **Wall Type** to an interior wall type.
    *Not in HouseCraft yet:* the Same Wall Type handle, so do each railing in turn.
@@ -93,4 +94,4 @@ lines you can drag.
 | Movable dimension point markers in sections | SEC-06 |
 | Top/bottom clip planes in sections | SEC-01 |
 | Note types, capsule markers | TXT-16 |
-| Tiled views; Tape Measure | UI-32, DIM-24 |
+| Tiled views | UI-32 |

@@ -2209,6 +2209,7 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
             let kinds: Vec<(ApplianceKind, &str)> =
                 ApplianceKind::ALL.iter().map(|k| (*k, k.name())).collect();
             ed.choice(ui, "Type", "appliance_kind", a.appliance_kind, &kinds);
+            ed.check(ui, "Reverse", "reversed", "End for end (a tub's drain at the other end)", a.reversed);
             for (label, field, v) in [
                 ("Width", "width", a.width),
                 ("Depth", "depth", a.depth),
