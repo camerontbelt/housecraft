@@ -134,6 +134,13 @@ pub struct WallType {
     /// Corner boards or quoins at the exterior face's ends.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub corner_trim: Option<CornerTrim>,
+    /// Stud spacing for this type's framing layer; the plan's when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stud_spacing: Option<Length>,
+    /// Center Footing on Main Layer: the footing sits under the main
+    /// (structural) layer rather than the whole wall.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub footing_on_main: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]

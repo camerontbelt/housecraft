@@ -1582,9 +1582,11 @@ fn build_floor(doc: &Document, floor: &Floor, mesh: &mut Mesh) {
             }
         }
         if let Some(f) = wall.effective_footing() {
-            // Footing centred under the wall, running past each end by half its width.
+            // Footing centred under the wall (or its main layer), running past
+            // each end by half its width.
             let hw = f.width.mm() / 2.0;
-            let (a, b) = (g.start - g.dir * hw, g.end + g.dir * hw);
+            let shift = g.left * crate::framing::footing_offset(doc, wall, g);
+            let (a, b) = (g.start - g.dir * hw + shift, g.end + g.dir * hw + shift);
             let n = g.left * hw;
             let quad = vec![a - n, b - n, b + n, a + n];
             mesh.prism(&quad, z0 - f.depth.mm(), z0, Surface::Concrete);

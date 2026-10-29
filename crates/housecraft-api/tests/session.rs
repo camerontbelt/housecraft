@@ -4041,3 +4041,31 @@ fn window_default_lites_keep_top_heights_and_door_hardware() {
     assert!(hardware > 0);
     assert_eq!(s.document().get::<Opening>(door).unwrap().details.hardware.map(|h| h.handle), Some(HandleStyle::Lever));
 }
+
+#[test]
+fn wall_types_space_their_own_studs_and_center_footings_on_the_main_layer() {
+    let mut s = boxed();
+    let count = |s: &Session| s.document().iter::<FramingMember>().filter(|m| m.role == FramingRole::Stud).count();
+    apply(&mut s, r#"[{"op": "build_framing"}]"#);
+    let at_16 = count(&s);
+    let wt = walls(&s)[0].wall_type;
+    s.apply(&[Command::Update { id: wt, set: patch(serde_json::json!({ "stud_spacing": "24\"" })) }]).unwrap();
+    apply(&mut s, r#"[{"op": "build_framing"}]"#);
+    assert!(count(&s) < at_16, "24\" OC uses fewer studs than 16\" OC");
+
+    // A footing under a main layer that's off centre moves with it.
+    let w = walls(&s)[0].clone();
+    let g = housecraft_api::geom::walls::wall_geoms(s.document(), w.floor).into_iter().find(|g| g.id == w.id).unwrap();
+    assert_eq!(housecraft_api::geom::framing::footing_offset(s.document(), &w, &g), 0.0);
+    let t = s.document().get::<WallType>(wt).unwrap().clone();
+    let main = t.layers.iter().position(|l| l.main).unwrap_or(0);
+    let mut layers = t.layers.clone();
+    for (i, l) in layers.iter_mut().enumerate() {
+        l.main = i == main;
+    }
+    s.apply(&[Command::Update { id: wt, set: patch(serde_json::json!({ "footing_on_main": true, "layers": layers })) }]).unwrap();
+    let off = housecraft_api::geom::framing::footing_offset(s.document(), &w, &g);
+    let before: f64 = t.layers[..main].iter().map(|l| l.thickness.mm()).sum();
+    assert!((off - (g.half - before - t.layers[main].thickness.mm() / 2.0)).abs() < 1e-6);
+    assert!(off.abs() > 1.0, "the main layer isn't at the wall's centre");
+}

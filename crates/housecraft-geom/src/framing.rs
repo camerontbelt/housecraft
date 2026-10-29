@@ -26,6 +26,21 @@ const IN: f64 = 25.4;
 
 /// The wall's framing layer: its depth and the offset of its centre from
 /// the wall's centre line toward the exterior (left) side.
+/// How far left of the wall's centreline its footing is centred: under the
+/// main layer when the wall type says so, else 0.
+pub fn footing_offset(doc: &Document, wall: &Wall, g: &WallGeom) -> f64 {
+    let Some(wt) = doc.get::<WallType>(wall.wall_type).filter(|t| t.footing_on_main) else {
+        return 0.0;
+    };
+    match wt.layers.iter().position(|l| l.main) {
+        Some(idx) => {
+            let before: f64 = wt.layers[..idx].iter().map(|l| l.thickness.mm()).sum();
+            g.half - before - wt.layers[idx].thickness.mm() / 2.0
+        }
+        None => framing_core(doc, wall, g).1,
+    }
+}
+
 fn framing_core(doc: &Document, wall: &Wall, g: &WallGeom) -> (f64, f64) {
     let Some(wt) = doc.get::<WallType>(wall.wall_type) else {
         return (3.5 * IN, 0.0);
@@ -163,7 +178,7 @@ pub fn wall_framing(doc: &Document, d: &FramingDefaults, wall: &Wall, g: &WallGe
     // Where each opening's framing goes: no common studs inside it.
     let blocked = |u: f64| spans.iter().any(|(a, b, _)| u > a - 2.0 * t && u < b + 2.0 * t);
     let mut studs: Vec<f64> = Vec::new();
-    let spacing = d.stud_spacing.mm().max(100.0);
+    let spacing = wt.stud_spacing.unwrap_or(d.stud_spacing).mm().max(100.0);
     studs.push(t / 2.0);
     let mut k = 1;
     while (k as f64) * spacing < len - t / 2.0 {

@@ -352,7 +352,7 @@ These come from reading the whole list and change the architecture, not just the
 | FD-05 | Footings under bearing walls; stepped footings | P2 | M3 ◐ walls marked Bearing get a footing (plan and 3D); no stepped footings |
 | FD-06 | Slab and slab-hole drawing tools (with footing option) | P2 | M9 |
 | FD-07 | Garage areas over a basement: separate shallow stem walls with a curb; garage slab supplied from below | P2 | M9 |
-| FD-08 | Center footing on main layer (footing offset for furred walls) | P3 | M9 |
+| FD-08 | Center footing on main layer (footing offset for furred walls) | P3 | M9 ✓ wall type setting: Center footing on main layer |
 | FD-09 | Straight Foundation Wall tool; per-room stem wall height and 'no floor under this room' | P2 | M9 |
 
 ## 12. Framing
@@ -397,7 +397,7 @@ These come from reading the whole list and change the architecture, not just the
 | FR-36 | Trim/extend framing members to another member (with Sticky Mode); Add Break to split a member | P3 | M9 ◐ Trim / Extend to Second Object and Add Break (Break Wall tool, `break_wall`) work on joists, beams and rafters, keeping rafters on their pitch; Sticky Mode later |
 | FR-37 | Live Wall Detail views: named from the wall's label, listed per floor in the Project Browser, framing edited and blocking drawn there | P2 | M9 |
 | FR-38 | Framing member defaults (stud/plate construction, fill style); header labels with size and count in plan | P3 | M9 ✓ member styles per role (fill and a label with {nominal_size}, {size}, {plies}, {role}); stud material lumber or steel |
-| FR-39 | Stud spacing per wall type framing layer | P3 | M9 |
+| FR-39 | Stud spacing per wall type framing layer | P3 | M9 ✓ wall types can set their own stud spacing |
 | FR-40 | Roof framing per plane: ridge board size, rafter depth per roof plane, locked height reference when depth changes | P3 | M9 ✓ ridge thickness and depth defaults, rafter depth per plane (tops stay on the roof surface), hip and valley rafters |
 
 ## 13. CAD tools

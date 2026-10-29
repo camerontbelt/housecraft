@@ -91,6 +91,8 @@ fn foundation_wall_type(doc: &mut Document, thickness: Length, out: &mut Outcome
         railing: None,
         cladding: None,
         corner_trim: None,
+        stud_spacing: None,
+        footing_on_main: false,
     });
     out.created.push(id);
     id

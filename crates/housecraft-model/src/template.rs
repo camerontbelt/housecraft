@@ -182,6 +182,8 @@ pub(crate) fn new_document(name: String) -> Document {
         railing: None,
         cladding: Some(Cladding::Lap { exposure: inch(6.0) }),
         corner_trim: Some(CornerTrim::Board { width: inch(4.0) }),
+        footing_on_main: false,
+        stud_spacing: None,
     });
     let interior = doc.insert(WallType {
         id: PLACEHOLDER,
@@ -194,6 +196,8 @@ pub(crate) fn new_document(name: String) -> Document {
         railing: None,
         cladding: None,
         corner_trim: None,
+        footing_on_main: false,
+        stud_spacing: None,
     });
     doc.insert(WallType {
         id: PLACEHOLDER,
@@ -202,6 +206,8 @@ pub(crate) fn new_document(name: String) -> Document {
         railing: Some(Railing::default()),
         cladding: None,
         corner_trim: None,
+        footing_on_main: false,
+        stud_spacing: None,
     });
 
     let mut unspecified = PLACEHOLDER;

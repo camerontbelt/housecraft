@@ -256,7 +256,22 @@
     },
     {
       "step": "Center the footing on the concrete (Center Footing on Main Layer)",
-      "gap": "No 'center footing on main layer' option; footings centre on the whole wall. Row: FD-08"
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:8\" Concrete with Furring",
+          "set": {
+            "footing_on_main": true
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:8\" Concrete with Furring",
+          "path": "/footing_on_main",
+          "is": true
+        }
+      ]
     },
     {
       "step": "Turn on the Reference Display and draw a basement wall under the 1st floor's Dining/Foyer wall",

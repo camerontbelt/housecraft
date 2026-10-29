@@ -3905,6 +3905,8 @@ impl Command {
                     railing: None,
                     cladding: None,
                     corner_trim: None,
+                    stud_spacing: None,
+                    footing_on_main: false,
                 }));
             }
             Command::AddLayer {

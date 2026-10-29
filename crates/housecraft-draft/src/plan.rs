@@ -274,7 +274,8 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
         }
         if let Some(f) = wall.effective_footing() {
             let hw = f.width.mm() / 2.0;
-            let (a, b) = (g.start - g.dir * hw, g.end + g.dir * hw);
+            let shift = g.left * housecraft_geom::framing::footing_offset(doc, wall, g);
+            let (a, b) = (g.start - g.dir * hw + shift, g.end + g.dir * hw + shift);
             let n = g.left * hw;
             out.push(
                 Some(g.id),

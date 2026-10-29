@@ -37,7 +37,8 @@ It carries on from [Tutorial 2](02-interior-walls.md). The steps also run as the
 4. On the Foundation floor, select the basement's outside walls (not the garage's), double-click, and choose the new
    type. **This now sticks:** the foundation only rebuilds walls that no longer fit Floor 1's outline, so your wall
    types and any walls you add down there are kept.
-5. *Not in HouseCraft yet:* **Center Footing on Main Layer**. The footing stays centred on the whole wall.
+5. Still in **Wall Types…**, tick **Footing: Center footing on main layer** for this type. The footing slides
+   over to sit under the 8" of concrete instead of the middle of the whole wall.
 
 ## Aligning walls between floors (pages 52–55)
 
@@ -70,7 +71,6 @@ It carries on from [Tutorial 2](02-interior-walls.md). The steps also run as the
 | Derive a new floor from the floor below | PRJ-44 |
 | Floor/Ceiling Platform defaults used by new floors | RM-16 |
 | Separate garage foundation with a curb | FD-07 |
-| Center footing on main layer | FD-08 |
 | Wall construction columns; rename/resize columns | EST-25, EST-10 |
 
 Fixed for this tutorial: **the foundation kept rebuilding its walls**. It wiped the furred wall type, and any

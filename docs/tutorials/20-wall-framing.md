@@ -30,8 +30,9 @@ HouseCraft always keeps hand edits.
 
 ## Stud spacing (pages 353–354)
 
-1. *Not in HouseCraft yet:* stud spacing per wall type. **Edit › Default Settings…** › **Framing** › **Stud
-   spacing** `24"` changes it for the whole plan.
+1. **Build › Wall › Wall Types…**, pick `8" Concrete with Furring`, untick **Default** next to **Stud Spacing**
+   and type `24"`. Only walls of that type change; the rest keep the plan's spacing from **Edit › Default
+   Settings…** › **Framing**.
 2. **Build Wall Framing** again. The walls you didn't edit rebuild at the new spacing. Your Porch corner is untouched.
 3. Set the spacing back to `16"`. Select the basement walls (Shift+click each), then
    **Build › Framing › Rebuild Framing of Selected Walls, Rooms or Roof Planes**.
@@ -62,7 +63,6 @@ HouseCraft yet:* a per-view default set for details, a secondary (feet) label, a
 | Missing | FEATURES row |
 |---|---|
 | Live, editable wall details named from the wall's label | FR-37 |
-| Stud spacing per wall type | FR-39 |
 | Detail default sets; framing locate | DIM-29, DIM-30 |
 | Secondary dimension format | DIM-12 |
 

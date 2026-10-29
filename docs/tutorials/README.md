@@ -20,7 +20,7 @@ has two files:
 |---|---|---|---|---|
 | 1 | Exterior Walls (3) | 18 | 4 | [01-exterior-walls.md](01-exterior-walls.md) |
 | 2 | Interior Walls (28) | 22 | 6 | [02-interior-walls.md](02-interior-walls.md) |
-| 3 | Multiple Floors (45) | 15 | 4 | [03-multiple-floors.md](03-multiple-floors.md) |
+| 3 | Multiple Floors (45) | 16 | 3 | [03-multiple-floors.md](03-multiple-floors.md) |
 | 4 | Interior Stairs (60) | 17 | 6 | [04-interior-stairs.md](04-interior-stairs.md) |
 | 5 | Doors and Windows (82) | 29 | 4 | [05-doors-and-windows.md](05-doors-and-windows.md) |
 | 6 | Decks and Porches (105) | 27 | 4 | [06-decks-and-porches.md](06-decks-and-porches.md) |
@@ -37,7 +37,7 @@ has two files:
 | 17 | Light Fixtures (298) | 31 | 2 | [17-light-fixtures.md](17-light-fixtures.md) |
 | 18 | Electrical Objects (317) | 25 | 2 | [18-electrical-objects.md](18-electrical-objects.md) |
 | 19 | Floor Framing (331) | 25 | 3 | [19-floor-framing.md](19-floor-framing.md) |
-| 20 | Wall Framing (349) | 15 | 5 | [20-wall-framing.md](20-wall-framing.md) |
+| 20 | Wall Framing (349) | 16 | 4 | [20-wall-framing.md](20-wall-framing.md) |
 | 21 | Roof and Ceiling Framing (364) | 17 | 1 | [21-roof-and-ceiling-framing.md](21-roof-and-ceiling-framing.md) |
 | 22 | Plot Plans (382) | 11 | 5 | [22-plot-plans.md](22-plot-plans.md) |
 | 23 | Terrain Elevation (403) | 17 | 2 | [23-terrain-elevation.md](23-terrain-elevation.md) |

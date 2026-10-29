@@ -168,8 +168,23 @@
       ]
     },
     {
-      "step": "(Spacing per wall type's framing layer)",
-      "gap": "Stud spacing is one setting for the whole plan, not per wall type. Row: FR-39"
+      "step": "(Spacing per wall type: the concrete wall's furring at 24\" OC on its own)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:8\" Concrete with Furring",
+          "set": {
+            "stud_spacing": "24\""
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:8\" Concrete with Furring",
+          "path": "/stud_spacing",
+          "is": "24\""
+        }
+      ]
     },
     {
       "step": "Rebuild all wall framing: hand-edited corner studs survive (Chief replaces them unless Retain Wall Framing)",

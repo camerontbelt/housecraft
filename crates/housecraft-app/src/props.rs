@@ -3799,6 +3799,9 @@ fn editor(ui: &mut Ui, ed: &mut Ed<'_>, object: &Object) {
                 }
             });
             ui.end_row();
+            let plan_spacing = doc.active_defaults().framing.stud_spacing;
+            ed.opt_length(ui, "Stud Spacing", "stud_spacing", t.stud_spacing, Some(plan_spacing));
+            ed.check(ui, "Footing", "footing_on_main", "Center footing on main layer", t.footing_on_main);
         }
         Object::MoldingProfile(p) => {
             ed.text(ui, "Name", "name", &p.name);
