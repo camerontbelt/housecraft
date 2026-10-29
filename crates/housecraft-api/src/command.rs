@@ -3491,15 +3491,45 @@ impl Command {
             Command::AddFramingMember { floor, role, a, b, width, depth, rotation, material, plies } => {
                 let floor = ops::resolve_floor(doc, *floor)?;
                 let f = &d.framing;
+                let post = f.post_size.unwrap_or(Length::from_inches(5.5));
                 let default_depth = match role {
-                    FramingRole::FloorJoist | FramingRole::RimJoist | FramingRole::Beam | FramingRole::Header => f.floor_joist_depth,
+                    FramingRole::Beam => f.beam_depth.unwrap_or(f.floor_joist_depth),
+                    FramingRole::FloorJoist | FramingRole::RimJoist | FramingRole::Header => f.floor_joist_depth,
                     FramingRole::CeilingJoist => f.ceiling_joist_depth,
                     FramingRole::Rafter | FramingRole::Ridge => f.rafter_depth,
-                    FramingRole::Post => Length::from_inches(5.5),
+                    FramingRole::Post => post,
                     _ => Length::from_inches(3.5),
                 };
-                let default_width = if *role == FramingRole::Post { Length::from_inches(5.5) } else { f.lumber_width };
+                let default_width = match role {
+                    FramingRole::Post => post,
+                    FramingRole::Beam => f.beam_width.unwrap_or(f.lumber_width),
+                    _ => f.lumber_width,
+                };
                 let layer = d.layers.framing.unwrap_or(d.layers.cad);
+                // A post on the lowest floor stands on a footing (10" deep) when
+                // the defaults say so.
+                if *role == FramingRole::Post
+                    && doc.floors_by_elevation().first().map(|f| f.id) == Some(floor)
+                    && let Some(size) = f.post_footing
+                {
+                    let foot = if a.2.mm() <= b.2.mm() { *a } else { *b };
+                    out.created.push(doc.insert(FramingMember {
+                        id: Id(0),
+                        floor,
+                        layer,
+                        role: FramingRole::Footing,
+                        a: Point3(foot.0, foot.1, Length::from_mm(foot.2.mm() - 254.0)),
+                        b: foot,
+                        width: size,
+                        depth: size,
+                        rotation: *rotation,
+                        material: FramingMaterial::Lumber,
+                        host: None,
+                        manual: true,
+                        plies: 1,
+                        tail: TailCut::Square,
+                    }));
+                }
                 out.created.push(doc.insert(FramingMember {
                     id: Id(0),
                     floor,

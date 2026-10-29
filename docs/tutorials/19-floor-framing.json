@@ -282,8 +282,28 @@
       ]
     },
     {
-      "step": "Post and beam defaults: beams 12\" x 3 1/2\" with joists; 3 1/2\" posts with square footings",
-      "gap": "Posts and beams are 2x stock unless you type their size; no Manual Framing defaults or post-with-footing. Row: FR-34"
+      "step": "Post and beam defaults: beams 12\" x 3 1/2\"; 3 1/2\" posts with square footings",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "framing": {
+              "beam_depth": "12\"",
+              "beam_width": "3 1/2\"",
+              "post_size": "3 1/2\"",
+              "post_footing": "16\""
+            }
+          }
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/framing/post_size",
+          "is": "3 1/2\""
+        }
+      ]
     },
     {
       "step": "Post with Footing at the top of the stair wall; another at the top left of the Garage",
@@ -301,9 +321,7 @@
             4146.55,
             -4959.35,
             -323.85
-          ],
-          "width": "3 1/2\"",
-          "depth": "3 1/2\""
+          ]
         },
         {
           "op": "add_framing_member",
@@ -318,9 +336,7 @@
             8737.6,
             -8534.4,
             -625.475
-          ],
-          "width": "3 1/2\"",
-          "depth": "3 1/2\""
+          ]
         }
       ],
       "save": {
@@ -330,7 +346,17 @@
         {
           "get": "$posts.0",
           "path": "/role",
+          "is": "footing"
+        },
+        {
+          "get": "$posts.1",
+          "path": "/role",
           "is": "post"
+        },
+        {
+          "get": "$posts.1",
+          "path": "/width",
+          "is": "3 1/2\""
         }
       ]
     },

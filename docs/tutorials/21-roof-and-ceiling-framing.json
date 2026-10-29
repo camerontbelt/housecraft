@@ -234,9 +234,14 @@
       },
       "expect": [
         {
-          "get": "$stack.1",
+          "get": "$stack.2",
           "path": "/b/2",
           "is": "-3/4\""
+        },
+        {
+          "get": "$stack.1",
+          "path": "/role",
+          "is": "footing"
         }
       ]
     },

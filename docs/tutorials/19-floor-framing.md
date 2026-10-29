@@ -47,11 +47,11 @@ basement's lowered-ceiling joists are on the **Foundation** floor.
 
 ## Posts and beams (pages 338–342)
 
-1. *Not in HouseCraft yet:* Manual Framing defaults and Post with Footing. Type each member's size instead.
+1. **Edit › Default Settings…** › **Framing**: **Post size** `3 1/2"`, **Beam thickness** `3 1/2"`, **Beam depth**
+   `12"`, and tick **Square footing under posts**.
 2. On the **Foundation** floor: **Post** at the top end of the stair wall, and another at the top-left corner of
-   the Garage area. Open each one: `3 1/2"` × `3 1/2"`.
-3. **Beam** from the first post up to the back wall. Open it: **Depth** `12"`, **Width** `3 1/2"`, its top level
-   with the joists.
+   the Garage area. Each comes in at 3 1/2" square, standing on a concrete footing.
+3. **Beam** from the first post up to the back wall (it comes in 12" × 3 1/2"). Set its top level with the joists.
 4. A second **Beam** from the Garage post to the back wall, set 11 7/8" lower.
 5. Build the floor framing again. The first beam's top is level with the joists (a flush beam), so the joists stop
    at its faces. The second sits below them (a dropped beam), so they bear on it and splice over it like a bearing
@@ -81,7 +81,6 @@ basement's lowered-ceiling joists are on the **Foundation** floor.
 
 | Missing | FEATURES row |
 |---|---|
-| Post/beam defaults, Post with Footing | FR-34 |
 | Automatic framing rebuild | FR-35 |
 | Sticky Mode for trimming many joists | FR-36 |
 | Named framing types with custom section shapes | FR-07 |

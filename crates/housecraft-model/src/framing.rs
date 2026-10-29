@@ -406,6 +406,20 @@ pub struct FramingDefaults {
     /// How members of each role look in plan: a fill and a label.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub member_styles: Vec<MemberStyle>,
+    /// Manual framing: posts placed by hand are this size square (5 1/2"
+    /// when `None`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_size: Option<Length>,
+    /// Manual framing: beams placed by hand (the lumber width and the floor
+    /// joists' depth when `None`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub beam_width: Option<Length>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub beam_depth: Option<Length>,
+    /// Posts placed by hand stand on a square concrete footing this wide
+    /// (none when `None`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub post_footing: Option<Length>,
 }
 
 /// How framing members of one role are drawn in plan.
@@ -501,6 +515,10 @@ impl Default for FramingDefaults {
             floor_joist_material: FramingMaterial::Lumber,
             ceiling_joist_material: FramingMaterial::Lumber,
             member_styles: Vec::new(),
+            post_size: None,
+            beam_width: None,
+            beam_depth: None,
+            post_footing: None,
         }
     }
 }

@@ -36,7 +36,7 @@ has two files:
 | 16 | Appliances and Fixtures (277) | 18 | 0 | [16-appliances-and-fixtures.md](16-appliances-and-fixtures.md) |
 | 17 | Light Fixtures (298) | 31 | 2 | [17-light-fixtures.md](17-light-fixtures.md) |
 | 18 | Electrical Objects (317) | 25 | 2 | [18-electrical-objects.md](18-electrical-objects.md) |
-| 19 | Floor Framing (331) | 25 | 3 | [19-floor-framing.md](19-floor-framing.md) |
+| 19 | Floor Framing (331) | 26 | 2 | [19-floor-framing.md](19-floor-framing.md) |
 | 20 | Wall Framing (349) | 16 | 4 | [20-wall-framing.md](20-wall-framing.md) |
 | 21 | Roof and Ceiling Framing (364) | 17 | 1 | [21-roof-and-ceiling-framing.md](21-roof-and-ceiling-framing.md) |
 | 22 | Plot Plans (382) | 11 | 5 | [22-plot-plans.md](22-plot-plans.md) |

@@ -1619,6 +1619,30 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                         len_row(ui, doc, &mut app.bufs, "Ridge depth", ("framing", "ridge_depth"), f.ridge_depth.unwrap_or(rd), |v| {
                             commands.push(p(json!({"framing": {"ridge_depth": v}})))
                         });
+                        // Manual framing: what the Post and Beam tools place.
+                        let i = Length::from_inches;
+                        len_row(ui, doc, &mut app.bufs, "Post size", ("framing", "post_size"), f.post_size.unwrap_or(i(5.5)), |v| {
+                            commands.push(p(json!({"framing": {"post_size": v}})))
+                        });
+                        len_row(ui, doc, &mut app.bufs, "Beam thickness", ("framing", "beam_width"), f.beam_width.unwrap_or(lw), |v| {
+                            commands.push(p(json!({"framing": {"beam_width": v}})))
+                        });
+                        len_row(ui, doc, &mut app.bufs, "Beam depth", ("framing", "beam_depth"), f.beam_depth.unwrap_or(f.floor_joist_depth), |v| {
+                            commands.push(p(json!({"framing": {"beam_depth": v}})))
+                        });
+                        ui.label("Post footings");
+                        ui.horizontal(|ui| {
+                            let mut on = f.post_footing.is_some();
+                            if ui.checkbox(&mut on, "Square footing under posts").changed() {
+                                commands.push(p(json!({"framing": {"post_footing": on.then_some(i(16.0))}})));
+                            }
+                        });
+                        ui.end_row();
+                        if let Some(size) = f.post_footing {
+                            len_row(ui, doc, &mut app.bufs, "Footing size", ("framing", "post_footing"), size, |v| {
+                                commands.push(p(json!({"framing": {"post_footing": v}})))
+                            });
+                        }
                     });
                     ui.separator();
                     ui.label("Member styles in plan (fill and label by role; {nominal_size}, {size}, {plies}, {role})");
