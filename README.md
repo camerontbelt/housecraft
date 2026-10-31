@@ -1,13 +1,38 @@
 # HouseCraft
 
-Residential design and construction documents in Rust: Windows, macOS, Linux and web,
-with a headless CLI and an MCP server so LLMs can design alongside you.
+<img src="crates/housecraft-app/icons/128x128.png" align="right" width="96" alt="">
 
-See [docs/PLAN.md](docs/PLAN.md) for architecture and roadmap, and [docs/FEATURES.md](docs/FEATURES.md) for the
-full feature backlog (parity target: Chief Architect Premier X18).
-Current state: every **P0** backlog item is implemented (a few partially; see the backlog). That covers the
-desktop app (plan and 3D views), walls, rooms, doors and windows, CAD drafting, dimensions, text, layers,
-saved views and cameras, PDF/SVG/PNG output, the CLI and the MCP server.
+HouseCraft is a home design program written in Rust. You draw walls, rooms, doors, windows, stairs, roofs,
+cabinets, framing and site plans in 2D. You see the house in 3D. Then you print construction documents:
+plans, elevations, sections, schedules and layout sheets. It runs on Windows, macOS and Linux, with a
+headless command line and an MCP server so AI assistants can design alongside you.
+
+Its menus, toolbars and hotkeys follow the layout of Chief Architect, so people who know that program feel at
+home. All code and icons are original.
+
+## Install
+
+Download the installer for your system from the
+[Releases](https://github.com/camerontbelt/housecraft/releases) page:
+
+| System | File | Notes |
+|---|---|---|
+| Windows 10/11 | `HouseCraft_x.y.z_x64-setup.exe` | Unsigned: on the SmartScreen warning click **More info › Run anyway** |
+| macOS (Apple silicon) | `HouseCraft_x.y.z_aarch64.dmg` | Unsigned: the first time, right-click the app and choose **Open** |
+| Debian / Ubuntu | `housecraft_x.y.z_amd64.deb` | `sudo apt install ./housecraft_*.deb` |
+| Other Linux | `HouseCraft_x.y.z_x86_64.AppImage` | `chmod +x` it, then run it |
+
+Each installer includes the desktop app (`housecraft-app`) and the `housecraft` command line. The installers
+are built on GitHub by [the Release workflow](.github/workflows/release.yml). Pushing a `v*` tag publishes a
+release.
+
+## Status
+
+Early but broad. Every **P0** item in the [feature backlog](docs/FEATURES.md) is in, along with much of P1–P3.
+The test suite replays all 28 chapters of Chief Architect's tutorial guide as HouseCraft commands. At last count
+that is 480 steps, with 68 steps still marked as gaps. Each chapter has a plain-language guide in
+[docs/tutorials](docs/tutorials/README.md) that says where HouseCraft differs. The architecture and roadmap are
+in [docs/PLAN.md](docs/PLAN.md).
 
 ## Crates
 
@@ -85,9 +110,17 @@ work), `export_plan`.
 Requires stable Rust (edition 2024). On Windows, install the Visual Studio Build Tools with the
 "Desktop development with C++" workload, which provides the MSVC linker. If several Visual Studio versions are
 installed, build from a shell where the Build Tools' `vcvars64.bat` has run. On Linux, install
-`libxkbcommon-dev` and `libwayland-dev` for the GUI.
+`libxkbcommon-dev`, `libwayland-dev` and `libx11-dev` for the GUI.
 
 ```sh
 cargo test --workspace
 cargo run -p housecraft-cli -- --help
+```
+
+To build the installers yourself, on the system you're packaging for:
+
+```sh
+cargo install cargo-packager --locked
+cd crates/housecraft-app
+cargo packager --release --formats nsis      # Windows; or deb,appimage on Linux, dmg on macOS
 ```

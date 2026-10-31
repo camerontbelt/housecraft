@@ -49,6 +49,10 @@ identifier = "app.housecraft.desktop"
 category = "GraphicsAndDesign"
 description = "Residential design and construction documents"
 formats = ["nsis", "app", "dmg", "deb", "appimage"]
+icons = ["icons/32x32.png", "icons/128x128.png", "icons/256x256.png", "icons/512x512.png", "icons/icon.ico"]
+# The app plus the `housecraft` command line (which also runs the MCP server).
+before-packaging-command = "cargo build --release --locked -p housecraft-app -p housecraft-cli"
+binaries = [{ path = "housecraft-app", main = true }, { path = "housecraft" }]
 
 [[package.metadata.packager.file-associations]]
 name = "HouseCraft Plan"

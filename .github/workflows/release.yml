@@ -1,0 +1,60 @@
+# Builds the installers on GitHub's machines: a Windows setup.exe, Linux
+# .deb and AppImage, and a macOS .dmg. Run it by hand (Actions > Release >
+# Run workflow) to get them as downloadable artifacts, or push a tag like
+# v0.1.0 to also attach them to a GitHub release.
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            formats: nsis
+            files: target/release/*-setup.exe
+          - os: ubuntu-22.04
+            formats: deb,appimage
+            files: |
+              target/release/*.deb
+              target/release/*.AppImage
+          - os: macos-latest
+            formats: dmg
+            files: target/release/*.dmg
+    runs-on: ${{ matrix.os }}
+    env:
+      # AppImage tools run without FUSE on the build machine.
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev \
+            libxrandr-dev libxi-dev libgl1-mesa-dev libfuse2 file
+      - name: Install cargo-packager
+        run: cargo install cargo-packager --locked
+      - name: Package
+        working-directory: crates/housecraft-app
+        run: cargo packager --release --formats ${{ matrix.formats }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: housecraft-${{ runner.os }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.files }}

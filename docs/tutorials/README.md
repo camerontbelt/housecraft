@@ -47,7 +47,7 @@ has two files:
 | 27 | Title Blocks and Borders (460) | 16 | 0 | [27-title-blocks-and-borders.md](27-title-blocks-and-borders.md) |
 | 28 | Sending Views to Layout (483) | 16 | 0 | [28-sending-views-to-layout.md](28-sending-views-to-layout.md) |
 
-All 28 tutorials in the guide are covered: 315 steps replayed and 199 gaps, each gap with its FEATURES.md row.
+All 28 tutorials in the guide are covered: 480 steps replayed and 68 gaps, each gap with its FEATURES.md row.
 
 The tutorials build on each other. A JSON file can name the one before it in `include`; its steps run first and
 the new file carries on from that plan (tutorial 2 starts a fresh plan with tutorial 1's shell in a few commands).
