@@ -414,8 +414,43 @@
       ]
     },
     {
-      "step": "Turn off the room size line under the labels in Active Layer Display Options",
-      "gap": "The size line under room labels has no layer of its own; set it in Default Settings > Rooms. Row: RM-14"
+      "step": "Turn off the room size line under the labels: put it on its own layer and hide that layer",
+      "commands": [
+        {
+          "op": "add_layer",
+          "name": "Rooms, Size"
+        }
+      ],
+      "save": {
+        "sizelayer": "layer"
+      }
+    },
+    {
+      "step": "(Default Settings > Rooms: Size line layer; then untick it in Layer Display Options)",
+      "commands": [
+        {
+          "op": "update",
+          "id": "$named:default_set:Default",
+          "set": {
+            "layers": {
+              "room_sizes": "$sizelayer"
+            }
+          }
+        },
+        {
+          "op": "set_layer_display",
+          "layer_set": "$named:layer_set:Working",
+          "layer": "$sizelayer",
+          "visible": false
+        }
+      ],
+      "expect": [
+        {
+          "get": "$named:default_set:Default",
+          "path": "/layers/room_sizes",
+          "is": "$sizelayer"
+        }
+      ]
     },
     {
       "step": "Divide the closet beside the Foyer with a wall across it",

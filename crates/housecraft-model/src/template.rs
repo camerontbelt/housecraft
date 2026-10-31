@@ -272,6 +272,7 @@ pub(crate) fn new_document(name: String) -> Document {
             electrical: Some(electrical),
             cabinets: Some(cabinets),
             framing: None,
+            room_sizes: None,
         },
         dimensions: DimensionDefaults {
             text_style: dim_text,

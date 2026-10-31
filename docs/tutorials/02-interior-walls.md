@@ -53,8 +53,9 @@ Chief splits a wall automatically where another wall crosses it. **HouseCraft do
 4. Rename the Entry: open it and type `Foyer` in **Name**.
 5. To hide one room's label, open the room and untick **Room Label › Show the label in plan**; tick it again to
    bring it back. To turn the closet's label, type `90` in **Label Rotation**.
-6. *Not in HouseCraft yet:* turning off the size line under labels from the layer list. You can change what the
-   label shows for all rooms in **Edit › Default Settings… › Rooms**.
+6. To hide the size line under the labels: make a layer called `Rooms, Size` (**Layer Display Options › New Layer**),
+   then in **Edit › Default Settings… › Rooms** set **Size line layer** to it. Now untick that layer in
+   **Layer Display Options** and the size lines go; the room names stay.
 
 ## Merging rooms (page 36)
 
@@ -105,7 +106,6 @@ Chief splits a wall automatically where another wall crosses it. **HouseCraft do
 | Missing | FEATURES row |
 |---|---|
 | Walls split where another wall crosses them | WL-27 |
-| Size line on its own layer | RM-14 |
 | Interior Dimension tool | DIM-01 |
 | Wall layer intersection handles | WL-26 |
 | Floor overview | VIS-30 |

@@ -446,7 +446,10 @@ pub fn plan(doc: &Document, opts: &PlanOptions) -> Drawing {
             if rl.show_area {
                 lines.push(format_area(region.area, doc.settings.display_unit));
             }
+            // The size line shows only while its own layer (if it has one) does.
+            let size_shown = ctx.defaults.layers.room_sizes.is_none_or(|l| ctx.look(l).visible);
             if rl.size != RoomSizeFormat::Off
+                && size_shown
                 && let Some((lo, hi)) = housecraft_geom::math::bounds(region.polygon.iter().copied())
             {
                 let (w, d) = (hi.x - lo.x, hi.y - lo.y);

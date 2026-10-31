@@ -184,7 +184,7 @@ These come from reading the whole list and change the architecture, not just the
 | RM-11 | Multi-select edit rooms (type, vaulted, heights, platform) | P1 | M3 ✓ |
 | RM-12 | Object Information Panel (custom fields) for rooms | P1 | M1 ✓ Object Information in every placed object's and room's specification: code, description, manufacturer, comment and your own fields |
 | RM-13 | Room label dimension formats | P1 | M1 ✓ Default Settings > Rooms: labels show area, size (rounded or exact) and ceiling height |
-| RM-14 | Per-room label control: hide/show, rotate, move; size line on its own layer | P2 | M9 ◐ each room's label can be hidden and rotated; size line on its own layer later |
+| RM-14 | Per-room label control: hide/show, rotate, move; size line on its own layer | P2 | M9 ✓ each room's label can be hidden and rotated; the size line can go on its own layer |
 | RM-15 | Split rooms inherit the parent room's settings; merged rooms keep the larger room's | P1 | M9 ✓ rooms::sync compares with the plan before the change |
 | RM-16 | Floor/Ceiling Platform defaults shared by new floors (structure, finishes) | P2 | M9 |
 | RM-17 | Outdoor room types (Porch, Deck) are left out of the foundation | P1 | M9 ✓ RoomType.exterior; walls that only enclose outdoor rooms don't shape the foundation |

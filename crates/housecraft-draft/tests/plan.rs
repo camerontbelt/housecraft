@@ -1075,3 +1075,27 @@ fn text_reads_what_its_arrow_points_at_and_styles_capitalise() {
     let all: Vec<String> = d.items.iter().filter_map(|i| match &i.prim { Prim::Text { text, .. } => Some(text.clone()), _ => None }).collect();
     assert!(all.iter().any(|t| t == "NOTE: 20 MINUTE SELF-CLOSING"), "{all:?}");
 }
+
+#[test]
+fn room_size_line_hides_with_its_own_layer() {
+    let mut s = house();
+    let (ds, set) = {
+        let doc = s.document();
+        (doc.settings.active_default_set, PlanOptions::first(doc).unwrap().layer_set)
+    };
+    let cmds: Vec<Command> = serde_json::from_value(serde_json::json!([{"op": "update", "id": ds.0, "set": {"room_labels": {"size": "exact"}}}])).unwrap();
+    s.apply(&cmds).unwrap();
+    // Room text lines with an "x" in them are size lines.
+    let sizes = |s: &Session| {
+        let doc = s.document();
+        let d = plan(doc, &PlanOptions::first(doc).unwrap());
+        d.items.iter().filter(|i| matches!(&i.prim, Prim::Text { text, .. } if text.contains(" x ") && i.object.is_some_and(|o| doc.kind_of(o).is_some_and(|k| k.name() == "room")))).count()
+    };
+    assert!(sizes(&s) > 0);
+    let layer = s.apply(&serde_json::from_str::<Vec<Command>>(r#"[{"op": "add_layer", "name": "Rooms, Size"}]"#).unwrap()).unwrap().created[0];
+    let cmds: Vec<Command> = serde_json::from_value(serde_json::json!([{"op": "update", "id": ds.0, "set": {"layers": {"room_sizes": layer.0}}}])).unwrap();
+    s.apply(&cmds).unwrap();
+    assert!(sizes(&s) > 0, "still shown while its layer is on");
+    s.apply(&[Command::SetLayerDisplay { layer_set: set, layer, visible: Some(false), color: None, line_weight: None, line_style: None }]).unwrap();
+    assert_eq!(sizes(&s), 0);
+}

@@ -248,6 +248,10 @@ pub struct KindLayers {
     /// Framing members; made (hidden in plan) the first time framing is built.
     #[serde(default)]
     pub framing: Option<Id>,
+    /// The size line under room labels; it follows the room's layer when
+    /// `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub room_sizes: Option<Id>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

@@ -1155,6 +1155,11 @@ fn defaults_dialog(app: &mut App, ctx: &Context) {
                         if ui.checkbox(&mut clg, "Labels show the ceiling height").changed() {
                             commands.push(p(json!({"room_labels": {"show_ceiling_height": clg}})));
                         }
+                        egui::Grid::new("room_size_layer").show(ui, |ui| {
+                            pick_row::<Layer>(ui, doc, "Size line layer", d.layers.room_sizes.unwrap_or(d.layers.rooms), |v| {
+                                commands.push(p(json!({"layers": {"room_sizes": v}})))
+                            });
+                        });
                     });
                 egui::CollapsingHeader::new("Text and Dimensions")
                     .default_open(true)
